@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stew Zombies</title>
+<style>
+  /* Layout: full-bleed WebGL canvas; HUD pinned to corners; menus as a left-hand column over a darkened scene. */
+  :root {
+    --bg: #0b0a08;
+    --ink: #ddd3c0;         /* bone */
+    --muted: #8c8372;
+    --blood: #9c0e0b;
+    --blood-hi: #d8331f;
+    --brass: #d9b45a;       /* points */
+    --panel: rgba(10, 9, 7, 0.86);
+    --line: rgba(221, 211, 192, 0.16);
+    --display: Impact, Haettenschweiler, "Arial Narrow Bold", "Franklin Gothic Heavy", sans-serif;
+    --body: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--body); }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+  /* ---------------- HUD ---------------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
+  #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  #right { position: absolute; right: max(16px, 2.4vw); bottom: max(16px, 2.6vh); text-align: right; display: grid; gap: 6px; justify-items: end; }
+  #points { font-family: var(--display); font-size: clamp(26px, 3.2vw, 40px); color: var(--brass); letter-spacing: 1px; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0,0,0,.9); font-variant-numeric: tabular-nums; }
+  #popups { position: relative; height: 0; width: 0; }
+  .popup { position: absolute; right: 0; bottom: 4px; font-family: var(--display); font-size: 20px; color: var(--brass); text-shadow: 0 2px 0 #000; animation: pop 1s ease-out forwards; white-space: nowrap; }
+  .popup.big { font-size: 24px; color: #f0d27a; }
+  @keyframes pop { 0% { opacity: 0; transform: translate(0, 0) scale(.8); } 12% { opacity: 1; transform: translate(calc(var(--dx) * .3), calc(var(--dy) * .3)) scale(1.1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); } }
+  #weapon { display: grid; gap: 0; justify-items: end; }
+  #wname { font-family: var(--body); font-weight: 700; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); text-shadow: 0 1px 2px #000; }
+  #ammo { font-family: var(--display); font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0,0,0,.9); }
+  #clip { font-size: clamp(28px, 3vw, 38px); color: var(--ink); }
+  #ammo .sep { margin: 0 6px; font-size: 22px; color: var(--muted); }
+  #reserve { font-size: 22px; color: var(--muted); }
+  #ammo.low #clip { color: var(--blood-hi); }
+
+  #crosshair { position: absolute; left: 50%; top: 50%; --gap: 10px; transition: opacity .12s; }
+  #crosshair.hidden { opacity: 0; }
+  #crosshair i { position: absolute; background: rgba(230, 222, 205, .85); box-shadow: 0 0 2px #000; }
+  #crosshair .t, #crosshair .b { width: 2px; height: 9px; left: -1px; }
+  #crosshair .l, #crosshair .r { height: 2px; width: 9px; top: -1px; }
+  #crosshair .t { top: calc(-1 * var(--gap) - 9px); } #crosshair .b { top: var(--gap); }
+  #crosshair .l { left: calc(-1 * var(--gap) - 9px); } #crosshair .r { left: var(--gap); }
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; opacity: 0; }
+  #hitmarker.on { opacity: 1; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 10px; top: -2px; width: 2px; height: 26px; background: linear-gradient(#fff 0 30%, transparent 30% 70%, #fff 70%); }
+  #hitmarker::before { transform: rotate(45deg); } #hitmarker::after { transform: rotate(-45deg); }
+  #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 17px; font-weight: 700; letter-spacing: .5px; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 8px #000; white-space: nowrap; }
+  #hint { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font-size: 15px; color: #e8b06a; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  #fps { position: absolute; right: 12px; top: 10px; font: 12px var(--mono); color: var(--muted); }
+
+  /* ---------------- Menus ---------------- */
+  .screen { position: fixed; inset: 0; display: grid; align-content: center; padding-inline: max(16px, 7vw); padding-block: 32px;
+    background: linear-gradient(90deg, rgba(6,5,4,.94) 0%, rgba(6,5,4,.78) 38%, rgba(6,5,4,.25) 75%, rgba(6,5,4,.1) 100%); overflow-y: auto; }
+  .screen[hidden] { display: none; }
+  .stack { display: grid; gap: 22px; max-width: 460px; }
+  .logo { font-family: var(--display); font-size: clamp(56px, 10vw, 118px); line-height: .86; letter-spacing: 2px; margin: 0; color: var(--blood);
+    text-shadow: 0 3px 0 #230302, 0 0 30px rgba(156, 14, 11, .35); text-transform: uppercase; text-wrap: balance;
+    -webkit-mask-image: repeating-linear-gradient(-8deg, #000 0 7px, rgba(0,0,0,.72) 7px 8px, #000 8px 19px, rgba(0,0,0,.55) 19px 20px);
+            mask-image: repeating-linear-gradient(-8deg, #000 0 7px, rgba(0,0,0,.72) 7px 8px, #000 8px 19px, rgba(0,0,0,.55) 19px 20px); }
+  .logo small { display: block; font-size: .3em; letter-spacing: 9px; color: var(--ink); text-shadow: 0 2px 0 #000; margin-top: 10px; }
+  .eyebrow { font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); }
+  .menu { display: grid; gap: 4px; justify-items: start; }
+  .menu button { all: unset; cursor: pointer; font-family: var(--display); font-size: clamp(24px, 3vw, 32px); letter-spacing: 1.5px; color: var(--ink); padding: 4px 2px; position: relative; text-transform: uppercase; }
+  .menu button::after { content: ""; position: absolute; left: 0; bottom: 4px; height: 3px; width: 0; background: var(--blood-hi); transition: width .15s; }
+  .menu button:hover, .menu button:focus-visible { color: #fff; }
+  .menu button:hover::after, .menu button:focus-visible::after { width: 100%; }
+  .menu button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
+  body:not([data-ready="1"]) #btn-play { opacity: .4; pointer-events: none; }
+  body:not([data-ready="1"]) #btn-play::before { content: "Loading… "; }
+  .keys { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; color: var(--muted); margin: 0; }
+  .keys dt { font-family: var(--mono); color: var(--ink); font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px; justify-self: start; }
+  .keys dd { margin: 0; align-self: center; }
+  .note { font-size: 13px; color: var(--muted); max-width: 52ch; line-height: 1.5; margin: 0; }
+
+  .settings { display: grid; gap: 14px; }
+  .row { display: grid; grid-template-columns: 170px 1fr 56px; align-items: center; gap: 12px; font-size: 14px; }
+  .row output { font: 13px var(--mono); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .row input[type=range] { width: 100%; accent-color: var(--blood-hi); }
+  .checks { display: grid; grid-template-columns: repeat(2, max-content); gap: 10px 28px; font-size: 14px; }
+  .checks label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  .checks input { accent-color: var(--blood-hi); }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 40px; letter-spacing: 2px; margin: 0; text-transform: uppercase; color: var(--ink); }
+
+  .over-big { font-family: var(--display); font-size: clamp(40px, 7vw, 76px); line-height: .95; margin: 0; color: var(--ink); text-transform: uppercase; text-wrap: balance; }
+  .over-big em { font-style: normal; color: var(--blood-hi); }
+  .stats { display: grid; grid-template-columns: repeat(4, max-content); gap: 8px 28px; margin: 0; }
+  .stats div { display: grid; gap: 2px; }
+  .stats dt { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .stats dd { margin: 0; font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
+  #lockhint { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--muted); background: var(--panel); padding: 6px 12px; border: 1px solid var(--line); border-radius: 3px; }
+  #err { position: fixed; left: 16px; right: 16px; bottom: 16px; font: 12px var(--mono); color: #ffb3a6; background: rgba(40,0,0,.85); padding: 10px; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr 48px; } .row span { grid-column: 1 / -1; } .stats { grid-template-columns: repeat(2, max-content); } }
+  @media (prefers-reduced-motion: reduce) { .popup { animation-duration: .01s; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" hidden>
+  <canvas id="tally" width="360" height="150"></canvas>
+  <div id="right">
+    <div id="popups"></div>
+    <div id="points">500</div>
+    <div id="weapon">
+      <span id="wname">M1912</span>
+      <div id="ammo"><span id="clip">8</span><span class="sep">/</span><span id="reserve">80</span></div>
+    </div>
+  </div>
+  <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+  <div id="hitmarker"></div>
+  <div id="hint"></div>
+  <div id="prompt"></div>
+  <div id="fps"></div>
+</div>
+
+<section id="title" class="screen">
+  <div class="stack">
+    <span class="eyebrow">Phase 1 · Basketball court</span>
+    <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
+    <nav class="menu">
+      <button id="btn-play" type="button">Play</button>
+      <button id="btn-title-settings" type="button">Settings</button>
+    </nav>
+    <dl class="keys">
+      <dt>W A S D</dt><dd>Move</dd>
+      <dt>Mouse</dt><dd>Look · left click fires · right click aims</dd>
+      <dt>Shift</dt><dd>Sprint (hold)</dd>
+      <dt>Space · C</dt><dd>Jump · crouch</dd>
+      <dt>R</dt><dd>Reload (sprint to cancel)</dd>
+      <dt>V or E</dt><dd>Knife</dd>
+      <dt>F (hold)</dt><dd>Rebuild a window barrier</dd>
+      <dt>Esc</dt><dd>Pause</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="pause" class="screen" hidden>
+  <div class="stack">
+    <h2>Paused</h2>
+    <nav class="menu">
+      <button id="btn-resume" type="button">Resume</button>
+      <button id="btn-pause-settings" type="button">Settings</button>
+      <button id="btn-restart" type="button">Restart</button>
+      <button id="btn-quit" type="button">Quit to title</button>
+    </nav>
+  </div>
+</section>
+
+<section id="settings" class="screen" hidden>
+  <div class="stack">
+    <h2>Settings</h2>
+    <div class="settings">
+      <label class="row"><span>Mouse sensitivity</span><input id="set-sens" type="range" min="0.1" max="3" step="0.05"><output id="set-sens-val"></output></label>
+      <label class="row"><span>Aiming sensitivity</span><input id="set-ads" type="range" min="0.2" max="1.5" step="0.05"><output id="set-ads-val"></output></label>
+      <label class="row"><span>Field of view</span><input id="set-fov" type="range" min="65" max="110" step="1"><output id="set-fov-val"></output></label>
+      <label class="row"><span>Master volume</span><input id="set-vol" type="range" min="0" max="1" step="0.01"><output id="set-vol-val"></output></label>
+      <label class="row"><span>Music stings</span><input id="set-music" type="range" min="0" max="1" step="0.01"><output id="set-music-val"></output></label>
+      <label class="row"><span>Render scale</span><input id="set-scale" type="range" min="0.5" max="1" step="0.05"><output id="set-scale-val"></output></label>
+      <div class="checks">
+        <label><input id="set-invert" type="checkbox"> Invert mouse Y</label>
+        <label><input id="set-grain" type="checkbox"> Film grain</label>
+        <label><input id="set-bloom" type="checkbox"> Bloom</label>
+        <label><input id="set-fps" type="checkbox"> Show FPS</label>
+      </div>
+    </div>
+    <nav class="menu"><button id="btn-settings-back" type="button">Back</button></nav>
+  </div>
+</section>
+
+<section id="gameover" class="screen" hidden>
+  <div class="stack">
+    <span class="eyebrow">Game over</span>
+    <p class="over-big"><span id="over-team">Stew</span> survived <em id="over-rounds">0</em> <span id="over-round-word">rounds</span></p>
+    <dl class="stats">
+      <div><dt>Kills</dt><dd id="over-kills">0</dd></div>
+      <div><dt>Headshots</dt><dd id="over-heads">0</dd></div>
+      <div><dt>Knife kills</dt><dd id="over-knife">0</dd></div>
+      <div><dt>Points</dt><dd id="over-points">0</dd></div>
+    </dl>
+    <nav class="menu">
+      <button id="btn-again" type="button">Play again</button>
+      <button id="btn-over-title" type="button">Quit to title</button>
+    </nav>
+  </div>
+</section>
+
+<div id="lockhint" hidden>Mouse capture is unavailable here, so move the mouse to look. For the best feel, open the game in its own browser tab.</div>
+
+<script>
+  window.addEventListener('error', (e) => {
+    let el = document.getElementById('err');
+    if (!el) { el = document.createElement('div'); el.id = 'err'; document.body.appendChild(el); }
+    el.textContent += (e.message || e.error) + (e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno})` : '') + '\n';
+  });
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

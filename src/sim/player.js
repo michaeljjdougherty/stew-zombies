@@ -1,0 +1,200 @@
+// =============================================================================
+// Player simulation: movement, sprint, stamina, health, interaction.
+// Consumes an input command per tick. No rendering here.
+// =============================================================================
+import { moveBody, separateCircles } from './physics.js';
+import { createLoadout, updateWeapons } from './weapons.js';
+import { clamp } from '../core/math.js';
+
+// The shape of one tick of input. The client (or a network peer) fills this in.
+export function emptyCommand() {
+  return {
+    moveX: 0, moveY: 0,       // strafe right +, forward +
+    yaw: 0, pitch: 0,         // radians, absolute
+    sprint: false, crouch: false,
+    fire: false, firePressed: false,
+    ads: false,
+    jumpPressed: false,
+    reloadPressed: false,
+    meleePressed: false,
+    use: false, usePressed: false,
+    weaponSlot: -1,           // -1 = no change
+    weaponCycle: 0,
+  };
+}
+
+export function createPlayer(sim, id, name, spawn) {
+  const cfg = sim.cfg.player;
+  return {
+    id, name,
+    pos: { x: spawn.x, y: 0, z: spawn.z },
+    vel: { x: 0, y: 0, z: 0 },
+    yaw: spawn.yaw, pitch: 0,
+    radius: cfg.radius,
+    height: cfg.height,
+    stepHeight: cfg.stepHeight,
+    grounded: true,
+    crouching: false,
+    sprinting: false,
+    stamina: cfg.sprintDuration,
+    sprintOutTimer: 0,
+    fireBuffer: 0,
+    jumpCooldown: 0,
+    landSlowTimer: 0,
+    lastLandImpact: 0,
+    health: cfg.maxHealth,
+    maxHealth: cfg.maxHealth,
+    lastDamageTime: -999,
+    alive: true,
+    downed: false,
+    points: cfg.startPoints,
+    kills: 0, headshots: 0, knifeKills: 0,
+    boardPointsThisRound: 0,
+    prompt: null,             // { text, cost } shown on HUD
+    useTarget: null,
+    loadout: createLoadout(sim, sim.cfg.startingWeapon),
+    melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
+    moveSpeed: 0,             // horizontal speed, for camera bob / audio
+    distanceWalked: 0,
+  };
+}
+
+export function updatePlayer(sim, p, cmd, dt) {
+  if (!p.alive) return;
+  const cfg = sim.cfg.player;
+  p.yaw = cmd.yaw;
+  p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
+
+  // --- stance
+  p.crouching = cmd.crouch && p.grounded;
+  p.height = p.crouching ? cfg.crouchHeight : cfg.height;
+
+  // --- sprint state machine
+  let mx = cmd.moveX, my = cmd.moveY;
+  const ml = Math.hypot(mx, my);
+  if (ml > 1) { mx /= ml; my /= ml; }
+  const w = p.loadout;
+  const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching;
+  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed;
+  if (p.sprinting) {
+    if (!wantsSprint || p.stamina <= 0 || interrupt) {
+      p.sprinting = false;
+      p.sprintOutTimer = cfg.sprintToFireDelay;
+      if (cmd.firePressed) p.fireBuffer = 0.3; // fire as soon as the gun comes up
+    }
+  } else if (wantsSprint && !cmd.ads && !cmd.fire && p.stamina >= Math.min(cfg.sprintMinToStart, cfg.sprintDuration) && p.melee.timer <= 0) {
+    p.sprinting = true;
+    if (w.reloading) sim.cancelReload(p);
+  }
+  if (p.sprinting) p.stamina = Math.max(0, p.stamina - dt);
+  else p.stamina = Math.min(cfg.sprintDuration, p.stamina + cfg.sprintRecoverRate * dt);
+  if (p.sprintOutTimer > 0) p.sprintOutTimer -= dt;
+  if (p.fireBuffer > 0) p.fireBuffer -= dt;
+
+  // --- desired velocity
+  const def = sim.weaponDef(w);
+  let speed = p.sprinting ? cfg.sprintSpeed : cfg.walkSpeed * (def.moveSpeedMult ?? 1);
+  if (!p.sprinting) {
+    if (my < -0.1) speed *= cfg.backpedalMult;
+    else if (Math.abs(mx) > Math.abs(my)) speed *= cfg.strafeMult;
+    speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;
+  }
+  if (p.crouching) speed *= cfg.crouchSpeedMult;
+  if (p.landSlowTimer > 0) { speed *= cfg.landSlowdownMult; p.landSlowTimer -= dt; }
+
+  const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
+  // forward = (-sin, -cos), right = (cos, -sin)
+  const wx = (-sy * my + cy * mx) * speed;
+  const wz = (-cy * my - sy * mx) * speed;
+
+  // --- knife lunge overrides movement briefly
+  if (p.melee.lunge > 0 && p.melee.lungeDir) {
+    p.vel.x = p.melee.lungeDir.x * sim.cfg.melee.lungeSpeed;
+    p.vel.z = p.melee.lungeDir.z * sim.cfg.melee.lungeSpeed;
+  } else if (p.grounded) {
+    const hasInput = mx * mx + my * my > 0.001;
+    const rate = hasInput ? cfg.groundAccel : cfg.groundDecel;
+    approach(p.vel, wx, wz, rate * dt);
+  } else {
+    // limited air control, no air friction
+    if (mx * mx + my * my > 0.001) approach(p.vel, wx, wz, cfg.airAccel * dt);
+  }
+
+  // --- jump
+  if (p.jumpCooldown > 0) p.jumpCooldown -= dt;
+  if (cmd.jumpPressed && p.grounded && p.jumpCooldown <= 0 && !p.crouching) {
+    p.vel.y = Math.sqrt(2 * cfg.gravity * cfg.jumpHeight);
+    p.grounded = false;
+    p.jumpCooldown = cfg.jumpCooldown;
+    sim.emit('playerJump', { playerId: p.id });
+  }
+
+  // --- move & collide
+  const before = { x: p.pos.x, z: p.pos.z };
+  const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers], cfg.gravity);
+  if (res.landed) {
+    p.landSlowTimer = res.impact > 4 ? cfg.landSlowdownTime : 0;
+    p.lastLandImpact = res.impact;
+    sim.emit('playerLand', { playerId: p.id, impact: res.impact });
+  }
+
+  // zombies are solid: they body-block you
+  for (const z of sim.zombies) {
+    if (z.state !== 'chase') continue;
+    if (Math.abs(z.pos.y - p.pos.y) > 1.2) continue;
+    separateCircles(p.pos, p.radius, z.pos, sim.cfg.zombie.radius * 0.9, 1);
+  }
+  // other players too
+  for (const o of sim.players) {
+    if (o !== p && o.alive) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
+  }
+
+  const moved = Math.hypot(p.pos.x - before.x, p.pos.z - before.z);
+  p.moveSpeed = moved / dt;
+  if (p.grounded) p.distanceWalked += moved;
+
+  // --- weapons and knife
+  updateWeapons(sim, p, cmd, dt);
+
+  // --- interaction prompts
+  updateInteraction(sim, p, cmd, dt);
+
+  // --- health regen
+  if (p.health < p.maxHealth && sim.time - p.lastDamageTime > cfg.regenDelay) {
+    p.health = Math.min(p.maxHealth, p.health + cfg.regenRate * dt);
+  }
+}
+
+function approach(v, tx, tz, maxDelta) {
+  const dx = tx - v.x, dz = tz - v.z;
+  const d = Math.hypot(dx, dz);
+  if (d <= maxDelta || d < 1e-6) { v.x = tx; v.z = tz; return; }
+  v.x += (dx / d) * maxDelta;
+  v.z += (dz / d) * maxDelta;
+}
+
+function updateInteraction(sim, p, cmd, dt) {
+  let best = null, bestD = Infinity;
+  for (const it of sim.interactables) {
+    const d = it.distanceTo(sim, p);
+    if (d < bestD && it.canUse(sim, p)) { best = it; bestD = d; }
+  }
+  if (best && bestD > best.range) best = null;
+  if (p.useTarget && p.useTarget !== best && p.useTarget.release) p.useTarget.release(sim, p);
+  p.useTarget = best;
+  p.prompt = best ? best.prompt(sim, p) : null;
+  if (best) best.use(sim, p, cmd, dt);
+}
+
+export function damagePlayer(sim, p, amount, source) {
+  if (!p.alive) return;
+  p.health -= amount;
+  p.lastDamageTime = sim.time;
+  sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
+  if (p.health <= 0) {
+    p.health = 0;
+    p.alive = false;
+    p.sprinting = false;
+    sim.emit('playerDown', { playerId: p.id });
+  }
+}

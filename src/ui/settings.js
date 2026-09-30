@@ -1,0 +1,27 @@
+// Player settings, remembered in this browser when storage is available.
+import { CONFIG } from '../config.js';
+
+const KEY = 'stew-zombies-settings-v1';
+
+export const DEFAULT_SETTINGS = {
+  sensitivity: CONFIG.input.defaultSensitivity,
+  adsSensitivity: CONFIG.input.defaultAdsSensitivity,
+  fov: CONFIG.camera.defaultFov,
+  invertY: false,
+  master: CONFIG.audio.master,
+  music: CONFIG.audio.music,
+  renderScale: CONFIG.graphics.renderScale,
+  grain: true,
+  bloom: true,
+  showFps: false,
+};
+
+export function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
+  return { ...DEFAULT_SETTINGS, ...s };
+}
+
+export function saveSettings(s) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* storage unavailable */ }
+}
