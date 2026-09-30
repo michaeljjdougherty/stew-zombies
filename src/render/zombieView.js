@@ -5,8 +5,8 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 
-const SHIRTS = ['#4a4a3a', '#3a4450', '#5a4a3a', '#6a6658', '#35302b', '#4d3030', '#3c4a3a', '#5b5448'];
-const PANTS = ['#2e2c26', '#2f3540', '#3d3527', '#26221e'];
+const SHIRTS = ['#6a6450', '#56606a', '#77634c', '#8a8676', '#554c44', '#6d3f3a', '#5a6650', '#7a7060'];
+const PANTS = ['#3e3b33', '#3a4250', '#4d4433', '#35302a'];
 
 function hash(n) { n = (n ^ 61) ^ (n >>> 16); n *= 9; n ^= n >>> 4; n *= 0x27d4eb2d; n ^= n >>> 15; return (n >>> 0) / 4294967296; }
 
@@ -27,18 +27,26 @@ export class ZombieViews {
     this.goreMat = new THREE.MeshStandardMaterial({ color: '#4a0808', roughness: 0.5 });
     this.eyeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 3.2, 0.5), fog: false });
     this.mouthMat = new THREE.MeshBasicMaterial({ color: '#0a0303' });
+    this.hairMat = new THREE.MeshStandardMaterial({ color: '#1c1813', roughness: 1 });
     this.glowMat = new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,170,60,1)', 'rgba(255,90,0,0)'), color: 0xffb040, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.9 });
 
     this.geo = {
-      chest: new THREE.CylinderGeometry(0.21, 0.17, 0.52, 10).scale(1, 1, 0.62),
-      pelvis: new THREE.CylinderGeometry(0.17, 0.16, 0.2, 10).scale(1, 1, 0.7),
-      head: new THREE.SphereGeometry(0.125, 12, 10).scale(0.92, 1.12, 1.0),
+      chest: new THREE.CylinderGeometry(0.25, 0.18, 0.54, 12).scale(1, 1, 0.64),
+      shoulder: new THREE.SphereGeometry(0.085, 10, 8),
+      pelvis: new THREE.CylinderGeometry(0.185, 0.175, 0.2, 12).scale(1, 1, 0.72),
+      head: new THREE.SphereGeometry(0.125, 14, 12).scale(0.92, 1.12, 1.0),
       jaw: new THREE.BoxGeometry(0.15, 0.05, 0.1),
-      upperArm: new THREE.CapsuleGeometry(0.055, 0.22, 3, 8),
-      foreArm: new THREE.CapsuleGeometry(0.045, 0.22, 3, 8),
-      hand: new THREE.BoxGeometry(0.07, 0.12, 0.04),
-      thigh: new THREE.CapsuleGeometry(0.075, 0.32, 3, 8),
-      shin: new THREE.CapsuleGeometry(0.06, 0.32, 3, 8),
+      neckGeo: new THREE.CylinderGeometry(0.05, 0.06, 0.1, 8),
+      brow: new THREE.BoxGeometry(0.19, 0.035, 0.05),
+      socket: new THREE.SphereGeometry(0.032, 8, 6),
+      nose: new THREE.BoxGeometry(0.03, 0.05, 0.035),
+      hair: new THREE.SphereGeometry(0.132, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45).scale(0.95, 1.1, 1.05),
+      flap: new THREE.BoxGeometry(0.1, 0.16, 0.01),
+      upperArm: new THREE.CapsuleGeometry(0.06, 0.22, 3, 8),
+      foreArm: new THREE.CapsuleGeometry(0.05, 0.22, 3, 8),
+      hand: new THREE.BoxGeometry(0.08, 0.13, 0.045),
+      thigh: new THREE.CapsuleGeometry(0.088, 0.3, 3, 8),
+      shin: new THREE.CapsuleGeometry(0.07, 0.3, 3, 8),
       foot: new THREE.BoxGeometry(0.1, 0.07, 0.24),
       eye: new THREE.SphereGeometry(0.018, 6, 4),
       stump: new THREE.CylinderGeometry(0.05, 0.05, 0.03, 8),
@@ -66,14 +74,27 @@ export class ZombieViews {
     mk(G.pelvis, pants, hips, 0, 0.02, 0);
     const torso = new THREE.Group(); torso.position.y = 0.1; hips.add(torso);
     mk(G.chest, shirt, torso, 0, 0.27, 0);
+    // torn shirt flaps hanging off the hem
+    for (let i = 0; i < 3; i++) {
+      if (r(20 + i) < 0.35) continue;
+      const a = (i - 1) * 0.9 + (r(30 + i) - 0.5) * 0.4;
+      const f = mk(G.flap, shirt, torso, Math.sin(a) * 0.2, -0.02, Math.cos(a) * 0.13);
+      f.rotation.set(0.15, a, (r(40 + i) - 0.5) * 0.6);
+    }
     const neck = new THREE.Group(); neck.position.set(0, 0.54, 0.02); torso.add(neck);
+    mk(G.neckGeo, skin, neck, 0, 0.03, 0);
     const head = new THREE.Group(); head.position.y = 0.06; neck.add(head);
     mk(G.head, skin, head, 0, 0.1, 0.01);
     const jaw = mk(G.jaw, skin, head, 0, -0.01, 0.04);
+    const brow = mk(G.brow, skin, head, 0, 0.165, 0.085);
+    brow.rotation.x = 0.35;
+    mk(G.nose, skin, head, 0, 0.1, 0.125);
+    for (const s of [-1, 1]) mk(G.socket, this.mouthMat, head, s * 0.045, 0.13, 0.092);
+    if (r(11) < 0.6) mk(G.hair, this.hairMat, head, 0, 0.11, -0.005).rotation.x = -0.25;
     const mouth = mk(new THREE.BoxGeometry(0.1, 0.03, 0.02), this.mouthMat, head, 0, 0.02, 0.1);
     const eyes = [];
     for (const s of [-1, 1]) {
-      eyes.push(mk(G.eye, this.eyeMat, head, s * 0.045, 0.13, 0.105));
+      eyes.push(mk(G.eye, this.eyeMat, head, s * 0.045, 0.13, 0.112));
     }
     const glow = new THREE.Sprite(this.glowMat);
     glow.scale.set(0.24, 0.12, 1);
@@ -84,6 +105,7 @@ export class ZombieViews {
 
     const arm = (side) => {
       const shoulder = new THREE.Group(); shoulder.position.set(side * 0.25, 0.47, 0); torso.add(shoulder);
+      mk(G.shoulder, shirt, shoulder, 0, -0.01, 0);
       mk(G.upperArm, shirt, shoulder, 0, -0.15, 0);
       const elbow = new THREE.Group(); elbow.position.y = -0.3; shoulder.add(elbow);
       mk(G.foreArm, skin, elbow, 0, -0.14, 0);

@@ -33,6 +33,7 @@ export class GameRenderer {
     this.effects = new Effects(this.scene, sim, cfg);
     this.zombies = new ZombieViews(this.scene, this.effects, cfg);
     this.viewmodel = new Viewmodel(cfg);
+    this.viewmodel.initEnvironment(r);
     this.rig = new CameraRig(this.camera, cfg);
     this.post = new PostFX(r, this.scene, this.camera, this.viewmodel.scene, this.viewmodel.camera, cfg);
 

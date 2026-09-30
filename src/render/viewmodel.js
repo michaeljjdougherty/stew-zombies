@@ -5,6 +5,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as T from './textures.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
@@ -35,10 +36,10 @@ export class Viewmodel {
     this.camera.add(this.root);
 
     this.mats = {
-      metal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#2c2d2e'), roughness: 0.45, metalness: 0.75 }),
-      darkMetal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#1d1e1f'), roughness: 0.5, metalness: 0.7 }),
+      metal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#55575a'), roughness: 0.4, metalness: 0.35 }),
+      darkMetal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#35373a'), roughness: 0.5, metalness: 0.3 }),
       wood: new THREE.MeshStandardMaterial({ map: T.woodTexture({ base: [22, 40, 26], plank: 32 }), roughness: 0.6 }),
-      glove: new THREE.MeshStandardMaterial({ map: T.gloveTexture(), roughness: 0.9 }),
+      glove: new THREE.MeshStandardMaterial({ map: T.gloveTexture(), color: '#b0a590', roughness: 0.85 }),
       sleeve: new THREE.MeshStandardMaterial({ map: T.sleeveTexture(), roughness: 0.95 }),
       skin: new THREE.MeshStandardMaterial({ color: '#8c7560', roughness: 0.8 }),
       blade: new THREE.MeshStandardMaterial({ color: '#9a9c9a', roughness: 0.25, metalness: 0.9 }),
@@ -88,9 +89,11 @@ export class Viewmodel {
     box(0.03, 0.03, 0.2, m.metal, 0, 0.0, 0, this.slide);
     // serrations
     for (let i = 0; i < 6; i++) box(0.031, 0.022, 0.003, m.darkMetal, 0, 0.001, 0.06 + i * 0.007, this.slide);
-    box(0.006, 0.008, 0.008, m.darkMetal, 0, 0.019, -0.092, this.slide);  // front sight
-    box(0.008, 0.008, 0.008, m.darkMetal, -0.009, 0.019, 0.09, this.slide); // rear sight L
-    box(0.008, 0.008, 0.008, m.darkMetal, 0.009, 0.019, 0.09, this.slide);  // rear sight R
+    box(0.003, 0.006, 0.008, m.darkMetal, 0, 0.018, -0.092, this.slide);  // front sight
+    box(0.005, 0.006, 0.006, m.darkMetal, -0.0055, 0.018, 0.09, this.slide); // rear sight L
+    box(0.005, 0.006, 0.006, m.darkMetal, 0.0055, 0.018, 0.09, this.slide);  // rear sight R
+    box(0.002, 0.012, 0.04, m.darkMetal, 0.015, 0.004, 0.0, this.slide);     // ejection port
+    box(0.024, 0.004, 0.19, m.metal, 0, 0.016, 0, this.slide);               // rounded top edge
     // barrel bushing
     const bush = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.01, 10).rotateX(Math.PI / 2), m.darkMetal);
     bush.position.set(0, -0.002, -0.102);
@@ -160,16 +163,27 @@ export class Viewmodel {
     const hand = new THREE.Group();
     this.knifeArm.add(hand);
     const b = (w, h, d, mat, x, y, z, parent = hand) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); q.position.set(x, y, z); parent.add(q); return q; };
-    b(0.05, 0.06, 0.07, m.glove, 0, 0, 0);
-    b(0.012, 0.03, 0.1, m.darkMetal, 0, 0.0, -0.08); // handle
-    b(0.04, 0.008, 0.01, m.darkMetal, 0, 0.0, -0.13); // guard
-    const blade = b(0.004, 0.028, 0.17, m.blade, 0, 0.004, -0.22);
-    blade.scale.set(1, 1, 1);
-    b(0.004, 0.014, 0.03, m.blade, 0, 0.012, -0.315); // tip
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.04, 0.45, 10), m.sleeve);
-    arm.position.set(0.02, -0.05, 0.24); arm.rotation.set(1.3, 0, 0);
+    // fist around the handle, blade pointing forward (-z)
+    b(0.05, 0.05, 0.075, m.glove, 0, 0, 0.0);
+    for (let i = 0; i < 4; i++) b(0.012, 0.016, 0.02, m.glove, 0.022, 0.018 - i * 0.012, -0.028); // knuckles
+    b(0.02, 0.026, 0.1, m.darkMetal, 0, 0.0, -0.075);  // handle
+    b(0.05, 0.034, 0.008, m.darkMetal, 0, 0.004, -0.128); // guard
+    b(0.005, 0.03, 0.17, m.blade, 0, 0.004, -0.215); // blade
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.021, 0.05, 3), m.blade);
+    tip.rotation.x = -Math.PI / 2; tip.scale.set(0.2, 1, 1); tip.position.set(0, 0.006, -0.325);
+    hand.add(tip);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.034, 0.4, 10), m.sleeve);
+    arm.position.set(0.02, -0.09, 0.2); arm.rotation.set(Math.PI / 2 - 0.45, 0, 0);
     hand.add(arm);
     this.knifeHand = hand;
+  }
+
+  // Soft studio-style reflections so the gun metal isn't pitch black.
+  initEnvironment(renderer) {
+    const pm = new THREE.PMREMGenerator(renderer);
+    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+    this.envMats = Object.values(this.mats);
   }
 
   setAspect(a) { this.camera.aspect = a; this.camera.updateProjectionMatrix(); }
@@ -233,10 +247,10 @@ export class Viewmodel {
     const ly = this.landY.update(dt);
 
     // base pose: hip -> ads
-    const hip = { x: 0.14, y: -0.135, z: -0.3, ry: 0.06, rz: 0.0 };
-    const aim = { x: 0.0, y: -0.0205, z: -0.2, ry: 0.0, rz: 0.0 };
+    const hip = { x: 0.11, y: -0.074, z: -0.33, ry: 0.07, rz: -0.2 };
+    const aim = { x: 0.0, y: -0.0225, z: -0.33, ry: 0.0, rz: 0.0 };
     let px = lerp(hip.x, aim.x, ads), py = lerp(hip.y, aim.y, ads), pz = lerp(hip.z, aim.z, ads);
-    let rx = 0, ry = lerp(hip.ry, aim.ry, ads), rz = 0;
+    let rx = lerp(0.03, 0, ads), ry = lerp(hip.ry, aim.ry, ads), rz = lerp(hip.rz, aim.rz, ads);
 
     // bob (figure-eight) from camera rig
     const bobScale = lerp(1, 0.12, ads);
@@ -324,11 +338,13 @@ export class Viewmodel {
         this.knifeArm.visible = true;
         const inT = seg(t, 0, 0.15), slash = seg(t, 0.12, 0.38), outT = seg(t, 0.55, 1);
         gunDip = Math.min(inT * 2, 1) * (1 - outT);
-        const kx = lerp(0.35, 0.18, inT) + lerp(0, -0.36, slash) + outT * 0.2;
-        const ky = lerp(-0.25, -0.05, inT) - slash * 0.02 - outT * 0.25;
-        const kzz = lerp(-0.3, -0.36, inT) - (this.meleeLunge ? slash * 0.05 : 0);
+        // enters low right, slashes across to the left, drops away
+        // blade points left-forward so we see it side-on as it sweeps across
+        const kx = lerp(0.42, 0.26, inT) + lerp(0, -0.4, slash) + outT * 0.35;
+        const ky = lerp(-0.32, -0.12, inT) + slash * 0.02 - outT * 0.3;
+        const kzz = -0.46 - (this.meleeLunge ? slash * 0.06 : 0);
         this.knifeArm.position.set(kx, ky, kzz);
-        this.knifeArm.rotation.set(-0.1 - slash * 0.2, lerp(-0.2, 1.3, slash), lerp(1.2, 1.5, slash));
+        this.knifeArm.rotation.set(-0.15 + slash * 0.1, lerp(0.25, 1.25, slash) + inT * 0.2, lerp(-0.6, -0.2, slash));
       }
     }
     py -= gunDip * 0.2; rx -= gunDip * 0.6; px += gunDip * 0.05;
@@ -343,8 +359,9 @@ export class Viewmodel {
     }
 
     // lighting follows the environment a little
-    this.hemi.intensity = 0.35 + this.envLevel * 0.9;
-    this.key.intensity = 0.3 + this.envLevel * 1.1;
+    this.hemi.intensity = 0.5 + this.envLevel * 1.0;
+    this.key.intensity = 0.4 + this.envLevel * 1.4;
+    if (this.envMats) for (const m of this.envMats) m.envMapIntensity = 0.12 + this.envLevel * 0.35;
   }
 
   muzzleWorldPosition(camera, out) {

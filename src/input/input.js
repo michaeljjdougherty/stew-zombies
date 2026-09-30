@@ -18,6 +18,7 @@ export class Input {
     this.frameDX = 0; this.frameDY = 0;
     this.wheel = 0;
     this.locked = false;
+    this.ignoreMovesUntil = 0;
     this.enabled = false;
     this.onLockChange = null;
     this.adsActive = () => false;
@@ -59,6 +60,7 @@ export class Input {
 
     window.addEventListener('mousemove', (e) => {
       if (!this.enabled || (!this.locked && !this.fallbackLook)) return;
+      if (performance.now() < this.ignoreMovesUntil) return; // browsers can send a jump right after locking
       const dx = e.movementX || 0, dy = e.movementY || 0;
       if (Math.abs(dx) > 400 || Math.abs(dy) > 400) return; // ignore spikes some browsers send
       const ads = this.adsActive() ? this.settings.adsSensitivity : 1;
@@ -72,6 +74,7 @@ export class Input {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
+      this.ignoreMovesUntil = performance.now() + 150;
       if (this.locked) this.fallbackLook = false;
       if (this.onLockChange) this.onLockChange(this.locked);
     });

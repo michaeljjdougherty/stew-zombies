@@ -118,6 +118,21 @@ let acc = 0;
 let last = performance.now();
 let time = 0;
 
+// One simulation tick with the local player's command, then fan out events.
+const debugHold = {};
+function tick(cmd) {
+  renderer.beginStep(sim);
+  sim.setInput(LOCAL_ID, { ...cmd, ...debugHold });
+  sim.step(DT);
+  const events = sim.drainEvents();
+  renderer.onEvents(events);
+  for (const e of events) {
+    sound.onEvent(e);
+    hud.onEvent(e);
+    if (e.type === 'playerDown' && e.playerId === LOCAL_ID) { mode = 'dying'; dyingT = 0; }
+  }
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const fdt = Math.min(0.1, (now - last) / 1000);
@@ -128,16 +143,8 @@ function frame(now) {
     acc += fdt;
     let steps = 0;
     while (acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
-      renderer.beginStep(sim);
-      sim.setInput(LOCAL_ID, mode === 'play' ? input.buildCommand() : { ...input.buildCommand(), fire: false, firePressed: false, moveX: 0, moveY: 0 });
-      sim.step(DT);
-      const events = sim.drainEvents();
-      renderer.onEvents(events);
-      for (const e of events) {
-        sound.onEvent(e);
-        hud.onEvent(e);
-        if (e.type === 'playerDown' && e.playerId === LOCAL_ID) { mode = 'dying'; dyingT = 0; }
-      }
+      const cmd = input.buildCommand();
+      tick(mode === 'play' ? cmd : { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0 });
       acc -= DT;
       steps++;
     }
@@ -167,5 +174,18 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
-window.STEW = { get sim() { return sim; }, renderer, CONFIG };
+window.STEW = {
+  get sim() { return sim; }, renderer, CONFIG, input,
+  get mode() { return mode; },
+  debug: {
+    // Run the simulation forward without rendering (for testing).
+    run(seconds, patch = {}) {
+      const n = Math.round(seconds / DT);
+      for (let i = 0; i < n; i++) tick({ ...input.buildCommand(), ...patch, yaw: input.yaw, pitch: input.pitch });
+    },
+    look(yaw, pitch = 0) { input.setLook(yaw, pitch); },
+    hold: debugHold, // e.g. STEW.debug.hold.ads = true
+
+  },
+};
 document.body.dataset.ready = '1';

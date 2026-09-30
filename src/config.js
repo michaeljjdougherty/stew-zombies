@@ -269,8 +269,8 @@ export const CONFIG = {
     renderScale: 1.0,
     maxPixelRatio: 1.5,
     fogColor: '#17140f',
-    fogDensity: 0.042,
-    exposure: 1.05,
+    fogDensity: 0.034,
+    exposure: 1.2,
     bloomStrength: 0.62,
     bloomRadius: 0.55,
     bloomThreshold: 0.82,
@@ -284,7 +284,7 @@ export const CONFIG = {
     maxBulletHoles: 90,
     corpseTime: 9,
     corpseSinkTime: 2.5,
-    ambientLight: 0.2,       // pre-power base light
+    ambientLight: 0.32,      // pre-power base light
     viewmodelFov: 54,
   },
 

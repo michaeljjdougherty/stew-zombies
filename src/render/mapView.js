@@ -38,12 +38,12 @@ export class MapView {
     T.seedTextures(1);
     this.mats = {
       floor: new THREE.MeshStandardMaterial({ map: T.gymFloorTexture(), roughness: 0.38, metalness: 0.0 }),
-      wall: new THREE.MeshStandardMaterial({ map: T.wallTexture({ height: this.map.height }), roughness: 0.92 }),
+      wall: new THREE.MeshStandardMaterial({ map: T.wallTexture({ height: this.map.height, upper: '#6e695b' }), roughness: 0.92 }),
       ceiling: new THREE.MeshStandardMaterial({ map: T.ceilingTexture(), roughness: 1 }),
       wood: new THREE.MeshStandardMaterial({ map: T.woodTexture(), roughness: 0.75 }),
       darkWood: new THREE.MeshStandardMaterial({ map: T.woodTexture({ dark: true }), roughness: 0.85 }),
-      metal: new THREE.MeshStandardMaterial({ map: T.metalTexture(), roughness: 0.7, metalness: 0.5 }),
-      rustMetal: new THREE.MeshStandardMaterial({ map: T.metalTexture({ color: '#4a4538', rust: 1 }), roughness: 0.8, metalness: 0.4 }),
+      metal: new THREE.MeshStandardMaterial({ map: T.metalTexture(), roughness: 0.7, metalness: 0.2 }),
+      rustMetal: new THREE.MeshStandardMaterial({ map: T.metalTexture({ color: '#4a4538', rust: 1 }), roughness: 0.8, metalness: 0.15 }),
       ground: new THREE.MeshStandardMaterial({ map: T.groundTexture(), roughness: 1 }),
       windowFrame: new THREE.MeshStandardMaterial({ color: '#2a2620', roughness: 0.9 }),
       glass: new THREE.MeshStandardMaterial({ color: '#8a9a9a', roughness: 0.1, metalness: 0.6, transparent: true, opacity: 0.22, side: THREE.DoubleSide }),
@@ -171,7 +171,7 @@ export class MapView {
     face.position.set(s.x, s.y, z - 0.51);
     face.rotation.y = Math.PI;
     this.group.add(face);
-    this.scoreLight = new THREE.PointLight(0xff3a1e, 1.2, 7, 2);
+    this.scoreLight = new THREE.PointLight(0xff3a1e, 6, 9, 1.6);
     this.scoreLight.position.set(s.x, s.y - 0.5, z - 1.5);
     this.group.add(this.scoreLight);
     this.lastScore = { round: -1, kills: -1 };
@@ -382,7 +382,7 @@ export class MapView {
       this.group.add(grp);
       const fx = { data: f, grp, tubeMat, light: null, beam: null, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, buzz: f.flicker };
       if (f.lit) {
-        fx.light = new THREE.PointLight(0xffe7c0, 14, 16, 1.6);
+        fx.light = new THREE.PointLight(0xffe7c0, 120, 22, 1.8);
         fx.light.position.set(f.x, f.y - 0.3, f.z);
         scene.add(fx.light);
         const beam = new THREE.Mesh(
@@ -398,7 +398,7 @@ export class MapView {
 
     // red emergency lights
     for (const e of this.map.emergencyLights) {
-      const l = new THREE.PointLight(0xff2010, 4, 9, 1.8);
+      const l = new THREE.PointLight(0xff2010, 14, 11, 1.5);
       l.position.set(e.x, e.y, e.z);
       scene.add(l);
       const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.18), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.4, 0.2) }));
@@ -409,7 +409,7 @@ export class MapView {
     // moonlight spilling through the windows
     for (const w of this.sim.windows) {
       const n = w.normal;
-      const spot = new THREE.SpotLight(0x8fa6c8, 22, 18, 0.42, 0.6, 1.4);
+      const spot = new THREE.SpotLight(0x8fa6c8, 90, 22, 0.45, 0.6, 1.25);
       spot.position.set(w.center.x - n.x * 5, 5.2, w.center.z - n.z * 5);
       spot.target.position.set(w.center.x + n.x * 4, 0, w.center.z + n.z * 4);
       scene.add(spot); scene.add(spot.target);
@@ -500,7 +500,7 @@ export class MapView {
       }
       f.level += (f.target - f.level) * Math.min(1, dt * 40);
       const hum = 1 + Math.sin(this.time * 120) * 0.015;
-      if (f.light) f.light.intensity = 14 * f.level * hum;
+      if (f.light) f.light.intensity = 120 * f.level * hum;
       f.tubeMat.color.setRGB(2.6 * f.level + 0.06, 2.45 * f.level + 0.06, 2.1 * f.level + 0.05);
       if (f.beam) f.beam.material.opacity = 0.045 * f.level;
     }
