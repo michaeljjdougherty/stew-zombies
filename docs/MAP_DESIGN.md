@@ -79,7 +79,7 @@ the weakest ones frustrating (Five, TranZit, Die Rise).
   up into a mid-game loop, so you don't need the whole map open to have
   somewhere to run.
 
-## The Quad (new, added in Phase 4)
+## The Quad (✅ built in Phase 4)
 
 An outdoor courtyard east of the main hallway, about 18 m by 36 m. It's built
 for running trains.
@@ -102,28 +102,28 @@ for running trains.
   school bus I put in the courtyard moves to the loading dock, where the spec
   places it.
 
-## What each area offers
+## What each area offers (as built)
 
 | Area | Landmark | Reasons to go | Training? |
 |---|---|---|---|
-| Basketball court | STEW banner, scoreboard | spawn, M15, 4 windows | early rounds, around the center circle |
+| Basketball court | STEW banner, scoreboard | spawn, M15, frags, Second Helping | early rounds, around the center circle |
 | Main hallway | lockers, flickering lights | Olympus, first box spot, links everything | no (connector) |
-| Front office | the PA microphone | Erik's intercom, Easter egg item, shortcut to the Quad | no |
-| The Quad (new) | dead fountain and flagpole | box spot, wall weapon, outdoor loop | **yes, mid-game** |
-| Cafeteria | stage and lunch line | MP41, perk machine | yes, a loop around the tables |
-| Kitchen | hanging pots, freezers | path to the dock, electric trap | no (tight, tense) |
-| Loading dock | the bus, dumpsters | Staykout, box spot | small loop around the bus |
-| Locker rooms | showers | MP6K, stairs to the boiler room, electric trap | no (tight, dangerous) |
-| Boiler room | the big power lever | **power** | no |
-| Science lab | glowing shelves | perk machine, AK-75u | small |
-| Library | balcony stairs | M17, box spot | loop around the shelves |
-| Band and art rooms | instruments, easels | perk machine, MPK, PM64 | no |
-| Auditorium | red curtains, Mad Dog Machine | Mad Dog Machine, last perk, box spot | **yes, the best late-game spot** |
+| Front office | the PA microphone | Erik's intercom (Phase 8), shortcut to the Quad | no |
+| The Quad | dead fountain and flagpole | PM64, box spot (Phase 7), outdoor loop | **yes, mid-game** |
+| Cafeteria | stage and lunch line | MP41, Beefcake Broth | yes, a loop around the tables |
+| Kitchen | hanging pots, steel counters | path to the dock, electric trap | no (tight, tense) |
+| Loading dock | the bus, dumpsters | Staykout, box spot (Phase 7) | small loop around the bus |
+| Locker rooms | lockers and benches | MP6K, the way down to the boiler room, electric trap | no (tight, dangerous) |
+| Boiler room | the boiler and the big power lever | **power** | no |
+| Science lab | glowing shelves, lab benches | Hot Pot Hustle, AK-75u | small |
+| Library | two long shelf rows | M17, box spot (Phase 7) | loop around the shelves |
+| Band and art rooms | piano, easels | Double Ladle, MPK | no |
+| Auditorium | red curtains, the Mad Dog Machine | Mad Dog Machine, Marathon Minestrone, box spot (Phase 7) | **yes, the best late-game spot** |
 
 ## Extras (approved, beyond the original spec)
 
 - **Electric traps** (once the power is on): in the kitchen and locker room
-  doorways, for about 1000 points each, with a cooldown. Built in Phase 4.
+  doorways, for 1000 points each, with a cooldown. ✅ Built in Phase 4.
 - **A fifth Mystery Box spot in the Quad.** Built in Phase 4, and added to the
   box's moves in Phase 7.
 - **Hidden Easter egg song:** find three Stew items around the school to play a

@@ -60,7 +60,9 @@ export class WallBuyInteractable {
   get range() { return 1.6; }
   distanceTo(sim, p) { return flatDist(p, this.stand); }
   canUse(sim, p) { return p.alive; }
-  owned(p) { return p.loadout.slots.find((s) => s.id === this.wb.weapon) || null; }
+  // the base gun or its Mad Dog upgrade (not while it's inside the machine)
+  owned(p) { return p.loadout.slots.find((s) => !s.away && (s.id === this.wb.weapon || s.id === this.wb.weapon + '+')) || null; }
+  ammoCost(sim, s) { return s.id.endsWith('+') ? sim.cfg.madDog.ammoCost : sim.cfg.weapons[this.wb.weapon].ammoCost; }
   prompt(sim, p) {
     const eq = sim.cfg.equipment[this.wb.weapon];
     if (eq) {
@@ -70,8 +72,9 @@ export class WallBuyInteractable {
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
     if (s) {
-      if (s.clip >= def.magSize && s.reserve >= def.reserve) return { text: `${def.name} ammo is full`, cost: null };
-      return { text: `Press [F] for ${def.name} ammo`, cost: def.ammoCost };
+      const sd = sim.cfg.weapons[s.id];
+      if (s.clip >= sd.magSize && s.reserve >= sd.reserve) return { text: `${sd.name} ammo is full`, cost: null };
+      return { text: `Press [F] for ${sd.upgraded ? 'upgraded ' : ''}${sd.name} ammo`, cost: this.ammoCost(sim, s) };
     }
     return { text: `Press [F] to buy ${def.name}`, cost: def.cost };
   }
@@ -90,8 +93,9 @@ export class WallBuyInteractable {
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
     if (s) {
-      if (s.clip >= def.magSize && s.reserve >= def.reserve) return;
-      if (pay(sim, p, def.ammoCost)) { giveWeapon(sim, p, this.wb.weapon); sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, ammo: true, id: this.wb.id }); }
+      const sd = sim.cfg.weapons[s.id];
+      if (s.clip >= sd.magSize && s.reserve >= sd.reserve) return;
+      if (pay(sim, p, this.ammoCost(sim, s))) { giveWeapon(sim, p, s.id); sim.emit('wallBuy', { playerId: p.id, weapon: s.id, ammo: true, id: this.wb.id }); }
     } else if (pay(sim, p, def.cost)) {
       giveWeapon(sim, p, this.wb.weapon);
       sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, ammo: false, id: this.wb.id });
@@ -124,7 +128,7 @@ export class BoxInteractable {
   get range() { return 1.5; }
   distanceTo(sim, p) { return flatDist(p, this.stand); }
   canUse(sim, p) {
-    if (!p.alive) return false;
+    if (!p.alive || p.drinking) return false;
     if (this.phase === 'idle') return true;
     return this.phase === 'offering' && p.id === this.buyerId;
   }
@@ -134,7 +138,7 @@ export class BoxInteractable {
   }
   pick(sim, p) {
     const w = sim.cfg.box.weights;
-    const held = new Set(p.loadout.slots.map((s) => s.id));
+    const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
     const pool = Object.entries(w).filter(([id]) => sim.cfg.weapons[id] && !held.has(id));
     const total = pool.reduce((a, [, v]) => a + v, 0);
     let r = sim.rng.next() * total;

@@ -12,6 +12,7 @@ import { CameraRig } from './cameraRig.js';
 import { PostFX } from './postfx.js';
 import { BoxView } from './boxView.js';
 import { ProjectileViews } from './projectileView.js';
+import { MachinesView } from './machinesView.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -61,11 +62,12 @@ export class GameRenderer {
         box: new BoxView(scene, sim, cfg, map),
         zombies: new ZombieViews(scene, effects, cfg),
         projectiles: new ProjectileViews(scene, effects),
+        machines: new MachinesView(scene, sim, cfg, map),
       };
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines });
     this.zombies.onFootstep = footstep;
     this.mapData = sim.mapData;
     if (this.post) this.post.mainPass.scene = w.scene;
@@ -77,6 +79,8 @@ export class GameRenderer {
   resetWorld(sim) {
     this.sim = sim;
     this.map.sim = sim;
+    this.map.resetPower();
+    if (this.machines) this.machines.reset(sim);
     for (const [id, v] of this.map.windowViews) v.win = sim.windowById(id);
     for (const v of this.map.windowViews.values()) for (const p of v.planks) p.anim = null;
     this.box.setSim(sim);
@@ -133,6 +137,7 @@ export class GameRenderer {
       this.rig.onEvent(e, id);
       this.viewmodel.onEvent(e, id);
       this.projectiles.onEvent(e);
+      this.machines.onEvent(e, this.effects);
       switch (e.type) {
         case 'shot': {
           let from;
@@ -149,11 +154,25 @@ export class GameRenderer {
           break;
         }
         case 'explosion': {
-          this.effects.explosion(e.pos, e.radius);
+          if (this.cfg.explosions[e.etype]?.small) this.effects.smallExplosion(e.pos, e.radius);
+          else this.effects.explosion(e.pos, e.radius);
           const p = this.sim.playerById(id);
           if (p) this.rig.explosion(e, p.pos);
           break;
         }
+        case 'zombieRise': {
+          const pos = new THREE.Vector3(e.pos.x, 0.05, e.pos.z);
+          for (let i = 0; i < 4; i++) this.effects.puff(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.1, (Math.random() - 0.5) * 0.8)), { color: 0x3a3024, size: 0.5, grow: 2.2, life: 1.4, alpha: 0.5, vel: new THREE.Vector3(0, 0.6, 0) });
+          for (let i = 0; i < 14; i++) this.effects.spawnParticle(pos, new THREE.Vector3((Math.random() - 0.5) * 3, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 3), { life: 0.9, size: 0.04, color: [0.12, 0.09, 0.06] });
+          break;
+        }
+        case 'zombieKilled':
+          if (e.kind === 'electric') {
+            const pos = new THREE.Vector3(e.pos.x, 1.1, e.pos.z);
+            for (let i = 0; i < 20; i++) this.effects.spawnParticle(pos, new THREE.Vector3((Math.random() - 0.5) * 6, Math.random() * 5, (Math.random() - 0.5) * 6), { life: 0.3 + Math.random() * 0.3, size: 0.012, color: [2.5, 3.2, 5], gravity: 6, drag: 1 });
+            this.effects.puff(pos, { color: 0x4a4a52, size: 0.6, grow: 2.4, life: 1.6, alpha: 0.45, vel: new THREE.Vector3(0, 0.8, 0) });
+          }
+          break;
         case 'projectileStick':
           if (e.zombieId != null) this.effects.zombieHit(e.pos, e.dir, 'torso');
           else this.effects.puff(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), { color: 0x8a8478, size: 0.12, grow: 2, life: 0.6, alpha: 0.4 });
@@ -238,6 +257,7 @@ export class GameRenderer {
     this.box.update(dt, time);
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);
+    this.machines.update(dt);
     this.effects.update(dt);
 
     if (p) {

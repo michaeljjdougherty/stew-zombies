@@ -842,3 +842,201 @@ export function stickThunk(A, out, t, p = {}) {
   } else click(A, out, t, 800, 2, 0.08, 0.9, 260);
   return 0.3;
 }
+
+// --- Phases 4 & 5: power, perks, the Mad Dog Machine, traps, last stand -------
+
+export function powerOn(A, out, t) {
+  // big breaker clunk
+  const n = A.noiseSource('brown', t, 0.4);
+  const lp = A.filter('lowpass', 500, 1);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.3, 1.6);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  click(A, out, t, 1200, 2, 0.08, 1.0, 140);
+  // electrical surge rising into a hum
+  const o = A.osc('sawtooth', 30, t + 0.1, 5);
+  o.frequency.exponentialRampToValueAtTime(120, t + 2.2);
+  const o2 = A.osc('square', 60, t + 0.1, 5);
+  o2.frequency.exponentialRampToValueAtTime(240, t + 2.2);
+  const bp = A.filter('lowpass', 300, 1.2);
+  bp.frequency.exponentialRampToValueAtTime(1600, t + 2.4);
+  const hg = A.gain(0);
+  hg.gain.setValueAtTime(0.0001, t + 0.1);
+  hg.gain.exponentialRampToValueAtTime(0.35, t + 2.3);
+  hg.gain.exponentialRampToValueAtTime(0.0001, t + 5);
+  o.connect(bp); o2.connect(bp); bp.connect(hg); hg.connect(out);
+  // crackles
+  for (let i = 0; i < 14; i++) click(A, out, t + 0.3 + Math.random() * 2.4, 3000 + Math.random() * 3000, 4, 0.02, 0.25 + Math.random() * 0.3);
+  return 5.2;
+}
+
+// A short jingle per perk machine (melody in params.notes, Hz).
+export function perkJingle(A, out, t, p = {}) {
+  const notes = p.notes || [392, 494, 587, 784];
+  const step = p.step || 0.16;
+  const lp = A.filter('lowpass', 2600, 0.7);
+  lp.connect(out);
+  notes.forEach((f, i) => {
+    const tt = t + i * step;
+    for (const [type, mul, amp] of [['square', 1, 0.08], ['triangle', 2, 0.06]]) {
+      const o = A.osc(type, f * mul, tt, step * 1.6);
+      const g = A.gain(0); A.env(g, tt, 0.005, step * 1.4, amp);
+      o.connect(g); g.connect(lp);
+    }
+  });
+  // oom-pah bass
+  notes.forEach((f, i) => {
+    if (i % 2) return;
+    const tt = t + i * step;
+    const o = A.osc('sine', f / 4, tt, step * 1.5);
+    const g = A.gain(0); A.env(g, tt, 0.005, step * 1.3, 0.3);
+    o.connect(g); g.connect(out);
+  });
+  return notes.length * step + 0.4;
+}
+
+export function perkDrink(A, out, t) {
+  click(A, out, t + 0.25, 3800, 5, 0.03, 0.6, 2400); // cap pops
+  const fizz = A.noiseSource('white', t + 0.28, 0.4);
+  const hp = A.filter('highpass', 5000, 0.7);
+  const fg = A.gain(0); A.env(fg, t + 0.28, 0.01, 0.35, 0.18);
+  fizz.connect(hp); hp.connect(fg); fg.connect(out);
+  for (let i = 0; i < 3; i++) {   // gulps
+    const tt = t + 0.75 + i * 0.32;
+    const o = A.osc('sine', 180, tt, 0.15);
+    o.frequency.exponentialRampToValueAtTime(90, tt + 0.12);
+    const g = A.gain(0); A.env(g, tt, 0.01, 0.12, 0.5);
+    o.connect(g); g.connect(out);
+  }
+  // [VOICE PLACEHOLDER: satisfied "ahh"] — a low, short burp-ish tone
+  const b = A.osc('sawtooth', 85, t + 1.85, 0.3);
+  b.frequency.linearRampToValueAtTime(70, t + 2.1);
+  const blp = A.filter('lowpass', 420, 2);
+  const bg = A.gain(0); A.env(bg, t + 1.85, 0.03, 0.25, 0.25);
+  b.connect(blp); blp.connect(bg); bg.connect(out);
+  click(A, out, t + 2.05, 2500, 3, 0.05, 0.4, 900); // bottle tossed
+  return 2.4;
+}
+
+export function madDogGrind(A, out, t, p = {}) {
+  const dur = p.duration || 4;
+  const mix = A.gain(1);
+  const drive = A.shaper(0.5);
+  mix.connect(drive); drive.connect(out);
+  // grinding gears
+  const n = A.noiseSource('brown', t, dur);
+  const bp = A.filter('bandpass', 260, 1.5);
+  const lfo = A.osc('square', 9, t, dur);
+  const lfoG = A.gain(120); lfo.connect(lfoG); lfoG.connect(bp.frequency);
+  const g = A.gain(0);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.9, t + 0.2);
+  g.gain.setValueAtTime(0.9, t + dur - 0.3); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  n.connect(bp); bp.connect(g); g.connect(mix);
+  // chomps
+  for (let tt = t + 0.1; tt < t + dur - 0.2; tt += 0.7) {
+    click(A, out, tt, 900, 1.5, 0.1, 0.9, 110);
+    click(A, out, tt + 0.03, 4000, 5, 0.04, 0.3);
+  }
+  // [VOICE PLACEHOLDER: the dog growls]
+  voice(A, out, t + 0.2, { f0: 70, dur: dur - 0.6, formants: [[300, 4, 1], [700, 5, 0.6], [1600, 6, 0.3]], grit: 0.85, breath: 0.4, vib: 11, vibDepth: 0.08, peak: 0.55 });
+  return dur + 0.3;
+}
+
+export function madDogReady(A, out, t) {
+  // [VOICE PLACEHOLDER: two big barks]
+  for (const dt of [0, 0.32]) {
+    voice(A, out, t + dt, { f0: 150, dur: 0.18, formants: [[500, 3, 1], [1200, 4, 0.8], [2500, 6, 0.3]], grit: 0.9, breath: 0.3, glide: 0.6, peak: 0.9 });
+  }
+  // bell ding
+  for (const [ratio, amp] of [[1, 0.3], [2.4, 0.14], [4.1, 0.07]]) {
+    const o = A.osc('sine', 880 * ratio, t + 0.75, 2);
+    const g = A.gain(0); A.env(g, t + 0.75, 0.002, 1.8, amp);
+    o.connect(g); g.connect(out);
+  }
+  return 2.8;
+}
+
+export function madDogTake(A, out, t) {
+  const n = A.noiseSource('pink', t, 0.5);
+  const bp = A.filter('bandpass', 600, 1);
+  bp.frequency.exponentialRampToValueAtTime(3000, t + 0.4);
+  const g = A.gain(0); A.env(g, t, 0.05, 0.35, 0.5);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  click(A, out, t + 0.4, 1800, 3, 0.05, 0.7, 300);
+  return 0.7;
+}
+
+export function trapBuzz(A, out, t, p = {}) {
+  const dur = p.duration || 25;
+  const o = A.osc('sawtooth', 120, t, dur);
+  const o2 = A.osc('square', 180.5, t, dur);
+  const bp = A.filter('bandpass', 900, 0.8);
+  const lfo = A.osc('sine', 13, t, dur);
+  const lg = A.gain(500); lfo.connect(lg); lg.connect(bp.frequency);
+  const g = A.gain(0);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.35, t + 0.15);
+  g.gain.setValueAtTime(0.35, t + dur - 0.4); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(out);
+  for (let tt = t; tt < t + dur; tt += 0.06 + Math.random() * 0.25) click(A, out, tt, 2500 + Math.random() * 4000, 3, 0.02, 0.15 + Math.random() * 0.25);
+  return dur + 0.1;
+}
+
+export function electrocute(A, out, t) {
+  for (let i = 0; i < 10; i++) click(A, out, t + i * 0.035 + Math.random() * 0.02, 3000 + Math.random() * 3000, 4, 0.03, 0.4);
+  const n = A.noiseSource('white', t, 0.6);
+  const hp = A.filter('highpass', 2500, 0.7);
+  const g = A.gain(0); A.env(g, t + 0.1, 0.05, 0.5, 0.2);   // sizzle
+  n.connect(hp); hp.connect(g); g.connect(out);
+  return 0.8;
+}
+
+export function leverPull(A, out, t) {
+  click(A, out, t, 1500, 2, 0.06, 0.8, 200);
+  click(A, out, t + 0.12, 900, 1.5, 0.1, 0.9, 120);
+  return 0.4;
+}
+
+export function downed(A, out, t) {
+  const n = A.noiseSource('brown', t, 0.3);
+  const lp = A.filter('lowpass', 300, 1);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.25, 1.1);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  // a low dread chord
+  for (const f of [55, 82.4, 116.5]) {
+    const o = A.osc('sawtooth', f, t, 3);
+    const flt = A.filter('lowpass', 400, 0.7);
+    const og = A.gain(0); A.env(og, t, 0.3, 2.5, 0.12);
+    o.connect(flt); flt.connect(og); og.connect(out);
+  }
+  return 3.2;
+}
+
+export function revived(A, out, t) {
+  [392, 523, 659, 784].forEach((f, i) => {
+    const o = A.osc('triangle', f, t + i * 0.08, 0.6);
+    const g = A.gain(0); A.env(g, t + i * 0.08, 0.01, 0.5, 0.18);
+    o.connect(g); g.connect(out);
+  });
+  return 1;
+}
+
+export function dirtRise(A, out, t) {
+  const n = A.noiseSource('brown', t, 1.6);
+  const bp = A.filter('bandpass', 350, 0.9);
+  const g = A.gain(0); A.env(g, t, 0.1, 1.4, 0.6);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  for (let i = 0; i < 8; i++) click(A, out, t + Math.random() * 1.4, 600 + Math.random() * 900, 1.5, 0.05, 0.15 + Math.random() * 0.2);
+  return 1.7;
+}
+
+export function smallBoom(A, out, t) {
+  const n = A.noiseSource('brown', t, 0.4);
+  const lp = A.filter('lowpass', 1200, 0.8);
+  lp.frequency.exponentialRampToValueAtTime(200, t + 0.3);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.3, 0.9);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  const o = A.osc('sine', 110, t, 0.3);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.25);
+  const og = A.gain(0); A.env(og, t, 0.002, 0.25, 0.8);
+  o.connect(og); og.connect(out);
+  return 0.5;
+}

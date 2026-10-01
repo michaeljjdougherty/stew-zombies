@@ -2,7 +2,7 @@
 // Round manager: counts, spawn pacing, intermissions.
 // =============================================================================
 import { zombieCountForRound, zombieHealthForRound } from '../config.js';
-import { spawnZombie } from './zombies.js';
+import { spawnZombie, spawnRising } from './zombies.js';
 import { dist2D } from '../core/math.js';
 
 export function createRoundState(sim) {
@@ -35,20 +35,22 @@ function startRound(sim, n) {
   sim.emit('roundStart', { round: n, zombies: R.total, health: zombieHealthForRound(n, sim.cfg.zombie) });
 }
 
-// Windows near players are more likely to be picked. Later phases will
-// restrict this to windows in zones that are open and occupied.
-function pickWindow(sim) {
-  const wins = sim.spawnWindows();
-  if (!wins.length) return null;
-  const weights = wins.map((w) => {
+// Spawn points in open, occupied zones (windows, fences and dirt patches).
+// Ones near players are more likely; busy windows less so.
+function pickSpawn(sim) {
+  const act = sim.activeZones();
+  const cands = sim.spawnWindows().map((w) => ({ win: w, pos: w.center, weight: 1 / (1 + w.queue.length * 0.5) }));
+  for (const g of sim.world.groundSpawns) if (act.has(g.zone)) cands.push({ ground: g, pos: g, weight: sim.cfg.zombie.groundSpawnWeight });
+  if (!cands.length) return null;
+  const weights = cands.map((c) => {
     let d = Infinity;
-    for (const p of sim.players) if (p.alive) d = Math.min(d, dist2D(p.pos, w.center));
-    return 1 / (4 + (isFinite(d) ? d : 20)) * (1 / (1 + w.queue.length * 0.5));
+    for (const p of sim.players) if (p.alive) d = Math.min(d, dist2D(p.pos, c.pos));
+    return c.weight / (4 + (isFinite(d) ? d : 20));
   });
   const sum = weights.reduce((a, b) => a + b, 0);
   let r = sim.rng.next() * sum;
-  for (let i = 0; i < wins.length; i++) { r -= weights[i]; if (r <= 0) return wins[i]; }
-  return wins[wins.length - 1];
+  for (let i = 0; i < cands.length; i++) { r -= weights[i]; if (r <= 0) return cands[i]; }
+  return cands[cands.length - 1];
 }
 
 export function updateRounds(sim, dt) {
@@ -63,9 +65,10 @@ export function updateRounds(sim, dt) {
   if (R.toSpawn > 0 && alive < c.maxAlive) {
     R.spawnTimer -= dt;
     if (R.spawnTimer <= 0) {
-      const win = pickWindow(sim);
-      if (win) {
-        spawnZombie(sim, win, R.round);
+      const sp = pickSpawn(sim);
+      if (sp) {
+        if (sp.ground) spawnRising(sim, sp.ground, R.round);
+        else spawnZombie(sim, sp.win, R.round);
         R.toSpawn--;
       }
       R.spawnTimer = R.spawnInterval * sim.rng.range(0.7, 1.3);

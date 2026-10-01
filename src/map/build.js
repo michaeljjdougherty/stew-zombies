@@ -39,7 +39,7 @@ function buildSide(room, side, spec, openings, T, pieces) {
   const si = sideInfo(room.rect, side, T);
   const H = spec.height ?? room.height;
   const ranges = spec.ranges ?? [[si.from, si.to]];
-  const tag = { room: room.id, side, style: room.style };
+  const tag = { room: room.id, side, style: spec.style || room.style };
   for (const [ra, rb] of ranges) {
     const ops = openings.filter((o) => o.center > ra && o.center < rb).sort((a, b) => a.center - b.center);
     let cursor = ra;
@@ -115,7 +115,7 @@ export function buildMap(map, cfg = CONFIG) {
     const c = wallPoint(room.rect, w.side, w.at);
     const n = si.normal;
     return {
-      id: w.id, room: w.room, zone: room.zone, side: w.side,
+      id: w.id, room: w.room, zone: room.zone, side: w.side, kind: w.kind || 'window',
       center: { x: c.x, y: 0, z: c.z },
       normal: { x: n.x, y: 0, z: n.z },
       exterior: { x: c.x - n.x * (T + 0.55), y: 0, z: c.z - n.z * (T + 0.55) },
@@ -134,6 +134,30 @@ export function buildMap(map, cfg = CONFIG) {
 
   const boxSpots = (map.boxSpots || []).map((b) => ({ ...b, zone: roomById.get(b.room).zone }));
 
+  // A point on a wall's inside face plus the normal pointing into the room.
+  const onWall = (a, inset = 0) => {
+    const room = roomById.get(a.room);
+    const si = sideInfo(room.rect, a.side, T);
+    const p = wallPoint(room.rect, a.side, a.at);
+    return { pos: { x: p.x + si.normal.x * inset, y: a.y ?? 0, z: p.z + si.normal.z * inset }, normal: si.normal, zone: room.zone, room: room.id };
+  };
+
+  // Perk machines: solid cabinets against the wall.
+  const pm = cfg.perkMachine || { width: 1.3, depth: 0.9, height: 2.3 };
+  const perkMachines = (map.perkMachines || []).map((m, i) => {
+    const w = onWall(m);
+    const n = w.normal;
+    const cx = w.pos.x + n.x * pm.depth / 2, cz = w.pos.z + n.z * pm.depth / 2;
+    const hx = n.x ? pm.depth / 2 : pm.width / 2, hz = n.z ? pm.depth / 2 : pm.width / 2;
+    const b = box(cx - hx, 0, cz - hz, cx + hx, pm.height, cz + hz, 'perkMachine', { perk: m.perk });
+    return { id: 'perk_' + m.perk + '_' + i, perk: m.perk, zone: w.zone, room: w.room, normal: n, center: { x: cx, y: 0, z: cz }, front: { x: cx + n.x * (pm.depth / 2 + 0.6), y: 1.2, z: cz + n.z * (pm.depth / 2 + 0.6) }, box: b };
+  });
+
+  const powerSwitch = map.powerSwitch ? onWall(map.powerSwitch, 0.05) : null;
+  const madDog = map.madDog ? { ...map.madDog, zone: roomById.get(map.madDog.room).zone } : null;
+  const traps = (map.traps || []).map((t) => ({ ...t, lever: onWall(t.lever, 0.05), zone: roomById.get(t.lever.room).zone }));
+  const groundSpawns = (map.groundSpawns || []).map((g) => ({ ...g, zone: roomById.get(g.room).zone }));
+
   return {
     map,
     rooms: map.rooms,
@@ -146,8 +170,13 @@ export function buildMap(map, cfg = CONFIG) {
     windows,
     wallBuys,
     boxSpots,
+    perkMachines,
+    powerSwitch,
+    madDog,
+    traps,
+    groundSpawns,
     // mutable collision lists
-    solids: [...walls, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values()],
+    solids: [...walls, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values(), ...perkMachines.map((m) => m.box)],
     playerBlockers: windows.map((w) => w.blocker),
     navRegions: map.navRegions,
     portals: map.portals,

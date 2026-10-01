@@ -266,6 +266,10 @@ export const CONFIG = {
     stuckTime: 0.6,          // seconds barely moving before a zombie sidesteps
     sidestepTime: 0.9,
     portalReach: 1.2,        // how close to a doorway before heading through
+    riseTime: 1.8,           // seconds to claw up out of the dirt
+    fenceClimbMult: 1.5,     // fences take this much longer than windows
+    riseDepth: 1.7,
+    groundSpawnWeight: 0.7,  // relative to a window
   },
 
   // ---------------------------------------------------------------------------
@@ -313,7 +317,7 @@ export const CONFIG = {
       recoil: { pitch: 1.9, yaw: 0.55, recovery: 9, adsMult: 0.7, viewKick: 1 },
       sound: { kind: 'pistol', body: 2200, thump: 150, crack: 0.9, tail: 0.5, pitch: 1.0 },
       view: { model: 'pistol', flash: 1 },
-      upgrade: { name: 'Twin Stewpots', color: '#8a2be2', note: 'Mad Dog Machine (Phase 5): small explosive rounds.' },
+      upgrade: { name: 'Twin Stewpots', color: '#b03cff', dual: true, magSize: 6, reserve: 60, damage: 120, explosiveRounds: 'stewpot', note: 'Two pistols firing small explosive rounds.' },
     },
 
     // ---- wall weapons ---------------------------------------------------------
@@ -346,7 +350,7 @@ export const CONFIG = {
       recoil: { pitch: 2.6, yaw: 0.7, recovery: 8, adsMult: 0.65, viewKick: 1.3 },
       sound: { kind: 'rifle', body: 2600, thump: 120, crack: 1.25, tail: 0.85, pitch: 0.95, mech: true },
       view: { model: 'rifle', flash: 1.3 },
-      upgrade: { name: 'M15 Stewmaster', color: '#b8860b' },
+      upgrade: { name: 'Detention Hammer', color: '#d4a017', penetration: 4 },
     },
 
     Olympus: {
@@ -378,7 +382,7 @@ export const CONFIG = {
       recoil: { pitch: 5.5, yaw: 1.4, recovery: 6.5, adsMult: 0.8, viewKick: 2.2 },
       sound: { kind: 'shotgun', body: 1100, thump: 70, crack: 0.8, tail: 1.1, pitch: 0.8 },
       view: { model: 'doubleBarrel', flash: 2.0 },
-      upgrade: { name: 'Olympus Rising', color: '#c0392b' },
+      upgrade: { name: 'Wrath of Olympus', color: '#e0402a', damageMult: 2.5, reserve: 100 },
     },
 
     MP41: {
@@ -410,7 +414,7 @@ export const CONFIG = {
       recoil: { pitch: 0.9, yaw: 0.5, recovery: 10, adsMult: 0.6, viewKick: 0.6 },
       sound: { kind: 'smg', body: 2400, thump: 130, crack: 0.8, tail: 0.45, pitch: 1.05, mech: true },
       view: { model: 'smg', flash: 0.9 },
-      upgrade: { name: 'The Afterparty', color: '#2e8b57' },
+      upgrade: { name: 'Last Call', color: '#2ecc71', magSize: 50 },
     },
 
     // ---- mystery box weapons (the full list arrives in Phase 3) --------------
@@ -443,7 +447,7 @@ export const CONFIG = {
       recoil: { pitch: 4.5, yaw: 1.0, recovery: 6.5, adsMult: 0.75, viewKick: 1.8 },
       sound: { kind: 'revolver', body: 1900, thump: 110, crack: 1.2, tail: 0.9, pitch: 0.85 },
       view: { model: 'revolver', flash: 1.5 },
-      upgrade: { name: 'Pyton Supreme', color: '#6a0dad' },
+      upgrade: { name: 'Venom King', color: '#9b30ff', damageMult: 2.5, penetration: 4 },
     },
 
     Komando: {
@@ -475,7 +479,7 @@ export const CONFIG = {
       recoil: { pitch: 0.95, yaw: 0.45, recovery: 11, adsMult: 0.55, viewKick: 0.7 },
       sound: { kind: 'ar', body: 2500, thump: 125, crack: 1.0, tail: 0.6, pitch: 1.0, mech: true },
       view: { model: 'carbine', flash: 1.1 },
-      upgrade: { name: 'Komandant', color: '#1f6fb2' },
+      upgrade: { name: 'Warmonger', color: '#2e86de' },
     },
     // ---- more wall weapons (their wall spots arrive with the Phase 4 rooms) --
     Staykout: gun('shotgun', {
@@ -485,7 +489,7 @@ export const CONFIG = {
       recoil: { pitch: 6, yaw: 1.5, viewKick: 2.3 },
       sound: { kind: 'shotgun', body: 1000, thump: 65, crack: 0.85, tail: 1.1, pitch: 0.78 },
       view: { model: 'pump', flash: 2.0 },
-      upgrade: { name: 'Raid Night', color: '#a83232' },
+      upgrade: { name: 'Riot Act', color: '#e74c3c', damageMult: 2.5 },
     }),
     MP6K: gun('smg', {
       name: 'MP6K', cost: 1000, ammoCost: 500,
@@ -493,7 +497,7 @@ export const CONFIG = {
       recoil: { pitch: 0.75, yaw: 0.55 },
       sound: { kind: 'smg', body: 2700, thump: 140, crack: 0.75, tail: 0.4, pitch: 1.12, mech: true },
       view: { model: 'mp6k', flash: 0.8 },
-      upgrade: { name: 'Mini-Stew', color: '#3e7cb1' },
+      upgrade: { name: 'Hornet\'s Nest', color: '#f1c40f' },
     }),
     MPK: gun('smg', {
       name: 'MPK', cost: 1100, ammoCost: 550,
@@ -501,7 +505,7 @@ export const CONFIG = {
       spread: { perShot: 0.5 }, recoil: { pitch: 0.7, yaw: 0.7 },
       sound: { kind: 'smg', body: 3000, thump: 150, crack: 0.7, tail: 0.35, pitch: 1.25, mech: true },
       view: { model: 'mpk', flash: 0.75 },
-      upgrade: { name: 'Hall Monitor', color: '#7b52ab' },
+      upgrade: { name: 'Buzzsaw Betty', color: '#a569ff', magSize: 40 },
     }),
     PM64: gun('smg', {
       name: 'PM64', cost: 1000, ammoCost: 500,
@@ -510,7 +514,7 @@ export const CONFIG = {
       spread: { hipBase: 2.6, perShot: 0.55 }, recoil: { pitch: 0.65, yaw: 0.85 },
       sound: { kind: 'smg', body: 3200, thump: 160, crack: 0.65, tail: 0.3, pitch: 1.35, mech: true },
       view: { model: 'pm64', flash: 0.7 },
-      upgrade: { name: 'Tiny Terror', color: '#c06c1e' },
+      upgrade: { name: 'Pocket Apocalypse', color: '#ff7f24', magSize: 40 },
     }),
     'AK-75u': gun('smg', {
       name: 'AK-75u', cost: 1200, ammoCost: 600,
@@ -518,7 +522,7 @@ export const CONFIG = {
       recoil: { pitch: 1.05, yaw: 0.6, viewKick: 0.75 },
       sound: { kind: 'ar', body: 2300, thump: 115, crack: 1.0, tail: 0.6, pitch: 1.0, mech: true },
       view: { model: 'ak75u', flash: 1.2 },
-      upgrade: { name: 'AK-Stew', color: '#9c2a2a' },
+      upgrade: { name: 'Siberian Howl', color: '#ff3b30' },
     }),
     M17: gun('ar', {
       name: 'M17', cost: 1200, ammoCost: 600,
@@ -527,7 +531,7 @@ export const CONFIG = {
       spread: { hipBase: 2.4, perShot: 0.3, ads: 0.12, adsPerShot: 0.06 }, recoil: { pitch: 0.85, yaw: 0.3 },
       sound: { kind: 'ar', body: 2700, thump: 125, crack: 1.1, tail: 0.65, pitch: 1.05, mech: true },
       view: { model: 'm17', flash: 1.0 },
-      upgrade: { name: 'Skull Burst', color: '#2f6f4f' },
+      upgrade: { name: 'Triple Threat', color: '#1abc9c' },
     }),
 
     // ---- mystery box ----------------------------------------------------------
@@ -537,7 +541,7 @@ export const CONFIG = {
       recoil: { pitch: 1.5 },
       sound: { kind: 'pistol', body: 2400, thump: 160, crack: 0.95, tail: 0.5, pitch: 1.08 },
       view: { model: 'cz76', flash: 0.9 },
-      upgrade: { name: 'CZ Pro', color: '#5d6d7e' },
+      upgrade: { name: 'Crimson Viper', color: '#ff2d55' },
     }),
     'CZ76 Dual': gun('pistol', {
       name: 'CZ76 Dual Wield', boxOnly: true, dual: true,   // left click = right gun, right click = left gun
@@ -545,7 +549,7 @@ export const CONFIG = {
       spread: { hipBase: 2.4 }, recoil: { pitch: 1.4 },
       sound: { kind: 'pistol', body: 2400, thump: 160, crack: 0.95, tail: 0.5, pitch: 1.08 },
       view: { model: 'cz76', flash: 0.9 },
-      upgrade: { name: 'Dual CZ Pro', color: '#5d6d7e' },
+      upgrade: { name: 'Viper Twins', color: '#ff2d55' },
     }),
     Spectur: gun('smg', {
       name: 'Spectur', boxOnly: true,
@@ -553,7 +557,7 @@ export const CONFIG = {
       recoil: { pitch: 0.8, yaw: 0.6 },
       sound: { kind: 'smg', body: 2800, thump: 140, crack: 0.8, tail: 0.4, pitch: 1.15, mech: true },
       view: { model: 'spectur', flash: 0.85 },
-      upgrade: { name: 'Spectral Stew', color: '#5aa9c9' },
+      upgrade: { name: 'Phantom Shredder', color: '#5ad1ff' },
     }),
     FAMOS: gun('ar', {
       name: 'FAMOS', boxOnly: true,
@@ -561,7 +565,7 @@ export const CONFIG = {
       recoil: { pitch: 1.05, yaw: 0.5 },
       sound: { kind: 'ar', body: 2600, thump: 120, crack: 1.0, tail: 0.6, pitch: 1.1, mech: true },
       view: { model: 'famos', flash: 1.0 },
-      upgrade: { name: 'G16-SL Stew', color: '#2c3e50' },
+      upgrade: { name: 'Burnout', color: '#ff6a00' },
     }),
     AWG: gun('ar', {
       name: 'AWG', boxOnly: true,
@@ -570,7 +574,7 @@ export const CONFIG = {
       spread: { ads: 0.08, adsPerShot: 0.05 }, recoil: { pitch: 0.85, yaw: 0.35 },
       sound: { kind: 'ar', body: 2500, thump: 125, crack: 1.05, tail: 0.65, pitch: 1.0, mech: true },
       view: { model: 'awg', flash: 1.0 },
-      upgrade: { name: 'AWG Overseer', color: '#3b5d3b' },
+      upgrade: { name: 'Grim Overseer', color: '#7fff00', penetration: 4 },
     }),
     Galill: gun('ar', {
       name: 'Galill', boxOnly: true,
@@ -578,7 +582,7 @@ export const CONFIG = {
       recoil: { pitch: 1.1, yaw: 0.45 },
       sound: { kind: 'ar', body: 2300, thump: 115, crack: 1.1, tail: 0.7, pitch: 0.95, mech: true },
       view: { model: 'galill', flash: 1.2 },
-      upgrade: { name: 'Lamentation', color: '#8e2b2b' },
+      upgrade: { name: 'Desert Dirge', color: '#ffb347' },
     }),
     G12: gun('ar', {
       name: 'G12', boxOnly: true,
@@ -587,7 +591,7 @@ export const CONFIG = {
       spread: { perShot: 0.22, ads: 0.1, adsPerShot: 0.04 }, recoil: { pitch: 0.6, yaw: 0.25 },
       sound: { kind: 'ar', body: 3000, thump: 130, crack: 0.9, tail: 0.55, pitch: 1.2, mech: true },
       view: { model: 'g12', flash: 0.9 },
-      upgrade: { name: 'G12 Futurist', color: '#4a90a4' },
+      upgrade: { name: 'Caseless Carnage', color: '#00e5ff', magSize: 60 },
     }),
     'SPAZ-13': gun('shotgun', {
       name: 'SPAZ-13', boxOnly: true,
@@ -595,7 +599,7 @@ export const CONFIG = {
       reloadStartTime: 0.35, shellTime: 0.42, reloadEndTime: 0.35,
       sound: { kind: 'shotgun', body: 1150, thump: 70, crack: 0.9, tail: 1.0, pitch: 0.85 },
       view: { model: 'spaz', flash: 1.9 },
-      upgrade: { name: 'SPAZ-26', color: '#4d4d4d' },
+      upgrade: { name: 'Bloodbath 13', color: '#c0392b', damageMult: 2.5 },
     }),
     HS11: gun('shotgun', {
       name: 'HS11', boxOnly: true, dual: true,
@@ -603,7 +607,7 @@ export const CONFIG = {
       spread: { hipBase: 5.8 },
       sound: { kind: 'shotgun', body: 1200, thump: 75, crack: 0.9, tail: 0.95, pitch: 0.9 },
       view: { model: 'hs11', flash: 1.8 },
-      upgrade: { name: 'Typhoid & Mary', color: '#6b3a5a' },
+      upgrade: { name: 'Dead Ringers', color: '#d63384', damageMult: 2.5 },
     }),
     HK22: gun('lmg', {
       name: 'HK22', boxOnly: true,
@@ -611,7 +615,7 @@ export const CONFIG = {
       recoil: { pitch: 1.8, yaw: 1.1, viewKick: 1.2 },
       sound: { kind: 'lmg', body: 2100, thump: 105, crack: 1.15, tail: 0.85, pitch: 0.9, mech: true },
       view: { model: 'hk22', flash: 1.4 },
-      upgrade: { name: 'H115 Oscillator', color: '#5a5a2a' },
+      upgrade: { name: 'Steel Hurricane', color: '#bdc3c7', magSize: 175 },
     }),
     RPKK: gun('lmg', {
       name: 'RPKK', boxOnly: true,
@@ -619,7 +623,7 @@ export const CONFIG = {
       recoil: { pitch: 1.3, yaw: 0.8 },
       sound: { kind: 'lmg', body: 2200, thump: 110, crack: 1.1, tail: 0.8, pitch: 0.95, mech: true },
       view: { model: 'rpkk', flash: 1.3 },
-      upgrade: { name: "R115 Resonator", color: '#7a4b1e' },
+      upgrade: { name: 'Iron Tsunami', color: '#3498db', magSize: 150 },
     }),
     Dragunoff: gun('sniper', {
       name: 'Dragunoff', boxOnly: true,
@@ -627,7 +631,7 @@ export const CONFIG = {
       reloadTime: 2.7, reloadEmptyTime: 3.2, adsFovMult: 0.36,
       sound: { kind: 'sniper', body: 1800, thump: 90, crack: 1.4, tail: 1.3, pitch: 0.9 },
       view: { model: 'dragunoff', flash: 1.5 },
-      upgrade: { name: 'D115 Disassembler', color: '#6e4b2a' },
+      upgrade: { name: 'Cold Verdict', color: '#74b9ff', damageMult: 2.5, penetration: 6 },
     }),
     L97A1: gun('sniper', {
       name: 'L97A1', boxOnly: true,
@@ -636,7 +640,7 @@ export const CONFIG = {
       recoil: { pitch: 6.5, viewKick: 2.6 },
       sound: { kind: 'sniper', body: 1600, thump: 80, crack: 1.5, tail: 1.5, pitch: 0.82 },
       view: { model: 'l97', flash: 1.6 },
-      upgrade: { name: 'L115 Isolator', color: '#3d5c3d' },
+      upgrade: { name: 'Final Exam', color: '#ff1744', damageMult: 3, magSize: 8, penetration: 8 },
     }),
     'China Pond': gun('launcher', {
       name: 'China Pond', boxOnly: true,
@@ -644,7 +648,7 @@ export const CONFIG = {
       projectile: { type: 'launcher', speed: 34, gravity: 9.8, explode: 'launcher' },
       sound: { kind: 'launcher', body: 600, thump: 60, crack: 0.3, tail: 0.6, pitch: 1 },
       view: { model: 'chinapond', flash: 1.2 },
-      upgrade: { name: 'China Beach', color: '#2e5e8e' },
+      upgrade: { name: 'Doomsday Dragon', color: '#ff4500', magSize: 3, reserve: 30, explodeUp: true },
     }),
     'Kross-Bow': gun('launcher', {
       name: 'Kross-Bow', boxOnly: true,
@@ -654,7 +658,7 @@ export const CONFIG = {
       spread: { hipBase: 1.2, ads: 0.05 },
       sound: { kind: 'crossbow', body: 900, thump: 120, crack: 0.2, tail: 0.3, pitch: 1 },
       view: { model: 'krossbow', flash: 0 },
-      upgrade: { name: 'Awful Lawton', color: '#8e6b2a' },
+      upgrade: { name: 'Hellhound\'s Fang', color: '#ff8c00', magSize: 1, reserve: 20, impactMult: 3, explodeUp: true },
     }),
     'Ballistik Knife': gun('pistol', {
       name: 'Ballistik Knife', boxOnly: true,
@@ -664,7 +668,7 @@ export const CONFIG = {
       spread: { hipBase: 0.8, ads: 0.1 },
       sound: { kind: 'blade', body: 700, thump: 140, crack: 0.2, tail: 0.2, pitch: 1 },
       view: { model: 'bknife', flash: 0 },
-      upgrade: { name: 'Krauss Refibrillator', color: '#7a1f1f' },
+      upgrade: { name: 'Soul Splitter', color: '#e00000', magSize: 1, reserve: 12, impactMult: 3, meleeMult: 3 },
     }),
   },
 
@@ -677,6 +681,21 @@ export const CONFIG = {
     door_hall: 750,
     door_cafe: 1000,
     debris_office: 1250,
+    // west path
+    door_locker: 1000,
+    debris_boiler: 750,
+    door_lab: 1000,
+    debris_library: 1250,
+    door_band: 1250,
+    door_aud_band: 1500,
+    // east path
+    door_kitchen: 1250,
+    door_dock: 1250,
+    door_aud_dock: 1500,
+    // the Quad
+    door_quad_hall: 1000,
+    door_quad_cafe: 1250,
+    door_quad_office: 1250,
     openTime: 1.1,             // door swing / debris clear animation (zombies can path once started)
   },
 
@@ -724,6 +743,87 @@ export const CONFIG = {
     launcher: { radius: 3.6, damage: 1300, selfDamage: 80, minFrac: 0.2, shake: 0.9 },
     bolt: { radius: 2.8, damage: 1000, selfDamage: 60, minFrac: 0.2, shake: 0.6 },
     cookedOff: { radius: 4.5, damage: 1100, selfDamage: 160, minFrac: 0.15, shake: 1.2 },
+    // Mad Dog upgrades
+    stewpot: { radius: 2.2, damage: 650, selfDamage: 18, minFrac: 0.35, shake: 0.2, small: true },
+    launcherUp: { radius: 5.2, damage: 4200, selfDamage: 80, minFrac: 0.25, shake: 1.2 },
+    boltUp: { radius: 4.2, damage: 3600, selfDamage: 60, minFrac: 0.25, shake: 0.9 },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Power (boiler room)
+  // ---------------------------------------------------------------------------
+  power: {
+    startsOn: false,
+  },
+
+  // ---------------------------------------------------------------------------
+  // Electric traps (need power). Lever on one side of a doorway.
+  // ---------------------------------------------------------------------------
+  traps: {
+    cost: 1000,
+    activeTime: 25,          // seconds of electricity
+    cooldown: 35,            // seconds before it can be bought again
+    playerDps: 70,           // health per second to a player standing in it
+    killPoints: 0,           // classic: trap kills give no points
+  },
+
+  // ---------------------------------------------------------------------------
+  // Perk machines. `power: false` = works before the power is on.
+  // ---------------------------------------------------------------------------
+  perks: {
+    limit: 4,                // how many perks one player can hold
+    drinkTime: 2.1,          // can't shoot while drinking
+    list: {
+      secondHelping: {
+        name: 'Second Helping', cost: 500, coopCost: 1500, color: '#3fa9f5', power: false, glyph: '+',
+        desc: 'Solo: get back up on your own when you go down (3 uses). Co-op: revive teammates twice as fast.',
+        soloUses: 3, selfReviveTime: 5, reviveMult: 0.5,
+      },
+      beefcakeBroth: {
+        name: 'Beefcake Broth', cost: 2500, color: '#d0312d', power: true, glyph: 'B',
+        desc: 'Thicker skin: 250 health instead of 100.', maxHealth: 250,
+      },
+      hotPotHustle: {
+        name: 'Hot Pot Hustle', cost: 3000, color: '#2fbf71', power: true, glyph: 'H',
+        desc: 'Reload twice as fast.', reloadMult: 0.5,
+      },
+      doubleLadle: {
+        name: 'Double Ladle', cost: 2000, color: '#f2b705', power: true, glyph: '2',
+        desc: 'Fire 33% faster, and every bullet hits twice as hard.', fireRateMult: 1.33, damageMult: 2,
+      },
+      marathonMinestrone: {
+        name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',
+        desc: 'Sprint almost forever and move a little faster.', sprintMult: 3, speedMult: 1.07,
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Mad Dog Machine (upgrades your weapon; needs power)
+  // ---------------------------------------------------------------------------
+  madDog: {
+    cost: 5000,
+    workTime: 4.2,           // seconds the machine chews on your gun
+    ammoCost: 4500,          // buying ammo for an upgraded gun off the wall
+    // defaults for every upgrade (each weapon's `upgrade` entry can override)
+    damageMult: 2,
+    magMult: 1.5,
+    reserveMult: 2,
+    reloadMult: 0.9,
+    penetrationAdd: 1,
+  },
+
+  // ---------------------------------------------------------------------------
+  // Last stand
+  // ---------------------------------------------------------------------------
+  lastStand: {
+    bleedOut: 30,            // seconds a downed player lasts in co-op
+    reviveTime: 4,           // seconds a teammate holds F to revive
+    crawlSpeed: 0.9,
+    eyeHeight: 0.55,
+    reviveHealthFrac: 1,     // health after being revived
+    tempPistol: 'M1912',     // what you get if you have no pistol
+    tempPistolMags: 3,
   },
 
   interaction: {
@@ -798,6 +898,44 @@ export const CONFIG = {
     lowAmmoFraction: 0.25,
   },
 };
+
+// -----------------------------------------------------------------------------
+// Mad Dog upgrades: every weapon gets an upgraded twin under the id "<id>+".
+// The upgraded copy uses the weapon's `upgrade` entry (name, camo color and
+// any stat overrides) on top of the CONFIG.madDog defaults.
+// -----------------------------------------------------------------------------
+const UPGRADE_KEYS = new Set(['name', 'color', 'note', 'damageMult', 'impactMult', 'explodeUp']);
+for (const [id, d] of Object.entries(CONFIG.weapons)) {
+  if (!d.upgrade || id.endsWith('+')) continue;
+  const u = d.upgrade, md = CONFIG.madDog;
+  const up = {
+    ...d,
+    name: u.name,
+    upgraded: true,
+    baseId: id,
+    boxOnly: true,
+    damage: Math.round(d.damage * (u.damageMult ?? md.damageMult)),
+    magSize: Math.max(d.magSize, Math.round(d.magSize * md.magMult)),
+    reserve: Math.round(d.reserve * md.reserveMult),
+    reloadTime: d.reloadTime ? +(d.reloadTime * md.reloadMult).toFixed(2) : d.reloadTime,
+    reloadEmptyTime: d.reloadEmptyTime ? +(d.reloadEmptyTime * md.reloadMult).toFixed(2) : d.reloadEmptyTime,
+    shellTime: d.shellTime ? +(d.shellTime * md.reloadMult).toFixed(2) : d.shellTime,
+    penetration: (d.penetration || 1) + md.penetrationAdd,
+    sound: { ...d.sound, upgraded: true },
+    view: { ...d.view, camo: u.color },
+  };
+  delete up.cost; delete up.ammoCost; delete up.upgrade;
+  if (d.projectile) {
+    up.projectile = { ...d.projectile };
+    if (d.projectile.impactDamage) up.projectile.impactDamage = Math.round(d.projectile.impactDamage * (u.impactMult ?? 2));
+    if (u.explodeUp && d.projectile.explode) up.projectile.explode = d.projectile.explode + 'Up';
+  }
+  for (const [k, v] of Object.entries(u)) if (!UPGRADE_KEYS.has(k)) up[k] = v;
+  CONFIG.weapons[id + '+'] = up;
+}
+
+// The base weapon id of a (possibly upgraded) weapon id.
+export const baseWeaponId = (id) => (id && id.endsWith('+') ? id.slice(0, -1) : id);
 
 // Helper: zombie health for a given round (classic curve).
 export function zombieHealthForRound(round, cfg = CONFIG.zombie) {

@@ -45,7 +45,7 @@ export class CameraRig {
   update(dt, pos, p, look, aspect, def) {
     const c = this.cfg.camera, pc = this.cfg.player;
     const w = p.loadout;
-    const targetEye = p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
+    const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
     this.eyeY = lerp(this.eyeY, targetEye, 1 - Math.exp(-c.eyeSmoothing * dt));
 
     // smooth step-ups: follow pos.y with a little lag
@@ -93,7 +93,9 @@ export class CameraRig {
     // side bob is along the camera's right vector
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     cam.position.set(pos.x + rx * bobX, this.smoothY + this.eyeY + bobY + dip, pos.z + rz * bobX);
-    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll + Math.sin(this.shakeT * 0.7) * sh * 0.5);
+    // last stand: lying on your side
+    this.downRoll = lerp(this.downRoll || 0, p.downed ? 0.32 : 0, 1 - Math.exp(-5 * dt));
+    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll + Math.sin(this.shakeT * 0.7) * sh * 0.5 + this.downRoll);
 
     // FOV
     this.fovExtra = lerp(this.fovExtra, sprint ? c.sprintFovAdd : 0, 1 - Math.exp(-6 * dt));

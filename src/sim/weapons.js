@@ -7,6 +7,11 @@
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
+import { perkMult } from './perks.js';
+
+// Perk-adjusted timings.
+const reloadMult = (sim, p) => perkMult(sim, p, 'reloadMult');
+const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult');
 
 export function makeSlot(sim, id) {
   const def = sim.cfg.weapons[id];
@@ -65,7 +70,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   let want = -1;
   if (cmd.weaponSlot >= 0 && cmd.weaponSlot < w.slots.length && cmd.weaponSlot !== w.current) want = cmd.weaponSlot;
   if (cmd.weaponCycle && w.slots.length > 1) want = (w.current + 1) % w.slots.length;
-  if (want >= 0 && p.melee.timer <= 0 && !p.throwing) {
+  if (want >= 0 && p.melee.timer <= 0 && !p.throwing && !p.drinking) {
     if (w.reloading) cancelReload(sim, p);
     w.current = want;
     w.drawTimer = sim.cfg.weapons[w.slots[want].id].drawTime;
@@ -76,7 +81,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   }
 
   // --- aim down sights (dual wield uses right click as the left trigger instead)
-  const canAds = !def.dual && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing;
+  const canAds = !def.dual && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing && !p.drinking && !slot.away;
   const adsTarget = cmd.ads && canAds ? 1 : 0;
   const adsStep = dt / Math.max(0.01, def.adsTime);
   w.adsAmount = adsTarget > w.adsAmount ? Math.min(1, w.adsAmount + adsStep) : Math.max(0, w.adsAmount - adsStep);
@@ -94,12 +99,12 @@ export function updateWeapons(sim, p, cmd, dt) {
   w.spreadNow = currentSpread(sim, p, def);
 
   // --- reload
-  if (cmd.reloadPressed) tryReload(sim, p);
+  if (cmd.reloadPressed && !slot.away) tryReload(sim, p);
   if (w.reloading) updateReload(sim, p, slot, def, dt);
 
   // --- fire
   const shellReload = w.reloading && w.reload.style === 'shell' && slot.clip > 0;
-  const blocked = !p.alive || p.sprinting || p.sprintOutTimer > 0 || (w.reloading && !shellReload) || p.melee.timer > 0 || w.drawTimer > 0 || p.throwing;
+  const blocked = !p.alive || p.sprinting || p.sprintOutTimer > 0 || (w.reloading && !shellReload) || p.melee.timer > 0 || w.drawTimer > 0 || p.throwing || p.drinking || slot.away;
   if (cmd.firePressed && (blocked || w.fireCooldown > 0)) p.fireBuffer = Math.max(p.fireBuffer, 0.22);
   if (!cmd.fire) w.dryFireLatch = false;
 
@@ -118,7 +123,7 @@ export function updateWeapons(sim, p, cmd, dt) {
       fire(sim, p, slot, def, 'R');
       if (def.fireMode === 'burst') {
         w.burstLeft--;
-        w.fireCooldown = w.burstLeft > 0 && slot.clip > 0 ? 60 / def.rpm : (def.burstDelay ?? 0.25);
+        w.fireCooldown = w.burstLeft > 0 && slot.clip > 0 ? shotGap(sim, p, def) : (def.burstDelay ?? 0.25);
         if (slot.clip <= 0) w.burstLeft = 0;
       }
     } else {
@@ -145,8 +150,9 @@ export function updateWeapons(sim, p, cmd, dt) {
 // ---------------------------------------------------------------------------
 function fire(sim, p, slot, def, side) {
   const w = p.loadout;
-  if (side === 'L') { slot.clipL--; w.fireCooldownL = 60 / def.rpm; }
-  else { slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = 60 / def.rpm; }
+  if (side === 'L') { slot.clipL--; w.fireCooldownL = shotGap(sim, p, def); }
+  else { slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = shotGap(sim, p, def); }
+  const dmgMult = perkMult(sim, p, 'damageMult');
   w.shotsFired++;
 
   const eye = sim.eyePosition(p);
@@ -170,7 +176,7 @@ function fire(sim, p, slot, def, side) {
       for (const h of hits) {
         impacts.push(h);
         if (h.kind !== 'zombie') continue;
-        let dmg = def.damage;
+        let dmg = def.damage * dmgMult;
         if (h.t > def.falloffStart) {
           const f = clamp((h.t - def.falloffStart) / Math.max(1, def.range - def.falloffStart), 0, 1);
           dmg *= lerp(1, def.falloffMinMult, f);
@@ -189,6 +195,11 @@ function fire(sim, p, slot, def, side) {
       if (!z) continue;
       const part = acc.parts.head ? 'head' : Object.entries(acc.parts).sort((a, b) => b[1] - a[1])[0][0];
       damageZombie(sim, z, acc.dmg, { playerId: p.id, part, kind: 'bullet', dir: acc.dir, point: acc.point, weapon: slot.id, pellets });
+    }
+    // Mad Dog explosive rounds: a small blast where the bullet lands
+    if (def.explosiveRounds && impacts.length) {
+      const h = impacts[0];
+      explode(sim, { x: h.point.x + h.normal.x * 0.1, y: h.point.y + h.normal.y * 0.1, z: h.point.z + h.normal.z * 0.1 }, def.explosiveRounds, p.id);
     }
   }
 
@@ -215,22 +226,23 @@ export function tryReload(sim, p) {
   const w = p.loadout;
   const slot = w.slots[w.current];
   const def = sim.cfg.weapons[slot.id];
-  if (w.reloading || magFull(slot, def) || slot.reserve <= 0 || p.melee.timer > 0 || !p.alive || p.throwing) return false;
+  if (w.reloading || magFull(slot, def) || slot.reserve <= 0 || p.melee.timer > 0 || !p.alive || p.throwing || p.drinking || slot.away) return false;
   const empty = slot.clip === 0 && (!def.dual || slot.clipL === 0);
   const style = def.reloadStyle;
+  const k = reloadMult(sim, p);
   w.reloading = true;
   w.burstLeft = 0;
   if (style === 'shell') {
-    w.reload = { style, phase: 'start', t: def.reloadStartTime, empty, shells: 0 };
+    w.reload = { style, phase: 'start', t: def.reloadStartTime * k, empty, shells: 0, k };
   } else {
-    const total = empty ? (def.reloadEmptyTime ?? def.reloadTime) : def.reloadTime;
-    w.reload = { style, t: 0, total, added: false, empty };
+    const total = (empty ? (def.reloadEmptyTime ?? def.reloadTime) : def.reloadTime) * k;
+    w.reload = { style, t: 0, total, added: false, empty, k };
   }
   if (p.sprinting) p.sprinting = false;
   sim.emit('reloadStart', {
     playerId: p.id, weapon: slot.id, empty, style,
-    time: style === 'shell' ? def.reloadStartTime + def.shellTime * Math.min(def.magSize - slot.clip, slot.reserve) + def.reloadEndTime : w.reload.total,
-    startTime: def.reloadStartTime, shellTime: def.shellTime, endTime: def.reloadEndTime,
+    time: style === 'shell' ? (def.reloadStartTime + def.shellTime * Math.min(def.magSize - slot.clip, slot.reserve) + def.reloadEndTime) * k : w.reload.total,
+    startTime: def.reloadStartTime * k, shellTime: def.shellTime * k, endTime: def.reloadEndTime * k,
   });
   return true;
 }
@@ -240,7 +252,7 @@ function updateReload(sim, p, slot, def, dt) {
   if (r.style === 'shell') {
     r.t -= dt;
     if (r.t > 0) return;
-    if (r.phase === 'start') { r.phase = 'shell'; r.t = def.shellTime; return; }
+    if (r.phase === 'start') { r.phase = 'shell'; r.t = def.shellTime * r.k; return; }
     if (r.phase === 'shell') {
       if (slot.reserve > 0 && slot.clip < def.magSize) {
         slot.clip++; slot.reserve--; r.shells++;
@@ -248,8 +260,8 @@ function updateReload(sim, p, slot, def, dt) {
       }
       if (slot.clip >= def.magSize || slot.reserve <= 0) {
         r.phase = 'end';
-        r.t = def.reloadEndTime + (r.empty && def.action === 'pump' ? 0.2 : 0);
-      } else r.t = def.shellTime;
+        r.t = (def.reloadEndTime + (r.empty && def.action === 'pump' ? 0.2 : 0)) * r.k;
+      } else r.t = def.shellTime * r.k;
       return;
     }
     w.reloading = false; w.reload = null;
@@ -291,7 +303,7 @@ export function cancelReload(sim, p, byFiring = false) {
 export function giveWeapon(sim, p, id) {
   const w = p.loadout;
   const def = sim.cfg.weapons[id];
-  const have = w.slots.findIndex((s) => s.id === id);
+  const have = w.slots.findIndex((s) => s.id === id && !s.away);
   if (w.reloading) cancelReload(sim, p);
   if (have >= 0) {
     const s = w.slots[have];
@@ -339,7 +351,7 @@ function updateGrenade(sim, p, cmd, dt) {
   const g = sim.cfg.equipment.frag;
   const t = p.throwing;
   if (!t) {
-    if (cmd.grenadePressed && p.grenades > 0 && p.alive && p.melee.timer <= 0) {
+    if (cmd.grenadePressed && p.grenades > 0 && p.alive && !p.downed && !p.drinking && p.melee.timer <= 0) {
       if (p.loadout.reloading) cancelReload(sim, p);
       p.sprinting = false;
       p.loadout.adsAmount = 0;
@@ -425,7 +437,7 @@ function updateMelee(sim, p, cmd, dt, def) {
     }
   }
 
-  if (cmd.meleePressed && m.cooldown <= 0 && m.timer <= 0 && p.alive && !p.throwing) {
+  if (cmd.meleePressed && m.cooldown <= 0 && m.timer <= 0 && p.alive && !p.downed && !p.drinking && !p.throwing) {
     if (p.loadout.reloading) cancelReload(sim, p);
     p.sprinting = false;
     p.loadout.adsAmount = 0;

@@ -19,6 +19,8 @@ import { DoorInteractable, WallBuyInteractable, BoxInteractable } from './intera
 import { Nav } from './nav.js';
 import { updateProjectiles } from './projectiles.js';
 import { setupRange, updateRange } from './range.js';
+import { PowerInteractable, PerkInteractable, MadDogInteractable, TrapInteractable, ReviveInteractable, createTraps, updateTraps } from './interactables/machines.js';
+import { updateLastStand, anyoneStanding } from './laststand.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -38,17 +40,25 @@ export class GameSim {
     this.projectiles = [];
     this.inputs = new Map();
     this.events = [];
-    this.power = false;
     this.gameOver = false;
     this.windows = createWindows(this);
     this.doorState = new Map(this.world.doors.map((d) => [d.id, { open: false, openedAt: 0 }]));
     this.openZones = new Set([this.world.roomById.get('court') ? 'court' : map.rooms[0].zone]);
+    this.power = !!cfg.power.startsOn;
+    this.perkBuys = {};      // perk id -> times bought (solo Second Helping runs out)
     this.box = new BoxInteractable(this);
+    this.traps = createTraps(this);
+    this.madDog = this.world.madDog ? new MadDogInteractable(this, this.world.madDog) : null;
     this.interactables = [
-      ...this.windows.map((w) => new WindowInteractable(w)),
+      ...this.windows.filter((w) => w.kind !== 'fence').map((w) => new WindowInteractable(w)),
       ...this.world.doors.map((d) => new DoorInteractable(d)),
       ...this.world.wallBuys.map((wb) => new WallBuyInteractable(wb)),
       this.box,
+      ...(this.world.powerSwitch ? [new PowerInteractable(this.world.powerSwitch)] : []),
+      ...this.world.perkMachines.map((m) => new PerkInteractable(m)),
+      ...(this.madDog ? [this.madDog] : []),
+      ...this.traps.map((t) => new TrapInteractable(t)),
+      new ReviveInteractable(),
     ];
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);
@@ -72,7 +82,8 @@ export class GameSim {
 
   eyePosition(p) {
     const c = this.cfg.player;
-    return v3(p.pos.x, p.pos.y + (p.crouching ? c.crouchEyeHeight : c.eyeHeight), p.pos.z);
+    const h = p.downed ? this.cfg.lastStand.eyeHeight : p.crouching ? c.crouchEyeHeight : c.eyeHeight;
+    return v3(p.pos.x, p.pos.y + h, p.pos.z);
   }
 
   weaponDef(loadout) { return this.cfg.weapons[loadout.slots[loadout.current].id]; }
@@ -88,6 +99,12 @@ export class GameSim {
   spendPoints(p, amount) {
     p.points -= amount;
     this.emit('points', { playerId: p.id, amount: -amount, reason: 'spend', total: p.points });
+  }
+
+  turnOnPower(byPlayer = null) {
+    if (this.power) return;
+    this.power = true;
+    this.emit('powerOn', { playerId: byPlayer ? byPlayer.id : null });
   }
 
   // --- doors & zones -------------------------------------------------------
@@ -212,6 +229,8 @@ export class GameSim {
       p.region = this.nav.regionAt(p.pos, p.region);
     }
     for (const it of this.interactables) if (it.update) it.update(this, dt);
+    for (const p of this.players) if (p.downed) updateLastStand(this, p, dt);
+    updateTraps(this, dt);
     updateZombies(this, dt);
     updateProjectiles(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {
@@ -220,7 +239,7 @@ export class GameSim {
     if (this.mode === 'range') updateRange(this, dt);
     else updateRounds(this, dt);
 
-    if (this.players.length && this.players.every((p) => !p.alive)) {
+    if (this.players.length && !anyoneStanding(this)) {
       this.gameOver = true;
       this.emit('gameOver', { round: this.rounds.round, team: this.teamName });
     }

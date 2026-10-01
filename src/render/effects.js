@@ -285,6 +285,26 @@ export class Effects {
     t.life = 0.05;
   }
 
+  // Mad Dog explosive rounds: a quick pop, no scorch.
+  smallExplosion(pos, radius = 2) {
+    const p = new THREE.Vector3(pos.x, pos.y, pos.z);
+    for (let i = 0; i < 3; i++) {
+      const f = this.fires[this.fireIdx];
+      this.fireIdx = (this.fireIdx + 1) % this.fires.length;
+      f.s.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.3, Math.random() * 0.2, (Math.random() - 0.5) * 0.3));
+      f.vel.set((Math.random() - 0.5) * 1.5, 0.5 + Math.random(), (Math.random() - 0.5) * 1.5);
+      f.size = 0.5 + Math.random() * 0.4 * radius / 2;
+      f.life = f.max = 0.14 + Math.random() * 0.1;
+      f.s.material.rotation = Math.random() * 6.28;
+      f.s.visible = true;
+    }
+    this.puff(p, { color: 0x2e2a26, size: 0.45, grow: 2, life: 0.9, alpha: 0.4, vel: new THREE.Vector3(0, 0.5, 0) });
+    for (let i = 0; i < 6; i++) this.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 7, 1 + Math.random() * 4, (Math.random() - 0.5) * 7), { life: 0.25, size: 0.012, color: [5, 2.4, 0.8], gravity: 10, drag: 1 });
+    this.muzzleLight.position.copy(p);
+    this.muzzleLight.intensity = 14;
+    this.muzzleT = 0.06;
+  }
+
   explosion(pos, radius = 4) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
     const k = radius / 4.5;

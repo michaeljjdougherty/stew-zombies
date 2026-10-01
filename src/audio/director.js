@@ -6,6 +6,15 @@ import * as S from './sfx.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
+// Each perk machine has its own little tune (Hz).
+const PERK_TUNES = {
+  secondHelping: [523, 659, 784, 659, 523, 784, 1047],
+  beefcakeBroth: [196, 196, 262, 247, 196, 330, 294],
+  hotPotHustle: [659, 784, 880, 988, 880, 784, 1175],
+  doubleLadle: [392, 392, 494, 494, 587, 587, 784],
+  marathonMinestrone: [330, 392, 440, 523, 587, 659, 784, 880],
+};
+
 export class SoundDirector {
   constructor(engine, sim, cfg) {
     this.A = engine;
@@ -108,6 +117,7 @@ export class SoundDirector {
       case 'projectileBounce': A.play(S.grenadeBounce, { speed: e.speed }, { pos: e.pos, ref: 2 }); break;
       case 'projectileStick': A.play(S.stickThunk, { flesh: e.zombieId != null }, { pos: e.pos, ref: 2 }); break;
       case 'explosion': {
+        if (this.cfg.explosions[e.etype]?.small) { A.play(S.smallBoom, {}, { pos: e.pos, ref: 3, reverb: 0.3, gain: 0.8 }); break; }
         const p = sim.playerById(this.localId);
         const d = p ? Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z) : 10;
         // close blasts are played unpanned and loud so they hit like they should
@@ -175,7 +185,37 @@ export class SoundDirector {
         if (pos) A.play(S.gore, {}, { pos, ref: 3 });
         break;
       }
+      case 'powerOn': A.play(S.powerOn, {}, { gain: 1, reverb: 0.8 }); break;
+      case 'perkBought': {
+        const m = sim.world.perkMachines.find((q) => q.id === e.machine);
+        A.play(S.perkJingle, { notes: PERK_TUNES[e.perk] }, { pos: m ? { x: m.center.x, y: 1.6, z: m.center.z } : null, ref: 4, reverb: 0.4, bus: 'music' });
+        break;
+      }
+      case 'perkDrink': if (local) A.play(S.perkDrink, {}, { gain: 0.9, reverb: 0.05 }); break;
+      case 'madDogStart': {
+        const md = sim.world.madDog;
+        A.play(S.madDogGrind, { duration: this.cfg.madDog.workTime }, { pos: { x: md.x, y: md.y + 1.5, z: md.z }, ref: 5, reverb: 0.6, gain: 1.1 });
+        break;
+      }
+      case 'madDogReady': {
+        const md = sim.world.madDog;
+        A.play(S.madDogReady, {}, { pos: { x: md.x, y: md.y + 1.5, z: md.z }, ref: 6, reverb: 0.7, gain: 1.1 });
+        break;
+      }
+      case 'madDogTaken': if (local) A.play(S.madDogTake, {}, { gain: 0.9, reverb: 0.2 }); break;
+      case 'trapOn': {
+        const t = sim.traps.find((q) => q.id === e.id);
+        if (!t) break;
+        const c = { x: (t.box[0] + t.box[2]) / 2, y: 1.4, z: (t.box[1] + t.box[3]) / 2 };
+        A.play(S.leverPull, {}, { pos: t.lever.pos, ref: 3 });
+        A.play(S.trapBuzz, { duration: this.cfg.traps.activeTime }, { pos: c, ref: 3, reverb: 0.4 });
+        break;
+      }
+      case 'playerDown': if (local) A.play(S.downed, {}, { gain: 1, reverb: 0.3 }); break;
+      case 'playerRevived': if (local) A.play(S.revived, {}, { gain: 0.9, reverb: 0.2 }); break;
+      case 'zombieRise': A.play(S.dirtRise, {}, { pos: e.pos, ref: 3 }); break;
       case 'zombieKilled':
+        if (e.kind === 'electric') A.play(S.electrocute, {}, { pos: { x: e.pos.x, y: 1.2, z: e.pos.z }, ref: 3 });
         this.groanTimers.delete(e.id);
         A.play(S.gore, {}, { pos: { x: e.pos.x, y: 1, z: e.pos.z }, gain: 0.7, ref: 2.5 });
         break;

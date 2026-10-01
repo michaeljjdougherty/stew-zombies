@@ -10,8 +10,9 @@ export function createWindows(sim) {
   const max = sim.cfg.windows.boards;
   return sim.world.windows.map((anchor) => ({
     ...anchor,
-    boards: max,
-    maxBoards: max,
+    // fences have nothing to tear down: zombies just climb over
+    boards: anchor.kind === 'fence' ? 0 : max,
+    maxBoards: anchor.kind === 'fence' ? 0 : max,
     queue: [],        // zombie ids waiting outside, front first
     climbing: null,   // zombie id currently climbing through
     rebuild: new Map(), // playerId -> seconds held

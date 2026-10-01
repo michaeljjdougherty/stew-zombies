@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { buildGun, gunMaterials } from './gunModels.js';
+import { buildGun, gunMaterials, animateCamo } from './gunModels.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
@@ -52,6 +52,7 @@ export class Viewmodel {
 
     this.buildKnifeArm();
     this.buildGrenadeArm();
+    this.buildDrinkArm();
 
     const flashMat = () => new THREE.SpriteMaterial({ map: T.muzzleFlashTexture(), color: new THREE.Color(2.2, 1.7, 1.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
     this.flash = { R: new THREE.Sprite(flashMat()), L: new THREE.Sprite(flashMat()) };
@@ -73,6 +74,7 @@ export class Viewmodel {
     this.meleeT = -1;
     this.meleeLunge = false;
     this.throwT = -1;
+    this.drinkT = -1;
     this.drawT = 1;
     this.reload = null;
     this.time = 0;
@@ -87,11 +89,12 @@ export class Viewmodel {
     const def = this.cfg.weapons[id];
     let pair = this.models.get(id);
     if (!pair) {
-      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual });
+      const camo = def.view.camo || null;
+      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual, camo });
       this.root.add(R.group);
       pair = { R };
       if (def.dual) {
-        const L = buildGun(def.view.model, { withHands: true, rightOnly: true });
+        const L = buildGun(def.view.model, { withHands: true, rightOnly: true, camo });
         L.group.scale.x = -1;           // mirrored copy for the left hand
         this.root.add(L.group);
         pair.L = L;
@@ -151,6 +154,35 @@ export class Viewmodel {
     this.grenadeArm.add(arm);
   }
 
+  // Left hand holding a perk bottle.
+  buildDrinkArm() {
+    const m = this.mats;
+    this.drinkArm = new THREE.Group();
+    this.drinkArm.visible = false;
+    this.root.add(this.drinkArm);
+    const b = (w, h, d, mat, x, y, z) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); q.position.set(x, y, z); this.drinkArm.add(q); return q; };
+    b(0.05, 0.06, 0.07, m.glove, 0, -0.04, 0.01);
+    this.bottleMat = new THREE.MeshStandardMaterial({ color: '#c0392b', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85, emissive: new THREE.Color('#c0392b'), emissiveIntensity: 0.25 });
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.033, 0.13, 12), this.bottleMat);
+    bottle.position.set(0, 0.03, -0.01); this.drinkArm.add(bottle);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.028, 0.07, 10), this.bottleMat);
+    neck.position.set(0, 0.125, -0.01); this.drinkArm.add(neck);
+    this.bottleLabelMat = new THREE.MeshStandardMaterial({ color: '#e8dcc0', roughness: 0.8 });
+    const label = new THREE.Mesh(new THREE.CylinderGeometry(0.0335, 0.0335, 0.05, 12, 1, true), this.bottleLabelMat);
+    label.position.set(0, 0.03, -0.01); this.drinkArm.add(label);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 8), m.metal);
+    cap.position.set(0, 0.165, -0.01); this.drinkArm.add(cap);
+    this.bottleCap = cap;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.42, 10), m.sleeve);
+    arm.position.set(-0.07, -0.15, 0.16); arm.rotation.set(1.0, 0, 0.5);
+    this.drinkArm.add(arm);
+  }
+
+  setBottle(color) {
+    this.bottleMat.color.set(color);
+    this.bottleMat.emissive.set(color);
+  }
+
   initEnvironment(renderer) {
     const pm = new THREE.PMREMGenerator(renderer);
     this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -178,6 +210,8 @@ export class Viewmodel {
         if (fs > 0) {
           const f = this.flash[side];
           f.visible = true;
+          if (def && def.view.camo) f.material.color.set(def.view.camo).multiplyScalar(2.6).lerp(new THREE.Color(2.4, 2.2, 2), 0.35);
+          else f.material.color.setRGB(2.2, 1.7, 1.2);
           f.material.rotation = Math.random() * Math.PI * 2;
           f.scale.setScalar((0.09 + Math.random() * 0.06) * fs);
           this.flashT[side] = 0.045;
@@ -205,6 +239,11 @@ export class Viewmodel {
         break;
       case 'grenadeThrow':
         this.throwT = 0;
+        break;
+      case 'perkDrink':
+        this.drinkT = 0;
+        this.drinkDur = this.cfg.perks.drinkTime;
+        this.setBottle(this.cfg.perks.list[e.perk].color);
         break;
       case 'playerLand':
         this.landY.v -= Math.min(1.2, e.impact * 0.12);
@@ -240,8 +279,11 @@ export class Viewmodel {
     const sy = this.swayY.update(dt, Math.max(-0.05, Math.min(0.05, look.dy * 0.00045)) * swayAmt);
     const ly = this.landY.update(dt);
 
+    animateCamo(this.time);
+
     // --- common offsets (bob, breathing, sprint, recoil, sway, draw)
     const o = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 };
+    if (p.downed) { o.y -= 0.02; o.rz += 0.12 + Math.sin(this.time * 1.3) * 0.03; o.x -= 0.02; }
     const bobScale = lerp(1, 0.12, ads);
     o.x += Math.cos(bob.phase) * bob.amp * 0.35 * bobScale;
     o.y += -Math.abs(Math.sin(bob.phase)) * bob.amp * 0.3 * bobScale + Math.sin(this.time * 1.6) * 0.0018 * (1 - ads * 0.7);
@@ -408,6 +450,23 @@ export class Viewmodel {
       }
     } else this.grenadeArm.visible = false;
 
+    // --- drinking a perk: gun drops away, bottle comes up and tips back
+    if (p.drinking || (this.drinkT != null && this.drinkT >= 0 && this.drinkT < (this.drinkDur || 2))) {
+      if (this.drinkT == null || this.drinkT < 0) { this.drinkT = 0; this.drinkDur = this.cfg.perks.drinkTime; }
+      this.drinkT += dt;
+      const t = this.drinkT / this.drinkDur;
+      if (t >= 1 && !p.drinking) { this.drinkT = -1; this.drinkArm.visible = false; }
+      else {
+        this.drinkArm.visible = true;
+        gunDip = Math.max(gunDip, seg(t, 0, 0.15) * (1 - seg(t, 0.85, 1)));
+        const up = seg(t, 0.12, 0.35) * (1 - seg(t, 0.82, 1));
+        const tip = seg(t, 0.35, 0.55) * (1 - seg(t, 0.75, 0.85));
+        this.drinkArm.position.set(lerp(-0.22, -0.1, up) + tip * 0.03, lerp(-0.38, -0.13, up) + tip * 0.02, lerp(-0.34, -0.36, up) + tip * 0.06);
+        this.drinkArm.rotation.set(0.1 + tip * 1.25, 0.15, 0.35 - up * 0.15 - tip * 0.2);
+        this.bottleCap.visible = t < 0.3;
+      }
+    } else this.drinkArm.visible = false;
+
     // --- place the gun(s)
     const place = (m, mirror, kick) => {
       const hip = m.hip, aim = m.aim;
@@ -429,6 +488,10 @@ export class Viewmodel {
     // scoped weapons hide the gun once the scope is up
     this.scoped = !!def.scope && ads > 0.85;
     this.root.visible = !this.scoped;
+    // the gun is inside the Mad Dog Machine: empty hands
+    const away = !!slot.away;
+    pair.R.group.visible = !away;
+    if (pair.L) pair.L.group.visible = !away;
 
     for (const side of ['R', 'L']) {
       if (this.flashT[side] > 0) {

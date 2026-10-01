@@ -44,7 +44,7 @@ function aimAt(me, sim, z, y = 1.25) {
 }
 
 // --- every weapon: empty a magazine, reload, verify ammo bookkeeping
-const ids = Object.keys((await import('../src/config.js')).CONFIG.weapons);
+const ids = Object.keys((await import('../src/config.js')).CONFIG.weapons).filter((id) => !id.endsWith('+'));
 for (const id of ids) {
   const { sim, me } = setup();
   me.pos.x = 0; me.pos.z = 4;

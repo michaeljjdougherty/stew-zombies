@@ -8,18 +8,23 @@
 // skipped or limited to ranges where a neighbouring room already owns it.
 // Openings (windows, doors, debris, gaps) are cut into the owning wall.
 //
-// Layout (top = north):
+// Layout (top = north). Two paths from the court meet at the auditorium:
 //
-//                 +-----------------------+
-//                 |  CAFETERIA     |stage |
-//                 +-----[door]------------+
-//   +----------+  |H|
-//   |          |  |A|
-//   |  COURT   [==]L|      (courtyard)
-//   |          |  |L|
-//   +----------+  +[debris]---+--------+
-//                 |  OFFICE   |principal|
-//                 +-----------+---------+
+//   +--------------+------------------------------------+
+//   | BAND & ART   |        AUDITORIUM (stage, Mad Dog) |----------+
+//   +---[door]-----+                                    |  LOADING |
+//   |              +------------------------------------+   DOCK   |
+//   |   LIBRARY    |                                 +---[door]----+
+//   |              |                                 |  KITCHEN  |
+//   +---[debris]---+          (yard)                 +--[door]---+-+
+//   | SCIENCE LAB  |                     +-----------+  CAFETERIA   |
+//   +---[door]-----+-------------------+ |H|---------+-----[door]---+-+
+//   | LOCKER ROOMS [door]   COURT      [==]A|                         |
+//   +--[debris]----+                   | |L[door]    THE QUAD       |
+//   | BOILER ROOM  |                   | |L|        (fountain)      |
+//   +--------------+-------------------+ +[debris]-[door]---+-------+
+//                                        | OFFICE  |principal|
+//                                        +---------+---------+
 // =============================================================================
 
 const T = 0.5;
@@ -95,10 +100,100 @@ export const SCHOOL = {
       ceiling: 'drop',
       fixtures: fixtureRow([20.5, 25.5, 30.5, 35.5], [-37, -31.5, -26], 4.96, 3, [5, 9]).map((f) => ({ ...f, kind: 'panel' })),
     },
+
+    // --- east path -----------------------------------------------------------
+    {
+      id: 'kitchen', zone: 'kitchen', name: 'Kitchen',
+      rect: [24, -52, 38, -41], height: 3.2, floor: 'tile', style: 'kitchen', reverb: 0.5,
+      walls: { n: {}, s: { skip: true }, w: {}, e: {} },
+      ceiling: 'drop',
+      fixtures: fixtureRow([27.5, 34.5], [-49, -44], 3.16, 3, [1]).map((f) => ({ ...f, kind: 'panel' })),
+    },
+    {
+      id: 'dock', zone: 'dock', name: 'Loading Dock', outdoor: true,
+      rect: [22, -70, 42, -52.5], height: 3.4, floor: 'asphalt', style: 'exterior', reverb: 0.35,
+      walls: { s: { ranges: [[21.5, 23.5], [38.5, 42.5]] }, w: { skip: true }, n: { style: 'fence', height: 3.2 }, e: { style: 'fence', height: 3.2 } },
+      ceiling: 'none',
+      fixtures: [
+        { x: 24.5, y: 4.4, z: -55, lit: true, flicker: 0.6, kind: 'lamp' },
+        { x: 40, y: 4.4, z: -67.5, lit: false, flicker: 0, kind: 'lamp' },
+      ],
+    },
+    {
+      id: 'auditorium', zone: 'auditorium', name: 'Auditorium',
+      rect: [-13.5, -80, 21.5, -52], height: 8, floor: 'wood', style: 'auditorium', reverb: 1.1,
+      walls: { w: { ranges: [[-80, -62]] }, e: {}, n: {}, s: {} },
+      ceiling: 'trusses',
+      fixtures: (() => {
+        const out = [];
+        let i = 0;
+        for (const z of [-75, -66, -58]) for (const x of [-6, 4, 14]) {
+          const lit = i === 1 || i === 7;
+          out.push({ x, z, y: 7, lit, flicker: i === 7 ? 0.7 : lit ? 0.15 : 0, kind: 'hanging' });
+          i++;
+        }
+        return out;
+      })(),
+    },
+
+    // --- west path -----------------------------------------------------------
+    {
+      id: 'lockers', zone: 'lockers', name: 'Locker Rooms',
+      rect: [-31, -13, -17.5, 1], height: 3.4, floor: 'tile', style: 'lockerroom', reverb: 0.7,
+      walls: { n: {}, s: {}, w: {}, e: { skip: true } },
+      ceiling: 'drop',
+      fixtures: fixtureRow([-27.5, -21], [-10, -3], 3.36, 3, [3]).map((f) => ({ ...f, kind: 'panel' })),
+    },
+    {
+      id: 'boiler', zone: 'boiler', name: 'Boiler Room',
+      rect: [-31, 1.5, -17.5, 12], height: 3.6, floor: 'concrete', style: 'boiler', reverb: 0.9,
+      walls: { n: { skip: true }, e: { skip: true }, s: {}, w: {} },
+      ceiling: 'trusses',
+      fixtures: [
+        { x: -22, y: 3.5, z: 4, lit: true, flicker: 0.85, kind: 'panel' },
+        { x: -19.6, y: 3.5, z: 8.6, lit: true, flicker: 0.2, kind: 'panel' },
+        { x: -28, y: 3.5, z: 10, lit: false, flicker: 0, kind: 'panel' },
+      ],
+    },
+    {
+      id: 'lab', zone: 'lab', name: 'Science Lab',
+      rect: [-31, -28, -17.5, -13.5], height: 3.4, floor: 'tile', style: 'lab', reverb: 0.45,
+      walls: { n: {}, s: { skip: true }, w: {}, e: {} },
+      ceiling: 'drop',
+      fixtures: fixtureRow([-27.5, -21], [-25, -17], 3.36, 3, [2]).map((f) => ({ ...f, kind: 'panel' })),
+    },
+    {
+      id: 'library', zone: 'library', name: 'Library',
+      rect: [-34, -50, -14, -28.5], height: 4.5, floor: 'carpet', style: 'library', reverb: 0.3,
+      walls: { n: {}, s: { ranges: [[-34.5, -31.5], [-17, -13.5]] }, w: {}, e: {} },
+      ceiling: 'drop',
+      fixtures: fixtureRow([-30, -24, -18], [-46, -39.5, -33], 4.46, 4, [4]).map((f) => ({ ...f, kind: 'panel' })),
+    },
+    {
+      id: 'band', zone: 'band', name: 'Band & Art Rooms',
+      rect: [-34, -62, -14, -50.5], height: 3.4, floor: 'wood', style: 'band', reverb: 0.55,
+      walls: { n: {}, s: { skip: true }, w: {}, e: {} },
+      ceiling: 'drop',
+      fixtures: fixtureRow([-29, -19], [-59, -54], 3.36, 3, [2]).map((f) => ({ ...f, kind: 'panel' })),
+    },
+
+    // --- the Quad (outdoor courtyard for running trains) ---------------------
+    {
+      id: 'quad', zone: 'quad', name: 'The Quad', outdoor: true,
+      rect: [22, -22, 40, 16], height: 4, floor: 'grass', style: 'exterior', reverb: 0.3,
+      walls: { n: { ranges: [[38.5, 40.5]] }, s: { ranges: [[30.5, 40.5]] }, w: { skip: true }, e: { style: 'fence', height: 3.2 } },
+      ceiling: 'none',
+      fixtures: [
+        { x: 24.2, y: 4.4, z: -19.5, lit: true, flicker: 0.5, kind: 'lamp' },
+        { x: 38, y: 4.4, z: -6, lit: false, flicker: 0, kind: 'lamp' },
+        { x: 24.2, y: 4.4, z: 13, lit: false, flicker: 0, kind: 'lamp' },
+        { x: 38, y: 4.4, z: 12, lit: false, flicker: 0, kind: 'lamp' },
+      ],
+    },
   ],
 
-  // Walkable areas for pathing. Checked in order (first match wins), so the
-  // raised stage comes before the cafeteria floor around it.
+  // Walkable areas for pathing. Checked in order (first match wins), so raised
+  // stages come before the floor around them.
   navRegions: [
     { id: 'court', rect: [-17, -13, 17, 13], room: 'court' },
     { id: 'hall', rect: [17.5, -22, 21.5, 16], room: 'hall' },
@@ -106,6 +201,16 @@ export const SCHOOL = {
     { id: 'principal', rect: [25.75, 16.5, 30, 26], room: 'principal' },
     { id: 'stage', rect: [33.5, -38, 38, -25], room: 'cafe' },
     { id: 'cafe', rect: [17.5, -40.5, 38, -22.5], room: 'cafe' },
+    { id: 'quad', rect: [22, -22, 40, 16], room: 'quad' },
+    { id: 'kitchen', rect: [24, -52, 38, -41], room: 'kitchen' },
+    { id: 'dock', rect: [22, -70, 42, -52.5], room: 'dock' },
+    { id: 'aud_stage', rect: [-8, -80, 16, -72], room: 'auditorium' },
+    { id: 'auditorium', rect: [-13.5, -80, 21.5, -52], room: 'auditorium' },
+    { id: 'lockers', rect: [-31, -13, -17.5, 1], room: 'lockers' },
+    { id: 'boiler', rect: [-31, 1.5, -17.5, 12], room: 'boiler' },
+    { id: 'lab', rect: [-31, -28, -17.5, -13.5], room: 'lab' },
+    { id: 'library', rect: [-34, -50, -14, -28.5], room: 'library' },
+    { id: 'band', rect: [-34, -62, -14, -50.5], room: 'band' },
   ],
 
   // Connections between nav regions. `door` = only passable once that door is open.
@@ -116,22 +221,69 @@ export const SCHOOL = {
     { a: 'hall', b: 'office', x: 19.5, z: 16.25, axis: 'z', width: 3.0, door: 'debris_office' },
     { a: 'office', b: 'principal', x: 25.5, z: 22.65, axis: 'x', width: 1.3 },
     { a: 'cafe', b: 'stage', x: 33.3, z: -31, axis: 'x', width: 2.8 },
+    // the Quad
+    { a: 'hall', b: 'quad', x: 21.75, z: 9, axis: 'x', width: 2.6, door: 'door_quad_hall' },
+    { a: 'cafe', b: 'quad', x: 30, z: -22.25, axis: 'z', width: 2.6, door: 'door_quad_cafe' },
+    { a: 'office', b: 'quad', x: 24, z: 16.25, axis: 'z', width: 2.2, door: 'door_quad_office' },
+    // east path
+    { a: 'cafe', b: 'kitchen', x: 31, z: -40.75, axis: 'z', width: 2.6, door: 'door_kitchen' },
+    { a: 'kitchen', b: 'dock', x: 33, z: -52.25, axis: 'z', width: 2.4, door: 'door_dock' },
+    { a: 'dock', b: 'auditorium', x: 21.75, z: -61, axis: 'x', width: 2.8, door: 'door_aud_dock' },
+    // west path
+    { a: 'court', b: 'lockers', x: -17.25, z: -6, axis: 'x', width: 2.6, door: 'door_locker' },
+    { a: 'lockers', b: 'boiler', x: -25, z: 1.25, axis: 'z', width: 2.6, door: 'debris_boiler' },
+    { a: 'lockers', b: 'lab', x: -24, z: -13.25, axis: 'z', width: 2.6, door: 'door_lab' },
+    { a: 'lab', b: 'library', x: -24, z: -28.25, axis: 'z', width: 2.6, door: 'debris_library' },
+    { a: 'library', b: 'band', x: -24, z: -50.25, axis: 'z', width: 2.6, door: 'door_band' },
+    { a: 'band', b: 'auditorium', x: -13.75, z: -56, axis: 'x', width: 2.8, door: 'door_aud_band' },
+    // stage steps
+    { a: 'auditorium', b: 'aud_stage', x: -5.5, z: -72, axis: 'z', width: 3 },
+    { a: 'auditorium', b: 'aud_stage', x: 13.5, z: -72, axis: 'z', width: 3 },
   ],
 
   // ---------------------------------------------------------------------------
   // Boarded windows: owning room + side + position along the wall.
+  // kind 'fence' = an outdoor chain-link fence zombies climb over (no boards).
   windows: [
     { id: 'win_nw', room: 'court', side: 'n', at: -14 },
     { id: 'win_ne', room: 'court', side: 'n', at: 14 },
     { id: 'win_sw', room: 'court', side: 's', at: -14 },
     { id: 'win_se', room: 'court', side: 's', at: 14 },
-    { id: 'win_hall_n', room: 'hall', side: 'e', at: -8 },
-    { id: 'win_hall_s', room: 'hall', side: 'e', at: 9 },
     { id: 'win_office', room: 'office', side: 's', at: 21 },
     { id: 'win_principal', room: 'principal', side: 'e', at: 20.5 },
-    { id: 'win_cafe_n', room: 'cafe', side: 'n', at: 31 },
-    { id: 'win_cafe_s', room: 'cafe', side: 's', at: 30 },
     { id: 'win_cafe_e', room: 'cafe', side: 'e', at: -39.3 },
+    // east path
+    { id: 'win_kitchen', room: 'kitchen', side: 'e', at: -46.5 },
+    { id: 'fence_dock_n1', room: 'dock', side: 'n', at: 27, kind: 'fence' },
+    { id: 'fence_dock_n2', room: 'dock', side: 'n', at: 37, kind: 'fence' },
+    { id: 'fence_dock_e', room: 'dock', side: 'e', at: -62, kind: 'fence' },
+    { id: 'win_aud_s1', room: 'auditorium', side: 's', at: -8 },
+    { id: 'win_aud_s2', room: 'auditorium', side: 's', at: 14 },
+    { id: 'win_aud_w', room: 'auditorium', side: 'w', at: -76 },
+    { id: 'win_aud_e', room: 'auditorium', side: 'e', at: -75 },
+    { id: 'win_aud_n', room: 'auditorium', side: 'n', at: -11 },
+    // west path
+    { id: 'win_lockers_1', room: 'lockers', side: 'w', at: -10 },
+    { id: 'win_lockers_2', room: 'lockers', side: 'w', at: -1 },
+    { id: 'win_boiler_s', room: 'boiler', side: 's', at: -24 },
+    { id: 'win_boiler_w', room: 'boiler', side: 'w', at: 3.5 },
+    { id: 'win_lab', room: 'lab', side: 'w', at: -22 },
+    { id: 'win_library_1', room: 'library', side: 'w', at: -45 },
+    { id: 'win_library_2', room: 'library', side: 'w', at: -34 },
+    { id: 'win_library_e', room: 'library', side: 'e', at: -41 },
+    { id: 'win_band_n', room: 'band', side: 'n', at: -28 },
+    { id: 'win_band_w', room: 'band', side: 'w', at: -56 },
+    // the Quad: climb-over fence on the open east side
+    { id: 'fence_quad_1', room: 'quad', side: 'e', at: -12, kind: 'fence' },
+    { id: 'fence_quad_2', room: 'quad', side: 'e', at: 5, kind: 'fence' },
+  ],
+
+  // Zombies can also claw their way up out of the dirt here (outdoor areas).
+  groundSpawns: [
+    { id: 'dirt_quad_ne', room: 'quad', x: 38.2, z: -20.2 },
+    { id: 'dirt_quad_se', room: 'quad', x: 38.2, z: 14.2 },
+    { id: 'dirt_quad_nw', room: 'quad', x: 23.8, z: -20.2 },
+    { id: 'dirt_dock', room: 'dock', x: 40, z: -68 },
   ],
 
   // Doors and debris. Prices are in CONFIG.doors.
@@ -139,7 +291,21 @@ export const SCHOOL = {
     { id: 'door_hall', kind: 'door', room: 'court', side: 'e', at: 6, width: 2.6, height: 3.1, zones: ['court', 'hall'], label: 'MAIN HALL' },
     { id: 'door_cafe', kind: 'door', room: 'hall', side: 'n', at: 19.5, width: 2.6, height: 3.0, zones: ['hall', 'cafeteria'], label: 'CAFETERIA' },
     { id: 'debris_office', kind: 'debris', room: 'hall', side: 's', at: 19.5, width: 3.0, height: 3.0, zones: ['hall', 'office'], label: 'FRONT OFFICE' },
-    { id: 'door_locker', kind: 'door', room: 'court', side: 'w', at: -6, width: 2.6, height: 3.1, zones: ['court', 'lockers'], label: 'LOCKER ROOMS', locked: true },
+    // the Quad
+    { id: 'door_quad_hall', kind: 'door', room: 'hall', side: 'e', at: 9, width: 2.6, height: 3.0, zones: ['hall', 'quad'], label: 'THE QUAD' },
+    { id: 'door_quad_cafe', kind: 'door', room: 'cafe', side: 's', at: 30, width: 2.6, height: 3.0, zones: ['cafeteria', 'quad'], label: 'THE QUAD' },
+    { id: 'door_quad_office', kind: 'door', room: 'office', side: 'n', at: 24, width: 2.2, height: 2.9, zones: ['office', 'quad'], label: 'THE QUAD' },
+    // east path
+    { id: 'door_kitchen', kind: 'door', room: 'cafe', side: 'n', at: 31, width: 2.6, height: 3.0, zones: ['cafeteria', 'kitchen'], label: 'KITCHEN' },
+    { id: 'door_dock', kind: 'door', room: 'kitchen', side: 'n', at: 33, width: 2.4, height: 2.9, zones: ['kitchen', 'dock'], label: 'LOADING DOCK' },
+    { id: 'door_aud_dock', kind: 'door', room: 'auditorium', side: 'e', at: -61, width: 2.8, height: 3.2, zones: ['dock', 'auditorium'], label: 'AUDITORIUM' },
+    // west path
+    { id: 'door_locker', kind: 'door', room: 'court', side: 'w', at: -6, width: 2.6, height: 3.1, zones: ['court', 'lockers'], label: 'LOCKER ROOMS' },
+    { id: 'debris_boiler', kind: 'debris', room: 'lockers', side: 's', at: -25, width: 2.6, height: 3.0, zones: ['lockers', 'boiler'], label: 'BOILER ROOM' },
+    { id: 'door_lab', kind: 'door', room: 'lockers', side: 'n', at: -24, width: 2.6, height: 3.0, zones: ['lockers', 'lab'], label: 'SCIENCE LAB' },
+    { id: 'debris_library', kind: 'debris', room: 'lab', side: 'n', at: -24, width: 2.6, height: 3.0, zones: ['lab', 'library'], label: 'LIBRARY' },
+    { id: 'door_band', kind: 'door', room: 'library', side: 'n', at: -24, width: 2.6, height: 3.0, zones: ['library', 'band'], label: 'BAND & ART' },
+    { id: 'door_aud_band', kind: 'door', room: 'band', side: 'e', at: -56, width: 2.8, height: 3.1, zones: ['band', 'auditorium'], label: 'AUDITORIUM' },
   ],
 
   // Plain openings (no door).
@@ -149,9 +315,9 @@ export const SCHOOL = {
 
   // Solid furniture and fixtures: [minX, minY, minZ, maxX, maxY, maxZ].
   props: [
-    // hallway lockers (west and east walls, with gaps for the door, windows, box and wall buy)
+    // hallway lockers (west and east walls, with gaps for the doors, box and wall buy)
     ...[[-21.5, 4.2], [7.8, 15.5]].map(([z0, z1]) => ({ kind: 'lockers', box: [17.5, 0, z0, 17.95, 2.0, z1], face: 'e' })),
-    ...[[-21.5, -9], [-7, -4], [-2, 2.1], [3.9, 8], [10, 15.5]].map(([z0, z1]) => ({ kind: 'lockers', box: [21.05, 0, z0, 21.5, 2.0, z1], face: 'w' })),
+    ...[[-21.5, -4], [-2, 2.1], [3.9, 7.5], [10.5, 15.5]].map(([z0, z1]) => ({ kind: 'lockers', box: [21.05, 0, z0, 21.5, 2.0, z1], face: 'w' })),
     { kind: 'trash', box: [17.95, 0, -17.4, 18.45, 0.9, -16.9] },
     // front office
     { kind: 'counter', box: [18.8, 0, 19.4, 23.4, 1.05, 20.0] },
@@ -168,6 +334,55 @@ export const SCHOOL = {
     ...[-27.4, -31.4, -35.4].flatMap((z) => [21.6, 28.6].map((x) => ({ kind: 'table', box: [x - 2.6, 0, z - 0.45, x + 2.6, 0.76, z + 0.45] }))),
     // mystery box starting spot (solid)
     { kind: 'boxBase', box: [20.93, 0, -3.55, 21.5, 0.62, -2.45] },
+
+    // kitchen
+    { kind: 'counter', box: [24, 0, -50.5, 24.75, 0.95, -42], steel: true },
+    { kind: 'stove', box: [25, 0, -52, 30.5, 0.95, -51.25] },
+    { kind: 'counter', box: [27, 0, -47.6, 33, 0.95, -45.8], steel: true },
+    { kind: 'fridge', box: [37.2, 0, -44.2, 38, 2.1, -41.2] },
+    // loading dock
+    { kind: 'bus', box: [29.2, 0, -67.2, 31.8, 2.8, -57.6] },
+    { kind: 'dumpster', box: [38.2, 0, -56.2, 40.6, 1.4, -54.4] },
+    { kind: 'dumpster', box: [23, 0, -69.5, 24.8, 1.4, -67.3] },
+    // auditorium
+    { kind: 'stage', box: [-8, 0, -80, 16, 0.9, -72], curtains: true },
+    { kind: 'step', box: [-7, 0, -72, -4, 0.45, -71.2] },
+    { kind: 'step', box: [12, 0, -72, 15, 0.45, -71.2] },
+    { kind: 'booth', box: [2, 0, -63, 7, 1.25, -59] },
+    { kind: 'seats', box: [-10.5, 0, -69, -6.5, 0.85, -58] },
+    { kind: 'seats', box: [14.5, 0, -69, 18.5, 0.85, -58] },
+    { kind: 'madDogBase', box: [2.6, 0.9, -78.4, 5.4, 3.3, -75.8] },
+    // locker rooms
+    ...[[-31, -26.6], [-23.4, -17.5]].map(([x0, x1]) => ({ kind: 'lockers', box: [x0, 0, 0.55, x1, 2.0, 1], face: 'n' })),
+    { kind: 'lockers', box: [-20.2, 0, -13, -17.5, 2.0, -12.55], face: 's' },
+    { kind: 'bench', box: [-29, 0, -8.6, -20, 0.45, -8.2] },
+    { kind: 'bench', box: [-29, 0, -4.4, -20, 0.45, -4.0] },
+    // boiler room
+    { kind: 'boiler', box: [-29.5, 0, 5, -24.5, 3.0, 9.5] },
+    { kind: 'pipes', box: [-31, 0, 10.6, -26, 1.2, 12] },
+    // science lab
+    { kind: 'labBench', box: [-28.5, 0, -24.4, -22.5, 0.92, -23.4] },
+    { kind: 'labBench', box: [-28.5, 0, -19.6, -22.5, 0.92, -18.6] },
+    { kind: 'cabinets', box: [-31, 0, -28, -26.6, 1.9, -27.4], face: 's', glow: true },
+    { kind: 'cabinets', box: [-21.4, 0, -28, -17.5, 1.9, -27.4], face: 's', glow: true },
+    // library: two rows of shelves to loop around, a desk by the door
+    { kind: 'shelfRow', box: [-29, 0, -42.6, -19, 2.3, -41.8] },
+    { kind: 'shelfRow', box: [-29, 0, -37.4, -19, 2.3, -36.6] },
+    { kind: 'shelf', box: [-34, 0, -41, -33.4, 2.3, -36], face: 'e' },
+    { kind: 'desk', box: [-20.5, 0, -31.8, -17, 0.95, -30.8] },
+    { kind: 'table', box: [-18.4, 0, -47.6, -15.8, 0.76, -45.8] },
+    // band & art
+    { kind: 'piano', box: [-32.6, 0, -61, -30, 1.1, -59.4] },
+    { kind: 'step', box: [-33, 0, -55, -27, 0.3, -53.6], riser: true },
+    { kind: 'divider', box: [-24.1, 0, -62, -23.9, 1.3, -57.5] },
+    { kind: 'easel', box: [-20.5, 0, -57.2, -19.7, 1.7, -56.6] },
+    { kind: 'easel', box: [-17.6, 0, -55.4, -16.8, 1.7, -54.8] },
+    { kind: 'table', box: [-22, 0, -53.4, -17, 0.76, -52.4] },
+    // the Quad: dead fountain on a raised planter, benches at the edges
+    { kind: 'planter', box: [27, 0, -7, 35, 0.6, 1], fountain: true },
+    { kind: 'bench', box: [22.6, 0, -16, 23.1, 0.45, -13] },
+    { kind: 'bench', box: [22.6, 0, 1, 23.1, 0.45, 4] },
+    { kind: 'bench', box: [33, 0, 15.3, 36, 0.45, 15.8] },
   ],
 
   // Wall weapons: weapon id, owning room/side, position along the wall, height.
@@ -176,11 +391,39 @@ export const SCHOOL = {
     { weapon: 'Olympus', room: 'hall', side: 'e', at: 3, y: 1.45 },
     { weapon: 'MP41', room: 'cafe', side: 'w', at: -31.4, y: 1.5 },
     { weapon: 'frag', room: 'court', side: 'w', at: 4, y: 1.4 },
+    { weapon: 'PM64', room: 'quad', side: 'n', at: 25, y: 1.5 },
+    { weapon: 'Staykout', room: 'dock', side: 's', at: 26.5, y: 1.5 },
+    { weapon: 'MP6K', room: 'lockers', side: 'n', at: -28.5, y: 1.5 },
+    { weapon: 'AK-75u', room: 'lab', side: 'w', at: -16, y: 1.5 },
+    { weapon: 'M17', room: 'library', side: 'e', at: -32.5, y: 1.5 },
+    { weapon: 'MPK', room: 'band', side: 's', at: -30, y: 1.5 },
   ],
 
   // Mystery box locations. `start` = where it is at the beginning.
+  // (The box only moves from Phase 7 on; the other spots are placed already.)
   boxSpots: [
     { id: 'box_hall', room: 'hall', x: 21.2, z: -3, yaw: -Math.PI / 2, start: true },
+  ],
+
+  // Power switch (boiler room) and what needs it.
+  powerSwitch: { room: 'boiler', side: 'e', at: 8, y: 1.3 },
+
+  // Perk machines against a wall.
+  perkMachines: [
+    { perk: 'secondHelping', room: 'court', side: 'w', at: 9 },
+    { perk: 'beefcakeBroth', room: 'cafe', side: 'w', at: -24.6 },
+    { perk: 'hotPotHustle', room: 'lab', side: 'e', at: -21 },
+    { perk: 'doubleLadle', room: 'band', side: 'n', at: -18 },
+    { perk: 'marathonMinestrone', room: 'auditorium', side: 'w', at: -66 },
+  ],
+
+  // The Mad Dog Machine, center stage in the auditorium, facing the seats.
+  madDog: { room: 'auditorium', x: 4, z: -77.1, y: 0.9, yaw: 0 },
+
+  // Electric traps across doorways. Box = the deadly area [minX, minZ, maxX, maxZ].
+  traps: [
+    { id: 'trap_lab', box: [-25.3, -14.6, -22.7, -11.9], axis: 'x', lever: { room: 'lockers', side: 'n', at: -20.8, y: 1.3 }, label: 'Science Lab' },
+    { id: 'trap_dock', box: [31.8, -53.6, 34.2, -50.9], axis: 'x', lever: { room: 'kitchen', side: 'n', at: 36, y: 1.3 }, label: 'Loading Dock' },
   ],
 
   // --- court decoration ------------------------------------------------------
@@ -198,6 +441,10 @@ export const SCHOOL = {
     { x: 19.5, y: 3.4, z: -22.9 },
     { x: 19.5, y: 3.25, z: 15.6 },
     { x: 37.6, y: 4.3, z: -39.3 },
+    { x: -18, y: 3.2, z: 2.2 },
+    { x: -24, y: 3.2, z: -27.6 },
+    { x: 31, y: 3.0, z: -41.2 },
+    { x: -14.2, y: 3.0, z: -56 },
   ],
 };
 

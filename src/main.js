@@ -8,7 +8,7 @@
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
 import { RANGE } from './map/range.js';
-import { spawnHorde, clearZombies, setRangeRound, rangeGive } from './sim/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
@@ -48,6 +48,7 @@ renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
 // Firing range: weapons & options panel, stats, damage numbers
 const rangeUI = new RangeUI(CONFIG, {
   give: (id) => rangeGive(sim, player, id),
+  perk: (id) => rangeTogglePerk(sim, player, id),
   setRound: (n) => setRangeRound(sim, n),
   setAmmo: (on) => { sim.range.infiniteAmmo = on; },
   setMoving: (on) => { sim.range.moving = on; },
@@ -181,7 +182,7 @@ function tick(cmd) {
     sound.onEvent(e);
     hud.onEvent(e);
     rangeUI.onEvent(e);
-    if (e.type === 'playerDown' && e.playerId === LOCAL_ID) { mode = 'dying'; dyingT = 0; }
+    if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
   }
 }
 

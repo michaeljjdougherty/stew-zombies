@@ -376,6 +376,18 @@ export class ZombieViews {
 
     if (v.crawler) this.crawlPose(v, z, time);
 
+    // clawing up out of the dirt: arms reaching for the sky, then dragging up
+    if (z.state === 'rising') {
+      const k = Math.min(1, z.stateTime / this.cfg.zombie.riseTime);
+      const claw = Math.sin(time * 9 + v.hunch * 10);
+      v.armL.shoulder.rotation.set(-2.9 + claw * 0.25 + k * 1.2, 0, 0.3);
+      v.armR.shoulder.rotation.set(-2.9 - claw * 0.25 + k * 1.2, 0, -0.3);
+      v.armL.elbow.rotation.x = -0.4 - Math.max(0, claw) * 0.6;
+      v.armR.elbow.rotation.x = -0.4 - Math.max(0, -claw) * 0.6;
+      v.torso.rotation.x = 0.5 - k * 0.3;
+      v.neck.rotation.x = -0.6;
+    }
+
     // eyes glow a little brighter for sprinters
     v.glow.material.opacity = 0.9;
   }

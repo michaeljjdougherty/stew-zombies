@@ -41,7 +41,7 @@ export function weaponStatLine(def, cfg) {
 export class RangeUI {
   constructor(cfg, handlers) {
     this.cfg = cfg;
-    this.h = handlers; // { give(id), setRound(n), setAmmo(b), setMoving(b), horde(), clear(), close() }
+    this.h = handlers; // { give(id), perk(id), setRound(n), setAmmo(b), setMoving(b), horde(), clear(), close() }
     this.localId = null;
     this.active = false;
     this.panel = $('rangepanel');
@@ -56,7 +56,7 @@ export class RangeUI {
   buildPanel() {
     const list = $('rp-weapons');
     list.textContent = '';
-    const entries = Object.entries(this.cfg.weapons);
+    const entries = Object.entries(this.cfg.weapons).filter(([id]) => !id.endsWith('+'));
     for (const [title, test] of GROUPS) {
       const ids = entries.filter(([, d]) => test(d)).map(([id]) => id);
       if (!ids.length) continue;
@@ -75,7 +75,7 @@ export class RangeUI {
         b.querySelector('.n').textContent = d.name;
         b.querySelector('.w').textContent = where;
         b.querySelector('.s').textContent = weaponStatLine(d, this.cfg);
-        b.addEventListener('click', () => { this.h.give(id); this.refresh(); });
+        b.addEventListener('click', () => { this.h.give(this.upgraded && this.cfg.weapons[id + '+'] ? id + '+' : id); this.refresh(); });
         g.appendChild(b);
       }
       list.appendChild(g);
@@ -90,6 +90,15 @@ export class RangeUI {
     $('rp-clear').addEventListener('click', () => this.h.clear());
     $('rp-reset').addEventListener('click', () => { this.reset(); this.refresh(); });
     $('rp-close').addEventListener('click', () => this.h.close());
+    this.upgraded = false;
+    $('rp-upgraded').addEventListener('change', (e) => { this.upgraded = e.target.checked; this.refresh(); });
+    for (const [id, d] of Object.entries(this.cfg.perks.list)) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sm'; b.dataset.perk = id; b.textContent = d.name; b.title = d.desc;
+      b.style.setProperty('--c', d.color);
+      b.addEventListener('click', () => { this.h.perk(id); this.refresh(); });
+      $('rp-perks').appendChild(b);
+    }
   }
 
   // --- panel ----------------------------------------------------------------
@@ -111,12 +120,17 @@ export class RangeUI {
     $('rp-hp').textContent = `${zombieHealthForRound(this.round, this.cfg.zombie).toLocaleString()} health`;
     $('rp-ammo').checked = sim.range.infiniteAmmo;
     $('rp-moving').checked = sim.range.moving;
-    const held = new Set(p.loadout.slots.map((s) => s.id));
-    const cur = p.loadout.slots[p.loadout.current].id;
+    const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
+    const cur = p.loadout.slots[p.loadout.current].id.replace(/\+$/, '');
     for (const b of $('rp-weapons').querySelectorAll('button')) {
       b.classList.toggle('held', held.has(b.dataset.id));
       b.classList.toggle('current', b.dataset.id === cur);
+      const d = this.cfg.weapons[this.upgraded && this.cfg.weapons[b.dataset.id + '+'] ? b.dataset.id + '+' : b.dataset.id];
+      b.querySelector('.n').textContent = d.name;
+      b.querySelector('.n').style.color = d.view.camo || '';
+      b.querySelector('.s').textContent = weaponStatLine(d, this.cfg);
     }
+    for (const b of $('rp-perks').querySelectorAll('button')) b.classList.toggle('on', p.perks.includes(b.dataset.perk));
     $('rp-slots').textContent = p.loadout.slots.map((s, i) => `${i + 1}: ${this.cfg.weapons[s.id].name}`).join('   ');
   }
 

@@ -706,10 +706,95 @@ const BUILDERS = {
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,
 };
 
-// Build a gun. withHands: add first-person hands and sleeves.
-export function buildGun(model, { withHands = false, rightOnly = false } = {}) {
+// ---------------------------------------------------------------------------
+// Mad Dog camo: claw-slashed dark metal with glowing veins in the weapon's
+// upgrade color. The glow scrolls and pulses (animateCamo, once per frame).
+// ---------------------------------------------------------------------------
+const camoCache = new Map();
+const camoMats = [];
+
+function camoTextures(color) {
+  const S = 256;
+  const col = new THREE.Color(color);
+  const css = `rgb(${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)})`;
+  const [c, g] = T.makeCanvas(S, S);
+  const [gc, gg] = T.makeCanvas(S, S);
+  // base: near-black gunmetal tinted toward the color
+  g.fillStyle = `rgb(${18 + col.r * 30},${18 + col.g * 30},${20 + col.b * 30})`; g.fillRect(0, 0, S, S);
+  gg.fillStyle = '#000'; gg.fillRect(0, 0, S, S);
+  let seed = Math.floor(col.r * 97 + col.g * 57 + col.b * 31) + 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  // mottled plates
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '0,0,0'},${0.03 + rnd() * 0.06})`;
+    g.beginPath(); g.arc(rnd() * S, rnd() * S, 8 + rnd() * 30, 0, 7); g.fill();
+  }
+  // glowing veins (tileable: draw each with wrap-around copies)
+  const wrap = (fn) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.save(); gg.save(); g.translate(ox, oy); gg.translate(ox, oy); fn(); g.restore(); gg.restore(); } };
+  for (let i = 0; i < 14; i++) {
+    const pts = []; let x = rnd() * S, y = rnd() * S;
+    for (let k = 0; k < 7; k++) { pts.push([x, y]); x += (rnd() - 0.5) * 70; y += (rnd() - 0.5) * 70; }
+    wrap(() => {
+      for (const [ctx, w, style] of [[gg, 5, css], [gg, 2, '#fff'], [g, 3, css]]) {
+        ctx.strokeStyle = style; ctx.lineWidth = w; ctx.globalAlpha = ctx === g ? 0.5 : 1;
+        ctx.beginPath(); pts.forEach(([px, py], j) => (j ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    });
+  }
+  // claw slashes: three parallel tears
+  for (let i = 0; i < 5; i++) {
+    const x = rnd() * S, y = rnd() * S, a = -0.9 + rnd() * 0.5, len = 50 + rnd() * 50;
+    wrap(() => {
+      for (let k = 0; k < 3; k++) {
+        const ox = Math.cos(a + Math.PI / 2) * k * 9, oy = Math.sin(a + Math.PI / 2) * k * 9;
+        for (const [ctx, w, style] of [[g, 5, '#050505'], [gg, 3, css]]) {
+          ctx.strokeStyle = style; ctx.lineWidth = w; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(x + ox, y + oy); ctx.lineTo(x + ox + Math.cos(a) * len, y + oy + Math.sin(a) * len); ctx.stroke();
+        }
+      }
+    });
+  }
+  const map = T.toTexture(c);
+  const glow = T.toTexture(gc);
+  return { map, glow };
+}
+
+function camoMaterial(base, color) {
+  const key = color; void base;
+  if (camoCache.has(key)) return camoCache.get(key);
+  const { map, glow } = camoTextures(color);
+  const m = new THREE.MeshStandardMaterial({
+    map, emissive: new THREE.Color(color), emissiveMap: glow, emissiveIntensity: 1.4,
+    roughness: 0.32, metalness: 0.6,
+  });
+  m.userData.camo = true;
+  camoCache.set(key, m);
+  camoMats.push(m);
+  return m;
+}
+
+// Pulse and scroll the glowing veins on every upgraded gun.
+export function animateCamo(t) {
+  for (const m of camoMats) {
+    m.emissiveIntensity = 1.1 + Math.sin(t * 3.1) * 0.45 + Math.sin(t * 17) * 0.08;
+    m.emissiveMap.offset.set(t * 0.035, t * 0.05);
+  }
+}
+
+// Build a gun. withHands: add first-person hands and sleeves. camo: Mad Dog color.
+export function buildGun(model, { withHands = false, rightOnly = false, camo = null } = {}) {
   const m = gunMaterials();
   const spec = (BUILDERS[model] || pistol)(m);
+  if (camo) {
+    const skip = new Set([m.glove, m.sleeve, m.skin]);
+    spec.group.traverse((o) => {
+      if (!o.isMesh) return;
+      if (Array.isArray(o.material)) o.material = o.material.map((mm) => (skip.has(mm) || mm.transparent ? mm : camoMaterial(mm, camo)));
+      else if (!skip.has(o.material) && !o.material.transparent && !(o.material.isMeshBasicMaterial)) o.material = camoMaterial(o.material, camo);
+    });
+    spec.camo = camo;
+  }
   const muzzle = new THREE.Object3D();
   muzzle.position.set(...spec.muzzleAt);
   spec.group.add(muzzle);

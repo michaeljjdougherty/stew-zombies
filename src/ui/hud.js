@@ -13,13 +13,25 @@ export class HUD {
     this.tally = new TallyCounter($('tally'), cfg);
     this.el = {
       points: $('points'), popups: $('popups'), wname: $('wname'), clip: $('clip'), reserve: $('reserve'),
-      ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
+      ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'),
+      promptsub: $('promptsub'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
     };
     this.shownPoints = null;
     this.hitT = 0;
     this.fpsAcc = 0; this.fpsN = 0;
     this.localId = null;
     this.last = {};
+  }
+
+  // Big centered message (power on, new upgraded gun, perk).
+  toast(t1, t2 = '', color = null, time = 3) {
+    const el = this.el.toast;
+    el.querySelector('.t1').textContent = t1;
+    el.querySelector('.t2').textContent = t2;
+    el.style.setProperty('--c', color || 'var(--brass)');
+    el.classList.add('on');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => el.classList.remove('on'), time * 1000);
   }
 
   show(on) { this.root.hidden = !on; if (!on) { this.el.scope.hidden = true; this.last.scope = true; } }
@@ -47,6 +59,18 @@ export class HUD {
         break;
       case 'shot':
         if (e.playerId === this.localId && this.cfg.hud.hitmarkers && e.impacts.some((h) => h.kind === 'zombie')) this.hitT = 0.12;
+        break;
+      case 'powerOn':
+        this.toast('The power is on', 'perks, traps and the Mad Dog Machine are live', '#ffd23a', 3.5);
+        break;
+      case 'perkGained':
+        if (e.playerId === this.localId) { const d = this.cfg.perks.list[e.perk]; this.toast(d.name, d.desc, d.color, 3); }
+        break;
+      case 'madDogTaken':
+        if (e.playerId === this.localId) { const d = this.cfg.weapons[e.weapon]; this.toast(d.name, 'upgraded by the Mad Dog', d.view.camo, 3.5); }
+        break;
+      case 'playerRevived':
+        if (e.playerId === this.localId) this.toast(e.self ? 'Second helping' : 'Back on your feet', '', '#3fa9f5', 2);
         break;
       case 'meleeHit':
         if (e.playerId === this.localId && this.cfg.hud.hitmarkers) this.hitT = 0.12;
@@ -86,6 +110,7 @@ export class HUD {
     const slot = w.slots[w.current];
     const def = this.cfg.weapons[slot.id];
     this.set('wname', this.el.wname, def.name);
+    this.set('wcolor', this.el.wname.style, def.view.camo || '', 'color');
     this.set('clip', this.el.clip, String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
     this.set('grenades', this.el.grenades, '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
@@ -113,8 +138,37 @@ export class HUD {
     let prompt = p.prompt ? p.prompt.text + (p.prompt.cost != null ? ` [Cost: ${p.prompt.cost}]` : '') : '';
     if (p.rebuilding) prompt = 'Rebuilding barrier';
     this.set('prompt', this.el.prompt, prompt);
+    this.set('promptsub', this.el.promptsub, p.prompt && p.prompt.sub ? p.prompt.sub : '');
+
+    // perks
+    const perkKey = p.perks.join(',');
+    if (perkKey !== this.last.perks) {
+      this.last.perks = perkKey;
+      this.el.perks.textContent = '';
+      for (const id of p.perks) {
+        const d = this.cfg.perks.list[id];
+        const i = document.createElement('div');
+        i.className = 'perk'; i.title = d.name; i.textContent = d.glyph;
+        i.style.setProperty('--c', d.color);
+        this.el.perks.appendChild(i);
+      }
+    }
+
+    // last stand
+    const dn = p.downed;
+    this.set('downedHidden', this.el.downed, !dn, 'hidden');
+    if (dn) {
+      const self = dn.selfRevive != null;
+      const frac = self ? 1 - dn.selfRevive / this.cfg.perks.list.secondHelping.selfReviveTime : dn.bleed / this.cfg.lastStand.bleedOut;
+      this.set('downedText', this.el.downed.querySelector('.small'), self ? 'Second Helping is getting you up' : dn.reviverId ? 'Being revived' : 'Bleeding out', 'textContent');
+      this.el.downed.querySelector('.bar i').style.width = `${Math.max(0, Math.min(1, frac)) * 100}%`;
+      this.el.downed.querySelector('.bar i').style.background = self ? '#3fa9f5' : '';
+    }
+    this.set('reviveHidden', this.el.revive, !p.reviving, 'hidden');
+    if (p.reviving) this.el.revive.querySelector('.bar i').style.width = `${p.reviving.frac * 100}%`;
     let hint = '';
-    if (p.throwing && p.throwing.phase === 'cook') hint = `Cooking ${Math.max(0, this.cfg.equipment.frag.fuse - p.throwing.t).toFixed(1)}`;
+    if (p.drinking) hint = '';
+    else if (p.throwing && p.throwing.phase === 'cook') hint = `Cooking ${Math.max(0, this.cfg.equipment.frag.fuse - p.throwing.t).toFixed(1)}`;
     if (hint) { /* cooking */ }
     else if (slot.clip === 0 && slot.reserve === 0) hint = 'No ammo';
     else if (w.reloading) hint = '';

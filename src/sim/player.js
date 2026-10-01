@@ -5,6 +5,8 @@
 import { moveBody, separateCircles } from './physics.js';
 import { createLoadout, updateWeapons } from './weapons.js';
 import { clamp } from '../core/math.js';
+import { perkMult, updateDrinking } from './perks.js';
+import { goDown } from './laststand.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -47,7 +49,10 @@ export function createPlayer(sim, id, name, spawn) {
     maxHealth: cfg.maxHealth,
     lastDamageTime: -999,
     alive: true,
-    downed: false,
+    downed: null,             // last stand state (see laststand.js)
+    perks: [],                // perk ids in the order bought
+    drinking: null,           // { perk, t } while chugging a perk
+    reviving: null,           // { targetId, frac } while picking up a teammate
     points: cfg.startPoints,
     kills: 0, headshots: 0, knifeKills: 0,
     boardPointsThisRound: 0,
@@ -69,29 +74,33 @@ export function updatePlayer(sim, p, cmd, dt) {
   p.yaw = cmd.yaw;
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
 
+  updateDrinking(sim, p, dt);
+  const downed = !!p.downed;
+
   // --- stance
-  p.crouching = cmd.crouch && p.grounded;
-  p.height = p.crouching ? cfg.crouchHeight : cfg.height;
+  p.crouching = downed || (cmd.crouch && p.grounded);
+  p.height = downed ? 0.8 : p.crouching ? cfg.crouchHeight : cfg.height;
+  const sprintMax = cfg.sprintDuration * perkMult(sim, p, 'sprintMult');
 
   // --- sprint state machine
   let mx = cmd.moveX, my = cmd.moveY;
   const ml = Math.hypot(mx, my);
   if (ml > 1) { mx /= ml; my /= ml; }
   const w = p.loadout;
-  const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching;
-  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || !!p.throwing;
+  const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching && !downed;
+  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || !!p.throwing || !!p.drinking;
   if (p.sprinting) {
     if (!wantsSprint || p.stamina <= 0 || interrupt) {
       p.sprinting = false;
       p.sprintOutTimer = cfg.sprintToFireDelay;
       if (cmd.firePressed) p.fireBuffer = 0.3; // fire as soon as the gun comes up
     }
-  } else if (wantsSprint && !cmd.ads && !cmd.fire && !p.throwing && p.stamina >= Math.min(cfg.sprintMinToStart, cfg.sprintDuration) && p.melee.timer <= 0) {
+  } else if (wantsSprint && !cmd.ads && !cmd.fire && !p.throwing && !p.drinking && p.stamina >= Math.min(cfg.sprintMinToStart, sprintMax) && p.melee.timer <= 0) {
     p.sprinting = true;
     if (w.reloading) sim.cancelReload(p);
   }
   if (p.sprinting) p.stamina = Math.max(0, p.stamina - dt);
-  else p.stamina = Math.min(cfg.sprintDuration, p.stamina + cfg.sprintRecoverRate * dt);
+  else p.stamina = Math.min(sprintMax, p.stamina + cfg.sprintRecoverRate * dt);
   if (p.sprintOutTimer > 0) p.sprintOutTimer -= dt;
   if (p.fireBuffer > 0) p.fireBuffer -= dt;
 
@@ -104,6 +113,8 @@ export function updatePlayer(sim, p, cmd, dt) {
     speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;
   }
   if (p.crouching) speed *= cfg.crouchSpeedMult;
+  speed *= perkMult(sim, p, 'speedMult');
+  if (downed) speed = sim.cfg.lastStand.crawlSpeed;
   if (p.landSlowTimer > 0) { speed *= cfg.landSlowdownMult; p.landSlowTimer -= dt; }
 
   const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
@@ -126,7 +137,7 @@ export function updatePlayer(sim, p, cmd, dt) {
 
   // --- jump
   if (p.jumpCooldown > 0) p.jumpCooldown -= dt;
-  if (cmd.jumpPressed && p.grounded && p.jumpCooldown <= 0 && !p.crouching) {
+  if (cmd.jumpPressed && p.grounded && p.jumpCooldown <= 0 && !p.crouching && !downed) {
     p.vel.y = Math.sqrt(2 * cfg.gravity * cfg.jumpHeight);
     p.grounded = false;
     p.jumpCooldown = cfg.jumpCooldown;
@@ -160,11 +171,14 @@ export function updatePlayer(sim, p, cmd, dt) {
   // --- weapons and knife
   updateWeapons(sim, p, cmd, dt);
 
-  // --- interaction prompts
-  updateInteraction(sim, p, cmd, dt);
+  // --- interaction prompts (none while you're down)
+  if (downed) {
+    if (p.useTarget && p.useTarget.release) p.useTarget.release(sim, p);
+    p.useTarget = null; p.prompt = null;
+  } else updateInteraction(sim, p, cmd, dt);
 
   // --- health regen
-  if (p.health < p.maxHealth && sim.time - p.lastDamageTime > cfg.regenDelay) {
+  if (!downed && p.health < p.maxHealth && sim.time - p.lastDamageTime > cfg.regenDelay) {
     p.health = Math.min(p.maxHealth, p.health + cfg.regenRate * dt);
   }
 }
@@ -198,7 +212,7 @@ function updateInteraction(sim, p, cmd, dt) {
 }
 
 export function damagePlayer(sim, p, amount, source) {
-  if (!p.alive) return;
+  if (!p.alive || p.downed) return;
   if (sim.godMode) {
     // firing range: you still feel the hit, but take no damage
     sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
@@ -207,10 +221,5 @@ export function damagePlayer(sim, p, amount, source) {
   p.health -= amount;
   p.lastDamageTime = sim.time;
   sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
-  if (p.health <= 0) {
-    p.health = 0;
-    p.alive = false;
-    p.sprinting = false;
-    sim.emit('playerDown', { playerId: p.id });
-  }
+  if (p.health <= 0) goDown(sim, p);
 }

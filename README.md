@@ -4,14 +4,69 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 3 — Every weapon, grenades and explosives.** All 28 guns
-from the spec, each with its own model, recoil, reload and sound: pump and
-bolt actions, shell-by-shell shotgun reloads, belt-fed LMGs, scoped snipers,
-dual-wield pistols and shotguns, burst fire, a grenade launcher, an explosive
-crossbow and a ballistic knife. Frag grenades (cook them, but not too long),
-explosions that blow zombies apart or leave them crawling. New guns come from
-the Mystery Box and the wall weapons already in the map (Phase 4 puts the
-rest of the wall weapons in their rooms).
+**Current phase: 4 & 5 — the whole school, power, traps, perks, the Mad Dog
+Machine, last stand.**
+
+- **The map:** two paths from the court meet in the auditorium. The west path
+  runs through the locker rooms, science lab, library and band & art rooms,
+  with the boiler room off the locker rooms. The east path runs through the
+  cafeteria, kitchen and loading dock. **The Quad** is an outdoor courtyard
+  for running trains around a dead fountain. Zombies climb its fence and claw
+  up out of the planters.
+- **Power:** throw the lever in the boiler room. The lights come on in a wave
+  across the school, and the perks, traps and Mad Dog Machine wake up.
+- **Electric traps (1000):** on the locker room → science lab door and the
+  kitchen → loading dock door.
+- **Perks** (max 4, lost when you go down):
+
+  | Perk | Where | Cost | What it does |
+  |---|---|---|---|
+  | Second Helping | court | 500 (1500 co-op) | Solo: get back up on your own (3 uses). Co-op: revive twice as fast. Works without power. |
+  | Beefcake Broth | cafeteria | 2500 | 250 health instead of 100 |
+  | Hot Pot Hustle | science lab | 3000 | Reload twice as fast |
+  | Double Ladle | band room | 2000 | Fire 33% faster, every bullet hits twice as hard |
+  | Marathon Minestrone | auditorium | 2000 | Sprint almost forever, move a little faster |
+
+- **Mad Dog Machine (5000)**, center stage in the auditorium: feed it the gun
+  in your hands and it comes back upgraded. It gets double damage, bigger
+  mags, more ammo, a new name and a glowing claw-slash camo. Upgraded ammo
+  off the wall costs 4500.
+- **Last stand:** at zero health you drop with a pistol. Solo, you need
+  Second Helping to get back up; in co-op a teammate holds F on you before you
+  bleed out (30 s).
+
+## Mad Dog upgrades
+
+| Weapon | Upgraded name | Damage per bullet (or pellet) |
+|---|---|---|
+| M1912 | **Twin Stewpots** | 120 dmg, dual, explosive rounds |
+| M15 | **Detention Hammer** | 220 dmg |
+| Olympus | **Wrath of Olympus** | 150 dmg |
+| MP41 | **Last Call** | 76 dmg |
+| Pyton | **Venom King** | 450 dmg |
+| Komando | **Warmonger** | 160 dmg |
+| Staykout | **Riot Act** | 180 dmg |
+| MP6K | **Hornet's Nest** | 80 dmg |
+| MPK | **Buzzsaw Betty** | 76 dmg |
+| PM64 | **Pocket Apocalypse** | 64 dmg |
+| AK-75u | **Siberian Howl** | 112 dmg |
+| M17 | **Triple Threat** | 144 dmg |
+| CZ76 | **Crimson Viper** | 124 dmg |
+| CZ76 Dual Wield | **Viper Twins** | 124 dmg |
+| Spectur | **Phantom Shredder** | 92 dmg |
+| FAMOS | **Burnout** | 140 dmg |
+| AWG | **Grim Overseer** | 164 dmg |
+| Galill | **Desert Dirge** | 184 dmg |
+| G12 | **Caseless Carnage** | 168 dmg |
+| SPAZ-13 | **Bloodbath 13** | 190 dmg |
+| HS11 | **Dead Ringers** | 165 dmg |
+| HK22 | **Steel Hurricane** | 224 dmg |
+| RPKK | **Iron Tsunami** | 192 dmg |
+| Dragunoff | **Cold Verdict** | 1050 dmg |
+| L97A1 | **Final Exam** | 3300 dmg |
+| China Pond | **Doomsday Dragon** | bigger blast |
+| Kross-Bow | **Hellhound's Fang** | bigger blast, 360 on impact |
+| Ballistik Knife | **Soul Splitter** | 1950 per blade, 3x knife |
 
 ## Run it
 
@@ -50,6 +105,8 @@ the weapons & options panel:
 - Click any of the 28 weapons to take it (fills your empty slot, or replaces the one in your hands).
 - Zombie strength sets the dummies' health to any round's (1–50).
 - Infinite ammo, moving targets, send a horde at that round's strength, clear zombies.
+- **Mad Dog upgraded** switches every gun in the list to its upgraded version.
+- Perk buttons switch each perk on or off instantly.
 
 The top-left readout shows the gun's stats, last hit, damage per second, time
 to kill, accuracy and kills, and damage numbers float off every hit (gold for
@@ -81,9 +138,12 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   zombies.js          spawning, windows, climbing, chasing, attacks, damage
   rounds.js           round counts, spawn pacing, intermissions
   range.js            firing range mode: target dummies, hordes, infinite ammo
+  perks.js            perk effects, buying (and drinking), losing them
+  laststand.js        going down, last stand pistol, self-revive, bleed out, revive
   physics.js          character vs box collision, steps, gravity
   nav.js              region/portal pathing between rooms (closed doors block)
-  interactables/      windows, doors & debris, wall weapons, mystery box
+  interactables/      windows, doors & debris, wall weapons, mystery box,
+                      power switch, perk machines, Mad Dog Machine, traps, revive
 
 src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies, viewmodel, camera, effects, post
@@ -111,8 +171,8 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 1. ✅ Movement, camera, controls, M1912, knife, zombies, rounds, points, windows (basketball court)
 2. ✅ Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
 3. ✅ Full weapon list, recoil/reload/sound per gun, grenades
-4. Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
-5. Perk machines, Mad Dog Machine, last stand and revive
+4. ✅ Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
+5. ✅ Perk machines, Mad Dog Machine, last stand and revive
 6. Power-ups and Cheddar Rounds
 7. Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
 8. Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish

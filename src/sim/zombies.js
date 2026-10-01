@@ -40,6 +40,24 @@ export function spawnZombie(sim, win, round) {
   return z;
 }
 
+// Clawing up out of the dirt (outdoor ground spawns).
+export function spawnRising(sim, spot, round) {
+  const c = sim.cfg.zombie;
+  const type = pickZombieType(sim, round);
+  const z = makeZombie(sim, {
+    type,
+    pos: { x: spot.x + sim.rng.range(-0.6, 0.6), y: -c.riseDepth, z: spot.z + sim.rng.range(-0.6, 0.6) },
+    yaw: sim.rng.range(-Math.PI, Math.PI),
+    health: zombieHealthForRound(round, c),
+    state: 'rising',
+  });
+  z.riseFrom = z.pos.y;
+  sim.zombies.push(z);
+  sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true });
+  sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });
+  return z;
+}
+
 // Build a zombie record. Used by window spawns and by the firing range
 // (standing target dummies and hordes that start inside).
 export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state = 'chase', windowId = null }) {
@@ -118,7 +136,7 @@ export function zombieHitboxes(z) {
 function nearestPlayer(sim, pos) {
   let best = null, bd = Infinity;
   for (const p of sim.players) {
-    if (!p.alive) continue;
+    if (!p.alive || p.downed) continue;
     const d = dist2D(p.pos, pos);
     if (d < bd) { bd = d; best = p; }
   }
@@ -144,6 +162,15 @@ export function updateZombies(sim, dt) {
     z.stateTime += dt;
     if (z.stun > 0) z.stun -= dt;
     if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
+    if (z.state === 'rising') {
+      const k = Math.min(1, z.stateTime / c.riseTime);
+      z.pos.y = z.riseFrom * (1 - k * (2 - k));
+      z.moveSpeed = 0;
+      const p = nearestPlayer(sim, z.pos);
+      if (p) faceToward(z, p.pos.x - z.pos.x, p.pos.z - z.pos.z, c.turnRate * 0.4, dt);
+      if (k >= 1) { z.pos.y = 0; setState(sim, z, 'chase'); }
+      continue;
+    }
     const win = sim.windowById(z.windowId);
     const bx = z.pos.x, bz = z.pos.z;
 
@@ -193,11 +220,13 @@ export function updateZombies(sim, dt) {
       }
 
       case 'climbing': {
-        z.climbT += dt / c.climbTime;
+        const fence = win.kind === 'fence';
+        z.climbT += dt / (c.climbTime * (fence ? c.fenceClimbMult : 1));
         const t = Math.min(1, z.climbT);
         z.pos.x = win.exterior.x + (win.interior.x - win.exterior.x) * t;
         z.pos.z = win.exterior.z + (win.interior.z - win.exterior.z) * t;
-        z.pos.y = Math.sin(Math.PI * t) * 0.75;
+        // up and over a fence (they hang off the top), or a hop through a window
+        z.pos.y = fence ? Math.sin(Math.PI * Math.min(1, t * 1.15)) * 2.3 : Math.sin(Math.PI * t) * 0.75;
         if (t >= 1) {
           z.pos.y = 0;
           win.climbing = null;
@@ -318,7 +347,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
       // does it connect?
       let victim = null;
       for (const p of sim.players) {
-        if (!p.alive) continue;
+        if (!p.alive || p.downed) continue;
         const d = dist2D(p.pos, z.pos);
         if (d < c.attackHitRange && Math.abs(p.pos.y - z.pos.y) < c.attackHeightTolerance) {
           const dx = p.pos.x - z.pos.x, dz = p.pos.z - z.pos.z;
@@ -342,7 +371,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
   let victim = null;
   if (throughWindow) {
     for (const p of sim.players) {
-      if (!p.alive) continue;
+      if (!p.alive || p.downed) continue;
       if (dist2D(p.pos, win.center) < c.windowAttackRange + 0.4) { victim = p; break; }
     }
   } else if (target) {

@@ -49,6 +49,20 @@ export class MapView {
       tile: std({ map: T.linoleumTexture({ tile: 0.3 }), roughness: 0.45 }),
       tile_big: std({ map: T.linoleumTexture({ tile: 0.45, a: '#8e8c7a', b: '#6f5a48', seed: 9 }), roughness: 0.4 }),
       concrete: std({ map: T.linoleumTexture({ tile: 1.5, a: '#6e6b62', b: '#67645b', seed: 21 }), roughness: 0.85 }),
+      grass: std({ map: T.groundTexture(), color: '#b8bca8', roughness: 1 }),
+      asphalt: std({ map: T.linoleumTexture({ tile: 2.5, a: '#34332f', b: '#31302c', seed: 23 }), roughness: 0.95 }),
+      woodFloor: std({ map: T.woodTexture({ base: [26, 34, 30], plank: 32 }), roughness: 0.6 }),
+      fence: std({ map: fenceTexture(), alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.6 }),
+      felt: std({ color: '#5c1414', roughness: 1 }),
+      seat: std({ color: '#4a1d1a', roughness: 0.9 }),
+      soil: std({ color: '#1f1912', roughness: 1 }),
+      stone: std({ map: T.linoleumTexture({ tile: 0.5, a: '#77736a', b: '#6c685f', seed: 31 }), roughness: 0.9 }),
+      busPaint: std({ color: '#7a6420', roughness: 0.85, metalness: 0.2 }),
+      black: std({ color: '#151515', roughness: 0.6, metalness: 0.2 }),
+      dumpster: std({ color: '#2f4a33', roughness: 0.8, metalness: 0.3 }),
+      tank: std({ map: T.metalTexture({ color: '#4a4236', rust: 1 }), roughness: 0.75, metalness: 0.35 }),
+      piano: std({ color: '#0e0d0c', roughness: 0.25, metalness: 0.1 }),
+      canvas: std({ color: '#d8d0bc', roughness: 1 }),
       carpet: std({ map: T.carpetTexture(), roughness: 1 }),
       trussCeiling: std({ map: T.ceilingTexture(), roughness: 1 }),
       drop: std({ map: T.dropCeilingTexture(), roughness: 1 }),
@@ -74,12 +88,20 @@ export class MapView {
       cafe: std({ map: T.roomWallTexture({ height: 5, upper: '#8d8a78', lower: '#6f8a7c', lowerH: 1.5, tiles: true, seed: 7 }), roughness: 0.7 }),
       exterior: std({ map: T.brickTexture({ height: 9 }), roughness: 1 }),
       range: std({ map: T.roomWallTexture({ height: 3.6, upper: '#6b6a5c', lower: '#3c4636', lowerH: 1.15, stripe: '#9a7a22', seed: 11 }), roughness: 0.92 }),
+      kitchen: std({ map: T.roomWallTexture({ height: 3.2, upper: '#9a9a8e', lower: '#b4b2a4', lowerH: 1.6, tiles: true, stripe: '#3c5a6a', seed: 13 }), roughness: 0.6 }),
+      auditorium: std({ map: T.roomWallTexture({ height: 8, upper: '#5a2a26', lower: '#2e1a14', lowerH: 1.3, blocks: false, panel: true, seed: 14 }), roughness: 0.9 }),
+      lockerroom: std({ map: T.roomWallTexture({ height: 3.4, upper: '#7e8a7c', lower: '#4f6b5c', lowerH: 1.4, tiles: true, seed: 15 }), roughness: 0.7 }),
+      boiler: std({ map: T.roomWallTexture({ height: 3.6, upper: '#4e4a42', lower: '#3a352c', lowerH: 1.0, stripe: '#8a6a1c', seed: 16 }), roughness: 1 }),
+      lab: std({ map: T.roomWallTexture({ height: 3.4, upper: '#8a9894', lower: '#3f5e66', lowerH: 1.2, stripe: '#d0d0c0', seed: 17 }), roughness: 0.85 }),
+      library: std({ map: T.roomWallTexture({ height: 4.5, upper: '#7a6a52', lower: '#3a2618', lowerH: 1.3, blocks: false, panel: true, seed: 18 }), roughness: 0.9 }),
+      band: std({ map: T.roomWallTexture({ height: 3.4, upper: '#6e6280', lower: '#3c3048', lowerH: 1.2, stripe: '#b89a3c', seed: 19 }), roughness: 0.9 }),
     };
     this.plankMats = [0, 1, 2, 3].map((i) => new THREE.MeshStandardMaterial({ map: T.plankTexture(i), roughness: 0.9 }));
   }
 
   floorMat(type) {
-    return { gym: this.mats.gymFloor, tile: this.mats.tile, tile_big: this.mats.tile_big, carpet: this.mats.carpet, concrete: this.mats.concrete }[type] || this.mats.tile;
+    const M = this.mats;
+    return { gym: M.gymFloor, tile: M.tile, tile_big: M.tile_big, carpet: M.carpet, concrete: M.concrete, asphalt: M.asphalt, wood: M.woodFloor, grass: M.grass }[type] || M.tile;
   }
 
   roomAtPoint(x, z) {
@@ -102,7 +124,7 @@ export class MapView {
     this.group.add(floor);
 
     // floor grime / litter overlay for non-court rooms
-    if (room.id !== 'court' && room.litter !== false) {
+    if (room.id !== 'court' && room.litter !== false && !room.outdoor) {
       const ov = new THREE.Mesh(
         new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2),
         new THREE.MeshStandardMaterial({ map: litterTexture(w, d, room.id.length * 17), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, roughness: 0.8 }),
@@ -112,7 +134,9 @@ export class MapView {
     }
 
     const H = room.height, Tt = this.T;
-    if (room.ceiling === 'trusses') {
+    if (room.ceiling === 'none') {
+      // outdoors: nothing overhead
+    } else if (room.ceiling === 'trusses') {
       this.buildTrussCeiling(room);
     } else {
       const c = new BoxBatch().add({ minX: x0 - Tt, maxX: x1 + Tt, minY: H, maxY: H + 0.25, minZ: z0 - Tt, maxZ: z1 + Tt });
@@ -140,7 +164,16 @@ export class MapView {
   buildWalls() {
     const batches = new Map();
     const get = (style) => { if (!batches.has(style)) batches.set(style, new BoxBatch()); return batches.get(style); };
+    const fences = new Map();
     for (const b of this.world.walls) {
+      if (b.style === 'fence') {
+        const k = b.room + ':' + b.side;
+        const f = fences.get(k) || { side: b.side, minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity, maxY: 0 };
+        f.minX = Math.min(f.minX, b.minX); f.maxX = Math.max(f.maxX, b.maxX);
+        f.minZ = Math.min(f.minZ, b.minZ); f.maxZ = Math.max(f.maxZ, b.maxZ); f.maxY = Math.max(f.maxY, b.maxY);
+        fences.set(k, f);
+        continue;
+      }
       const [inF, outF] = SIDE_FACES[b.side];
       const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
       const room = this.world.roomById.get(b.room);
@@ -148,12 +181,37 @@ export class MapView {
       const other = this.roomAtPoint(cx + si[0] * (this.T / 2 + 0.2), cz + si[1] * (this.T / 2 + 0.2));
       const outStyle = other ? other.style : 'exterior';
       const all = [0, 1, 2, 3, 4, 5];
-      get(room.style).add(b, { skip: new Set([outF]) });
+      get(b.style || room.style).add(b, { skip: new Set([outF]) });
       get(outStyle).add(b, { skip: new Set(all.filter((f) => f !== outF)) });
     }
     for (const [style, batch] of batches) {
       this.group.add(new THREE.Mesh(batch.build(), this.wallMats[style] || this.wallMats.exterior));
     }
+    for (const f of fences.values()) this.buildFence(f);
+  }
+
+  // Chain-link fence along one side of an outdoor area (collision is a wall).
+  buildFence(f) {
+    const alongX = f.side === 'n' || f.side === 's';
+    const len = alongX ? f.maxX - f.minX : f.maxZ - f.minZ;
+    const cx = (f.minX + f.maxX) / 2, cz = (f.minZ + f.maxZ) / 2, H = f.maxY;
+    const geo = new THREE.PlaneGeometry(len, H);
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * len / 0.6, uv.getY(i) * H / 0.6);
+    const mesh = new THREE.Mesh(geo, this.mats.fence);
+    mesh.position.set(cx, H / 2, cz);
+    mesh.rotation.y = alongX ? 0 : Math.PI / 2;
+    this.group.add(mesh);
+    const rail = new BoxBatch();
+    for (let t = 0; t <= len + 0.01; t += 2.5) {
+      const x = alongX ? f.minX + t : cx, z = alongX ? cz : f.minZ + t;
+      rail.add(bx(x, H / 2 + 0.1, z, 0.07, H + 0.2, 0.07));
+    }
+    rail.add(alongX ? bx(cx, H, cz, len, 0.05, 0.05) : bx(cx, H, cz, 0.05, 0.05, len));
+    // barbed wire on top
+    rail.add(alongX ? bx(cx, H + 0.25, cz, len, 0.02, 0.02) : bx(cx, H + 0.25, cz, 0.02, 0.02, len));
+    rail.add(alongX ? bx(cx, H + 0.4, cz, len, 0.02, 0.02) : bx(cx, H + 0.4, cz, 0.02, 0.02, len));
+    this.group.add(new THREE.Mesh(rail.build(), this.mats.rustMetal));
   }
 
   // ---------------------------------------------------------------------------
@@ -274,7 +332,7 @@ export class MapView {
     }
     for (let i = 0; i < 5; i++) {
       const chair = foldingChair(this.mats.metal);
-      chair.position.set(-15.8 + (i % 2) * 0.6, i === 2 || i === 4 ? 0.2 : 0, 8.5 + i * 0.7);
+      chair.position.set(15.6 - (i % 2) * 0.6, i === 2 || i === 4 ? 0.2 : 0, -10.5 + i * 0.7);
       chair.rotation.set(i === 2 ? Math.PI / 2 : 0, Math.random() * 6, i === 4 ? Math.PI / 2 : 0);
       this.group.add(chair);
     }
@@ -309,7 +367,9 @@ export class MapView {
           break;
         }
         case 'counter':
-          if (p.lunch) {
+          if (p.steel) {
+            add(M.steel, b);
+          } else if (p.lunch) {
             add(M.steel, { ...b, minY: b.maxY - 0.05 });
             add(M.metal, { ...b, maxY: b.maxY - 0.05 }, { skip: new Set([3]) });
             this.sneezeGuard(b);
@@ -335,6 +395,7 @@ export class MapView {
         case 'stage':
           add(M.wood, { ...b, minY: b.maxY - 0.02 }, {});
           add(M.darkWood, { ...b, maxY: b.maxY - 0.02 }, { skip: new Set([3]) });
+          if (p.curtains) this.curtains(b);
           break;
         case 'step':
           add(M.wood, b, { skip: new Set([3]) });
@@ -348,6 +409,68 @@ export class MapView {
         case 'divider':
           add(M.metal, b);
           break;
+        case 'stove':
+          add(M.steel, { ...b, minY: b.maxY - 0.04 });
+          add(M.metal, { ...b, maxY: b.maxY - 0.04 }, { skip: new Set([3]) });
+          for (let x = b.minX + 0.45; x < b.maxX - 0.3; x += 0.9) add(M.black || M.metal, bx(x, b.maxY + 0.01, (b.minZ + b.maxZ) / 2, 0.5, 0.02, 0.5));
+          this.hangingPots(b);
+          break;
+        case 'fridge':
+          add(M.steel, b);
+          break;
+        case 'bus': this.bus(b); break;
+        case 'dumpster':
+          add(M.dumpster, b, { skip: new Set([3]) });
+          add(M.rustMetal, { ...b, minY: b.maxY - 0.06, maxY: b.maxY + 0.02, minX: b.minX - 0.05, maxX: b.maxX + 0.05 });
+          break;
+        case 'booth':
+          add(M.darkWood, b, { skip: new Set([3]) });
+          add(M.wood, { ...b, minY: b.maxY - 0.04, minX: b.minX - 0.05, maxX: b.maxX + 0.05, minZ: b.minZ - 0.05, maxZ: b.maxZ + 0.05 });
+          this.boothGear(b);
+          break;
+        case 'seats':
+          for (let z = b.minZ + 0.3; z < b.maxZ - 0.2; z += 0.9) {
+            add(M.seat, { minX: b.minX, maxX: b.maxX, minY: 0.35, maxY: 0.48, minZ: z - 0.22, maxZ: z + 0.22 });
+            add(M.seat, { minX: b.minX, maxX: b.maxX, minY: 0.45, maxY: b.maxY, minZ: z + 0.18, maxZ: z + 0.28 });
+            add(M.metal, { minX: b.minX, maxX: b.maxX, minY: 0, maxY: 0.35, minZ: z - 0.05, maxZ: z + 0.05 });
+          }
+          break;
+        case 'madDogBase': break; // drawn by the machine view
+        case 'bench':
+          add(M.wood, { ...b, minY: b.maxY - 0.06 });
+          add(M.metal, { ...b, maxY: b.maxY - 0.06, minX: b.minX + 0.05, maxX: b.maxX - 0.05, minZ: b.minZ + 0.05, maxZ: b.maxZ - 0.05 });
+          break;
+        case 'boiler': this.boiler(b); break;
+        case 'pipes':
+          for (let i = 0; i < 4; i++) {
+            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, b.maxX - b.minX, 10).rotateZ(Math.PI / 2), M.rustMetal);
+            pipe.position.set((b.minX + b.maxX) / 2, 0.2 + i * 0.28, b.minZ + 0.3 + (i % 2) * 0.5);
+            this.group.add(pipe);
+          }
+          break;
+        case 'labBench':
+          add(M.black || M.darkWood, { ...b, minY: b.maxY - 0.05 });
+          add(M.cabinets, { ...b, maxY: b.maxY - 0.05, minX: b.minX + 0.05, maxX: b.maxX - 0.05 }, { skip: new Set([3]) });
+          this.labGear(b);
+          break;
+        case 'shelfRow':
+          add(M.shelf, b, { skip: new Set([0, 1, 2, 3]) });
+          add(M.darkWood, b, { skip: new Set([4, 5, 3]) });
+          break;
+        case 'piano':
+          add(M.piano, b);
+          add(M.canvas, { minX: b.minX + 0.1, maxX: b.maxX - 0.1, minY: 0.72, maxY: 0.76, minZ: b.maxZ, maxZ: b.maxZ + 0.18 });
+          break;
+        case 'easel': this.easel(b); break;
+        case 'planter':
+          add(M.stone, b, { skip: new Set([3]) });
+          add(M.soil, { ...b, minY: b.maxY - 0.03, maxY: b.maxY, minX: b.minX + 0.2, maxX: b.maxX - 0.2, minZ: b.minZ + 0.2, maxZ: b.maxZ - 0.2 });
+          add(M.stone, { ...b, minY: b.maxY - 0.03, maxY: b.maxY + 0.02, minX: b.minX, maxX: b.minX + 0.2 });
+          add(M.stone, { ...b, minY: b.maxY - 0.03, maxY: b.maxY + 0.02, minX: b.maxX - 0.2, maxX: b.maxX });
+          add(M.stone, { ...b, minY: b.maxY - 0.03, maxY: b.maxY + 0.02, minZ: b.minZ, maxZ: b.minZ + 0.2 });
+          add(M.stone, { ...b, minY: b.maxY - 0.03, maxY: b.maxY + 0.02, minZ: b.maxZ - 0.2, maxZ: b.maxZ });
+          if (p.fountain) this.fountain(b);
+          break;
         case 'berm':
           add(M.ground, b, { skip: new Set([3]) });
           break;
@@ -356,6 +479,177 @@ export class MapView {
     }
     for (const [mat, batch] of batches) this.group.add(new THREE.Mesh(batch.build(), mat));
     this.buildDistanceMarks();
+    this.buildDirt();
+  }
+
+  // --- set dressing for the new areas -----------------------------------------
+  hangingPots(b) {
+    const M = this.mats;
+    for (let x = b.minX + 0.5; x < b.maxX - 0.2; x += 0.8) {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.13, 0.18, 10, 1, true), M.steel);
+      pot.position.set(x, 2.35, b.maxZ + 0.6); this.group.add(pot);
+      const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.7, 4), M.metal);
+      hook.position.set(x, 2.8, b.maxZ + 0.6); this.group.add(hook);
+    }
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, 0.04, 0.04), M.metal);
+    rack.position.set((b.minX + b.maxX) / 2, 3.15, b.maxZ + 0.6); this.group.add(rack);
+  }
+
+  bus(b) {
+    const M = this.mats;
+    const g = new THREE.Group();
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+    const w = b.maxX - b.minX, len = b.maxZ - b.minZ, h = b.maxY;
+    g.position.set(cx, 0, cz);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h - 0.5, len), M.busPaint); body.position.y = 0.5 + (h - 0.5) / 2; g.add(body);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.65, len - 1.6), new THREE.MeshStandardMaterial({ color: '#0d0e0e', roughness: 0.2, metalness: 0.4 }));
+    win.position.set(0, h - 0.65, -0.4); g.add(win);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(w + 0.03, 0.08, len + 0.01), M.black || M.metal); stripe.position.y = 1.35; g.add(stripe);
+    for (const [x, z] of [[-w / 2, len / 2 - 1.6], [w / 2, len / 2 - 1.6], [-w / 2, -len / 2 + 1.8], [w / 2, -len / 2 + 1.8]]) {
+      const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 14).rotateZ(Math.PI / 2), M.rustMetal);
+      wh.position.set(x, 0.5, z); g.add(wh);
+    }
+    g.rotation.z = 0.03;
+    this.group.add(g);
+  }
+
+  boothGear(b) {
+    const M = this.mats;
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.7), M.metal);
+    desk.position.set((b.minX + b.maxX) / 2, b.maxY + 0.06, (b.minZ + b.maxZ) / 2); desk.rotation.x = -0.25; this.group.add(desk);
+    for (let i = 0; i < 12; i++) {
+      const k = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.03), M.steel);
+      k.position.set(b.minX + 1.7 + (i % 6) * 0.28, b.maxY + 0.15, (b.minZ + b.maxZ) / 2 - 0.15 + Math.floor(i / 6) * 0.2);
+      this.group.add(k);
+    }
+  }
+
+  boiler(b) {
+    const M = this.mats;
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+    const r = Math.min(b.maxX - b.minX, b.maxZ - b.minZ) / 2 - 0.1;
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(r, r, b.maxY - 0.4, 20), M.tank);
+    tank.position.set(cx, (b.maxY - 0.4) / 2 + 0.4, cz); this.group.add(tank);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.tank);
+    cap.position.set(cx, b.maxY - 0.05, cz); cap.scale.y = 0.35; this.group.add(cap);
+    const base = new BoxBatch().add({ ...b, maxY: 0.4 });
+    this.group.add(new THREE.Mesh(base.build(), M.rustMetal));
+    const flue = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.5, 10), M.rustMetal);
+    flue.position.set(cx, b.maxY + 0.7, cz); this.group.add(flue);
+    // gauges and a firebox glow
+    for (let i = 0; i < 3; i++) {
+      const gauge = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 14).rotateX(Math.PI / 2), M.steel);
+      gauge.position.set(cx - 0.4 + i * 0.4, 1.8, cz + r + 0.02); this.group.add(gauge);
+    }
+    const fire = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.4), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.6, 0.15) }));
+    fire.position.set(cx, 0.75, cz + r + 0.03); this.group.add(fire);
+    this.boilerGlow = fire;
+    this.addVirtualLight({ x: cx, y: 0.9, z: cz + r + 0.6 }, 0xff6a20, 7, 6, 1.6);
+  }
+
+  labGear(b) {
+    const M = this.mats;
+    const glass = new THREE.MeshStandardMaterial({ color: '#7fa', transparent: true, opacity: 0.35, roughness: 0.1, emissive: new THREE.Color(0.05, 0.3, 0.12) });
+    for (let i = 0; i < 6; i++) {
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.07, 0.22, 8), glass);
+      f.position.set(b.minX + 0.4 + i * 0.95, b.maxY + 0.11, (b.minZ + b.maxZ) / 2 + (i % 2 ? 0.2 : -0.15));
+      this.group.add(f);
+    }
+    for (const x of [b.minX + 1.5, b.maxX - 1.5]) {
+      const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 6), M.steel);
+      tap.position.set(x, b.maxY + 0.17, (b.minZ + b.maxZ) / 2); this.group.add(tap);
+    }
+  }
+
+  easel(b) {
+    const M = this.mats;
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+    for (const s of [-1, 1]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.8, 0.04), M.wood);
+      leg.position.set(cx + s * 0.3, 0.88, cz); leg.rotation.z = -s * 0.12; this.group.add(leg);
+    }
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.6, 0.04), M.wood);
+    back.position.set(cx, 0.8, cz - 0.35); back.rotation.x = -0.3; this.group.add(back);
+    const [c, g] = T.makeCanvas(128, 160);
+    g.fillStyle = '#d8d0bc'; g.fillRect(0, 0, 128, 160);
+    // a half-finished (and slightly unsettling) painting
+    g.fillStyle = '#5a6a3a'; g.fillRect(0, 100, 128, 60);
+    g.fillStyle = '#8a3020'; g.beginPath(); g.arc(64, 70, 26, 0, 7); g.fill();
+    g.fillStyle = '#111'; g.fillRect(52, 62, 8, 6); g.fillRect(70, 62, 8, 6);
+    g.strokeStyle = '#7a1010'; g.lineWidth = 3; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(40 + i * 12, 88); g.lineTo(42 + i * 12, 120 + Math.random() * 30); g.stroke(); }
+    const art = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.95), new THREE.MeshStandardMaterial({ map: T.toTexture(c, { repeat: false }), roughness: 1 }));
+    art.position.set(cx, 1.35, cz + 0.05); art.rotation.x = -0.12; this.group.add(art);
+  }
+
+  curtains(b) {
+    const mat = this.mats.felt;
+    const make = (w, h) => {
+      const geo = new THREE.PlaneGeometry(w, h, 40, 1);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 7) * 0.12);
+      geo.computeVertexNormals();
+      return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#6a1010', roughness: 0.95, side: THREE.DoubleSide }));
+    };
+    void mat;
+    const W = b.maxX - b.minX, H = 6.4;
+    const back = make(W, H); back.position.set((b.minX + b.maxX) / 2, b.maxY + H / 2, b.minZ + 0.35); this.group.add(back);
+    for (const x of [b.minX + 1.2, b.maxX - 1.2]) {
+      const side = make(2.6, H); side.position.set(x, b.maxY + H / 2, b.maxZ - 0.5); this.group.add(side);
+    }
+    const valance = make(W + 2, 1.2); valance.position.set((b.minX + b.maxX) / 2, b.maxY + H - 0.3, b.maxZ - 0.3); this.group.add(valance);
+    // stage lip lights
+    for (let x = b.minX + 1; x < b.maxX; x += 2) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.1), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.25, 0.2, 0.12) }));
+      l.position.set(x, b.maxY + 0.04, b.maxZ - 0.08); this.group.add(l);
+      (this.stageLights ||= []).push(l);
+    }
+  }
+
+  fountain(b) {
+    const M = this.mats;
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2, y = b.maxY;
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.6, 28, 1, true), M.stone);
+    basin.position.set(cx, y + 0.3, cz); this.group.add(basin);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.12, 6, 32).rotateX(Math.PI / 2), M.stone);
+    rim.position.set(cx, y + 0.6, cz); this.group.add(rim);
+    const water = new THREE.Mesh(new THREE.CircleGeometry(2.4, 28).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#1a2016', roughness: 0.15, metalness: 0.3 }));
+    water.position.set(cx, y + 0.25, cz); this.group.add(water);
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.6, 12), M.stone);
+    pillar.position.set(cx, y + 0.8, cz); this.group.add(pillar);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.4, 0.35, 18), M.stone);
+    bowl.position.set(cx, y + 1.7, cz); this.group.add(bowl);
+    // flagpole with a torn flag
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 10, 8), M.steel);
+    pole.position.set(cx + 3.2, y + 5, cz + 3.2); this.group.add(pole);
+    const [c, g] = T.makeCanvas(128, 80);
+    g.fillStyle = '#7a1c18'; g.fillRect(0, 0, 128, 80);
+    g.fillStyle = '#d8cfb8'; g.font = '900 34px Impact, sans-serif'; g.textAlign = 'center'; g.fillText('LBH', 64, 52);
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(128, i * 9); g.lineTo(100 - Math.random() * 40, i * 9 + 4); g.lineTo(128, i * 9 + 9); g.fill(); }
+    const flagGeo = new THREE.PlaneGeometry(1.8, 1.1, 12, 4);
+    const fp = flagGeo.attributes.position;
+    for (let i = 0; i < fp.count; i++) fp.setZ(i, Math.sin(fp.getX(i) * 3) * 0.12);
+    flagGeo.computeVertexNormals();
+    const flag = new THREE.Mesh(flagGeo, new THREE.MeshStandardMaterial({ map: T.toTexture(c, { repeat: false }), side: THREE.DoubleSide, transparent: true, alphaTest: 0.4, roughness: 1 }));
+    flag.position.set(cx + 3.2 + 0.95, y + 9, cz + 3.2); this.group.add(flag);
+    this.flag = flag;
+  }
+
+  // Dirt patches the ground spawns claw out of.
+  buildDirt() {
+    const M = this.mats;
+    for (const gs of this.world.groundSpawns || []) {
+      const geo = new THREE.CircleGeometry(1.4, 18).rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position;
+      for (let i = 1; i < pos.count; i++) { const k = 0.75 + Math.random() * 0.4; pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }
+      const dirt = new THREE.Mesh(geo, M.soil);
+      dirt.position.set(gs.x, 0.012, gs.z); this.group.add(dirt);
+      for (let i = 0; i < 7; i++) {
+        const clod = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.1), M.soil);
+        const a = Math.random() * 6.28, r = 0.5 + Math.random() * 0.9;
+        clod.position.set(gs.x + Math.cos(a) * r, 0.04, gs.z + Math.sin(a) * r); this.group.add(clod);
+      }
+    }
   }
 
   // Firing range: painted floor lines and wall signs every so many metres.
@@ -423,6 +717,7 @@ export class MapView {
     const wc = this.cfg.windows;
     const T0 = this.T;
     for (const w of this.sim.windows) {
+      if (w.kind === 'fence') continue;
       const n = w.normal;
       const grp = new THREE.Group();
       grp.position.set(w.center.x, 0, w.center.z);
@@ -636,7 +931,7 @@ export class MapView {
       wh.position.set(x, 0.5, z); bus.add(wh);
     }
     bus.position.set(31, 0, -6); bus.rotation.set(0, 0.35, 0.05);
-    if (this.map.id === 'lastbell') this.group.add(bus);
+    void bus; // the bus now sits in the loading dock (a prop)
   }
 
   nearBuilding(x, z, margin) {
@@ -674,28 +969,46 @@ export class MapView {
             const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.1, 4), this.mats.metal);
             rod.position.set(x, 0.6, 0); grp.add(rod);
           }
-          if (!f.lit && Math.random() < 0.3) { grp.rotation.z = 0.25; grp.position.y -= 0.2; }
+          if (!f.lit && Math.random() < 0.15) { grp.rotation.z = 0.25; grp.position.y -= 0.2; }
+        } else if (f.kind === 'lamp') {
+          // outdoor lamp post: the light hangs off an arm
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, f.y + 0.3, 8), this.mats.rustMetal);
+          post.position.set(0, -(f.y + 0.3) / 2 + 0.3, 0); grp.add(post);
+          const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.14, 0.32), this.mats.metal); head.position.y = 0.05; grp.add(head);
+          const tube = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.24).rotateX(Math.PI / 2), tubeMat); tube.position.y = -0.03; grp.add(tube);
         } else {
           grp.add(new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.05, 0.65), this.mats.metal));
           const tube = new THREE.Mesh(panelGeo, tubeMat); tube.position.y = -0.03; grp.add(tube);
           // a few dead panels dangle from one corner
-          if (!f.lit && Math.random() < 0.35) { grp.position.y -= 0.35; grp.rotation.set(0.5, 0, 0.3); }
+          if (!f.lit && Math.random() < 0.12) { grp.position.y -= 0.35; grp.rotation.set(0.5, 0, 0.3); }
         }
         this.group.add(grp);
-        const fx = { data: f, grp, tubeMat, beam: null, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0 };
-        if (f.lit) {
-          const tall = f.y > 6;
-          fx.v = this.addVirtualLight({ x: f.x, y: f.y - 0.3, z: f.z }, 0xffe7c0, tall ? 120 : 26, tall ? 22 : 11, tall ? 1.8 : 1.7, fx);
-          const h = tall ? 6.5 : f.y - 0.1;
-          const beam = new THREE.Mesh(
-            new THREE.CylinderGeometry(tall ? 0.5 : 0.4, tall ? 2.6 : 1.3, h, 20, 1, true),
-            new THREE.MeshBasicMaterial({ map: beamTex, color: 0xffe0b0, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-          );
-          beam.position.set(f.x, f.y - 0.05 - h / 2, f.z);
-          this.group.add(beam);
-          fx.beam = beam;
-        }
+        // every fixture gets a light; the ones not on the emergency circuit stay
+        // dark until the power is on
+        const lamp = f.kind === 'lamp';
+        const fx = { data: f, orig: f, grp, tubeMat, beam: null, on: !!f.lit, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, onAt: null, lamp };
+        const tall = f.y > 6;
+        fx.v = this.addVirtualLight({ x: f.x, y: f.y - 0.3, z: f.z }, lamp ? 0xffb86a : 0xffe7c0, tall ? 120 : lamp ? 40 : 26, tall ? 22 : lamp ? 16 : 11, tall ? 1.8 : 1.7, fx);
+        const h = tall ? 6.5 : f.y - 0.1;
+        const beam = new THREE.Mesh(
+          new THREE.CylinderGeometry(tall ? 0.5 : lamp ? 0.2 : 0.4, tall ? 2.6 : lamp ? 1.8 : 1.3, h, 20, 1, true),
+          new THREE.MeshBasicMaterial({ map: beamTex, color: lamp ? 0xffc890 : 0xffe0b0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+        );
+        beam.position.set(f.x, f.y - 0.05 - h / 2, f.z);
+        this.group.add(beam);
+        fx.beam = beam;
         this.fixtures.push(fx);
+      }
+    }
+
+    // moonlight over outdoor areas (dim, bluish, a few big soft lights)
+    for (const room of this.map.rooms) {
+      if (!room.outdoor) continue;
+      const [x0, z0, x1, z1] = room.rect;
+      const n = Math.max(1, Math.round((z1 - z0) / 14));
+      for (let i = 0; i < n; i++) {
+        const z = z0 + (i + 0.5) * (z1 - z0) / n;
+        this.addVirtualLight({ x: (x0 + x1) / 2, y: 7, z }, 0x8098c8, 140, 24, 1.15);
       }
     }
 
@@ -708,6 +1021,7 @@ export class MapView {
 
     // visible moonlight shafts
     for (const w of this.sim.windows) {
+      if (w.kind === 'fence') continue;
       const n = w.normal, len = 7;
       const shaft = new THREE.Mesh(
         new THREE.CylinderGeometry(0.7, 1.4, len, 16, 1, true),
@@ -784,14 +1098,49 @@ export class MapView {
     } else if (e.type === 'doorOpened') {
       const v = this.doorViews.get(e.id);
       if (v) v.t = 0;
+    } else if (e.type === 'powerOn') {
+      this.powerOn(false);
     }
+  }
+
+  // New game on the same map: back to emergency lighting.
+  resetPower() {
+    this.powered = false;
+    for (const f of this.fixtures) {
+      f.data = f.orig; f.on = !!f.orig.lit; f.onAt = null;
+      f.level = f.on ? 1 : 0; f.target = f.level; f.burst = 0;
+    }
+    if (this.stageLights) for (const l of this.stageLights) l.material.color.setRGB(0.25, 0.2, 0.12);
+  }
+
+  // Power on: lights come on in a wave spreading out from the boiler room.
+  powerOn(instant = false) {
+    if (this.powered) return;
+    this.powered = true;
+    const sw = this.world.powerSwitch;
+    const o = sw ? sw.pos : { x: 0, z: 0 };
+    for (const f of this.fixtures) {
+      if (f.on) continue;
+      const d = Math.hypot(f.data.x - o.x, f.data.z - o.z);
+      f.onAt = this.time + (instant ? 0 : 0.6 + d / 45 + Math.random() * 0.25);
+      // power also calms most of the flickering
+      f.data = { ...f.data, flicker: f.data.flicker > 0.5 ? 0.25 : 0.04 };
+    }
+    for (const f of this.fixtures) if (f.on) f.data = { ...f.data, flicker: Math.min(f.data.flicker, 0.25) };
+    if (this.stageLights) for (const l of this.stageLights) l.material.color.setRGB(3, 2.4, 1.4);
   }
 
   update(dt, eye, roundInfo) {
     this.time += dt;
+    if (this.sim.power && !this.powered) this.powerOn(true);
+    if (this.boilerGlow) this.boilerGlow.material.color.setRGB(2.0 + Math.sin(this.time * 7) * 0.3 + (this.powered ? 1 : 0), 0.6, 0.15);
+    if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
     // fluorescent flicker
     for (const f of this.fixtures) {
-      if (!f.data.lit) continue;
+      if (!f.on) {
+        if (f.onAt != null && this.time >= f.onAt) { f.on = true; f.burst = 0.5 + Math.random() * 0.6; f.timer = 0; f.target = 1; }
+        else { f.level = 0; f.tubeMat.color.setRGB(0.06, 0.06, 0.05); if (f.beam) f.beam.material.opacity = 0; continue; }
+      }
       f.timer -= dt;
       if (f.burst > 0) {
         f.burst -= dt;
@@ -935,4 +1284,14 @@ function litterTexture(w, d, seed) {
   edge.addColorStop(0, 'rgba(10,8,5,0.55)'); edge.addColorStop(0.1, 'rgba(10,8,5,0)'); edge.addColorStop(0.9, 'rgba(10,8,5,0)'); edge.addColorStop(1, 'rgba(10,8,5,0.55)');
   g.fillStyle = edge; g.fillRect(0, 0, W, H);
   return T.toTexture(c, { repeat: false });
+}
+
+function fenceTexture() {
+  const [c, g] = T.makeCanvas(128, 128);
+  g.strokeStyle = 'rgba(150,150,140,0.9)'; g.lineWidth = 3;
+  for (let i = -128; i < 256; i += 32) {
+    g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 128, 128); g.stroke();
+    g.beginPath(); g.moveTo(i + 128, 0); g.lineTo(i, 128); g.stroke();
+  }
+  return T.toTexture(c);
 }

@@ -7,6 +7,7 @@
 import { makeZombie, pickZombieType } from './zombies.js';
 import { zombieHealthForRound } from '../config.js';
 import { giveWeapon } from './weapons.js';
+import { givePerk, applyPerkStats } from './perks.js';
 
 export function setupRange(sim) {
   const rc = sim.cfg.range;
@@ -17,6 +18,7 @@ export function setupRange(sim) {
     slots: (sim.mapData.targets || []).map((t) => ({ home: { ...t }, zid: null, timer: 0.5 + Math.random() * 0.4 })),
   };
   sim.godMode = true;
+  sim.power = true;
   for (const p of sim.players) p.points = rc.startPoints;
 }
 
@@ -90,4 +92,12 @@ export function setRangeRound(sim, n) {
 export function rangeGive(sim, p, id) {
   if (!sim.cfg.weapons[id] || !p.alive) return;
   giveWeapon(sim, p, id);
+}
+
+// Toggle a perk on or off instantly (no drinking in the range).
+export function rangeTogglePerk(sim, p, id) {
+  if (!sim.cfg.perks.list[id]) return;
+  const i = p.perks.indexOf(id);
+  if (i >= 0) { p.perks.splice(i, 1); applyPerkStats(sim, p); sim.emit('perksLost', { playerId: p.id, perks: [id] }); }
+  else givePerk(sim, p, id);
 }
