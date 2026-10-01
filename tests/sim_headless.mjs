@@ -1,10 +1,10 @@
 // Headless simulation test: a simple bot plays the game with no renderer.
 // Run: node tests/sim_headless.mjs
 import { GameSim } from '../src/sim/sim.js';
-import { COURT } from '../src/map/court.js';
+import { SCHOOL } from '../src/map/school.js';
 import { emptyCommand } from '../src/sim/player.js';
 
-const sim = new GameSim({ map: COURT, seed: 1234 });
+const sim = new GameSim({ map: SCHOOL, seed: 1234 });
 const me = sim.addPlayer('p1', 'Tester');
 const counts = {};
 let lastRound = 0;

@@ -41,8 +41,22 @@ export function gunshot(A, out, t, p = {}) {
   const g4 = A.gain(0); A.env(g4, t + 0.01, 0.02, 0.7, 0.25 * (p.tail ?? 0.5));
   n3.connect(lp2); lp2.connect(g4); g4.connect(out);
 
+  // shotguns and revolvers: a deeper, longer boom
+  if (p.kind === 'shotgun' || p.kind === 'revolver') {
+    const nb = A.noiseSource('brown', t, 0.6);
+    const lpb = A.filter('lowpass', 380, 0.8);
+    const gb = A.gain(0); A.env(gb, t, 0.002, p.kind === 'shotgun' ? 0.45 : 0.3, p.kind === 'shotgun' ? 1.3 : 0.8);
+    nb.connect(lpb); lpb.connect(gb); gb.connect(mix);
+  }
+  // machine guns get a mechanical rattle
+  if (p.kind === 'smg' || p.kind === 'ar') {
+    const nr = A.noiseSource('white', t + 0.025, 0.05);
+    const bpr = A.filter('bandpass', 2600, 3);
+    const gr = A.gain(0); A.env(gr, t + 0.025, 0.0005, 0.02, 0.28);
+    nr.connect(bpr); bpr.connect(gr); gr.connect(out);
+  }
   // slide / action clack
-  if (p.kind === 'pistol' || p.mech) {
+  if (p.kind === 'pistol' || p.kind === 'rifle') {
     const n4 = A.noiseSource('white', t + 0.04, 0.05);
     const bp = A.filter('bandpass', 3200, 4);
     const g5 = A.gain(0); A.env(g5, t + 0.045, 0.0005, 0.025, 0.35);
@@ -272,16 +286,28 @@ export function zombieStep(A, out, t, p = {}) {
 export function footstep(A, out, t, p = {}) {
   const int = p.intensity || 1;
   const surface = p.surface || 'gym';
+  const carpet = surface === 'carpet';
+  const tile = surface === 'tile' || surface === 'tile_big';
   // heel thud
   const n = A.noiseSource('brown', t, 0.12);
-  const lp = A.filter('lowpass', surface === 'gym' ? 520 : 800, 0.8);
-  const g = A.gain(0); A.env(g, t, 0.002, 0.07, 0.55 * int);
+  const lp = A.filter('lowpass', surface === 'gym' ? 520 : carpet ? 300 : 900, 0.8);
+  const g = A.gain(0); A.env(g, t, 0.002, carpet ? 0.09 : 0.07, (carpet ? 0.35 : 0.55) * int);
   n.connect(lp); lp.connect(g); g.connect(out);
-  // toe tap
+  // toe tap (clacky on tile, nearly silent on carpet)
   const n2 = A.noiseSource('white', t + 0.012, 0.03);
-  const hp = A.filter('highpass', 2200, 0.7);
-  const g2 = A.gain(0); A.env(g2, t + 0.012, 0.001, 0.012, 0.14 * int);
+  const hp = A.filter(tile ? 'bandpass' : 'highpass', tile ? 3200 : 2200, tile ? 2 : 0.7);
+  const g2 = A.gain(0); A.env(g2, t + 0.012, 0.001, tile ? 0.02 : 0.012, (carpet ? 0.02 : tile ? 0.3 : 0.14) * int);
   n2.connect(hp); hp.connect(g2); g2.connect(out);
+  // grit crunch on tile (papers, broken glass)
+  if (tile && Math.random() < 0.5) {
+    for (let i = 0; i < 4; i++) {
+      const tg = t + 0.01 + Math.random() * 0.05;
+      const ng = A.noiseSource('white', tg, 0.02);
+      const hg = A.filter('highpass', 4000, 1);
+      const gg = A.gain(0); A.env(gg, tg, 0.0005, 0.006, 0.08 * int);
+      ng.connect(hg); hg.connect(gg); gg.connect(out);
+    }
+  }
   // sneaker squeak on the court
   if (surface === 'gym' && Math.random() < (p.sprint ? 0.45 : 0.25)) {
     const d = R(0.06, 0.13), st = t + R(0.01, 0.04);
@@ -515,4 +541,147 @@ export function bang(A, out, t) {
 export function uiClick(A, out, t) {
   click(A, out, t, 3000, 3, 0.02, 0.3);
   return 0.1;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: reload styles, buying, doors, the box
+// ---------------------------------------------------------------------------
+export function breakOpen(A, out, t) {
+  click(A, out, t, 1600, 2, 0.04, 0.8, 900);          // lever & hinge
+  const o = A.osc('sawtooth', 140, t + 0.02, 0.1);
+  const f = A.filter('bandpass', 700, 5); const g = A.gain(0); A.env(g, t + 0.02, 0.01, 0.08, 0.2);
+  o.connect(f); f.connect(g); g.connect(out);
+  return 0.3;
+}
+export function shellIn(A, out, t) {
+  click(A, out, t, 2200, 2, 0.03, 0.55, 1500);
+  const n = A.noiseSource('pink', t, 0.06); const lp = A.filter('lowpass', 900, 1);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.04, 0.3); n.connect(lp); lp.connect(g); g.connect(out);
+  return 0.2;
+}
+export function breakClose(A, out, t) {
+  click(A, out, t, 1300, 1.2, 0.05, 1.0, 700);
+  const o = A.osc('sine', 160, t, 0.1); o.frequency.exponentialRampToValueAtTime(80, t + 0.07);
+  const g = A.gain(0); A.env(g, t, 0.001, 0.07, 0.6); o.connect(g); g.connect(out);
+  return 0.3;
+}
+export function cylinderOut(A, out, t) {
+  click(A, out, t, 3000, 3, 0.02, 0.5, 2400);
+  // ratchet spin
+  for (let i = 0; i < 6; i++) click(A, out, t + 0.05 + i * 0.025, 4200, 4, 0.006, 0.18);
+  return 0.3;
+}
+export function shellsDrop(A, out, t) {
+  for (let i = 0; i < 6; i++) {
+    const tt = t + 0.25 + Math.random() * 0.25;
+    const o = A.osc('sine', R(2800, 4200), tt, 0.1);
+    const g = A.gain(0); A.env(g, tt, 0.001, 0.06, 0.12);
+    o.connect(g); g.connect(out);
+  }
+  const n = A.noiseSource('white', t, 0.08); const bp = A.filter('bandpass', 2500, 2);
+  const g = A.gain(0); A.env(g, t, 0.003, 0.06, 0.35); n.connect(bp); bp.connect(g); g.connect(out);
+  return 0.7;
+}
+export function cylinderIn(A, out, t) {
+  click(A, out, t, 1900, 1.5, 0.04, 0.9, 2100);
+  return 0.3;
+}
+export function weaponSwitch(A, out, t) {
+  const n = A.noiseSource('pink', t, 0.2); const bp = A.filter('bandpass', 800, 0.8);
+  const g = A.gain(0); A.env(g, t, 0.04, 0.12, 0.14); n.connect(bp); bp.connect(g); g.connect(out);
+  click(A, out, t + 0.14, 2600, 3, 0.02, 0.35, 1800);
+  return 0.4;
+}
+export function purchase(A, out, t) {
+  // old register: drawer clunk + two bright bell tones
+  click(A, out, t, 900, 1, 0.05, 0.6);
+  for (const [dt, f] of [[0.05, 1568], [0.13, 2093]]) {
+    for (const [ratio, amp] of [[1, 0.25], [2.4, 0.08], [4.1, 0.04]]) {
+      const o = A.osc('sine', f * ratio, t + dt, 0.9);
+      const g = A.gain(0); A.env(g, t + dt, 0.002, 0.7, amp);
+      o.connect(g); g.connect(out);
+    }
+  }
+  return 1.2;
+}
+export function denied(A, out, t) {
+  const o = A.osc('square', 110, t, 0.3);
+  const lp = A.filter('lowpass', 700, 1);
+  const g = A.gain(0); A.env(g, t, 0.005, 0.22, 0.25, 0, 0.05);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  return 0.4;
+}
+export function doorOpen(A, out, t) {
+  // chains drop, push bar clunk, hinges groan, doors bang against the wall
+  for (let i = 0; i < 10; i++) click(A, out, t + Math.random() * 0.35, R(2500, 5000), 3, 0.02, 0.25, R(1800, 3500));
+  click(A, out, t + 0.25, 700, 1, 0.06, 0.8);
+  const cr = A.osc('sawtooth', 70, t + 0.3, 0.9); cr.frequency.linearRampToValueAtTime(110, t + 1.1);
+  const am = A.osc('square', 18, t + 0.3, 0.9); const amg = A.gain(0.5);
+  const crf = A.filter('bandpass', 650, 8); const crg = A.gain(0);
+  crg.gain.setValueAtTime(0.0001, t + 0.3); crg.gain.linearRampToValueAtTime(0.35, t + 0.45); crg.gain.linearRampToValueAtTime(0.0001, t + 1.15);
+  am.connect(amg); amg.connect(crg.gain);
+  cr.connect(crf); crf.connect(crg); crg.connect(out);
+  const tb = t + 1.05;
+  const b = A.osc('sine', 80, tb, 0.6); b.frequency.exponentialRampToValueAtTime(40, tb + 0.4);
+  const bg = A.gain(0); A.env(bg, tb, 0.002, 0.45, 0.9); b.connect(bg); bg.connect(out);
+  click(A, out, tb, 1200, 0.8, 0.12, 0.9, 400);
+  return 2;
+}
+export function debrisClear(A, out, t) {
+  for (let i = 0; i < 16; i++) {
+    const tt = t + Math.random() * 0.9;
+    const n = A.noiseSource(Math.random() < 0.5 ? 'brown' : 'pink', tt, 0.15);
+    const f = A.filter('bandpass', R(200, 1800), 1.2);
+    const g = A.gain(0); A.env(g, tt, 0.003, R(0.05, 0.15), R(0.2, 0.6));
+    n.connect(f); f.connect(g); g.connect(out);
+  }
+  const n = A.noiseSource('brown', t, 1.2); const lp = A.filter('lowpass', 250, 0.7);
+  const g = A.gain(0); A.env(g, t, 0.1, 0.9, 0.5); n.connect(lp); lp.connect(g); g.connect(out);
+  return 1.6;
+}
+export function boxOpen(A, out, t) {
+  const cr = A.osc('sawtooth', 90, t, 0.5); cr.frequency.linearRampToValueAtTime(160, t + 0.45);
+  const f = A.filter('bandpass', 900, 7); const g = A.gain(0); A.env(g, t, 0.05, 0.4, 0.25);
+  cr.connect(f); f.connect(g); g.connect(out);
+  click(A, out, t + 0.45, 1100, 1, 0.08, 0.6, 500);
+  return 0.8;
+}
+// Wind-down music box tune (original melody) played while the box spins.
+export function musicBox(A, out, t, p = {}) {
+  const dur = p.duration || 4.2;
+  const semis = [7, 12, 15, 14, 12, 7, 8, 7, 5, 3, 5, 7, 12, 10, 8, 7, 3, 2, 0];
+  const base = 440 * Math.pow(2, 3 / 12); // C5
+  let tt = t, step = 0.16, i = 0;
+  while (tt < t + dur - 0.1) {
+    const f = base * Math.pow(2, semis[i % semis.length] / 12);
+    for (const [ratio, amp] of [[1, 0.22], [2, 0.06], [3.02, 0.035], [4.2, 0.02]]) {
+      const o = A.osc('sine', f * ratio, tt, 1.2);
+      const g = A.gain(0); A.env(g, tt, 0.002, 0.9, amp);
+      o.connect(g); g.connect(out);
+    }
+    click(A, out, tt, 6000, 2, 0.004, 0.05);
+    tt += step;
+    step *= 1.035; // winding down
+    i++;
+  }
+  return dur + 1.2;
+}
+export function boxLand(A, out, t) {
+  for (const [ratio, amp] of [[1, 0.3], [2.76, 0.12], [5.4, 0.06]]) {
+    const o = A.osc('sine', 988 * ratio, t, 2);
+    const g = A.gain(0); A.env(g, t, 0.002, 1.6, amp);
+    o.connect(g); g.connect(out);
+  }
+  return 2;
+}
+export function boxTake(A, out, t) {
+  click(A, out, t, 1800, 1.5, 0.05, 0.7, 1300);
+  click(A, out, t + 0.12, 2600, 2, 0.03, 0.5, 2000);
+  return 0.4;
+}
+export function boxShut(A, out, t) {
+  click(A, out, t, 600, 0.8, 0.12, 0.9, 200);
+  const o = A.osc('sine', 90, t, 0.3); o.frequency.exponentialRampToValueAtTime(45, t + 0.2);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.2, 0.6); o.connect(g); g.connect(out);
+  return 0.5;
 }

@@ -760,3 +760,359 @@ export function sleeveTexture() {
   grime(g, S, S, { alpha: 0.55 });
   return toTexture(c);
 }
+
+// =============================================================================
+// Phase 2: room surfaces, lockers, chalk outlines, mystery box
+// =============================================================================
+
+// Checkerboard linoleum with wear. tile = meters per tile; 1 repeat = 8 tiles.
+export function linoleumTexture({ tile = 0.3, a = '#8f8a74', b = '#5e6a5a', seed = 5 } = {}) {
+  seedTextures(seed);
+  const S = 1024, n = 8, ts = S / n;
+  const [c, g] = makeCanvas(S, S);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    g.fillStyle = (x + y) % 2 ? a : b;
+    g.fillRect(x * ts, y * ts, ts, ts);
+    g.fillStyle = `rgba(${rnd() < 0.5 ? '0,0,0' : '255,255,240'},${rr(0.02, 0.08)})`;
+    g.fillRect(x * ts, y * ts, ts, ts);
+    // marbled flecks
+    for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(255,255,255,${rr(0.03, 0.1)})`; g.fillRect(x * ts + rr(0, ts), y * ts + rr(0, ts), rr(2, 8), rr(1, 3)); }
+  }
+  g.strokeStyle = 'rgba(20,18,12,0.5)'; g.lineWidth = 2;
+  for (let i = 0; i <= n; i++) { g.beginPath(); g.moveTo(i * ts, 0); g.lineTo(i * ts, S); g.stroke(); g.beginPath(); g.moveTo(0, i * ts); g.lineTo(S, i * ts); g.stroke(); }
+  // cracked and missing tiles
+  for (let i = 0; i < 6; i++) {
+    const x = Math.floor(rr(0, n)) * ts, y = Math.floor(rr(0, n)) * ts;
+    if (rnd() < 0.4) { g.fillStyle = '#2f2a20'; g.fillRect(x + 2, y + 2, ts - 4, ts - 4); grimeRect(g, x, y, ts); }
+    else {
+      g.strokeStyle = 'rgba(15,12,8,0.7)'; g.lineWidth = 1.5; g.beginPath();
+      let px = x + rr(0, ts), py = y; g.moveTo(px, py);
+      for (let k = 0; k < 5; k++) { px += rr(-20, 20); py += ts / 5; g.lineTo(px, py); }
+      g.stroke();
+    }
+  }
+  grime(g, S, S, { alpha: 0.42, color: '#1a150c' });
+  // scuffs and drag marks
+  g.strokeStyle = 'rgba(15,15,15,0.3)';
+  for (let i = 0; i < 90; i++) { g.lineWidth = rr(1, 3); g.beginPath(); const x = rr(0, S), y = rr(0, S); g.moveTo(x, y); g.lineTo(x + rr(-60, 60), y + rr(-10, 10)); g.stroke(); }
+  speckle(g, S, S, 2500, ['#1b130b', '#3a2c1c', '#bdb6a0']);
+  const t = toTexture(c);
+  t.repeat.set(1 / (tile * n), 1 / (tile * n));
+  return t;
+}
+
+function grimeRect(g, x, y, s) {
+  g.fillStyle = 'rgba(60,50,30,0.5)';
+  for (let k = 0; k < 20; k++) g.fillRect(x + rr(0, s), y + rr(0, s), rr(2, 6), rr(2, 6));
+}
+
+export function carpetTexture({ base = '#3e4653', seed = 8 } = {}) {
+  seedTextures(seed);
+  const S = 512;
+  const [c, g] = makeCanvas(S, S);
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  const img = g.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = (rnd() - 0.5) * 30;
+    img.data[i] += v; img.data[i + 1] += v; img.data[i + 2] += v;
+  }
+  g.putImageData(img, 0, 0);
+  // subtle pattern
+  g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 3;
+  for (let x = 0; x < S; x += 64) for (let y = 0; y < S; y += 64) { g.strokeRect(x + 16, y + 16, 32, 32); }
+  // stains
+  for (let i = 0; i < 12; i++) {
+    const x = rr(0, S), y = rr(0, S), r = rr(15, 60);
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    const col = rnd() < 0.3 ? '60,12,8' : '40,32,20';
+    grd.addColorStop(0, `rgba(${col},0.55)`); grd.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = grd; g.beginPath(); g.ellipse(x, y, r, r * rr(0.5, 1), rr(0, 3), 0, 7); g.fill();
+  }
+  grime(g, S, S, { alpha: 0.3 });
+  const t = toTexture(c);
+  t.repeat.set(1 / 3, 1 / 3);
+  return t;
+}
+
+// Generic interior wall. u: 4m per repeat, v: 0..1 = full wall height.
+// lower: wainscot color & height, blocks: cinderblock joints, tiles: glossy tile wainscot
+export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445a4f', lowerH = 1.2, blocks = true, tiles = false, panel = false, stripe = null, seed = 3 } = {}) {
+  seedTextures(seed);
+  const W = 512, H = Math.max(256, Math.round(512 * height / 4));
+  const [c, g] = makeCanvas(W, H);
+  const px = W / 4;
+  g.fillStyle = upper; g.fillRect(0, 0, W, H);
+  const ly = H - lowerH * px;
+  g.fillStyle = lower; g.fillRect(0, ly, W, lowerH * px);
+  if (stripe) { g.fillStyle = stripe; g.fillRect(0, ly - 0.08 * px, W, 0.08 * px); }
+  if (blocks) {
+    const bw = 0.4 * px, bh = 0.2 * px;
+    for (let row = 0; row * bh < H; row++) {
+      const off = (row % 2) * bw / 2;
+      g.fillStyle = 'rgba(20,16,10,0.3)';
+      g.fillRect(0, H - row * bh, W, 1.5);
+      for (let x = -off; x < W; x += bw) g.fillRect(x, H - (row + 1) * bh, 1.5, bh);
+    }
+  }
+  if (tiles) {
+    const t = 0.15 * px;
+    for (let y = ly; y < H; y += t) for (let x = 0; x < W; x += t) {
+      g.fillStyle = `rgba(255,255,255,${rr(0.02, 0.1)})`; g.fillRect(x + 1, y + 1, t - 2, t - 2);
+      g.fillStyle = 'rgba(30,30,25,0.45)'; g.fillRect(x, y, t, 1.2); g.fillRect(x, y, 1.2, t);
+      if (rnd() < 0.03) { g.fillStyle = 'rgba(40,36,28,0.9)'; g.fillRect(x + 1, y + 1, t - 2, t - 2); }
+    }
+  }
+  if (panel) {
+    // vertical wood paneling on the lower part
+    for (let x = 0; x < W; x += 0.3 * px) {
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x, ly, 2, H - ly);
+      g.fillStyle = 'rgba(255,220,180,0.06)'; g.fillRect(x + 2, ly, 0.3 * px - 4, H - ly);
+    }
+    g.fillStyle = '#3a2618'; g.fillRect(0, ly - 6, W, 8);
+  }
+  // water damage, peeling, drips
+  for (let i = 0; i < 10; i++) {
+    const x = rr(0, W), y = rr(0, ly), r = rr(6, 26);
+    g.fillStyle = 'rgba(110,105,92,0.8)';
+    g.beginPath(); for (let a = 0; a < 6.28; a += 0.5) g.lineTo(x + Math.cos(a) * r * rr(0.5, 1.2), y + Math.sin(a) * r * 0.7 * rr(0.5, 1.2)); g.closePath(); g.fill();
+  }
+  for (let i = 0; i < 18; i++) {
+    const x = rr(0, W), len = rr(H * 0.1, H * 0.7);
+    const grd = g.createLinearGradient(0, 0, 0, len);
+    grd.addColorStop(0, 'rgba(40,32,18,0.45)'); grd.addColorStop(1, 'rgba(40,32,18,0)');
+    g.fillStyle = grd; g.fillRect(x, 0, rr(2, 9), len);
+  }
+  grime(g, W, H, { alpha: 0.32 });
+  const f = g.createLinearGradient(0, H - px * 0.6, 0, H);
+  f.addColorStop(0, 'rgba(15,10,5,0)'); f.addColorStop(1, 'rgba(15,10,5,0.75)');
+  g.fillStyle = f; g.fillRect(0, H - px * 0.6, W, px * 0.6);
+  const top = g.createLinearGradient(0, 0, 0, px * 0.8);
+  top.addColorStop(0, 'rgba(8,6,4,0.6)'); top.addColorStop(1, 'rgba(8,6,4,0)');
+  g.fillStyle = top; g.fillRect(0, 0, W, px * 0.8);
+  speckle(g, W, H, 1800, ['#222', '#555', '#bbb']);
+  const t = toTexture(c, { clampV: true });
+  t.repeat.set(1 / 4, 1 / height);
+  return t;
+}
+
+export function brickTexture({ height = 9 } = {}) {
+  seedTextures(21);
+  const W = 512, H = Math.round(512 * height / 4);
+  const [c, g] = makeCanvas(W, H);
+  const px = W / 4, bw = 0.22 * px, bh = 0.075 * px;
+  g.fillStyle = '#3a3129'; g.fillRect(0, 0, W, H);
+  for (let row = 0; row * bh < H; row++) {
+    const off = (row % 2) * bw / 2;
+    for (let x = -off; x < W; x += bw) {
+      g.fillStyle = `hsl(${rr(8, 20)},${rr(25, 40)}%,${rr(18, 28)}%)`;
+      g.fillRect(x + 1, H - (row + 1) * bh + 1, bw - 2, bh - 2);
+    }
+  }
+  grime(g, W, H, { alpha: 0.5 });
+  const t = toTexture(c, { clampV: true });
+  t.repeat.set(1 / 4, 1 / height);
+  return t;
+}
+
+export function dropCeilingTexture({ seed = 12 } = {}) {
+  seedTextures(seed);
+  const S = 512; // 4m x 4m, tiles 0.6 x 1.2
+  const [c, g] = makeCanvas(S, S);
+  const px = S / 4;
+  g.fillStyle = '#9e9886'; g.fillRect(0, 0, S, S);
+  const img = g.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) { const v = (rnd() - 0.5) * 18; img.data[i] += v; img.data[i + 1] += v; img.data[i + 2] += v; }
+  g.putImageData(img, 0, 0);
+  const tw = 0.6 * px, th = 1.2 * px;
+  for (let x = 0; x < S; x += tw) for (let y = 0; y < S; y += th) {
+    // water stains, a few tiles missing (dark void)
+    const r = rnd();
+    if (r < 0.08) { g.fillStyle = '#0d0b09'; g.fillRect(x + 2, y + 2, tw - 4, th - 4); }
+    else if (r < 0.14) { g.fillStyle = '#0d0b09'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + tw, y); g.lineTo(x + tw * 0.2, y + th * 0.7); g.fill(); }
+    else if (r < 0.4) {
+      const cx = x + rr(0, tw), cy = y + rr(0, th), rad = rr(10, 40);
+      const grd = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grd.addColorStop(0, 'rgba(90,70,30,0.5)'); grd.addColorStop(0.8, 'rgba(90,70,30,0.25)'); grd.addColorStop(1, 'rgba(90,70,30,0)');
+      g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fill();
+    }
+  }
+  g.fillStyle = '#6b6a66';
+  for (let x = 0; x < S; x += tw) g.fillRect(x - 1.5, 0, 3, S);
+  for (let y = 0; y < S; y += th) g.fillRect(0, y - 1.5, S, 3);
+  grime(g, S, S, { alpha: 0.35 });
+  const t = toTexture(c);
+  t.repeat.set(1 / 4, 1 / 4);
+  return t;
+}
+
+export function lockerTexture({ color = '#3f5a6e', seed = 31 } = {}) {
+  seedTextures(seed);
+  const W = 512, H = 512; // 2m wide x 2m tall, 5 lockers
+  const [c, g] = makeCanvas(W, H);
+  const lw = W / 5;
+  for (let i = 0; i < 5; i++) {
+    const x = i * lw;
+    const l = rr(-6, 6);
+    g.fillStyle = color; g.fillRect(x, 0, lw, H);
+    g.fillStyle = `rgba(${l > 0 ? '255,255,255' : '0,0,0'},${Math.abs(l) / 60})`; g.fillRect(x, 0, lw, H);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x, 0, 2.5, H);
+    // vents
+    for (const vy of [40, 70, H - 70]) for (let k = 0; k < 5; k++) { g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(x + 20, vy + k * 5, lw - 40, 2); }
+    // handle & number plate
+    g.fillStyle = '#9a9a92'; g.fillRect(x + lw - 22, H * 0.52, 8, 34);
+    g.fillStyle = '#c8c4b0'; g.fillRect(x + lw / 2 - 12, 100, 24, 12);
+    g.fillStyle = '#222'; g.font = '10px monospace'; g.textAlign = 'center'; g.fillText(String(100 + Math.floor(rnd() * 800)), x + lw / 2, 110);
+    // dents and scratches, one hanging open (dark inside)
+    if (rnd() < 0.15) { g.fillStyle = '#0c0c0c'; g.fillRect(x + 4, 4, lw - 8, H - 8); }
+    for (let k = 0; k < 6; k++) { g.strokeStyle = 'rgba(210,210,200,0.25)'; g.beginPath(); const sx = x + rr(0, lw), sy = rr(0, H); g.moveTo(sx, sy); g.lineTo(sx + rr(-20, 20), sy + rr(-6, 6)); g.stroke(); }
+  }
+  // stickers / blood smear
+  g.fillStyle = 'rgba(80,8,6,0.6)'; g.fillRect(rr(0, W), rr(H * 0.4, H * 0.7), rr(6, 12), rr(40, 120));
+  grime(g, W, H, { alpha: 0.4 });
+  const rust = g.createLinearGradient(0, H - 60, 0, H);
+  rust.addColorStop(0, 'rgba(90,45,20,0)'); rust.addColorStop(1, 'rgba(90,45,20,0.7)');
+  g.fillStyle = rust; g.fillRect(0, H - 60, W, 60);
+  const t = toTexture(c);
+  t.repeat.set(1 / 2, 1 / 2);
+  return t;
+}
+
+export function cabinetTexture() {
+  seedTextures(41);
+  const S = 256;
+  const [c, g] = makeCanvas(S, S);
+  g.fillStyle = '#6d6a5e'; g.fillRect(0, 0, S, S);
+  for (let y = 0; y < S; y += S / 4) {
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(0, y, S, 3);
+    g.fillStyle = '#a8a494'; g.fillRect(S / 2 - 25, y + 22, 50, 8);
+    g.fillStyle = '#ddd8c4'; g.fillRect(S / 2 - 15, y + 8, 30, 10);
+  }
+  grime(g, S, S, { alpha: 0.45 });
+  const t = toTexture(c);
+  t.repeat.set(1, 1 / 1.35);
+  return t;
+}
+
+export function bookshelfTexture() {
+  seedTextures(43);
+  const S = 512;
+  const [c, g] = makeCanvas(S, S);
+  g.fillStyle = '#2c1d12'; g.fillRect(0, 0, S, S);
+  for (let row = 0; row < 5; row++) {
+    const y0 = row * S / 5;
+    g.fillStyle = '#3d2a1a'; g.fillRect(0, y0 + S / 5 - 10, S, 10);
+    let x = 4;
+    while (x < S - 8) {
+      const w = rr(8, 22), h = rr(S / 5 * 0.55, S / 5 * 0.85);
+      if (rnd() < 0.12) { x += w * 2; continue; }
+      g.fillStyle = `hsl(${rr(0, 360)},${rr(15, 35)}%,${rr(15, 32)}%)`;
+      g.fillRect(x, y0 + S / 5 - 10 - h, w, h);
+      g.fillStyle = 'rgba(220,200,150,0.25)'; g.fillRect(x + 2, y0 + S / 5 - 10 - h * 0.7, w - 4, 3);
+      x += w + 1;
+    }
+  }
+  grime(g, S, S, { alpha: 0.35 });
+  return toTexture(c, { repeat: false });
+}
+
+// Chalk outline of a weapon, with its name and price, drawn on the wall.
+export function chalkTexture(def, model) {
+  seedTextures(def.name.length * 13);
+  const W = 512, H = 256;
+  const [c, g] = makeCanvas(W, H);
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(235,232,220,0.9)';
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const shapes = {
+    pistol: [[150, 110], [350, 110], [350, 130], [270, 130], [262, 150], [240, 150], [250, 190], [215, 200], [205, 130], [150, 130]],
+    rifle: [[40, 105], [300, 105], [300, 98], [470, 98], [470, 108], [320, 112], [300, 128], [260, 128], [250, 160], [230, 160], [225, 128], [130, 126], [60, 150], [40, 145]],
+    doubleBarrel: [[40, 100], [470, 94], [470, 112], [240, 118], [180, 126], [120, 130], [60, 158], [40, 150]],
+    smg: [[70, 100], [110, 100], [110, 108], [360, 108], [360, 100], [440, 100], [440, 116], [300, 122], [290, 200], [270, 200], [270, 124], [230, 124], [215, 170], [195, 170], [200, 124], [110, 116], [70, 116]],
+  };
+  const pts = shapes[model] || shapes.rifle;
+  for (let pass = 0; pass < 3; pass++) {
+    g.lineWidth = pass === 0 ? 5 : 2;
+    g.globalAlpha = pass === 0 ? 0.5 : 0.8;
+    g.beginPath();
+    pts.forEach(([x, y], i) => { const jx = x + rr(-2, 2), jy = y + rr(-2, 2); i ? g.lineTo(jx, jy) : g.moveTo(jx, jy); });
+    g.closePath(); g.stroke();
+  }
+  // fill scribble
+  g.globalAlpha = 0.18; g.lineWidth = 2;
+  for (let i = 0; i < 40; i++) { g.beginPath(); const x = rr(80, 440), y = rr(100, 125); g.moveTo(x, y); g.lineTo(x + rr(-30, 30), y + rr(-6, 6)); g.stroke(); }
+  g.globalAlpha = 0.85;
+  g.fillStyle = 'rgba(235,232,220,0.85)';
+  g.font = '700 30px "Trebuchet MS", sans-serif'; g.textAlign = 'center';
+  g.fillText(def.name.toUpperCase(), W / 2, 58);
+  g.font = '700 26px "Trebuchet MS", sans-serif';
+  g.fillText(String(def.cost), W / 2, 238);
+  // smudge the chalk
+  g.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(0,0,0,${rr(0.2, 0.8)})`; g.fillRect(rr(0, W), rr(0, H), rr(1, 3), rr(1, 3)); }
+  g.globalCompositeOperation = 'source-over';
+  return toTexture(c, { repeat: false });
+}
+
+export function mysteryBoxTexture({ side = true } = {}) {
+  seedTextures(61);
+  const W = 512, H = 256;
+  const [c, g] = makeCanvas(W, H);
+  // dark weathered crate planks
+  for (let y = 0; y < H; y += 32) {
+    g.fillStyle = `hsl(25,${rr(25, 35)}%,${rr(22, 30)}%)`; g.fillRect(0, y, W, 32);
+    g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, y, W, 2);
+    g.globalAlpha = 0.2;
+    for (let k = 0; k < 6; k++) { g.strokeStyle = '#000'; g.beginPath(); const yy = y + rr(3, 29); g.moveTo(0, yy); g.lineTo(W, yy + rr(-2, 2)); g.stroke(); }
+    g.globalAlpha = 1;
+  }
+  // iron corners
+  g.fillStyle = '#2a2a28';
+  for (const [x, y] of [[0, 0], [W - 40, 0], [0, H - 40], [W - 40, H - 40]]) g.fillRect(x, y, 40, 40);
+  g.fillStyle = '#555';
+  for (const [x, y] of [[12, 12], [W - 28, 12], [12, H - 28], [W - 28, H - 28]]) { g.beginPath(); g.arc(x + 8, y + 8, 4, 0, 7); g.fill(); }
+  grime(g, W, H, { alpha: 0.4 });
+  const t = toTexture(c, { repeat: false });
+  return t;
+}
+
+// Glowing question marks (used as emissive map, black elsewhere).
+export function questionMarkTexture() {
+  const W = 512, H = 256;
+  const [c, g] = makeCanvas(W, H);
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  g.font = '900 170px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = '#8fd8ff'; g.shadowBlur = 24;
+  g.fillStyle = '#bfe9ff';
+  g.fillText('?', W * 0.3, H / 2 + 8);
+  g.fillText('?', W * 0.7, H / 2 + 8);
+  return toTexture(c, { repeat: false });
+}
+
+export function tableTopTexture() {
+  seedTextures(71);
+  const S = 256;
+  const [c, g] = makeCanvas(S, S);
+  g.fillStyle = '#8c8878'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '0,0,0' : '255,255,255'},0.05)`; g.fillRect(rr(0, S), rr(0, S), rr(2, 10), 1); }
+  // gum, carved initials, stains
+  g.strokeStyle = 'rgba(30,25,20,0.5)';
+  for (let i = 0; i < 5; i++) { g.beginPath(); const x = rr(20, S - 20), y = rr(20, S - 20); g.moveTo(x, y); g.lineTo(x + rr(-15, 15), y + rr(-15, 15)); g.stroke(); }
+  grime(g, S, S, { alpha: 0.4 });
+  const t = toTexture(c);
+  t.repeat.set(1 / 2, 1 / 2);
+  return t;
+}
+
+export function steelTexture() {
+  seedTextures(73);
+  const S = 256;
+  const [c, g] = makeCanvas(S, S);
+  g.fillStyle = '#8a8c88'; g.fillRect(0, 0, S, S);
+  g.globalAlpha = 0.15;
+  for (let i = 0; i < 300; i++) { g.strokeStyle = rnd() < 0.5 ? '#000' : '#fff'; g.beginPath(); const y = rr(0, S); g.moveTo(0, y); g.lineTo(S, y + rr(-1, 1)); g.stroke(); }
+  g.globalAlpha = 1;
+  grime(g, S, S, { alpha: 0.35 });
+  const t = toTexture(c);
+  t.repeat.set(1 / 1.5, 1 / 1.5);
+  return t;
+}

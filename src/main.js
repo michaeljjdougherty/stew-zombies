@@ -6,7 +6,7 @@
 // players fed by network commands instead of this keyboard.
 // =============================================================================
 import { CONFIG } from './config.js';
-import { COURT } from './map/court.js';
+import { SCHOOL } from './map/school.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
@@ -42,7 +42,7 @@ let mode = 'title';
 let dyingT = 0;
 
 function makeSim() {
-  const s = new GameSim({ map: COURT, cfg: CONFIG, teamName: 'Stew' });
+  const s = new GameSim({ map: SCHOOL, cfg: CONFIG, teamName: 'Stew' });
   s.addPlayer(LOCAL_ID, 'Stew');
   return s;
 }

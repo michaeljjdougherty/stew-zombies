@@ -10,6 +10,7 @@ import { Effects } from './effects.js';
 import { Viewmodel } from './viewmodel.js';
 import { CameraRig } from './cameraRig.js';
 import { PostFX } from './postfx.js';
+import { BoxView } from './boxView.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -30,6 +31,7 @@ export class GameRenderer {
     this.scene.add(this.camera);
 
     this.map = new MapView(this.scene, sim, cfg);
+    this.box = new BoxView(this.scene, sim, cfg, this.map);
     this.effects = new Effects(this.scene, sim, cfg);
     this.zombies = new ZombieViews(this.scene, this.effects, cfg);
     this.viewmodel = new Viewmodel(cfg);
@@ -51,6 +53,7 @@ export class GameRenderer {
     this.map.sim = sim;
     for (const [id, v] of this.map.windowViews) v.win = sim.windowById(id);
     for (const v of this.map.windowViews.values()) for (const p of v.planks) p.anim = null;
+    this.box.setSim(sim);
     this.effects.sim = sim;
     this.effects.clear();
     this.zombies.clear();
@@ -93,6 +96,7 @@ export class GameRenderer {
     for (const e of events) {
       this.zombies.onEvent(e, this.sim);
       this.map.onEvent(e);
+      this.box.onEvent(e);
       this.rig.onEvent(e, id);
       this.viewmodel.onEvent(e, id);
       switch (e.type) {
@@ -125,6 +129,15 @@ export class GameRenderer {
           }
           break;
         }
+        case 'doorOpened': {
+          const d = this.sim.world.doors.find((q) => q.id === e.id);
+          if (!d) break;
+          for (let i = 0; i < 7; i++) {
+            const pos = new THREE.Vector3(d.center.x + (Math.random() - 0.5) * d.width * (d.axis === 'x' ? 1 : 0.3), 0.4 + Math.random() * 2, d.center.z + (Math.random() - 0.5) * d.width * (d.axis === 'z' ? 1 : 0.3));
+            this.effects.puff(pos, { color: 0x6a6052, size: 0.6, grow: 2.5, life: 1.4, alpha: 0.35 });
+          }
+          break;
+        }
         case 'boardRepaired': {
           const w = this.sim.windowById(e.windowId);
           const pos = new THREE.Vector3(w.center.x + w.normal.x * 0.15, 1.4, w.center.z + w.normal.z * 0.15);
@@ -138,10 +151,12 @@ export class GameRenderer {
   // Light level near the player (0..1), so the viewmodel isn't glowing in the dark.
   envLevel(pos) {
     let lvl = 0.2;
-    for (const f of this.map.fixtures) {
-      if (!f.light) continue;
-      const d2 = (f.data.x - pos.x) ** 2 + (f.data.z - pos.z) ** 2;
-      lvl += f.level * 0.9 / (1 + d2 / 25);
+    for (const v of this.map.vlights) {
+      const level = v.fixture ? v.fixture.level : v.level;
+      if (level <= 0) continue;
+      const d2 = (v.pos.x - pos.x) ** 2 + (v.pos.z - pos.z) ** 2;
+      const r = v.distance * 0.5;
+      lvl += Math.min(1, v.intensity / 60) * level * 0.9 / (1 + d2 / (r * r));
     }
     return Math.min(1, lvl);
   }
@@ -175,7 +190,8 @@ export class GameRenderer {
       this.camera.rotation.set(0.12 + Math.sin(time * 0.17) * 0.02, Math.sin(time * 0.07) * 0.35, 0);
     }
 
-    this.map.update(dt, p, { round: sim.rounds.round, kills: p ? p.kills : 0 });
+    this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: p ? p.kills : 0 });
+    this.box.update(dt, time);
     this.zombies.update(sim, dt, alpha, time);
     this.effects.update(dt);
 

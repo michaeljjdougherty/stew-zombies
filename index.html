@@ -31,6 +31,9 @@
   #popups { position: relative; height: 0; width: 0; }
   .popup { position: absolute; right: 0; bottom: 4px; font-family: var(--display); font-size: 20px; color: var(--brass); text-shadow: 0 2px 0 #000; animation: pop 1s ease-out forwards; white-space: nowrap; }
   .popup.big { font-size: 24px; color: #f0d27a; }
+  .popup.spend { color: var(--blood-hi); }
+  #points.deny { animation: deny .5s; }
+  @keyframes deny { 0%, 60% { color: var(--blood-hi); transform: translateX(-4px); } 20%, 80% { transform: translateX(4px); } 100% { color: var(--brass); transform: none; } }
   @keyframes pop { 0% { opacity: 0; transform: translate(0, 0) scale(.8); } 12% { opacity: 1; transform: translate(calc(var(--dx) * .3), calc(var(--dy) * .3)) scale(1.1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); } }
   #weapon { display: grid; gap: 0; justify-items: end; }
   #wname { font-family: var(--body); font-weight: 700; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); text-shadow: 0 1px 2px #000; }
@@ -128,7 +131,7 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phase 1 · Basketball court</span>
+    <span class="eyebrow">Phase 2 · Court, hallway, cafeteria, front office</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
@@ -141,7 +144,8 @@
       <dt>Space · C</dt><dd>Jump · crouch</dd>
       <dt>R</dt><dd>Reload (sprint to cancel)</dd>
       <dt>V or E</dt><dd>Knife</dd>
-      <dt>F (hold)</dt><dd>Rebuild a window barrier</dd>
+      <dt>F</dt><dd>Buy doors, weapons and the Mystery Box · hold to rebuild barriers</dd>
+      <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
   </div>

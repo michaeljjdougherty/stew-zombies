@@ -74,14 +74,22 @@ export class Effects {
   }
 
   buildDust() {
-    const b = this.sim.mapData.bounds, H = this.sim.mapData.height;
+    // spread motes over all rooms by floor area; each remembers its room
+    const rooms = this.sim.mapData.rooms;
+    const areas = rooms.map((r) => (r.rect[2] - r.rect[0]) * (r.rect[3] - r.rect[1]));
+    const total = areas.reduce((a, b) => a + b, 0);
     const n = this.cfg.graphics.dustCount;
     const pos = new Float32Array(n * 3);
     this.dustVel = new Float32Array(n * 3);
+    this.dustRoom = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
-      pos[i * 3] = b.minX + Math.random() * (b.maxX - b.minX);
-      pos[i * 3 + 1] = Math.random() * (H - 1);
-      pos[i * 3 + 2] = b.minZ + Math.random() * (b.maxZ - b.minZ);
+      let r = Math.random() * total, k = 0;
+      while (k < rooms.length - 1 && r > areas[k]) { r -= areas[k]; k++; }
+      const [x0, z0, x1, z1] = rooms[k].rect;
+      this.dustRoom[i] = k;
+      pos[i * 3] = x0 + Math.random() * (x1 - x0);
+      pos[i * 3 + 1] = Math.random() * (rooms[k].height - 0.5);
+      pos[i * 3 + 2] = z0 + Math.random() * (z1 - z0);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -92,7 +100,7 @@ export class Effects {
     this.scene.add(this.dust);
 
     // denser, brighter motes inside the light cones
-    const lit = this.sim.mapData.fixtures.filter((f) => f.lit);
+    const lit = this.sim.mapData.rooms.flatMap((r) => (r.fixtures || []).filter((f) => f.lit).map((f) => ({ ...f, drop: Math.min(6.2, f.y - 0.4), spread: f.y > 6 ? 2.1 : 1.0 })));
     const wins = this.sim.windows;
     const m = 360;
     const bp = new Float32Array(m * 3);
@@ -102,9 +110,9 @@ export class Effects {
       if (i % 2 === 0 && lit.length) {
         const f = lit[i % lit.length];
         const t = Math.random();
-        const r = (0.3 + t * 2.1) * Math.sqrt(Math.random());
+        const r = (0.3 + t * f.spread) * Math.sqrt(Math.random());
         const a = Math.random() * Math.PI * 2;
-        x = f.x + Math.cos(a) * r; z = f.z + Math.sin(a) * r; y = f.y - 0.3 - t * 6.2;
+        x = f.x + Math.cos(a) * r; z = f.z + Math.sin(a) * r; y = f.y - 0.3 - t * f.drop;
         this.beamSources.push({ kind: 'f', f, cx: f.x, cz: f.z });
       } else {
         const w = wins[i % wins.length];
@@ -354,16 +362,18 @@ export class Effects {
     // dust drift
     const pa = this.dust.geometry.attributes.position;
     const arr = pa.array, vel = this.dustVel;
-    const b = this.sim.mapData.bounds, H = this.sim.mapData.height;
+    const rooms = this.sim.mapData.rooms;
     for (let i = 0; i < arr.length; i += 3) {
+      const room = rooms[this.dustRoom[i / 3]];
+      const [bx0, bz0, bx1, bz1] = room.rect, H = room.height;
       vel[i] += (Math.random() - 0.5) * 0.02 * dt * 60;
       vel[i + 1] += (Math.random() - 0.52) * 0.01 * dt * 60;
       vel[i + 2] += (Math.random() - 0.5) * 0.02 * dt * 60;
       vel[i] *= 0.98; vel[i + 1] *= 0.98; vel[i + 2] *= 0.98;
       arr[i] += vel[i] * dt * 0.3; arr[i + 1] += vel[i + 1] * dt * 0.3; arr[i + 2] += vel[i + 2] * dt * 0.3;
-      if (arr[i + 1] < 0.1) arr[i + 1] = H - 1.5;
-      if (arr[i] < b.minX) arr[i] = b.maxX; if (arr[i] > b.maxX) arr[i] = b.minX;
-      if (arr[i + 2] < b.minZ) arr[i + 2] = b.maxZ; if (arr[i + 2] > b.maxZ) arr[i + 2] = b.minZ;
+      if (arr[i + 1] < 0.1) arr[i + 1] = H - 0.6;
+      if (arr[i] < bx0) arr[i] = bx1; if (arr[i] > bx1) arr[i] = bx0;
+      if (arr[i + 2] < bz0) arr[i + 2] = bz1; if (arr[i + 2] > bz1) arr[i + 2] = bz0;
     }
     pa.needsUpdate = true;
     const ba = this.beamDust.geometry.attributes.position.array, home = this.beamHome;

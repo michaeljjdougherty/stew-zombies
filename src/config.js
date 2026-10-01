@@ -50,6 +50,7 @@ export const CONFIG = {
     regenRate: 55,           // health per second once regen starts
 
     startPoints: 500,
+    maxWeapons: 2,           // buying a third replaces the one in your hands
   },
 
   // ---------------------------------------------------------------------------
@@ -193,6 +194,9 @@ export const CONFIG = {
     armLossFraction: 0.33,   // arm falls off after taking this fraction of max hp
     hitStun: 0.12,
     screamChance: { walker: 0.15, runner: 0.7, sprinter: 1.0 },
+    stuckTime: 0.6,          // seconds barely moving before a zombie sidesteps
+    sidestepTime: 0.9,
+    portalReach: 1.2,        // how close to a doorway before heading through
   },
 
   // ---------------------------------------------------------------------------
@@ -211,20 +215,23 @@ export const CONFIG = {
   // Weapons. Each weapon has its own entry. Angles in degrees.
   // ---------------------------------------------------------------------------
   weapons: {
+    // ---- starting pistol ----------------------------------------------------
     M1912: {
       name: 'M1912',
       class: 'pistol',
       fireMode: 'semi',       // semi | auto | burst
-      rpm: 420,               // max fire rate for semi (how fast you can click)
+      rpm: 420,               // max fire rate (for semi: how fast you can click)
       damage: 40,
       headMult: 2.6,
       limbMult: 0.75,
       pellets: 1,
+      penetration: 1,         // zombies a bullet can pass through
       range: 70,
       falloffStart: 18,
       falloffMinMult: 0.65,
       magSize: 8,
       reserve: 80,
+      reloadStyle: 'mag',     // mag | break | cylinder
       reloadTime: 1.55,       // partial mag
       reloadEmptyTime: 1.85,  // empty mag (slide locked back)
       reloadAddAt: 0.72,      // fraction of reload where ammo is added (cancel after this keeps ammo)
@@ -233,34 +240,201 @@ export const CONFIG = {
       adsFovMult: 0.86,
       adsMoveMult: 0.6,
       moveSpeedMult: 1.0,
-      spread: {
-        hipBase: 1.9,
-        hipMax: 5.5,
-        perShot: 1.3,
-        recovery: 7.5,        // degrees per second
-        ads: 0.18,
-        adsPerShot: 0.25,
-        moving: 1.4,
-        air: 4.0,
-        crouchMult: 0.8,
-      },
-      recoil: {
-        pitch: 1.9,           // view kick up per shot
-        yaw: 0.55,            // random left/right range
-        recovery: 9,          // how fast the view settles back (per second)
-        adsMult: 0.7,
-      },
+      spread: { hipBase: 1.9, hipMax: 5.5, perShot: 1.3, recovery: 7.5, ads: 0.18, adsPerShot: 0.25, moving: 1.4, air: 4.0, crouchMult: 0.8 },
+      recoil: { pitch: 1.9, yaw: 0.55, recovery: 9, adsMult: 0.7, viewKick: 1 },
       sound: { kind: 'pistol', body: 2200, thump: 150, crack: 0.9, tail: 0.5, pitch: 1.0 },
-      view: { metal: '#2c2d2e', grip: '#4a3424' },
-      upgrade: {
-        name: 'Twin Stewpots',
-        color: '#8a2be2',
-        note: 'Upgraded in the Mad Dog Machine (Phase 5): small explosive rounds.',
-      },
+      view: { model: 'pistol', flash: 1 },
+      upgrade: { name: 'Twin Stewpots', color: '#8a2be2', note: 'Mad Dog Machine (Phase 5): small explosive rounds.' },
+    },
+
+    // ---- wall weapons ---------------------------------------------------------
+    M15: {
+      name: 'M15',
+      class: 'rifle',
+      cost: 500, ammoCost: 250,
+      fireMode: 'semi',
+      rpm: 460,
+      damage: 110,
+      headMult: 2.2,
+      limbMult: 0.8,
+      pellets: 1,
+      penetration: 2,
+      range: 90,
+      falloffStart: 40,
+      falloffMinMult: 0.8,
+      magSize: 8,
+      reserve: 96,
+      reloadStyle: 'mag',
+      reloadTime: 2.2,
+      reloadEmptyTime: 2.75,
+      reloadAddAt: 0.68,
+      drawTime: 0.6,
+      adsTime: 0.24,
+      adsFovMult: 0.78,
+      adsMoveMult: 0.55,
+      moveSpeedMult: 0.95,
+      spread: { hipBase: 2.8, hipMax: 6.5, perShot: 1.6, recovery: 7, ads: 0.08, adsPerShot: 0.35, moving: 1.8, air: 5, crouchMult: 0.75 },
+      recoil: { pitch: 2.6, yaw: 0.7, recovery: 8, adsMult: 0.65, viewKick: 1.3 },
+      sound: { kind: 'rifle', body: 2600, thump: 120, crack: 1.25, tail: 0.85, pitch: 0.95, mech: true },
+      view: { model: 'rifle', flash: 1.3 },
+      upgrade: { name: 'M15 Stewmaster', color: '#b8860b' },
+    },
+
+    Olympus: {
+      name: 'Olympus',
+      class: 'shotgun',
+      cost: 1200, ammoCost: 600,
+      fireMode: 'semi',
+      rpm: 300,
+      damage: 60,             // per pellet
+      headMult: 1.6,
+      limbMult: 0.9,
+      pellets: 8,
+      penetration: 1,
+      range: 28,
+      falloffStart: 6,
+      falloffMinMult: 0.25,
+      magSize: 2,
+      reserve: 60,
+      reloadStyle: 'break',
+      reloadTime: 2.4,
+      reloadEmptyTime: 2.4,
+      reloadAddAt: 0.72,
+      drawTime: 0.6,
+      adsTime: 0.22,
+      adsFovMult: 0.88,
+      adsMoveMult: 0.6,
+      moveSpeedMult: 0.93,
+      spread: { hipBase: 5.2, hipMax: 7, perShot: 0.8, recovery: 6, ads: 3.8, adsPerShot: 0.5, moving: 0.6, air: 2, crouchMult: 0.95 },
+      recoil: { pitch: 5.5, yaw: 1.4, recovery: 6.5, adsMult: 0.8, viewKick: 2.2 },
+      sound: { kind: 'shotgun', body: 1100, thump: 70, crack: 0.8, tail: 1.1, pitch: 0.8 },
+      view: { model: 'doubleBarrel', flash: 2.0 },
+      upgrade: { name: 'Olympus Rising', color: '#c0392b' },
+    },
+
+    MP41: {
+      name: 'MP41',
+      class: 'smg',
+      cost: 1000, ammoCost: 500,
+      fireMode: 'auto',
+      rpm: 520,
+      damage: 38,
+      headMult: 2.6,
+      limbMult: 0.8,
+      pellets: 1,
+      penetration: 1,
+      range: 55,
+      falloffStart: 14,
+      falloffMinMult: 0.6,
+      magSize: 32,
+      reserve: 192,
+      reloadStyle: 'mag',
+      reloadTime: 2.3,
+      reloadEmptyTime: 2.8,
+      reloadAddAt: 0.66,
+      drawTime: 0.5,
+      adsTime: 0.2,
+      adsFovMult: 0.84,
+      adsMoveMult: 0.65,
+      moveSpeedMult: 1.0,
+      spread: { hipBase: 2.3, hipMax: 6.5, perShot: 0.42, recovery: 9, ads: 0.35, adsPerShot: 0.12, moving: 1.2, air: 4, crouchMult: 0.8 },
+      recoil: { pitch: 0.9, yaw: 0.5, recovery: 10, adsMult: 0.6, viewKick: 0.6 },
+      sound: { kind: 'smg', body: 2400, thump: 130, crack: 0.8, tail: 0.45, pitch: 1.05, mech: true },
+      view: { model: 'smg', flash: 0.9 },
+      upgrade: { name: 'The Afterparty', color: '#2e8b57' },
+    },
+
+    // ---- mystery box weapons (the full list arrives in Phase 3) --------------
+    Pyton: {
+      name: 'Pyton',
+      class: 'pistol',
+      boxOnly: true,
+      fireMode: 'semi',
+      rpm: 240,
+      damage: 180,
+      headMult: 2.2,
+      limbMult: 0.85,
+      pellets: 1,
+      penetration: 2,
+      range: 70,
+      falloffStart: 22,
+      falloffMinMult: 0.7,
+      magSize: 6,
+      reserve: 72,
+      reloadStyle: 'cylinder',
+      reloadTime: 3.1,
+      reloadEmptyTime: 3.1,
+      reloadAddAt: 0.75,
+      drawTime: 0.5,
+      adsTime: 0.2,
+      adsFovMult: 0.82,
+      adsMoveMult: 0.6,
+      moveSpeedMult: 1.0,
+      spread: { hipBase: 2.4, hipMax: 6.5, perShot: 2.6, recovery: 6, ads: 0.15, adsPerShot: 0.5, moving: 1.5, air: 4, crouchMult: 0.8 },
+      recoil: { pitch: 4.5, yaw: 1.0, recovery: 6.5, adsMult: 0.75, viewKick: 1.8 },
+      sound: { kind: 'revolver', body: 1900, thump: 110, crack: 1.2, tail: 0.9, pitch: 0.85 },
+      view: { model: 'revolver', flash: 1.5 },
+      upgrade: { name: 'Pyton Supreme', color: '#6a0dad' },
+    },
+
+    Komando: {
+      name: 'Komando',
+      class: 'ar',
+      boxOnly: true,
+      fireMode: 'auto',
+      rpm: 760,
+      damage: 80,
+      headMult: 3,
+      limbMult: 0.8,
+      pellets: 1,
+      penetration: 2,
+      range: 80,
+      falloffStart: 30,
+      falloffMinMult: 0.75,
+      magSize: 30,
+      reserve: 300,
+      reloadStyle: 'mag',
+      reloadTime: 2.25,
+      reloadEmptyTime: 2.7,
+      reloadAddAt: 0.66,
+      drawTime: 0.55,
+      adsTime: 0.22,
+      adsFovMult: 0.8,
+      adsMoveMult: 0.6,
+      moveSpeedMult: 0.95,
+      spread: { hipBase: 2.6, hipMax: 7, perShot: 0.38, recovery: 8.5, ads: 0.22, adsPerShot: 0.09, moving: 1.5, air: 5, crouchMult: 0.8 },
+      recoil: { pitch: 0.95, yaw: 0.45, recovery: 11, adsMult: 0.55, viewKick: 0.7 },
+      sound: { kind: 'ar', body: 2500, thump: 125, crack: 1.0, tail: 0.6, pitch: 1.0, mech: true },
+      view: { model: 'carbine', flash: 1.1 },
+      upgrade: { name: 'Komandant', color: '#1f6fb2' },
     },
   },
 
   startingWeapon: 'M1912',
+
+  // ---------------------------------------------------------------------------
+  // Doors, debris and the mystery box
+  // ---------------------------------------------------------------------------
+  doors: {
+    door_hall: 750,
+    door_cafe: 1000,
+    debris_office: 1250,
+    openTime: 1.1,             // door swing / debris clear animation (zombies can path once started)
+  },
+
+  box: {
+    cost: 950,
+    spinTime: 4.2,             // how long it cycles before landing
+    offerTime: 12,             // how long you have to take the weapon
+    closeTime: 1.2,
+    // Relative odds. Wall weapons can also come out of the box.
+    weights: { M15: 1, Olympus: 1, MP41: 1, Pyton: 1.3, Komando: 1.1 },
+  },
+
+  interaction: {
+    range: 1.8,                // default reach for buyables
+    lookAngle: 65,             // must be roughly facing it (degrees off-center)
+  },
 
   // ---------------------------------------------------------------------------
   // Visuals
@@ -286,6 +460,9 @@ export const CONFIG = {
     corpseSinkTime: 2.5,
     ambientLight: 0.32,      // pre-power base light
     viewmodelFov: 54,
+    maxPointLights: 10,      // nearest lights are streamed into this many real lights
+    maxSpotLights: 4,
+    lightRange: 32,
   },
 
   // ---------------------------------------------------------------------------
@@ -302,6 +479,7 @@ export const CONFIG = {
     rolloff: 1.15,
     maxDistance: 70,
     maxZombieVoices: 9,
+    maxBuzzers: 6,           // flickering fixtures that get their own electrical buzz
     groanInterval: [2.2, 6.0],
   },
 

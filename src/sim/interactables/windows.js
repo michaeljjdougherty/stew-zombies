@@ -2,7 +2,8 @@
 // Boarded windows: zombies tear planks off, players hold USE to rebuild them.
 // Every interactable follows the same small interface so doors, wall buys,
 // perks, the box and the Mad Dog Machine can slot in later:
-//   { id, kind, range, distanceTo(sim,p), canUse(sim,p), prompt(sim,p), use(sim,p,cmd,dt), release?(sim,p) }
+//   { id, kind, range, pos, requireLook, distanceTo(sim,p), canUse(sim,p),
+//     prompt(sim,p), use(sim,p,cmd,dt), release?(sim,p), update?(sim,dt) }
 // =============================================================================
 
 export function createWindows(sim) {
@@ -23,14 +24,14 @@ export class WindowInteractable {
     this.id = 'use_' + win.id;
     this.kind = 'window';
     this.range = 0;
+    this.requireLook = false;
+    this.pos = { x: win.center.x + win.normal.x * 0.5, y: 1.2, z: win.center.z + win.normal.z * 0.5 };
   }
 
   // Distance measured to a point just inside the window.
   distanceTo(sim, p) {
     this.range = sim.cfg.windows.rebuildRange;
-    const w = this.win;
-    const x = w.center.x + w.normal.x * 0.5, z = w.center.z + w.normal.z * 0.5;
-    return Math.hypot(p.pos.x - x, p.pos.z - z);
+    return Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
   }
 
   canUse(sim, p) {
@@ -39,7 +40,7 @@ export class WindowInteractable {
 
   prompt(sim, p) {
     const blocked = this.win.climbing !== null;
-    return { text: blocked ? 'Barrier blocked' : 'Hold [F] to Rebuild Barrier', key: 'F', hold: true };
+    return { text: blocked ? 'Barrier blocked' : 'Hold [F] to rebuild barrier', cost: null, hold: true };
   }
 
   use(sim, p, cmd, dt) {

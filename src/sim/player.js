@@ -175,11 +175,18 @@ function approach(v, tx, tz, maxDelta) {
 
 function updateInteraction(sim, p, cmd, dt) {
   let best = null, bestD = Infinity;
+  const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+  const cosLook = Math.cos(sim.cfg.interaction.lookAngle * Math.PI / 180);
   for (const it of sim.interactables) {
     const d = it.distanceTo(sim, p);
-    if (d < bestD && it.canUse(sim, p)) { best = it; bestD = d; }
+    if (d > it.range || d >= bestD || !it.canUse(sim, p)) continue;
+    if (it.requireLook) {
+      const dx = it.pos.x - p.pos.x, dz = it.pos.z - p.pos.z;
+      const l = Math.hypot(dx, dz);
+      if (l > 0.3 && (dx * fx + dz * fz) / l < cosLook) continue;
+    }
+    best = it; bestD = d;
   }
-  if (best && bestD > best.range) best = null;
   if (p.useTarget && p.useTarget !== best && p.useTarget.release) p.useTarget.release(sim, p);
   p.useTarget = best;
   p.prompt = best ? best.prompt(sim, p) : null;

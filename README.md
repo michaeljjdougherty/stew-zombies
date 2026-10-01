@@ -4,9 +4,10 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 1 — Basketball court.** Movement and camera feel, the M1912,
-the knife, walking/running zombies climbing through boarded windows, rounds,
-points, and rebuilding barriers.
+**Current phase: 2 — Court, main hallway, cafeteria, front office.** Buyable
+doors and debris, zone-based spawning, zombies that path between rooms, two
+weapon slots, wall weapons (M15, Olympus, MP41) and the Mystery Box in the
+main hallway (it can also give the Pyton and Komando ahead of Phase 3).
 
 ## Run it
 
@@ -29,12 +30,15 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | Space · C | Jump · crouch |
 | R | Reload (sprinting cancels it) |
 | V or E | Knife (lunges at nearby zombies) |
+| F | Buy doors, debris, wall weapons and the Mystery Box |
 | F (hold) | Rebuild a window barrier, one plank at a time |
+| 1 · 2 · mouse wheel | Switch between your two weapons |
 | Esc | Pause / settings (sensitivity, aiming sensitivity, FOV, volume…) |
 
 ## Tweaking balance and feel
 
-Every number that affects feel or balance is in **`src/config.js`**: movement
+Every number that affects feel or balance is in **`src/config.js`**: door and
+box prices, box odds, movement
 and sprint speeds, jump height, acceleration, head bob, recoil, spread, zombie
 speeds and health curve, round sizes, point values, board timings, weapon
 stats, post-processing strength, audio levels. Change a value, refresh.
@@ -53,16 +57,16 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   zombies.js          spawning, windows, climbing, chasing, attacks, damage
   rounds.js           round counts, spawn pacing, intermissions
   physics.js          character vs box collision, steps, gravity
-  nav.js              pathing hook (zone/portal graph comes in Phase 2)
-  interactables/      windows now; doors, wall buys, perks, box later
+  nav.js              region/portal pathing between rooms (closed doors block)
+  interactables/      windows, doors & debris, wall weapons, mystery box
 
-src/map/              map data (court.js) + builder shared by sim and renderer
+src/map/              map data (school.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies, viewmodel, camera, effects, post
 src/audio/            Web Audio engine, synthesized sounds, event → sound director
 src/input/            keyboard/mouse → per-tick input commands
 src/ui/               HUD (tally marks, points, ammo), menus, settings
 src/net/              notes for online co-op (Phase 9)
-tests/                headless simulation test (node tests/sim_headless.mjs)
+tests/                headless tests: node tests/sim_headless.mjs, node tests/phase2_headless.mjs
 ```
 
 The simulation only takes **input commands** and produces **state + events**.
@@ -75,7 +79,7 @@ In the browser console, `STEW.sim` is the live game state and
 ## Build plan
 
 1. ✅ Movement, camera, controls, M1912, knife, zombies, rounds, points, windows (basketball court)
-2. Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
+2. ✅ Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
 3. Full weapon list, recoil/reload/sound per gun, grenades
 4. Rest of the map, second path, boiler room, auditorium, power switch
 5. Perk machines, Mad Dog Machine, last stand and revive

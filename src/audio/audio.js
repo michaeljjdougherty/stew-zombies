@@ -161,6 +161,7 @@ export class AudioEngine {
     } else {
       input.connect(this.buses[bus]);
     }
+    send *= this.roomReverb ?? 1;
     if (send > 0) {
       const s = ctx.createGain();
       s.gain.value = send;

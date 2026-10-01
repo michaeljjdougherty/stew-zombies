@@ -164,6 +164,7 @@ export function updateZombies(sim, dt) {
           win.climbing = null;
           setState(sim, z, 'chase');
           z.grounded = true;
+          z.region = sim.nav.regionAt(z.pos);
           const chance = c.screamChance[z.type] ?? 0.2;
           sim.emit('zombieEnter', { id: z.id, windowId: win.id });
           if (sim.rng.chance(chance)) sim.emit('zombieScream', { id: z.id, pos: { ...z.pos } });
@@ -174,13 +175,21 @@ export function updateZombies(sim, dt) {
       case 'chase': {
         const target = nearestPlayer(sim, z.pos);
         z.targetId = target ? target.id : null;
+        z.region = sim.nav.regionAt(z.pos, z.region);
         let dirX = 0, dirZ = 0;
         if (target) {
-          const goal = sim.nav.nextPoint(z.pos, target.pos);
+          const goal = sim.nav.nextPoint(z.pos, z.region, target.pos, target.region);
           const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z;
           const d = Math.hypot(dx, dz) || 1;
           dirX = dx / d; dirZ = dz / d;
-          faceToward(z, dx, dz, c.turnRate, dt);
+          // stuck on furniture? step sideways for a moment
+          if (z.sidestep > 0) {
+            z.sidestep -= dt;
+            const gx = dirX, gz = dirZ;
+            dirX = gx * 0.35 - gz * z.sideSign;
+            dirZ = gz * 0.35 + gx * z.sideSign;
+          }
+          faceToward(z, dirX, dirZ, c.turnRate, dt);
         }
         // separation from other zombies
         let sx = 0, sz = 0;
@@ -208,7 +217,18 @@ export function updateZombies(sim, dt) {
         const k = 1 - Math.exp(-c.accel * dt);
         z.vel.x += (dirX * speed - z.vel.x) * k;
         z.vel.z += (dirZ * speed - z.vel.z) * k;
+        const px = z.pos.x, pz = z.pos.z;
         moveBody(z, dt, [sim.world.solids], sim.cfg.player.gravity);
+        // stuck detection: wanted to move but barely did
+        const moved = Math.hypot(z.pos.x - px, z.pos.z - pz) / dt;
+        if (speed > 0.5 && moved < speed * 0.25 && z.attack.phase === 'none') {
+          z.stuckT = (z.stuckT || 0) + dt;
+          if (z.stuckT > c.stuckTime && !(z.sidestep > 0)) {
+            z.sidestep = c.sidestepTime;
+            z.sideSign = sim.rng.chance(0.5) ? 1 : -1;
+            z.stuckT = 0;
+          }
+        } else z.stuckT = Math.max(0, (z.stuckT || 0) - dt * 2);
         break;
       }
     }
@@ -275,13 +295,21 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
     }
   } else if (target) {
     const d = dist2D(target.pos, z.pos);
-    if (d < c.attackRange && Math.abs(target.pos.y - z.pos.y) < c.attackHeightTolerance) victim = target;
+    if (d < c.attackRange && Math.abs(target.pos.y - z.pos.y) < c.attackHeightTolerance && canReach(sim, z, target)) victim = target;
   }
   if (victim && z.stun <= 0) {
     a.phase = 'windup';
     a.t = c.attackWindup;
     sim.emit('zombieSwing', { id: z.id, pos: { ...z.pos } });
   }
+}
+
+// No swiping through walls.
+function canReach(sim, z, p) {
+  const o = { x: z.pos.x, y: z.pos.y + 1.2, z: z.pos.z };
+  const dx = p.pos.x - o.x, dy = p.pos.y + 1.2 - o.y, dz = p.pos.z - o.z;
+  const l = Math.hypot(dx, dy, dz) || 1;
+  return !sim.raycastWorld(o, { x: dx / l, y: dy / l, z: dz / l }, l, true);
 }
 
 export function damageZombie(sim, z, amount, info) {

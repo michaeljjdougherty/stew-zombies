@@ -9,12 +9,13 @@
 import { CONFIG } from '../config.js';
 import { RNG } from '../core/rng.js';
 import { rayAABB, rayCapsule, raySphere, v3 } from '../core/math.js';
-import { buildMap } from '../map/build.js';
+import { buildMap, openDoorCollision } from '../map/build.js';
 import { createPlayer, updatePlayer, emptyCommand, damagePlayer } from './player.js';
 import { cancelReload } from './weapons.js';
 import { updateZombies, zombieHitboxes } from './zombies.js';
 import { createRoundState, updateRounds } from './rounds.js';
 import { createWindows, WindowInteractable } from './interactables/windows.js';
+import { DoorInteractable, WallBuyInteractable, BoxInteractable } from './interactables/buyables.js';
 import { Nav } from './nav.js';
 
 export class GameSim {
@@ -35,8 +36,16 @@ export class GameSim {
     this.power = false;
     this.gameOver = false;
     this.windows = createWindows(this);
-    this.interactables = this.windows.map((w) => new WindowInteractable(w));
-    this.nav = new Nav(this.world);
+    this.doorState = new Map(this.world.doors.map((d) => [d.id, { open: false, openedAt: 0 }]));
+    this.openZones = new Set([this.world.roomById.get('court') ? 'court' : map.rooms[0].zone]);
+    this.box = new BoxInteractable(this);
+    this.interactables = [
+      ...this.windows.map((w) => new WindowInteractable(w)),
+      ...this.world.doors.map((d) => new DoorInteractable(d)),
+      ...this.world.wallBuys.map((wb) => new WallBuyInteractable(wb)),
+      this.box,
+    ];
+    this.nav = new Nav(this);
     this.rounds = createRoundState(this);
   }
 
@@ -44,6 +53,7 @@ export class GameSim {
   addPlayer(id, name) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
+    p.region = this.nav.regionAt(p.pos);
     this.players.push(p);
     this.inputs.set(id, emptyCommand());
     this.emit('playerJoin', { playerId: id, name });
@@ -68,6 +78,55 @@ export class GameSim {
     this.emit('points', { playerId: p.id, amount, reason, total: p.points });
   }
 
+  spendPoints(p, amount) {
+    p.points -= amount;
+    this.emit('points', { playerId: p.id, amount: -amount, reason: 'spend', total: p.points });
+  }
+
+  // --- doors & zones -------------------------------------------------------
+  doorOpen(id) { const d = this.doorState.get(id); return !!(d && d.open); }
+
+  openDoor(id, byPlayer = null) {
+    const st = this.doorState.get(id);
+    if (!st || st.open) return;
+    st.open = true;
+    st.openedAt = this.time;
+    const door = this.world.doors.find((d) => d.id === id);
+    for (const z of door.zones) this.openZones.add(z);
+    openDoorCollision(this.world, id);
+    this.nav.invalidate();
+    this.emit('doorOpened', { id, kind: door.kind, playerId: byPlayer ? byPlayer.id : null });
+  }
+
+  roomAt(pos, regionHint = null) {
+    const r = this.nav.regionAt(pos, regionHint);
+    return r ? this.world.roomById.get(this.nav.roomOfRegion(r)) : null;
+  }
+
+  zoneOf(pos, regionHint = null) {
+    const room = this.roomAt(pos, regionHint);
+    return room ? room.zone : null;
+  }
+
+  // Zones where zombies may spawn: where players are, plus open neighbours.
+  activeZones() {
+    const act = new Set();
+    for (const p of this.players) {
+      if (!p.alive) continue;
+      const z = this.zoneOf(p.pos, p.region);
+      if (z) act.add(z);
+    }
+    const occupied = new Set(act);
+    for (const d of this.world.doors) {
+      if (!this.doorOpen(d.id)) continue;
+      const [a, b] = d.zones;
+      if (occupied.has(a) && this.openZones.has(b)) act.add(b);
+      if (occupied.has(b) && this.openZones.has(a)) act.add(a);
+    }
+    if (!act.size) act.add('court');
+    return act;
+  }
+
   // --- world queries -------------------------------------------------------
   zombieById(id) {
     if (id == null) return null;
@@ -75,7 +134,10 @@ export class GameSim {
     return null;
   }
   windowById(id) { return this.windows.find((w) => w.id === id) || null; }
-  spawnWindows() { return this.windows; }
+  spawnWindows() {
+    const act = this.activeZones();
+    return this.windows.filter((w) => act.has(w.zone));
+  }
 
   // First solid hit along a ray. Returns {t, point, normal, box} or null.
   raycastWorld(o, d, maxT, any = false) {
@@ -140,7 +202,9 @@ export class GameSim {
     for (const p of this.players) {
       const cmd = this.inputs.get(p.id) || emptyCommand();
       updatePlayer(this, p, cmd, dt);
+      p.region = this.nav.regionAt(p.pos, p.region);
     }
+    for (const it of this.interactables) if (it.update) it.update(this, dt);
     updateZombies(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');
@@ -165,6 +229,8 @@ export class GameSim {
       })),
       zombies: this.zombies.map((z) => ({ id: z.id, type: z.type, pos: { ...z.pos }, yaw: z.yaw, state: z.state, limbs: { ...z.limbs } })),
       windows: this.windows.map((w) => ({ id: w.id, boards: w.boards })),
+      doors: [...this.doorState].filter(([, s]) => s.open).map(([id]) => id),
+      box: { phase: this.box.phase, weapon: this.box.weapon, spot: this.box.spot.id, timer: this.box.timer },
     };
   }
 }

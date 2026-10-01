@@ -136,25 +136,33 @@ function fire(sim, p, slot, def) {
 
   const impacts = [];
   const pellets = def.pellets || 1;
+  // Pellets that hit the same zombie are summed into one hit (one set of points).
+  const perZombie = new Map();
   for (let i = 0; i < pellets; i++) {
     const d = coneDir(dir, spread * DEG, sim.rng);
     const hits = sim.hitscan(eye, d, def.range, def.penetration || 1);
     for (const h of hits) {
       impacts.push(h);
-      if (h.kind === 'zombie') {
-        const z = sim.zombieById(h.zombieId);
-        if (!z) continue;
-        let dmg = def.damage;
-        if (h.t > def.falloffStart) {
-          const f = clamp((h.t - def.falloffStart) / Math.max(1, def.range - def.falloffStart), 0, 1);
-          dmg *= lerp(1, def.falloffMinMult, f);
-        }
-        if (h.part === 'head') dmg *= def.headMult ?? sim.cfg.zombie.headshotMult;
-        else if (h.part !== 'torso') dmg *= def.limbMult ?? 0.8;
-        dmg *= h.penetrationMult ?? 1;
-        damageZombie(sim, z, dmg, { playerId: p.id, part: h.part, kind: 'bullet', dir: d, point: h.point, weapon: slot.id });
+      if (h.kind !== 'zombie') continue;
+      let dmg = def.damage;
+      if (h.t > def.falloffStart) {
+        const f = clamp((h.t - def.falloffStart) / Math.max(1, def.range - def.falloffStart), 0, 1);
+        dmg *= lerp(1, def.falloffMinMult, f);
       }
+      if (h.part === 'head') dmg *= def.headMult ?? sim.cfg.zombie.headshotMult;
+      else if (h.part !== 'torso') dmg *= def.limbMult ?? 0.8;
+      dmg *= h.penetrationMult ?? 1;
+      let acc = perZombie.get(h.zombieId);
+      if (!acc) { acc = { dmg: 0, parts: {}, point: h.point, dir: d }; perZombie.set(h.zombieId, acc); }
+      acc.dmg += dmg;
+      acc.parts[h.part] = (acc.parts[h.part] || 0) + dmg;
     }
+  }
+  for (const [id, acc] of perZombie) {
+    const z = sim.zombieById(id);
+    if (!z) continue;
+    const part = acc.parts.head ? 'head' : Object.entries(acc.parts).sort((a, b) => b[1] - a[1])[0][0];
+    damageZombie(sim, z, acc.dmg, { playerId: p.id, part, kind: 'bullet', dir: acc.dir, point: acc.point, weapon: slot.id, pellets });
   }
 
   // bloom & recoil
@@ -169,6 +177,40 @@ function fire(sim, p, slot, def) {
     impacts: impacts.map((h) => ({ kind: h.kind, point: h.point, normal: h.normal, zombieId: h.zombieId, part: h.part })),
     clip: slot.clip,
   });
+}
+
+// Give a weapon (wall buy, box). Owning it already = full ammo refill.
+export function giveWeapon(sim, p, id) {
+  const w = p.loadout;
+  const def = sim.cfg.weapons[id];
+  const have = w.slots.findIndex((s) => s.id === id);
+  if (w.reloading) cancelReload(sim, p);
+  if (have >= 0) {
+    const s = w.slots[have];
+    s.clip = def.magSize;
+    s.reserve = def.reserve;
+    sim.emit('ammoRefill', { playerId: p.id, weapon: id });
+    if (have !== w.current) {
+      w.current = have;
+      w.drawTimer = def.drawTime;
+      sim.emit('weaponSwitch', { playerId: p.id, weapon: id });
+    }
+    return;
+  }
+  const slot = { id, clip: def.magSize, reserve: def.reserve, upgraded: false };
+  if (w.slots.length < sim.cfg.player.maxWeapons) {
+    w.slots.push(slot);
+    w.current = w.slots.length - 1;
+  } else {
+    const old = w.slots[w.current].id;
+    w.slots[w.current] = slot;
+    sim.emit('weaponDropped', { playerId: p.id, weapon: old });
+  }
+  w.drawTimer = def.drawTime;
+  w.adsAmount = 0;
+  w.bloom = 0;
+  w.burstLeft = 0;
+  sim.emit('weaponGiven', { playerId: p.id, weapon: id });
 }
 
 export function tryReload(sim, p) {

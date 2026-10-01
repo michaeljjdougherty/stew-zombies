@@ -38,6 +38,11 @@ export class HUD {
       case 'points':
         if (e.playerId === this.localId) this.popup(e.amount, e.reason);
         break;
+      case 'cantAfford':
+        if (e.playerId === this.localId) {
+          this.el.points.classList.remove('deny'); void this.el.points.offsetWidth; this.el.points.classList.add('deny');
+        }
+        break;
       case 'zombieHit':
         break;
       case 'shot':
@@ -51,7 +56,7 @@ export class HUD {
 
   popup(amount, reason) {
     const d = document.createElement('div');
-    d.className = 'popup' + (reason === 'headshot' || reason === 'knife' ? ' big' : '');
+    d.className = 'popup' + (reason === 'headshot' || reason === 'knife' ? ' big' : '') + (amount < 0 ? ' spend' : '');
     d.textContent = (amount > 0 ? '+' : '') + amount;
     d.style.setProperty('--dx', `${Math.round(-30 - Math.random() * 70)}px`);
     d.style.setProperty('--dy', `${Math.round(-18 - Math.random() * 36)}px`);
@@ -101,7 +106,7 @@ export class HUD {
     this.set('hit', this.el.hit, this.hitT > 0 ? 'on' : '', 'className');
 
     // prompt & hints
-    let prompt = p.prompt ? p.prompt.text : '';
+    let prompt = p.prompt ? p.prompt.text + (p.prompt.cost != null ? ` [Cost: ${p.prompt.cost}]` : '') : '';
     if (p.rebuilding) prompt = 'Rebuilding barrier';
     this.set('prompt', this.el.prompt, prompt);
     let hint = '';

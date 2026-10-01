@@ -53,8 +53,8 @@ export class SoundDirector {
 
     // electrical buzz from each working fluorescent fixture
     this.buzzers = [];
-    for (const f of mapView.fixtures) {
-      if (!f.data.lit) continue;
+    const flickery = mapView.fixtures.filter((f) => f.data.lit && f.data.flicker > 0.3).slice(0, this.cfg.audio.maxBuzzers);
+    for (const f of flickery) {
       const out = A.output({ pos: { x: f.data.x, y: f.data.y, z: f.data.z }, bus: 'ambient', reverb: 0.15, ref: 1.5, rolloff: 1.6 });
       const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 120; o1.start();
       const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.value = 240.5; o2.start();
@@ -89,11 +89,45 @@ export class SoundDirector {
         if (local) {
           A.play(S.reloadCloth, {}, { gain: 0.7, reverb: 0.05 });
           const T = e.time;
-          A.play(S.magOut, {}, { gain: 0.8, delay: T * 0.13, reverb: 0.08 });
-          if (e.empty) A.play(S.slideRelease, {}, { gain: 0.9, delay: T * 0.77, reverb: 0.1 });
+          const style = this.cfg.weapons[e.weapon].reloadStyle;
+          const at = (fn, frac, gain = 0.85) => A.play(fn, {}, { gain, delay: T * frac, reverb: 0.08 });
+          if (style === 'break') { at(S.breakOpen, 0.12); at(S.shellIn, 0.45); at(S.shellIn, 0.6); at(S.breakClose, 0.76, 1); }
+          else if (style === 'cylinder') { at(S.cylinderOut, 0.12); at(S.shellsDrop, 0.2, 0.7); at(S.shellIn, 0.5, 0.6); at(S.shellIn, 0.6, 0.6); at(S.cylinderIn, 0.78, 1); }
+          else {
+            at(S.magOut, 0.13, 0.8);
+            if (e.empty) at(S.slideRelease, 0.77, 0.9);
+          }
         }
         break;
-      case 'reloadMagIn': if (local) A.play(S.magIn, {}, { gain: 0.9, reverb: 0.1 }); break;
+      case 'reloadMagIn':
+        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'mag') A.play(S.magIn, {}, { gain: 0.9, reverb: 0.1 });
+        break;
+      case 'weaponSwitch':
+      case 'weaponGiven':
+        if (local) A.play(S.weaponSwitch, {}, { gain: 0.8, reverb: 0.05 });
+        break;
+      case 'wallBuy':
+        if (local) A.play(S.purchase, {}, { gain: 0.7, reverb: 0.15 });
+        break;
+      case 'cantAfford':
+        if (local) A.play(S.denied, {}, { gain: 0.8, reverb: 0.05 });
+        break;
+      case 'doorOpened': {
+        const d = sim.world.doors.find((q) => q.id === e.id);
+        if (e.playerId === this.localId) A.play(S.purchase, {}, { gain: 0.7, reverb: 0.15 });
+        if (d) A.play(e.kind === 'debris' ? S.debrisClear : S.doorOpen, {}, { pos: { x: d.center.x, y: 1.5, z: d.center.z }, ref: 4, gain: 1.1 });
+        break;
+      }
+      case 'boxOpen': {
+        const b = sim.box.pos;
+        if (local) A.play(S.purchase, {}, { gain: 0.7, reverb: 0.15 });
+        A.play(S.boxOpen, {}, { pos: b, ref: 3 });
+        A.play(S.musicBox, { duration: e.spinTime }, { pos: b, ref: 3, gain: 0.9, reverb: 0.5 });
+        break;
+      }
+      case 'boxLanded': A.play(S.boxLand, {}, { pos: sim.box.pos, ref: 3, reverb: 0.5 }); break;
+      case 'boxTaken': if (local) A.play(S.boxTake, {}, { gain: 0.9, reverb: 0.05 }); break;
+      case 'boxExpired': A.play(S.boxShut, {}, { pos: sim.box.pos, ref: 3 }); break;
       case 'melee': if (local) A.play(S.knifeSwing, {}, { gain: 0.8, reverb: 0.05 }); break;
       case 'meleeHit': A.play(S.knifeHit, {}, local ? { gain: 1, reverb: 0.1 } : { pos: zpos(e.zombieId, 1.2) }); break;
       case 'zombieHit': {
@@ -150,7 +184,9 @@ export class SoundDirector {
 
   playerFootstep(sprint, speed) {
     if (!this.A.ready) return;
-    this.A.play(S.footstep, { intensity: sprint ? 1.1 : 0.7, sprint, surface: this.sim.mapData.floor }, { gain: 0.8, reverb: 0.12 });
+    const p = this.sim.playerById(this.localId);
+    const room = p ? this.sim.roomAt(p.pos, p.region) : null;
+    this.A.play(S.footstep, { intensity: sprint ? 1.1 : 0.7, sprint, surface: room ? room.floor : 'gym' }, { gain: 0.8, reverb: 0.12 });
   }
 
   // --- per-frame -------------------------------------------------------------
@@ -186,6 +222,13 @@ export class SoundDirector {
       this.groanTimers.set(z.id, t);
     }
 
+    // how echoey the room you're in is
+    if (localPlayer) {
+      const room = sim.roomAt(localPlayer.pos, localPlayer.region);
+      const target = room ? (room.reverb ?? 0.6) : 0.6;
+      A.roomReverb = (A.roomReverb ?? target) + (target - (A.roomReverb ?? target)) * Math.min(1, dt * 2);
+    }
+
     // low health heartbeat
     if (localPlayer && localPlayer.alive && localPlayer.health < localPlayer.maxHealth * 0.55) {
       this.heartT -= dt;
@@ -196,11 +239,11 @@ export class SoundDirector {
     }
 
     // drips and distant noises
-    const b = sim.mapData.bounds;
     this.dripT -= dt;
     if (this.dripT <= 0) {
       this.dripT = R(1.5, 5);
-      A.play(S.drip, {}, { pos: { x: R(b.minX, b.maxX), y: 0.1, z: R(b.minZ, b.maxZ) }, reverb: 0.8, bus: 'ambient', ref: 3 });
+      const lp = A.listenerPos || { x: 0, z: 0 };
+      A.play(S.drip, {}, { pos: { x: lp.x + R(-12, 12), y: 0.1, z: lp.z + R(-12, 12) }, reverb: 0.8, bus: 'ambient', ref: 3 });
     }
     this.creakT -= dt;
     if (this.creakT <= 0) {
