@@ -97,6 +97,21 @@ export class MapView {
       band: std({ map: T.roomWallTexture({ height: 3.4, upper: '#6e6280', lower: '#3c3048', lowerH: 1.2, stripe: '#b89a3c', seed: 19 }), roughness: 0.9 }),
     };
     this.plankMats = [0, 1, 2, 3].map((i) => new THREE.MeshStandardMaterial({ map: T.plankTexture(i), roughness: 0.9 }));
+    // Surface relief: use each texture's own light/dark as a bump map so mortar
+    // lines, tile grout, wood grain and grime catch the light.
+    const BUMP = {
+      gymFloor: 0.6, tile: 1.2, tile_big: 1.2, concrete: 2.2, grass: 3, asphalt: 3, woodFloor: 1.2, stone: 2.5, tank: 2, carpet: 2,
+      trussCeiling: 1.5, drop: 1.5, wood: 1.5, darkWood: 1.5, metal: 1.5, rustMetal: 2.5, ground: 3, lockers: 1, lockers2: 1, cabinets: 1,
+      shelf: 2, tableTop: 0.8, steel: 0.6,
+    };
+    for (const [k, amt] of Object.entries(BUMP)) {
+      const m = this.mats[k];
+      if (m && m.map) { m.bumpMap = m.map; m.bumpScale = amt; }
+    }
+    for (const m of Object.values(this.wallMats)) { m.bumpMap = m.map; m.bumpScale = 2.2; }
+    for (const m of this.plankMats) { m.bumpMap = m.map; m.bumpScale = 3; }
+    // polished floors pick up a little more of the lights
+    for (const k of ['tile', 'tile_big', 'gymFloor']) this.mats[k].roughness *= 0.8;
   }
 
   floorMat(type) {

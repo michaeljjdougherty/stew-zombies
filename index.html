@@ -128,6 +128,24 @@
   #dmgdir .arc { position: absolute; left: -90px; top: -90px; width: 180px; height: 180px; border-radius: 50%; border: 4px solid transparent; border-top-color: rgba(216,40,24,.85);
     filter: drop-shadow(0 0 6px rgba(216,40,24,.9)); transform: rotate(var(--a)); opacity: var(--o); -webkit-mask-image: linear-gradient(90deg, transparent 22%, #000 40% 60%, transparent 78%); mask-image: linear-gradient(90deg, transparent 22%, #000 40% 60%, transparent 78%); }
 
+
+  /* ---------------- Character select ---------------- */
+  .screen.charscreen { background: linear-gradient(90deg, rgba(6,5,4,.92) 0%, rgba(6,5,4,.6) 30%, rgba(6,5,4,0) 55%); cursor: grab; }
+  .screen.charscreen:active { cursor: grabbing; }
+  .charscreen .stack { cursor: default; max-width: 380px; }
+  .cs-list { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cs-card { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 14px; min-width: 120px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+  .cs-card b { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 1px; text-transform: uppercase; }
+  .cs-card span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .cs-card[aria-selected="true"] { border-color: var(--brass); background: rgba(217,180,90,.1); }
+  .cs-card.locked { opacity: .35; cursor: default; }
+  .cs-card:focus-visible { outline: 1px dashed var(--muted); outline-offset: 3px; }
+  #cs-swatches { display: flex; gap: 10px; margin-top: 6px; }
+  #cs-swatches button { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 1px var(--line); }
+  #cs-swatches button[aria-checked="true"] { box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 3px var(--brass); }
+  #cs-swatches button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
+  .cs-hint { font-size: 12px; }
+
   /* ---------------- Extras ---------------- */
   .stack.wide { max-width: min(980px, 100%); }
   .extras { display: grid; grid-template-columns: 210px 1fr; gap: 26px; align-items: start; }
@@ -153,6 +171,12 @@
   .over-erik:empty { display: none; }
   @media (max-height: 560px) { #subs { width: min(560px, 80vw); bottom: 60px; } #subs .sub { font-size: 12px; padding: 3px 8px; } #notecard .body { font-size: 13px; } }
   @media (max-width: 760px) { .extras { grid-template-columns: 1fr; gap: 12px; } .extras .menu { grid-auto-flow: column; justify-content: start; overflow-x: auto; gap: 16px; } .extras .menu button { white-space: nowrap; font-size: 18px; } }
+
+  #explorehud { position: absolute; left: 50%; top: max(12px, 2vh); transform: translateX(-50%); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  #explorehud[hidden] { display: none; }
+  #explorehud kbd { font: 11px var(--mono); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; }
+  #explorehud b { color: var(--brass); }
+  #explorehud b.on { color: var(--blood-hi); }
 
   /* ---------------- Firing range ---------------- */
   body.range-mode #tally { display: none; }
@@ -212,7 +236,7 @@
   .menu button:hover, .menu button:focus-visible { color: #fff; }
   .menu button:hover::after, .menu button:focus-visible::after { width: 100%; }
   .menu button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
-  body:not([data-ready="1"]) #btn-play, body:not([data-ready="1"]) #btn-range { opacity: .4; pointer-events: none; }
+  body:not([data-ready="1"]) #btn-play, body:not([data-ready="1"]) #btn-range, body:not([data-ready="1"]) #btn-explore { opacity: .4; pointer-events: none; }
   body:not([data-ready="1"]) #btn-play::before { content: "Loading… "; }
   .keys { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; color: var(--muted); margin: 0; }
   .keys dt { font-family: var(--mono); color: var(--ink); font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px; justify-self: start; }
@@ -277,6 +301,7 @@
   <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
   <div id="subs" aria-live="polite"></div>
   <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>
+  <div id="explorehud" hidden>Explore · endless points · <kbd>Z</kbd> zombies <b id="ex-z">off</b></div>
   <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><kbd>B</kbd> weapons &amp; options</div></div>
 </div>
 <div id="dmgnums"></div>
@@ -319,11 +344,13 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phase 8 · Erik's on the PA</span>
+    <span class="eyebrow">The overhaul · new look, real guns, meet Kearns</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
       <button id="btn-range" type="button">Firing Range</button>
+      <button id="btn-explore" type="button">Explore</button>
+      <button id="btn-chars" type="button">Characters</button>
       <button id="btn-extras" type="button">Extras</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>
@@ -339,6 +366,7 @@
       <dt>Q</dt><dd>Stew Bomb, if the box gave you some (draws zombies in, then blows)</dd>
       <dt>F</dt><dd>Buy and use things · read notes · hold to rebuild barriers</dd>
       <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
+      <dt>Z</dt><dd>Explore mode: zombies on / off</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
   </div>
@@ -371,6 +399,7 @@
         <label><input id="set-invert" type="checkbox"> Invert mouse Y</label>
         <label><input id="set-grain" type="checkbox"> Film grain</label>
         <label><input id="set-bloom" type="checkbox"> Bloom</label>
+        <label><input id="set-ao" type="checkbox"> Ambient occlusion</label>
         <label><input id="set-fps" type="checkbox"> Show FPS</label>
         <label><input id="set-subs" type="checkbox"> Subtitles</label>
       </div>
@@ -379,6 +408,25 @@
   </div>
 </section>
 
+
+
+<section id="charselect" class="screen charscreen" hidden>
+  <div class="stack panel-ui">
+    <span class="eyebrow">Choose your character</span>
+    <h2 id="cs-name">Kearns</h2>
+    <div class="cs-list" id="cs-list" role="listbox" aria-label="Characters"></div>
+    <p class="note" id="cs-blurb"></p>
+    <div class="cs-shirts">
+      <span class="eyebrow">T-shirt</span>
+      <div id="cs-swatches" role="radiogroup" aria-label="T-shirt colour"></div>
+    </div>
+    <p class="note cs-hint">Drag to turn him around. More of Stew to come.</p>
+    <nav class="menu">
+      <button id="btn-cs-select" type="button">Play as Kearns</button>
+      <button id="btn-cs-back" type="button">Back</button>
+    </nav>
+  </div>
+</section>
 
 <section id="extras" class="screen" hidden>
   <div class="stack wide">

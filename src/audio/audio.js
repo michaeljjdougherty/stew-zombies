@@ -46,6 +46,7 @@ export class AudioEngine {
     this.curves = {};
     this.applyVolumes();
     this.ready = true;
+    this.decodePending();
   }
 
   applyVolumes() {
@@ -59,6 +60,43 @@ export class AudioEngine {
   }
 
   setVolume(k, v) { this.volumes[k] = v; this.applyVolumes(); }
+
+  // --- recorded samples -------------------------------------------------------
+  // Start downloading right away (no AudioContext needed); decode once the
+  // context exists. manifest: { key: [fileName, ...] }
+  preload(manifest, base, ext = '.mp3') {
+    this.samples = this.samples || {};
+    this.pending = this.pending || [];
+    for (const [key, files] of Object.entries(manifest)) {
+      for (const f of files) {
+        const job = { key, data: null };
+        this.pending.push(job);
+        fetch(base + f + ext).then((r) => (r.ok ? r.arrayBuffer() : null)).then((ab) => { job.data = ab; this.decodePending(); }).catch(() => { job.failed = true; });
+      }
+    }
+  }
+
+  decodePending() {
+    if (!this.ctx || !this.pending) return;
+    for (const job of this.pending) {
+      if (!job.data || job.decoding) continue;
+      job.decoding = true;
+      const ab = job.data; job.data = null;
+      this.ctx.decodeAudioData(ab).then((buf) => { (this.samples[job.key] ||= []).push(buf); }).catch(() => { job.failed = true; });
+    }
+  }
+
+  hasSample(key) { return !!(this.samples && this.samples[key] && this.samples[key].length); }
+
+  pickSample(key) {
+    const list = this.samples && this.samples[key];
+    if (!list || !list.length) return null;
+    // avoid the same variant twice in a row
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && list[i] === this.lastSample?.[key]) i = (i + 1) % list.length;
+    (this.lastSample ||= {})[key] = list[i];
+    return list[i];
+  }
 
   makeNoise(color) {
     const ctx = this.ctx, len = ctx.sampleRate * 3;

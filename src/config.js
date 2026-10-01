@@ -956,17 +956,22 @@ export const CONFIG = {
   graphics: {
     renderScale: 1.0,
     maxPixelRatio: 1.5,
-    fogColor: '#17140f',
-    fogDensity: 0.034,
-    exposure: 1.2,
-    bloomStrength: 0.62,
-    bloomRadius: 0.55,
-    bloomThreshold: 0.82,
-    grain: 0.075,
-    vignette: 0.85,
-    sepia: 0.22,
-    desaturate: 0.38,
-    contrast: 1.08,
+    fogColor: '#121419',     // cold blue-grey murk
+    fogDensity: 0.036,
+    exposure: 1.25,
+    bloomStrength: 0.75,     // soft halos round every light
+    bloomRadius: 0.7,
+    bloomThreshold: 0.72,
+    grain: 0.06,
+    vignette: 0.9,
+    desaturate: 0.3,
+    contrast: 1.2,
+    splitTone: 0.8,
+    shadowTint: [0.84, 0.95, 1.12],
+    highlightTint: [1.08, 0.98, 0.84],
+    sharpen: 0.35,
+    ao: true,                // screen-space ambient occlusion (Settings can turn it off)
+    aoIntensity: 0.9,
     dustCount: 700,
     maxBloodDecals: 70,
     maxBulletHoles: 90,
@@ -1015,6 +1020,11 @@ export const CONFIG = {
     multiKillWindow: 1.6,
     intercomRange: 1.5,
     intercomCooldown: 4,
+  },
+
+  // Explore mode: walk the school with endless points.
+  explore: {
+    points: 999999,
   },
 
   // The Stew song Easter egg: find the 3 Stew items.

@@ -4,7 +4,33 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 8 — Erik's on the PA.**
+**Current: the overhaul (between Phases 8 and 9).**
+
+- **New look, aimed at the 2010 Treyarch zombies feel:** cool shadows and warm
+  light (split-tone grade), a filmic S-curve, light sharpening and edge
+  fringe, fine grain, colder fog, screen-space ambient occlusion (toggle in
+  Settings), surface relief on walls, floors and wood.
+- **Zombies rebuilt:** sculpted heads (sunken cheeks, glowing eyes, hinged
+  jaws with teeth), real hands, and nine torn-up outfits (reunion suits,
+  letterman jacket, flannel, janitor overalls, lunch lady...). See
+  `src/render/zombieKit.js` and `src/render/human.js`.
+- **Guns rebuilt:** rounded machined edges, walnut grain, worn steel, and
+  Kearns' bare forearms and hands (with a wristwatch) instead of block gloves.
+- **Real gun sounds:** recordings of 17 real firearms plus reloads, bolts and
+  pumps from *The Free Firearm Sound Library* (Still North Media, CC0), cut
+  into `assets/sfx/guns/` and mapped per weapon in `src/audio/gunSamples.js`.
+- **Explore mode** (main menu): the school with endless points; buying is
+  free, you can't die, and **Z** switches the zombies on and off.
+- **ADS fixed:** aim, recoil and scope sway are interpolated between 60 Hz
+  ticks, gun sway follows smoothed mouse speed, aim sensitivity blends
+  smoothly, and the camera no longer rolls while aiming.
+- **Characters:** a character select screen (main menu → Characters) with
+  the model on a turntable under a spotlight (drag to spin). First playable
+  character: **Kearns**, with four T-shirt colours. Built in
+  `src/render/characters.js`.
+
+Phase 8 (built): Erik's on the PA.
+
 
 - **The story:** ten years after the Great Stew Incident (a fire alarm, a goat
   and the class president's sash), Erik Madsen threw the Last Bell High
@@ -219,7 +245,8 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
 
 src/lore/erik.js      every line of story text: PA lines, intercom, notes, lyrics
 src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
-src/render/           three.js views: map, zombies, viewmodel, camera, effects, post
+src/render/           three.js views: map, zombies (zombieKit.js), viewmodel, camera, effects,
+                      post, characters (human.js sculpts heads/bodies; showcase.js = select screen)
 src/audio/            Web Audio engine, synthesized sounds, event → sound director,
                       music.js (title theme and the Stew song sequencer)
 src/input/            keyboard/mouse → per-tick input commands

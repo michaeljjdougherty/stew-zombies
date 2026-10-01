@@ -8,7 +8,45 @@ const R = (a, b) => a + Math.random() * (b - a);
 // ---------------------------------------------------------------------------
 // Guns
 // ---------------------------------------------------------------------------
+// A recorded sample (see gunSamples.js). p.key, p.rate.
+export function sample(A, out, t, p = {}) {
+  const key = Array.isArray(p.key) ? p.key[Math.floor(Math.random() * p.key.length)] : p.key;
+  const buf = A.pickSample(key);
+  if (!buf) return 0;
+  const src = A.ctx.createBufferSource();
+  src.buffer = buf;
+  const rate = (p.rate || 1) * (p.vary === false ? 1 : R(0.97, 1.03));
+  src.playbackRate.value = rate;
+  const g = A.gain(p.gain ?? 1);
+  src.connect(g); g.connect(out);
+  src.start(t);
+  return buf.duration / rate + 0.05;
+}
+
+// A real recorded gunshot with a little synthesized low end for weight.
+function recordedShot(A, out, t, p) {
+  const v = p.voice;
+  const dur = sample(A, out, t, { key: v.s, rate: v.rate || 1, gain: v.gain ?? 1 });
+  const sub = v.sub ?? 0.5;
+  if (sub > 0) {
+    const o = A.osc('sine', 120, t, 0.25);
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.11);
+    const g = A.gain(0); A.env(g, t, 0.001, 0.16, 0.55 * sub);
+    o.connect(g); g.connect(out);
+  }
+  if (p.upgraded) {
+    // Mad Dog guns: an extra electric snarl under the shot
+    const z = A.osc('sawtooth', 900, t, 0.25);
+    z.frequency.exponentialRampToValueAtTime(140, t + 0.2);
+    const bp = A.filter('bandpass', 1400, 2.5);
+    const g = A.gain(0); A.env(g, t, 0.002, 0.2, 0.18);
+    z.connect(bp); bp.connect(g); g.connect(out);
+  }
+  return Math.max(dur, 0.6);
+}
+
 export function gunshot(A, out, t, p = {}) {
+  if (p.voice && A.hasSample(Array.isArray(p.voice.s) ? p.voice.s[0] : p.voice.s)) return recordedShot(A, out, t, p);
   if (p.kind === 'launcher') return launcherFire(A, out, t, p);
   if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);
   if (p.kind === 'blade') return bladeFire(A, out, t, p);

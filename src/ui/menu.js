@@ -9,13 +9,15 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras'].map((id) => $(id));
+    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras', 'charselect'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
     $('btn-range').addEventListener('click', () => this.h.range());
+    $('btn-explore').addEventListener('click', () => this.h.explore());
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
     $('btn-extras').addEventListener('click', () => this.h.extras());
+    $('btn-chars').addEventListener('click', () => this.h.characters());
     $('btn-extras-back').addEventListener('click', () => this.h.extrasBack());
     $('btn-resume').addEventListener('click', () => this.h.resume());
     $('btn-pause-settings').addEventListener('click', () => this.openSettings('pause'));
@@ -66,6 +68,7 @@ export class Menus {
     check('set-invert', 'invertY');
     check('set-grain', 'grain');
     check('set-bloom', 'bloom');
+    check('set-ao', 'ao');
     check('set-fps', 'showFps');
     check('set-subs', 'subtitles');
   }

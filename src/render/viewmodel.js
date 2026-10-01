@@ -275,7 +275,7 @@ export class Viewmodel {
   }
 
   // p = local sim player, look = {dx, dy} mouse movement this frame, bob = camera bob info
-  update(dt, p, def, look, bob) {
+  update(dt, p, def, look, bob, aim = null) {
     this.time += dt;
     const w = p.loadout;
     const slot = w.slots[w.current];
@@ -283,7 +283,7 @@ export class Viewmodel {
     const pair = this.current;
     const M = pair.R;
     const dual = !!def.dual;
-    const ads = w.adsAmount;
+    const ads = aim ? aim.ads : w.adsAmount;
     const small = def.class === 'pistol';
 
     this.sprintBlend = lerp(this.sprintBlend, p.sprinting ? 1 : 0, 1 - Math.exp(-dt * 10));
@@ -293,9 +293,15 @@ export class Viewmodel {
     const kr = this.kickRot.update(dt);
     const kl = this.kickL.update(dt);
     const ks = this.kickSide.update(dt);
-    const swayAmt = lerp(1, 0.25, ads);
-    const sx = this.swayX.update(dt, Math.max(-0.05, Math.min(0.05, -look.dx * 0.00045)) * swayAmt);
-    const sy = this.swayY.update(dt, Math.max(-0.05, Math.min(0.05, look.dy * 0.00045)) * swayAmt);
+    // mouse sway from smoothed mouse *speed* (not per-frame deltas, which
+    // jump around with the frame rate and made aiming shake)
+    const sdt = Math.max(1 / 240, dt);
+    const kv = 1 - Math.exp(-dt * 18);
+    this.mvx = (this.mvx || 0) + (look.dx / sdt - (this.mvx || 0)) * kv;
+    this.mvy = (this.mvy || 0) + (look.dy / sdt - (this.mvy || 0)) * kv;
+    const swayAmt = lerp(1, 0.06, ads);
+    const sx = this.swayX.update(dt, Math.max(-0.05, Math.min(0.05, -this.mvx * 0.0000075)) * swayAmt);
+    const sy = this.swayY.update(dt, Math.max(-0.05, Math.min(0.05, this.mvy * 0.0000075)) * swayAmt);
     const ly = this.landY.update(dt);
 
     animateCamo(this.time);
@@ -305,7 +311,7 @@ export class Viewmodel {
     if (p.downed) { o.y -= 0.02; o.rz += 0.12 + Math.sin(this.time * 1.3) * 0.03; o.x -= 0.02; }
     const bobScale = lerp(1, 0.12, ads);
     o.x += Math.cos(bob.phase) * bob.amp * 0.35 * bobScale;
-    o.y += -Math.abs(Math.sin(bob.phase)) * bob.amp * 0.3 * bobScale + Math.sin(this.time * 1.6) * 0.0018 * (1 - ads * 0.7);
+    o.y += -Math.abs(Math.sin(bob.phase)) * bob.amp * 0.3 * bobScale + Math.sin(this.time * 1.6) * 0.0018 * (1 - ads * 0.9);
     o.rz += Math.cos(bob.phase) * bob.amp * 0.6 * bobScale;
     if (small || dual) { o.y -= sb * 0.05; o.z += sb * 0.04; o.rx += sb * 0.55; o.ry += sb * 0.45; o.rz += sb * 0.35; }
     else { o.x -= sb * 0.03; o.y -= sb * 0.05; o.z += sb * 0.03; o.rx -= sb * 0.25; o.ry += sb * 0.75; o.rz += sb * 0.3; }

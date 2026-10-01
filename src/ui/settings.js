@@ -12,9 +12,12 @@ export const DEFAULT_SETTINGS = {
   music: CONFIG.audio.music,
   voice: CONFIG.audio.voice,
   subtitles: true,
+  character: 'kearns',
+  shirt: 'sage',
   renderScale: CONFIG.graphics.renderScale,
   grain: true,
   bloom: true,
+  ao: CONFIG.graphics.ao,
   showFps: false,
 };
 

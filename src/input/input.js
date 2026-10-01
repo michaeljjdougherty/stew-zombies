@@ -21,7 +21,7 @@ export class Input {
     this.ignoreMovesUntil = 0;
     this.enabled = false;
     this.onLockChange = null;
-    this.adsActive = () => false;
+    this.adsAmount = () => 0;   // 0..1, how far the sights are up
     this.zoomScale = () => 1;
     this.bind();
   }
@@ -64,7 +64,8 @@ export class Input {
       if (performance.now() < this.ignoreMovesUntil) return; // browsers can send a jump right after locking
       const dx = e.movementX || 0, dy = e.movementY || 0;
       if (Math.abs(dx) > 400 || Math.abs(dy) > 400) return; // ignore spikes some browsers send
-      const ads = this.adsActive() ? this.settings.adsSensitivity : 1;
+      const a = this.adsAmount();
+      const ads = 1 + (this.settings.adsSensitivity - 1) * a;
       const k = this.cfg.input.radiansPerPixel * this.settings.sensitivity * ads * this.zoomScale();
       this.yaw -= dx * k;
       this.pitch -= dy * k * (this.settings.invertY ? -1 : 1);

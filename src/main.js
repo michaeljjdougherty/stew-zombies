@@ -20,7 +20,9 @@ import { Menus } from './ui/menu.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
 import { loadProgress, saveProgress } from './ui/progress.js';
 import { Extras } from './ui/extras.js';
+import { CharSelect } from './ui/charselect.js';
 import { TitleMusic, StewSong } from './audio/music.js';
+import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
 
 const LOCAL_ID = 'p1';
 const canvas = document.getElementById('game');
@@ -32,15 +34,16 @@ let player = sim.playerById(LOCAL_ID);
 const renderer = new GameRenderer(canvas, sim, CONFIG, settings);
 renderer.localId = LOCAL_ID;
 const input = new Input(canvas, CONFIG, settings);
-input.adsActive = () => player && player.loadout.adsAmount > 0.5;
+input.adsAmount = () => (renderer.aim ? renderer.aim.ads : 0);
 // scoped weapons slow the mouse by the zoom so aim feels the same
 input.zoomScale = () => {
-  if (!player || player.loadout.adsAmount < 0.5) return 1;
+  if (!player || !renderer.aim) return 1;
   const def = CONFIG.weapons[player.loadout.slots[player.loadout.current].id];
-  return def.scope ? (def.adsFovMult ?? 1) : 1;
+  return def.scope ? 1 + ((def.adsFovMult ?? 1) - 1) * renderer.aim.ads : 1;
 };
 input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
+audio.preload(GUN_SAMPLES, SAMPLE_BASE);
 const sound = new SoundDirector(audio, sim, CONFIG);
 sound.localId = LOCAL_ID;
 const hud = new HUD(CONFIG);
@@ -100,12 +103,19 @@ function applySettings(s) {
 const menus = new Menus(settings, {
   play: () => { if (sim.mode !== 'zombies') restart('zombies'); startPlaying(); },
   range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
+  explore: () => { if (sim.mode !== 'explore') restart('explore'); startPlaying(); },
   resume: () => startPlaying(),
   restart: () => { restart(); startPlaying(); },
-  quit: () => { restart('zombies'); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
+  quit: () => { restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => applySettings(s),
   extras: () => { menus.show('extras'); extras.open(); },
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
+  characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
+});
+const charSelect = new CharSelect(settings, {
+  preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
+  done: (s) => { saveSettings(s); renderer.showcase.hide(); renderer.setCharacter(s.character, s.shirt); mode = 'title'; menus.show('title'); },
+  back: () => { renderer.showcase.hide(); mode = 'title'; menus.show('title'); },
 });
 const extras = new Extras(CONFIG, {
   progress: () => progress,
@@ -129,6 +139,7 @@ const firstGesture = () => {
 window.addEventListener('pointerdown', firstGesture);
 window.addEventListener('keydown', firstGesture);
 applySettings(settings);
+renderer.setCharacter(settings.character, settings.shirt);
 menus.show('title');
 
 function startPlaying() {
@@ -143,8 +154,19 @@ function startPlaying() {
   menus.hideAll();
   hud.show(true);
   rangeUI.setActive(sim.mode === 'range');
+  updateExploreHud();
   mode = 'play';
   document.getElementById('lockhint').hidden = true;
+}
+
+function updateExploreHud() {
+  const el = document.getElementById('explorehud');
+  el.hidden = sim.mode !== 'explore';
+  if (sim.mode === 'explore') {
+    const b = document.getElementById('ex-z');
+    b.textContent = sim.explore.zombies ? 'on' : 'off';
+    b.className = sim.explore.zombies ? 'on' : '';
+  }
 }
 
 function openRangePanel() {
@@ -207,6 +229,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' && mode === 'panel') { closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
+  if (e.code === 'KeyZ' && !e.repeat && mode === 'play' && sim.mode === 'explore') { sim.setExploreZombies(!sim.explore.zombies); updateExploreHud(); }
 });
 canvas.addEventListener('click', () => { if (mode === 'play' && !input.locked && !input.fallbackLook) input.requestLock(); });
 
@@ -269,7 +292,7 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = mode === 'paused' || mode === 'over' ? 0 : fdt;
-  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : 'play');
+  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : 'play');
   audio.updateListener(renderer.camera);
   if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
@@ -281,7 +304,7 @@ requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect,
   get mode() { return mode; },
   debug: {
     // Run the simulation forward without rendering (for testing).
@@ -295,3 +318,5 @@ window.STEW = {
   },
 };
 document.body.dataset.ready = '1';
+// paint the zombie heads and outfits while the player is still on the title screen
+setTimeout(() => renderer.zombies.kit.build(), 400);

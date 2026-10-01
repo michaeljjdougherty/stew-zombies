@@ -16,6 +16,7 @@ import { MachinesView } from './machinesView.js';
 import { PowerupViews } from './powerupView.js';
 import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
+import { Showcase } from './showcase.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -87,7 +88,7 @@ export class GameRenderer {
     this.hazeColor = new THREE.Color('#5a4410');
     this.zombies.onFootstep = footstep;
     this.mapData = sim.mapData;
-    if (this.post) this.post.mainPass.scene = w.scene;
+    if (this.post) this.post.setScene(w.scene);
     if (!fresh) this.resetWorld(sim);
     this.sim = sim;
   }
@@ -134,6 +135,7 @@ export class GameRenderer {
     this.rig.setFov(s.fov);
     this.post.setGrain(s.grain);
     this.post.setBloom(s.bloom);
+    this.post.setAO(s.ao);
     this.resize();
   }
 
@@ -145,6 +147,10 @@ export class GameRenderer {
     if (p) {
       if (!this.prevPlayer) this.prevPlayer = { x: 0, y: 0, z: 0 };
       this.prevPlayer.x = p.pos.x; this.prevPlayer.y = p.pos.y; this.prevPlayer.z = p.pos.z;
+      // aim/recoil/sway are stepped at 60 Hz; remember the last tick so the
+      // camera and gun can blend between ticks on faster displays
+      const w = p.loadout;
+      this.prevAim = { ads: w.adsAmount, rp: w.recoilPitch, ry: w.recoilYaw, sp: w.swayPitch || 0, sy: w.swayYaw || 0, slot: w.current };
     }
   }
 
@@ -266,7 +272,22 @@ export class GameRenderer {
     return Math.min(1, lvl);
   }
 
+  getShowcase() {
+    if (!this.showcase) this.showcase = new Showcase(this.renderer);
+    return this.showcase;
+  }
+
+  // The chosen character: their arms are the first-person arms.
+  setCharacter(id, shirt) {
+    this.character = { id, shirt };
+    if (this.viewmodel.setCharacter) this.viewmodel.setCharacter(id, shirt);
+  }
+
   render(dt, alpha, look, p, time, mode = 'play') {
+    if (mode === 'showcase') {
+      this.getShowcase().render(dt, this.aspect);
+      return;
+    }
     const sim = this.sim;
     // interpolated player position
     let pos = p ? p.pos : { x: 0, y: 0, z: 0 };
@@ -276,8 +297,21 @@ export class GameRenderer {
     }
     const def = p ? this.cfg.weapons[p.loadout.slots[p.loadout.current].id] : this.cfg.weapons.M1912;
 
+    // blended aim state (see beginStep)
+    let aim = null;
+    if (p) {
+      const w = p.loadout, a = this.prevAim && this.prevAim.slot === w.current ? this.prevAim : null;
+      const L = (x0, x1) => (a ? x0 + (x1 - x0) * alpha : x1);
+      const raw = L(a && a.ads, w.adsAmount);
+      aim = {
+        ads: raw * raw * (3 - 2 * raw), // eased in and out
+        recoilPitch: L(a && a.rp, w.recoilPitch), recoilYaw: L(a && a.ry, w.recoilYaw),
+        swayPitch: L(a && a.sp, w.swayPitch || 0), swayYaw: L(a && a.sy, w.swayYaw || 0),
+      };
+      this.aim = aim;
+    }
     let bob = { phase: 0, amp: 0 };
-    if (p) bob = this.rig.update(dt, pos, p, look, this.aspect, def);
+    if (p) bob = this.rig.update(dt, pos, p, look, this.aspect, def, aim);
 
     // death: drop the camera to the floor
     if (p && !p.alive) {
@@ -317,7 +351,7 @@ export class GameRenderer {
     if (p) {
       const lvl = this.envLevel(pos);
       this.viewmodel.envLevel = lvl;
-      this.viewmodel.update(dt, p, def, { dx: look.dx, dy: look.dy }, bob);
+      this.viewmodel.update(dt, p, def, { dx: look.dx, dy: look.dy }, bob, aim);
       this.viewmodel.root.visible = p.alive && mode === 'play' && !this.viewmodel.scoped;
     } else this.viewmodel.root.visible = false;
 

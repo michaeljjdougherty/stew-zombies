@@ -102,7 +102,8 @@ export class Extras {
   credits() {
     return `<h3>Credits</h3>
       <p><b>Stew Zombies</b> — made for Stew.</p>
-      <p>Built with three.js and the Web Audio API. Every model, texture, sound effect and song in the game is generated in code at load time: no image or audio files.</p>
+      <p>Built with three.js and the Web Audio API. Every model, texture, song and most sound effects are generated in code at load time.</p>
+      <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>
       <p>All characters, places and events are fictional. No goats were harmed.</p>`;
   }

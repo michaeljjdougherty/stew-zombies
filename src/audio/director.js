@@ -4,6 +4,8 @@
 // =============================================================================
 import * as S from './sfx.js';
 import { StewSong } from './music.js';
+import { GUN_VOICES, mechSetFor } from './gunSamples.js';
+import { baseWeaponId } from '../config.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -31,6 +33,20 @@ export class SoundDirector {
     this.song = null;       // the Stew song, when it's playing
     this.talkUntil = 0;     // ducks the ambience while Erik talks
     this.tickT = 0;
+  }
+
+  // A recorded gun mechanics sound (mag out, bolt, pump...) or a synth fallback.
+  mech(weaponId, part, delay, fallback, gain = 0.9) {
+    const A = this.A;
+    const def = this.cfg.weapons[weaponId];
+    const key = def ? mechSetFor(weaponId, def)[part] : null;
+    if (key && A.hasSample(Array.isArray(key) ? key[0] : key)) A.play(S.sample, { key, gain }, { delay, reverb: 0.06, gain: 1 });
+    else if (fallback) A.play(fallback, {}, { gain, delay, reverb: 0.08 });
+  }
+
+  localWeapon() {
+    const p = this.sim.playerById(this.localId);
+    return p ? p.loadout.slots[p.loadout.current].id : null;
   }
 
   stopSong() { if (this.song) { this.song.stop(0.4); this.song = null; } }
@@ -107,16 +123,17 @@ export class SoundDirector {
     switch (e.type) {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
-        A.play(S.gunshot, { ...def.sound, upgraded: !!def.upgraded }, local ? { reverb: 0.35, gain: 0.8 } : { pos: e.origin, reverb: 0.4 });
+        const voice = GUN_VOICES[baseWeaponId(e.weapon)];
+        A.play(S.gunshot, { ...def.sound, voice, upgraded: !!def.upgraded }, local ? { reverb: 0.3, gain: 0.85 } : { pos: e.origin, reverb: 0.45, ref: 4 });
         if (local && e.action) {
-          const delay = 0.08 + (e.action === 'bolt' ? 0.05 : 0);
-          if (e.clip > 0 || e.action === 'pump') A.play(e.action === 'bolt' ? S.boltCycle : S.pumpRack, {}, { gain: 0.85, delay, reverb: 0.08 });
+          const delay = 0.08 + (e.action === 'bolt' ? 0.12 : 0.04);
+          if (e.clip > 0 || e.action === 'pump') this.mech(e.weapon, e.action === 'bolt' ? 'bolt' : 'pump', delay, e.action === 'bolt' ? S.boltCycle : S.pumpRack, 0.9);
         }
         break;
       }
-      case 'reloadShell': if (local) A.play(S.shellIn, {}, { gain: 0.9, reverb: 0.08 }); break;
+      case 'reloadShell': if (local) this.mech(e.weapon, 'shell', 0, S.shellIn, 0.9); break;
       case 'reloadDone':
-        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'shell' && e.empty && this.cfg.weapons[e.weapon].action === 'pump') A.play(S.pumpRack, {}, { gain: 0.85, reverb: 0.08 });
+        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'shell' && e.empty && this.cfg.weapons[e.weapon].action === 'pump') this.mech(e.weapon, 'pump', 0, S.pumpRack, 0.9);
         break;
       case 'grenadePull': if (local) A.play(S.grenadePin, {}, { gain: 0.8, reverb: 0.05 }); break;
       case 'grenadeThrow': if (local) A.play(S.grenadeThrow, {}, { gain: 0.8, reverb: 0.05 }); break;
@@ -132,25 +149,26 @@ export class SoundDirector {
         else A.play(S.explosion, { big: e.radius / 4.5 }, { pos: e.pos, ref: 6, reverb: 0.6 });
         break;
       }
-      case 'dryFire': if (local) A.play(S.dryFire, {}, { gain: 0.8, reverb: 0.05 }); break;
+      case 'dryFire': if (local) this.mech(e.weapon || this.localWeapon(), 'dry', 0, S.dryFire, 0.8); break;
       case 'reloadStart':
         if (local) {
           A.play(S.reloadCloth, {}, { gain: 0.7, reverb: 0.05 });
           const T = e.time;
           const style = this.cfg.weapons[e.weapon].reloadStyle;
           const at = (fn, frac, gain = 0.85) => A.play(fn, {}, { gain, delay: T * frac, reverb: 0.08 });
+          const m = (part, frac, fallback, gain = 0.9) => this.mech(e.weapon, part, T * frac, fallback, gain);
           if (style === 'shell') { /* each shell plays on reloadShell */ }
-          else if (style === 'belt') { at(S.beltOpen, 0.1); at(S.magOut, 0.22, 0.8); at(S.magIn, 0.55, 0.9); at(S.beltClose, 0.68, 1); at(S.slideRelease, 0.85, 0.9); }
-          else if (style === 'break') { at(S.breakOpen, 0.12); at(S.shellIn, 0.45); at(S.shellIn, 0.6); at(S.breakClose, 0.76, 1); }
-          else if (style === 'cylinder') { at(S.cylinderOut, 0.12); at(S.shellsDrop, 0.2, 0.7); at(S.shellIn, 0.5, 0.6); at(S.shellIn, 0.6, 0.6); at(S.cylinderIn, 0.78, 1); }
+          else if (style === 'belt') { at(S.beltOpen, 0.1); m('out', 0.22, S.magOut); m('in', 0.55, S.magIn); at(S.beltClose, 0.68, 1); m('bolt', 0.85, S.slideRelease); }
+          else if (style === 'break') { at(S.breakOpen, 0.12); m('shell', 0.45, S.shellIn); m('shell', 0.6, S.shellIn); at(S.breakClose, 0.76, 1); }
+          else if (style === 'cylinder') { m('open', 0.12, S.cylinderOut); m('eject', 0.2, S.shellsDrop, 0.8); m('shell', 0.5, S.shellIn, 0.7); m('shell', 0.6, S.shellIn, 0.7); m('close', 0.78, S.cylinderIn, 1); }
           else {
-            at(S.magOut, 0.13, 0.8);
-            if (e.empty) at(S.slideRelease, 0.77, 0.9);
+            m('out', 0.13, S.magOut, 0.85);
+            if (e.empty) m('bolt', 0.77, S.slideRelease, 0.95);
           }
         }
         break;
       case 'reloadMagIn':
-        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'mag') A.play(S.magIn, {}, { gain: 0.9, reverb: 0.1 });
+        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'mag') this.mech(e.weapon, 'in', 0, S.magIn, 0.95);
         break;
       case 'weaponSwitch':
       case 'weaponGiven':

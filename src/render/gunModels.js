@@ -5,38 +5,148 @@
 // Used by the first-person viewmodel and the mystery box.
 // =============================================================================
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as T from './textures.js';
+import { limb, rng, taperedTube } from './human.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// --- gun surface textures ----------------------------------------------------
+function cnv(S) { const c = document.createElement('canvas'); c.width = c.height = S; return [c, c.getContext('2d')]; }
+function ctex(c, srgb = true) { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; }
+
+// Finish wear: grey roughness map (bright = rough). Smooth rubbed patches and
+// fine machining lines; the bump map uses the same canvas for tiny scratches.
+function wearMap(seed, { lines = 1, pits = 1 } = {}) {
+  const R = rng(seed), S = 256;
+  const [c, g] = cnv(S);
+  g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 30; i++) {
+    const x = R() * S, y = R() * S, r = 10 + R() * 40;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(40,40,40,0.5)'); grd.addColorStop(1, 'rgba(40,40,40,0)');
+    g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.globalAlpha = 0.25 * lines;
+  for (let i = 0; i < 260; i++) { g.strokeStyle = R() < 0.5 ? '#606060' : '#c8c8c8'; g.beginPath(); const y = R() * S; g.moveTo(0, y); g.lineTo(S, y + (R() - 0.5) * 3); g.stroke(); }
+  g.globalAlpha = 1;
+  for (let i = 0; i < 1200 * pits; i++) { g.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'; g.fillRect(R() * S, R() * S, 1, 1); }
+  for (let i = 0; i < 40; i++) { g.strokeStyle = 'rgba(30,30,30,0.6)'; g.lineWidth = 0.6; g.beginPath(); const x = R() * S, y = R() * S; g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 30, y + (R() - 0.5) * 6); g.stroke(); }
+  return ctex(c, false);
+}
+
+// Walnut stock: long continuous grain, a few darker figure streaks, varnish.
+function gunWood(base = [92, 54, 30], seed = 3) {
+  const R = rng(seed), S = 512;
+  const [c, g] = cnv(S);
+  g.fillStyle = `rgb(${base.join(',')})`; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 220; i++) {
+    const y = R() * S, k = 0.55 + R() * 0.5;
+    g.strokeStyle = `rgba(${Math.round(base[0] * k * 0.6)},${Math.round(base[1] * k * 0.55)},${Math.round(base[2] * k * 0.5)},${0.25 + R() * 0.4})`;
+    g.lineWidth = 0.6 + R() * 2.2;
+    g.beginPath(); g.moveTo(0, y);
+    let yy = y; for (let x = 0; x <= S; x += 32) { yy += (R() - 0.5) * 4 + Math.sin(x * 0.02 + y) * 1.5; g.lineTo(x, yy); }
+    g.stroke();
+  }
+  for (let i = 0; i < 6; i++) {
+    const y = R() * S; const grd = g.createLinearGradient(0, y - 30, 0, y + 30);
+    grd.addColorStop(0, 'rgba(40,20,8,0)'); grd.addColorStop(0.5, 'rgba(40,20,8,0.35)'); grd.addColorStop(1, 'rgba(40,20,8,0)');
+    g.fillStyle = grd; g.fillRect(0, y - 30, S, 60);
+  }
+  // handling wear: lighter rubbed spots
+  for (let i = 0; i < 10; i++) {
+    const x = R() * S, y = R() * S, r = 30 + R() * 60;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(200,150,100,0.12)'); grd.addColorStop(1, 'rgba(200,150,100,0)');
+    g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  return ctex(c);
+}
+
+function finish(color, seed) {
+  const R = rng(seed), S = 256;
+  const [c, g] = cnv(S);
+  g.fillStyle = color; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 4000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)'; g.fillRect(R() * S, R() * S, 1, 1); }
+  // edge wear shows bare steel
+  g.strokeStyle = 'rgba(170,170,165,0.22)';
+  for (let i = 0; i < 70; i++) { g.lineWidth = 0.5 + R(); g.beginPath(); const x = R() * S, y = R() * S; g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 24, y + (R() - 0.5) * 4); g.stroke(); }
+  for (let i = 0; i < 18; i++) {
+    const x = R() * S, y = R() * S, r = 8 + R() * 26;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(20,16,10,0.25)'); grd.addColorStop(1, 'rgba(20,16,10,0)');
+    g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  return ctex(c);
+}
 
 let shared = null;
 export function gunMaterials() {
   if (shared) return shared;
+  const wear = wearMap(7), wear2 = wearMap(11, { lines: 0.3, pits: 2 });
+  const std = (o) => new THREE.MeshStandardMaterial(o);
+  const metal = (color, seed, rough, metalness, w = wear) => std({ map: finish(color, seed), roughness: rough, roughnessMap: w, metalness, bumpMap: w, bumpScale: 0.6 });
+  const wood = gunWood([96, 56, 30], 3), lightWood = gunWood([128, 82, 46], 5);
   shared = {
-    metal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#55575a'), roughness: 0.4, metalness: 0.35 }),
-    darkMetal: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#35373a'), roughness: 0.5, metalness: 0.3 }),
-    black: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#232426'), roughness: 0.65, metalness: 0.15 }),
-    blued: new THREE.MeshStandardMaterial({ map: T.gunMetalTexture('#3a4250'), roughness: 0.3, metalness: 0.5 }),
-    wood: new THREE.MeshStandardMaterial({ map: T.woodTexture({ base: [22, 40, 26], plank: 32 }), roughness: 0.6 }),
-    lightWood: new THREE.MeshStandardMaterial({ map: T.woodTexture({ base: [28, 45, 34], plank: 32 }), roughness: 0.55 }),
-    bakelite: new THREE.MeshStandardMaterial({ color: '#2a1a12', roughness: 0.5 }),
-    glove: new THREE.MeshStandardMaterial({ map: T.gloveTexture(), color: '#b0a590', roughness: 0.85 }),
-    sleeve: new THREE.MeshStandardMaterial({ map: T.sleeveTexture(), roughness: 0.95 }),
-    skin: new THREE.MeshStandardMaterial({ color: '#8c7560', roughness: 0.8 }),
+    metal: metal('#5e6064', 21, 0.55, 0.85),          // bare / brushed steel
+    darkMetal: metal('#2f3134', 22, 0.7, 0.7),        // parkerized
+    black: metal('#1d1e20', 23, 0.85, 0.15, wear2),   // polymer / black paint
+    blued: metal('#2e3644', 24, 0.42, 0.85),           // blued steel
+    wood: std({ map: wood, roughness: 0.42, bumpMap: wood, bumpScale: 1.2 }),
+    lightWood: std({ map: lightWood, roughness: 0.45, bumpMap: lightWood, bumpScale: 1.2 }),
+    bakelite: std({ map: finish('#3a2016', 25), roughness: 0.35, metalness: 0.05 }),
+    // first-person arms: the chosen character's bare forearms
+    glove: std({ map: armSkin(), roughness: 0.62 }),
+    sleeve: std({ map: armSkin(), roughness: 0.62 }),
+    skin: std({ map: armSkin(), roughness: 0.62 }),
   };
+  shared.glove.bumpMap = shared.glove.map; shared.glove.bumpScale = 1;
   return shared;
+}
+
+// Forearm skin with a little hair and veins.
+function armSkin() {
+  const R = rng(17), S = 256;
+  const [c, g] = cnv(S);
+  g.fillStyle = 'rgb(176,128,100)'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 30; i++) {
+    const x = R() * S, y = R() * S, r = 10 + R() * 30;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, R() < 0.5 ? 'rgba(190,120,100,0.18)' : 'rgba(240,210,190,0.15)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 8000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(120,70,50,0.07)' : 'rgba(255,235,220,0.05)'; g.fillRect(R() * S, R() * S, 1, 1); }
+  g.strokeStyle = 'rgba(60,40,30,0.35)'; g.lineWidth = 0.7;
+  for (let i = 0; i < 500; i++) { const x = R() * S, y = R() * S; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 3, y + 3 + R() * 3); g.stroke(); }
+  g.strokeStyle = 'rgba(110,110,150,0.18)'; g.lineWidth = 2;
+  for (let i = 0; i < 5; i++) { let x = R() * S, y = 0; g.beginPath(); g.moveTo(x, y); while (y < S) { y += 20; x += (R() - 0.5) * 16; g.lineTo(x, y); } g.stroke(); }
+  return ctex(c);
+}
+
+// Rounded-edge boxes catch the light along their edges like machined parts.
+const boxCache = new Map();
+function partBox(w, h, d) {
+  const key = `${w.toFixed(4)}|${h.toFixed(4)}|${d.toFixed(4)}`;
+  let g = boxCache.get(key);
+  if (!g) {
+    const r = Math.min(0.0035, Math.min(w, h, d) * 0.22);
+    g = r < 0.0008 ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 2, r);
+    boxCache.set(key, g);
+  }
+  return g;
 }
 
 function helpers(parent) {
   const box = (w, h, d, mat, x, y, z, p = parent) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    const m = new THREE.Mesh(partBox(w, h, d), mat);
     m.position.set(x, y, z); p.add(m); return m;
   };
   // cylinder along Z
   // peep sight ring facing the eye
   const ring = (r, mat, x, y, z, p = parent) => {
-    const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.45, 6, 14), mat);
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.45, 8, 20), mat);
     m.position.set(x, y, z); p.add(m); return m;
   };
-  const cylZ = (r0, r1, len, mat, x, y, z, p = parent, seg = 10) => {
+  const cylZ = (r0, r1, len, mat, x, y, z, p = parent, seg = 20) => {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, len, seg).rotateX(Math.PI / 2), mat);
     m.position.set(x, y, z); p.add(m); return m;
   };
@@ -903,35 +1013,121 @@ export function buildGun(model, { withHands = false, rightOnly = false, camo = n
   return spec;
 }
 
-function arm(m, from, dir, len = 0.42) {
-  const geo = new THREE.CylinderGeometry(0.03, 0.037, len, 10);
-  const mesh = new THREE.Mesh(geo, m.sleeve);
+// --- first-person hands and forearms (the chosen character's bare arms) ---
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+function finger(points, r0 = 0.0088, r1 = 0.0068) {
+  const g = taperedTube(points.map((p) => V(...p)), r0, r1, 7);
+  // round off the fingertip
+  const tip = new THREE.SphereGeometry(r1, 8, 6); tip.translate(...points[points.length - 1]);
+  return [g.toNonIndexed(), tip.toNonIndexed()];
+}
+function clean(list) { for (const g of list) for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return list; }
+function blob(rx, ry, rz, x, y, z, rot = [0, 0, 0]) {
+  const g = new THREE.SphereGeometry(1, 16, 12); g.scale(rx, ry, rz); g.rotateX(rot[0]); g.rotateY(rot[1]); g.rotateZ(rot[2]); g.translate(x, y, z); return g.toNonIndexed();
+}
+
+// Right hand wrapped round a pistol grip; grip axis = local Y, barrel = -Z.
+function rightHandGeometry() {
+  const parts = [];
+  parts.push(blob(0.014, 0.042, 0.036, 0.026, -0.004, 0.012, [0.05, 0, 0.08]));    // back of the hand
+  parts.push(blob(0.018, 0.03, 0.028, 0.012, -0.02, 0.026));                      // heel of the palm
+  const ring = (y, a1, R = 0.025) => {
+    const pts = [];
+    for (let k = 0; k <= 4; k++) { const a = (k / 4) * a1; pts.push([Math.cos(a) * R + 0.002, y - k * 0.001, -Math.sin(a) * R - 0.004]); }
+    return pts;
+  };
+  parts.push(...finger(ring(0.006, Math.PI * 0.95)));             // middle
+  parts.push(...finger(ring(-0.016, Math.PI * 0.92, 0.024)));     // ring
+  parts.push(...finger(ring(-0.036, Math.PI * 0.8, 0.022), 0.0078, 0.006)); // pinky
+  // index finger along the trigger guard, tip curled onto the trigger
+  parts.push(...finger([[0.026, 0.028, -0.004], [0.02, 0.029, -0.026], [0.011, 0.026, -0.042], [0.004, 0.017, -0.047]]));
+  // thumb over the left side
+  parts.push(...finger([[0.02, 0.03, 0.026], [0.004, 0.04, 0.012], [-0.014, 0.038, -0.006], [-0.022, 0.032, -0.024]], 0.0105, 0.0078));
+  return mergeGeometries(clean(parts));
+}
+
+// Support hand under a handguard (barrel along -Z), fingers up the left side.
+function supportHandGeometry() {
+  const parts = [];
+  parts.push(blob(0.03, 0.013, 0.044, 0.0, -0.002, 0.0, [0, 0, 0.25]));
+  for (const [z, len] of [[-0.026, 1], [-0.009, 1.06], [0.008, 1.0], [0.024, 0.85]]) {
+    const k = len;
+    parts.push(...finger([[-0.022, 0.004, z], [-0.034 * k, 0.02 * k, z], [-0.031 * k, 0.04 * k, z - 0.002], [-0.018 * k, 0.052 * k, z - 0.003]], z > 0.02 ? 0.0078 : 0.0086, 0.0066));
+  }
+  parts.push(...finger([[0.02, 0.0, 0.024], [0.032, 0.016, 0.004], [0.03, 0.03, -0.018]], 0.0105, 0.0078));
+  return mergeGeometries(clean(parts));
+}
+
+// Support hand cupping a pistol grip from below-left.
+function cupHandGeometry() {
+  const parts = [];
+  parts.push(blob(0.016, 0.034, 0.034, -0.012, -0.006, 0.006, [0.2, 0, -0.5]));
+  for (const [y, len] of [[0.012, 1], [-0.006, 1.05], [-0.024, 0.98], [-0.04, 0.82]]) {
+    parts.push(...finger([[-0.016, y, -0.012], [-0.008 * len, y, -0.034 * len], [0.012, y - 0.002, -0.04 * len], [0.026 * len, y - 0.004, -0.03 * len]], 0.0084, 0.0064));
+  }
+  parts.push(...finger([[-0.024, 0.016, 0.02], [-0.028, 0.034, 0.002], [-0.024, 0.044, -0.018]], 0.0105, 0.0078));
+  return mergeGeometries(clean(parts));
+}
+
+let handGeos = null;
+function hands() {
+  if (!handGeos) handGeos = { right: rightHandGeometry(), under: supportHandGeometry(), cup: cupHandGeometry(), forearm: forearmGeometry(), watch: watchGeometry() };
+  return handGeos;
+}
+function forearmGeometry() {
+  // wrist at y = 0, elbow at -0.42; thin wrist, muscular toward the elbow
+  return limb(0.42, 0.031, 0.043, { bulge: 0.16, bulgeAt: 0.72, flat: 0.82, radial: 16, steps: 10 });
+}
+function watchGeometry() {
+  const band = new THREE.CylinderGeometry(0.035, 0.035, 0.018, 18, 1, true);
+  const face = new THREE.CylinderGeometry(0.016, 0.016, 0.008, 16); face.rotateZ(Math.PI / 2); face.translate(0.036, 0, 0);
+  return { band, face };
+}
+
+function forearm(m, from, dir) {
+  const H = hands();
+  const mesh = new THREE.Mesh(H.forearm, m.skin);
   const d = new THREE.Vector3(...dir).normalize();
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
-  mesh.position.set(from[0] + d.x * len / 2, from[1] + d.y * len / 2, from[2] + d.z * len / 2);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d);
+  mesh.position.set(...from);
   return mesh;
 }
 
 function addHands(spec, m, rightOnly = false) {
   const g = spec.group;
-  // right hand wrapped round the grip
+  const H = hands();
+  // right hand round the grip
   const rh = new THREE.Group();
   rh.position.set(...spec.right.pos); rh.rotation.set(...spec.right.rot);
   g.add(rh);
-  const b = (w, h, d, mat, x, y, z, p) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); q.position.set(x, y, z); p.add(q); return q; };
-  b(0.045, 0.07, 0.06, m.glove, 0.008, 0, 0.01, rh);
-  for (let i = 0; i < 3; i++) b(0.05, 0.018, 0.022, m.glove, -0.002, 0.012 - i * 0.022, -0.03, rh);
-  b(0.018, 0.018, 0.05, m.glove, -0.02, 0.03, -0.01, rh);
-  rh.add(arm(m, [0.02, -0.02, 0.03], [0.25, -0.55, 1]));
+  rh.add(new THREE.Mesh(H.right, m.skin));
+  rh.add(forearm(m, [0.03, -0.022, 0.042], [0.32, -0.5, 1]));
   if (rightOnly) return;
-  // left hand
+  // support hand
   const lh = new THREE.Group();
-  lh.position.set(...spec.left.pos); lh.rotation.set(...spec.left.rot);
+  lh.position.set(...spec.left.pos);
   g.add(lh);
-  b(0.045, 0.06, 0.06, m.glove, 0, 0, 0, lh);
-  for (let i = 0; i < 3; i++) b(0.022, 0.018, 0.05, m.glove, 0.03, 0.01 - i * 0.021, -0.005, lh);
-  if (spec.left.kind === 'under') lh.add(arm(m, [-0.01, -0.03, 0.01], [-0.9, -0.2, 0.9]));
-  else lh.add(arm(m, [-0.03, -0.04, 0.03], [-0.55, -0.6, 1]));
+  if (spec.left.kind === 'under') {
+    lh.add(new THREE.Mesh(H.under, m.skin));
+    const fa = forearm(m, [-0.004, -0.008, 0.03], [-0.6, -0.42, 1]);
+    lh.add(fa);
+    // a cheap wristwatch on the left wrist
+    const watch = new THREE.Group();
+    watch.position.copy(fa.position).addScaledVector(new THREE.Vector3(-0.6, -0.42, 1).normalize(), 0.035);
+    watch.quaternion.copy(fa.quaternion);
+    watch.add(new THREE.Mesh(H.watch.band, watchMats().band));
+    const face = new THREE.Mesh(H.watch.face, watchMats().face); face.rotation.y = -0.6; watch.add(face);
+    lh.add(watch);
+  } else {
+    lh.add(new THREE.Mesh(H.cup, m.skin));
+    lh.add(forearm(m, [-0.018, -0.02, 0.03], [-0.5, -0.6, 1]));
+  }
   spec.leftHand = lh;
   spec.leftHome = lh.position.clone();
+}
+
+let wMats = null;
+function watchMats() {
+  if (!wMats) wMats = { band: new THREE.MeshStandardMaterial({ color: '#1c1a18', roughness: 0.7 }), face: new THREE.MeshStandardMaterial({ color: '#8a8c90', roughness: 0.25, metalness: 0.9 }) };
+  return wMats;
 }

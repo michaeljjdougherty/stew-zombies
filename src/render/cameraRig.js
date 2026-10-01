@@ -42,9 +42,10 @@ export class CameraRig {
   }
 
   // pos: interpolated player position; p: sim player; look: {yaw,pitch}
-  update(dt, pos, p, look, aspect, def) {
+  update(dt, pos, p, look, aspect, def, aim = null) {
     const c = this.cfg.camera, pc = this.cfg.player;
     const w = p.loadout;
+    const A = aim || { ads: w.adsAmount, recoilPitch: w.recoilPitch, recoilYaw: w.recoilYaw, swayPitch: w.swayPitch || 0, swayYaw: w.swayYaw || 0 };
     const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
     this.eyeY = lerp(this.eyeY, targetEye, 1 - Math.exp(-c.eyeSmoothing * dt));
 
@@ -62,7 +63,7 @@ export class CameraRig {
     this.lastDist = p.distanceWalked;
     this.bobPhase += (dd / stride) * Math.PI * 2;
     const moving = Math.min(1, speed / 2.5);
-    const adsK = lerp(1, c.bobAdsMult, w.adsAmount);
+    const adsK = lerp(1, c.bobAdsMult, A.ads);
     const targetAmp = (sprint ? c.bobSprintAmp : c.bobWalkAmp) * moving * adsK;
     const targetSide = (sprint ? c.bobSprintSide : c.bobWalkSide) * moving * adsK;
     this.bobAmp = lerp(this.bobAmp, targetAmp, 1 - Math.exp(-8 * dt));
@@ -88,18 +89,18 @@ export class CameraRig {
     const sh = this.shake * this.shake * c.damageShake * Math.PI / 180;
 
     const cam = this.camera;
-    const yaw = look.yaw + w.recoilYaw + (w.swayYaw || 0) + Math.sin(this.shakeT * 1.3) * sh;
-    const pitch = look.pitch + w.recoilPitch + (w.swayPitch || 0) + Math.sin(this.shakeT) * sh;
+    const yaw = look.yaw + A.recoilYaw + A.swayYaw + Math.sin(this.shakeT * 1.3) * sh;
+    const pitch = look.pitch + A.recoilPitch + A.swayPitch + Math.sin(this.shakeT) * sh;
     // side bob is along the camera's right vector
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     cam.position.set(pos.x + rx * bobX, this.smoothY + this.eyeY + bobY + dip, pos.z + rz * bobX);
     // last stand: lying on your side
     this.downRoll = lerp(this.downRoll || 0, p.downed ? 0.32 : 0, 1 - Math.exp(-5 * dt));
-    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll + Math.sin(this.shakeT * 0.7) * sh * 0.5 + this.downRoll);
+    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll * (1 - A.ads) + Math.sin(this.shakeT * 0.7) * sh * 0.5 + this.downRoll);
 
     // FOV
     this.fovExtra = lerp(this.fovExtra, sprint ? c.sprintFovAdd : 0, 1 - Math.exp(-6 * dt));
-    const adsMult = lerp(1, def.adsFovMult ?? 0.85, w.adsAmount);
+    const adsMult = lerp(1, def.adsFovMult ?? 0.85, A.ads);
     const h = (this.hFov + this.fovExtra) * adsMult;
     const vFov = 2 * Math.atan(Math.tan((h * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
     if (Math.abs(cam.fov - vFov) > 0.01 || cam.aspect !== aspect) {

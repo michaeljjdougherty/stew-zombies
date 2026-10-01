@@ -28,7 +28,7 @@ import { IntercomInteractable, NoteInteractable, StewItemInteractable, createSte
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
     this.cfg = cfg;
-    this.mode = mode;          // 'zombies' | 'range'
+    this.mode = mode;          // 'zombies' | 'range' | 'explore'
     this.godMode = false;
     this.mapData = map;
     this.world = buildMap(map, cfg);
@@ -72,18 +72,34 @@ export class GameSim {
     this.rounds = createRoundState(this);
     this.powerups = createPowerupState(this);
     if (mode === 'range') setupRange(this);
+    // Explore: the school with endless points; you can't die and the zombies
+    // only come when you switch them on.
+    if (mode === 'explore') { this.godMode = true; this.explore = { zombies: false }; }
   }
 
   // --- players --------------------------------------------------------------
   addPlayer(id, name) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
+    if (this.mode === 'explore') p.points = this.cfg.explore.points;
     p.region = this.nav.regionAt(p.pos);
     this.players.push(p);
     this.inputs.set(id, emptyCommand());
     if (this.mode === 'range') p.points = this.cfg.range.startPoints;
     this.emit('playerJoin', { playerId: id, name });
     return p;
+  }
+
+  // Explore mode: switch the zombies on (rounds carry on) or off (all gone).
+  setExploreZombies(on) {
+    if (this.mode !== 'explore') return;
+    this.explore.zombies = !!on;
+    if (!on) {
+      for (const z of this.zombies) if (z.state !== 'dead') { z.state = 'dead'; this.emit('zombieRemoved', { id: z.id }); }
+      const R = this.rounds;
+      if (R.phase === 'active') { R.phase = 'intermission'; R.timer = this.cfg.rounds.intermission ?? 10; R.toSpawn = 0; }
+    }
+    this.emit('exploreZombies', { on: !!on });
   }
 
   setInput(playerId, cmd) { this.inputs.set(playerId, cmd); }
@@ -108,7 +124,7 @@ export class GameSim {
   }
 
   spendPoints(p, amount) {
-    p.points -= amount;
+    if (this.mode !== 'explore') p.points -= amount;
     this.emit('points', { playerId: p.id, amount: -amount, reason: 'spend', total: p.points });
   }
 
@@ -253,7 +269,7 @@ export class GameSim {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');
     }
     if (this.mode === 'range') updateRange(this, dt);
-    else updateRounds(this, dt);
+    else if (this.mode !== 'explore' || this.explore.zombies) updateRounds(this, dt);
 
     if (this.players.length && !anyoneStanding(this)) {
       this.gameOver = true;

@@ -19,9 +19,10 @@ const walk = (d) => {
   for (const f of fs.readdirSync(path.join(root, d))) {
     const rel = path.join(d, f);
     if (fs.statSync(path.join(root, rel)).isDirectory()) walk(rel);
-    else if (rel.endsWith('.js')) files[rel] = rel;
+    else if (/\.(js|mp3)$/.test(rel)) files[rel] = rel;
   }
 };
 walk('src');
+if (fs.existsSync(path.join(root, 'assets'))) walk('assets');
 fs.writeFileSync(path.join(root, 'dist/files.json'), JSON.stringify(files, null, 2));
 console.log('wrote dist/artifact.html and', Object.keys(files).length, 'files');
