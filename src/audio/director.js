@@ -3,6 +3,7 @@
 // Also runs the ambience (wind at the windows, light buzz, drips, creaks).
 // =============================================================================
 import * as S from './sfx.js';
+import { StewSong } from './music.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -27,7 +28,12 @@ export class SoundDirector {
     this.dripT = 2;
     this.creakT = 6;
     this.localId = null;
+    this.song = null;       // the Stew song, when it's playing
+    this.talkUntil = 0;     // ducks the ambience while Erik talks
+    this.tickT = 0;
   }
+
+  stopSong() { if (this.song) { this.song.stop(0.4); this.song = null; } }
 
   startAmbience(mapView) {
     const A = this.A;
@@ -177,6 +183,7 @@ export class SoundDirector {
       case 'zombieHit': {
         const pos = e.point;
         if (e.kind === 'knife') break;
+        if (local && this.tickT <= 0 && this.cfg.hud.hitmarkers) { A.play(S.hitTick, { head: e.part === 'head' }, { gain: 0.7, reverb: 0 }); this.tickT = 0.045; }
         if (e.part === 'head') A.play(S.headshot, {}, { pos, gain: 1.1, ref: 4 });
         else A.play(S.fleshHit, {}, { pos, gain: 1, ref: 4 });
         break;
@@ -283,6 +290,21 @@ export class SoundDirector {
       }
       case 'roundEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'roundStart': A.play(S.roundStartSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
+      // --- Erik, the intercom, the Easter egg
+      case 'erikSays':
+        A.play(S.erikPA, { text: e.text, dur: e.dur, chime: e.lead > 0, angry: e.cat === 'song' || e.cat === 'pressureCooker' }, { bus: 'voice', reverb: 0.5, gain: 0.95 });
+        this.talkUntil = A.now() + e.lead + e.dur;
+        break;
+      case 'stewSays': A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 }); this.talkUntil = A.now() + e.dur; break;
+      case 'loreRead': if (local) A.play(S.paperRustle, {}, { gain: 0.8, reverb: 0.05 }); break;
+      case 'stewItem': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.3, bus: 'music' }); break;
+      case 'stewSong':
+        A.play(S.tapeClunk, {}, { gain: 1, reverb: 0.4 });
+        this.stopSong();
+        this.song = new StewSong(A);
+        setTimeout(() => { if (this.song && !this.song.playing) this.song.start('music', 0.75); }, 600);
+        break;
+      case 'stewSongEnd': if (this.song && this.song.playing) this.song.stop(1.5); break;
     }
   }
 
@@ -313,6 +335,14 @@ export class SoundDirector {
     if (!A.ready) return;
     const sim = this.sim;
     const round = sim.rounds.round;
+    this.tickT -= dt;
+
+    // duck the ambience while someone's talking
+    const duck = A.now() < this.talkUntil ? 0.45 : 1;
+    if (duck !== A.duck) {
+      A.duck = duck;
+      A.buses.ambient.gain.setTargetAtTime(A.volumes.ambient * duck, A.now(), 0.15);
+    }
 
     // stuck crossbow bolts beep faster and faster
     if (!this.beepT) this.beepT = new Map();

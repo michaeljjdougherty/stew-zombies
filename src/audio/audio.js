@@ -9,7 +9,7 @@ export class AudioEngine {
     this.ctx = null;
     this.ready = false;
     this.tracked = new Map(); // id -> { panner, getPos, until }
-    this.volumes = { master: cfg.audio.master, sfx: cfg.audio.sfx, ambient: cfg.audio.ambient, music: cfg.audio.music };
+    this.volumes = { master: cfg.audio.master, sfx: cfg.audio.sfx, ambient: cfg.audio.ambient, music: cfg.audio.music, voice: cfg.audio.voice ?? 1 };
   }
 
   // Must be called from a user gesture (click).
@@ -54,7 +54,8 @@ export class AudioEngine {
     this.buses.sfx.gain.value = this.volumes.sfx;
     this.buses.ambient.gain.value = this.volumes.ambient;
     this.buses.music.gain.value = this.volumes.music;
-    this.buses.voice.gain.value = 1;
+    this.buses.voice.gain.value = this.volumes.voice;
+    this.duck = 1;
   }
 
   setVolume(k, v) { this.volumes[k] = v; this.applyVolumes(); }

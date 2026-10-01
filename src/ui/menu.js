@@ -1,5 +1,5 @@
 // =============================================================================
-// Menus: title, pause, settings, game over. Plain DOM, wired with callbacks.
+// Menus: title, pause, settings, extras, game over. Plain DOM, wired with callbacks.
 // =============================================================================
 import { CONFIG } from '../config.js';
 
@@ -9,12 +9,14 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'pause', 'settings', 'gameover'].map((id) => $(id));
+    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
     $('btn-range').addEventListener('click', () => this.h.range());
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
+    $('btn-extras').addEventListener('click', () => this.h.extras());
+    $('btn-extras-back').addEventListener('click', () => this.h.extrasBack());
     $('btn-resume').addEventListener('click', () => this.h.resume());
     $('btn-pause-settings').addEventListener('click', () => this.openSettings('pause'));
     $('btn-restart').addEventListener('click', () => this.h.restart());
@@ -59,14 +61,17 @@ export class Menus {
     range('set-fov', 'fov', (v) => `${Math.round(v)}°`);
     range('set-vol', 'master', (v) => `${Math.round(v * 100)}%`);
     range('set-music', 'music', (v) => `${Math.round(v * 100)}%`);
+    range('set-voice', 'voice', (v) => `${Math.round(v * 100)}%`);
     range('set-scale', 'renderScale', (v) => `${Math.round(v * 100)}%`);
     check('set-invert', 'invertY');
     check('set-grain', 'grain');
     check('set-bloom', 'bloom');
     check('set-fps', 'showFps');
+    check('set-subs', 'subtitles');
   }
 
-  showGameOver(team, round, p) {
+  showGameOver(team, round, p, erikLine = '') {
+    $('over-erik').textContent = erikLine ? `“${erikLine}” — Erik, over the PA` : '';
     $('over-rounds').textContent = String(round);
     $('over-round-word').textContent = round === 1 ? 'round' : 'rounds';
     $('over-team').textContent = team;

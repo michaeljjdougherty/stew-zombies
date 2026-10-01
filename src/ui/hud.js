@@ -4,6 +4,7 @@
 // =============================================================================
 import { TallyCounter } from './tally.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
+import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,6 +23,16 @@ export class HUD {
     this.fpsAcc = 0; this.fpsN = 0;
     this.localId = null;
     this.last = {};
+    // Erik & friends
+    this.subtitles = true;
+    this.clock = 0;
+    this.subQueue = [];      // { at, until, cls, who, text, el }
+    this.paUntil = 0;
+    this.noteOpen = null;
+    this.hits = [];          // damage direction arcs { from, t, el }
+    this.lyricSource = null; // () => current song line
+    this.onNoteRead = null;
+    this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
   }
 
   // Big centered message (power on, new upgraded gun, perk).
@@ -39,6 +50,16 @@ export class HUD {
 
   reset() {
     this.tally.round = 0; this.tally.anim = null; this.tally.blink = false;
+    for (const q of this.subQueue) if (q.el) q.el.remove();
+    this.subQueue = [];
+    this.el.subs.textContent = '';
+    this.paUntil = 0;
+    this.closeNote();
+    for (const h of this.hits) h.el.remove();
+    this.hits = [];
+    this.el.eggs.hidden = true;
+    for (const s of this.el.eggs.children) s.classList.remove('got');
+    this.lastLyric = null;
     this.el.popups.textContent = '';
     this.shownPoints = null;
     this.last = {};
@@ -94,6 +115,109 @@ export class HUD {
       case 'meleeHit':
         if (e.playerId === this.localId && this.cfg.hud.hitmarkers) this.hitT = 0.12;
         break;
+      case 'erikSays':
+        this.say('erik', 'Erik', e.text, e.lead || 0, e.dur);
+        this.paUntil = this.clock + (e.lead || 0) + e.dur;
+        break;
+      case 'stewSays':
+        if (e.playerId === this.localId) this.say('stew', 'You', e.text, 0, e.dur);
+        break;
+      case 'loreRead':
+        if (e.playerId === this.localId) this.openNote(e.id);
+        break;
+      case 'stewItem': {
+        this.el.eggs.hidden = false;
+        const idx = STEW_ITEMS.findIndex((s) => s.id === e.id);
+        if (idx >= 0) this.el.eggs.children[idx].classList.add('got');
+        const it = STEW_ITEMS[idx];
+        this.toast(`${e.count} of ${e.total}`, it ? it.name : e.name, '#f0d070', 3);
+        break;
+      }
+      case 'stewSong':
+        this.toast('We Go Stew', 'Stew Jams · side A', '#f0d070', 4);
+        break;
+      case 'playerHit':
+        if (e.playerId === this.localId && e.from) this.hitFrom(e.from);
+        break;
+    }
+  }
+
+  // --- subtitles ------------------------------------------------------------
+  say(cls, who, text, delay, dur) {
+    this.subQueue.push({ at: this.clock + delay, until: this.clock + delay + dur + 1.0, cls, who, text, el: null });
+  }
+
+  updateSubs(dt) {
+    this.clock += dt;
+    // show lines that are due
+    for (const q of this.subQueue) {
+      if (q.el || this.clock < q.at) continue;
+      if (!this.subtitles) { q.until = -1; continue; }
+      q.el = document.createElement('div');
+      q.el.className = 'sub ' + q.cls;
+      const b = document.createElement('b'); b.textContent = q.who;
+      q.el.append(b, document.createTextNode(q.text));
+      this.el.subs.appendChild(q.el);
+    }
+    // only the latest two stay on screen
+    const shown = this.subQueue.filter((x) => x.el);
+    for (let i = 0; i < shown.length - 2; i++) shown[i].until = -1;
+    // fade out finished ones
+    this.subQueue = this.subQueue.filter((q) => {
+      if (q.until >= 0 && this.clock <= q.until) return true;
+      if (q.el) { const el = q.el; el.classList.add('out'); setTimeout(() => el.remove(), 450); }
+      return false;
+    });
+    this.set('pa', this.el.pa, this.clock < this.paUntil ? 'on' : '', 'className');
+    // the song's lyrics
+    const lyric = this.subtitles && this.lyricSource ? this.lyricSource() : null;
+    if (lyric !== this.lastLyric) {
+      this.lastLyric = lyric;
+      if (this.lyricEl) { const el = this.lyricEl; el.classList.add('out'); setTimeout(() => el.remove(), 450); this.lyricEl = null; }
+      if (lyric) {
+        this.lyricEl = document.createElement('div');
+        this.lyricEl.className = 'sub song';
+        this.lyricEl.textContent = '♪ ' + lyric + ' ♪';
+        this.el.subs.prepend(this.lyricEl);
+      }
+    }
+  }
+
+  // --- notes ------------------------------------------------------------------
+  openNote(id) {
+    const n = NOTES.find((x) => x.id === id);
+    if (!n) return;
+    if (this.noteOpen === id) { this.closeNote(); return; }
+    this.noteOpen = id;
+    const el = this.el.note;
+    el.querySelector('h3').textContent = n.title;
+    el.querySelector('.where').textContent = n.where;
+    el.querySelector('.body').textContent = n.text;
+    el.hidden = false;
+    if (this.onNoteRead) this.onNoteRead(id);
+  }
+
+  closeNote() { this.noteOpen = null; this.el.note.hidden = true; }
+
+  // --- damage direction --------------------------------------------------------
+  hitFrom(from) {
+    const el = document.createElement('div');
+    el.className = 'arc';
+    this.el.dmgdir.appendChild(el);
+    this.hits.push({ from, t: 0, el });
+    if (this.hits.length > 4) { const h = this.hits.shift(); h.el.remove(); }
+  }
+
+  updateHits(dt, p) {
+    for (let i = this.hits.length - 1; i >= 0; i--) {
+      const h = this.hits[i];
+      h.t += dt;
+      if (h.t > 1.1 || !p) { h.el.remove(); this.hits.splice(i, 1); continue; }
+      const dx = h.from.x - p.pos.x, dz = h.from.z - p.pos.z;
+      const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+      const a = Math.atan2(dx * rx + dz * rz, dx * fx + dz * fz);
+      h.el.style.setProperty('--a', `${a.toFixed(3)}rad`);
+      h.el.style.setProperty('--o', String(Math.min(1, (1.1 - h.t) * 2.2).toFixed(2)));
     }
   }
 
@@ -115,7 +239,11 @@ export class HUD {
 
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
+    this.updateSubs(dt);
+    this.updateHits(dt, p);
     if (!p) return;
+    // put the note down when you walk away from it
+    if (this.noteOpen && !(p.useTarget && p.useTarget.noteId === this.noteOpen)) this.closeNote();
 
     // points count up quickly instead of snapping
     if (this.shownPoints === null) this.shownPoints = p.points;

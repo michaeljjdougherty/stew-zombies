@@ -99,6 +99,61 @@
   #powerups .pu.low img { animation: puBlink .35s steps(2) infinite; }
   @keyframes puBlink { 50% { opacity: .25; } }
 
+
+  /* ---------------- Erik, notes, Easter egg ---------------- */
+  #subs { position: absolute; left: 50%; bottom: calc(max(18px, 3vh) + 70px); transform: translateX(-50%); width: min(760px, 86vw); display: grid; gap: 6px; justify-items: center; text-align: center; }
+  #subs .sub { font-size: clamp(14px, 1.5vw, 18px); line-height: 1.4; color: #efe6d2; background: rgba(8,7,5,.62); padding: 5px 12px; border-radius: 3px; text-shadow: 0 1px 2px #000; animation: subIn .25s ease-out; max-width: 100%; text-wrap: balance; }
+  #subs .sub b { font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: .8em; margin-right: 6px; }
+  #subs .sub.erik b { color: #e8a040; }
+  #subs .sub.stew b { color: #8fc7ff; }
+  #subs .sub.song { font-family: var(--display); letter-spacing: 1px; font-size: clamp(18px, 2vw, 26px); color: #f0d070; background: rgba(8,7,5,.45); }
+  #subs .sub.out { opacity: 0; transition: opacity .4s; }
+  @keyframes subIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  #pa { position: absolute; left: max(16px, 2.2vw); top: max(14px, 2vh); display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #e8a040; text-shadow: 0 1px 2px #000; opacity: 0; transition: opacity .3s; }
+  #pa.on { opacity: 1; }
+  #pa i { width: 8px; height: 8px; border-radius: 50%; background: #ff4020; box-shadow: 0 0 8px #ff4020; animation: puBlink .5s steps(2) infinite; }
+  body.range-mode #pa { display: none; }
+  #notecard { position: absolute; right: max(20px, 4vw); top: 50%; transform: translateY(-50%) rotate(1.2deg); width: min(360px, 80vw); max-height: 70vh; overflow: hidden; padding: 22px 24px 18px; color: #2a2014;
+    background: linear-gradient(#efe6cc, #e2d6b4); box-shadow: 0 10px 30px rgba(0,0,0,.75), inset 0 0 40px rgba(110,80,30,.3); font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; }
+  #notecard[hidden] { display: none; }
+  #notecard h3 { margin: 0 0 2px; font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 1px; text-transform: uppercase; color: #3a2010; }
+  #notecard .where { font: 11px var(--body); letter-spacing: 2px; text-transform: uppercase; color: #7a6040; margin-bottom: 12px; }
+  #notecard .body { white-space: pre-line; font-size: 15px; line-height: 1.45; }
+  #notecard .close { margin-top: 12px; font: 11px var(--body); letter-spacing: 2px; text-transform: uppercase; color: #7a6040; }
+  #eggs { position: absolute; right: max(16px, 2.4vw); top: max(14px, 2vh); display: flex; gap: 6px; }
+  #eggs[hidden] { display: none; }
+  #eggs span { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(240,208,112,.5); display: grid; place-items: center; font: 700 13px var(--display); color: rgba(240,208,112,.35); background: rgba(0,0,0,.4); }
+  #eggs span.got { color: #1a1206; background: #f0d070; box-shadow: 0 0 10px rgba(240,208,112,.7); }
+  #dmgdir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  #dmgdir .arc { position: absolute; left: -90px; top: -90px; width: 180px; height: 180px; border-radius: 50%; border: 4px solid transparent; border-top-color: rgba(216,40,24,.85);
+    filter: drop-shadow(0 0 6px rgba(216,40,24,.9)); transform: rotate(var(--a)); opacity: var(--o); -webkit-mask-image: linear-gradient(90deg, transparent 22%, #000 40% 60%, transparent 78%); mask-image: linear-gradient(90deg, transparent 22%, #000 40% 60%, transparent 78%); }
+
+  /* ---------------- Extras ---------------- */
+  .stack.wide { max-width: min(980px, 100%); }
+  .extras { display: grid; grid-template-columns: 210px 1fr; gap: 26px; align-items: start; }
+  .extras .menu button { font-size: clamp(20px, 2.2vw, 26px); }
+  .extras .menu button[aria-current="true"] { color: var(--blood-hi); }
+  .xpanel { background: var(--panel); border: 1px solid var(--line); padding: 18px 22px; height: min(66vh, 620px); box-sizing: border-box; overflow-y: auto; font-size: 14px; line-height: 1.6; color: var(--ink); }
+  .xpanel h3 { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 1px; margin: 0 0 8px; text-transform: uppercase; }
+  .xpanel h4 { margin: 16px 0 4px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .xpanel p { margin: 0 0 10px; }
+  .xpanel ul { margin: 0 0 10px; padding-left: 18px; }
+  .xpanel .notes { display: grid; gap: 10px; }
+  .xpanel details { border: 1px solid var(--line); padding: 8px 12px; background: rgba(255,255,255,.02); }
+  .xpanel details summary { cursor: pointer; font-weight: 700; }
+  .xpanel details summary span { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .xpanel details.locked summary { cursor: default; color: var(--muted); list-style: none; }
+  .xpanel details .body { white-space: pre-line; margin-top: 8px; font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; color: #e8dcc0; }
+  .xpanel .jukebox { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+  .xpanel button.sm { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 7px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; }
+  .xpanel button.sm:hover, .xpanel button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
+  .xpanel button.sm[disabled] { opacity: .4; pointer-events: none; }
+  #lyric { font-family: var(--display); font-size: 22px; letter-spacing: 1px; color: #f0d070; min-height: 1.4em; }
+  .over-erik { font-size: 15px; color: #e8a040; font-style: italic; max-width: 52ch; margin: 0; }
+  .over-erik:empty { display: none; }
+  @media (max-height: 560px) { #subs { width: min(560px, 80vw); bottom: 60px; } #subs .sub { font-size: 12px; padding: 3px 8px; } #notecard .body { font-size: 13px; } }
+  @media (max-width: 760px) { .extras { grid-template-columns: 1fr; gap: 12px; } .extras .menu { grid-auto-flow: column; justify-content: start; overflow-x: auto; gap: 16px; } .extras .menu button { white-space: nowrap; font-size: 18px; } }
+
   /* ---------------- Firing range ---------------- */
   body.range-mode #tally { display: none; }
   #rangehud { position: absolute; left: max(16px, 2.2vw); top: max(12px, 2vh); font-size: 13px; line-height: 1.6; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 6px #000; max-width: min(760px, 70vw); }
@@ -217,6 +272,11 @@
   <div id="downed" hidden><div class="big">You're down</div><div class="small"></div><div class="bar"><i></i></div></div>
   <div id="revive" hidden><span>Reviving</span><div class="bar"><i></i></div></div>
   <div id="fps"></div>
+  <div id="dmgdir"></div>
+  <div id="pa"><i></i>PA · Erik Madsen</div>
+  <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
+  <div id="subs" aria-live="polite"></div>
+  <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>
   <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><kbd>B</kbd> weapons &amp; options</div></div>
 </div>
 <div id="dmgnums"></div>
@@ -259,13 +319,15 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phase 7 · Wonder weapons, Stew Bombs, the box on the move</span>
+    <span class="eyebrow">Phase 8 · Erik's on the PA</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
       <button id="btn-range" type="button">Firing Range</button>
+      <button id="btn-extras" type="button">Extras</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>
+    <p class="note">Ten years after the Great Stew Incident, class president Erik Madsen threw a reunion. He made the stew. Everyone ate it. Stew showed up late.</p>
     <dl class="keys">
       <dt>W A S D</dt><dd>Move</dd>
       <dt>Mouse</dt><dd>Look · left click fires · right click aims (fires the left gun when dual wielding)</dd>
@@ -275,7 +337,7 @@
       <dt>V or E</dt><dd>Knife</dd>
       <dt>G</dt><dd>Frag grenade (hold to cook, release to throw)</dd>
       <dt>Q</dt><dd>Stew Bomb, if the box gave you some (draws zombies in, then blows)</dd>
-      <dt>F</dt><dd>Buy doors, weapons and the Mystery Box · hold to rebuild barriers</dd>
+      <dt>F</dt><dd>Buy and use things · read notes · hold to rebuild barriers</dd>
       <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
@@ -302,16 +364,36 @@
       <label class="row"><span>Aiming sensitivity</span><input id="set-ads" type="range" min="0.2" max="1.5" step="0.05"><output id="set-ads-val"></output></label>
       <label class="row"><span>Field of view</span><input id="set-fov" type="range" min="65" max="110" step="1"><output id="set-fov-val"></output></label>
       <label class="row"><span>Master volume</span><input id="set-vol" type="range" min="0" max="1" step="0.01"><output id="set-vol-val"></output></label>
-      <label class="row"><span>Music stings</span><input id="set-music" type="range" min="0" max="1" step="0.01"><output id="set-music-val"></output></label>
+      <label class="row"><span>Music</span><input id="set-music" type="range" min="0" max="1" step="0.01"><output id="set-music-val"></output></label>
+      <label class="row"><span>Erik &amp; voices</span><input id="set-voice" type="range" min="0" max="1" step="0.01"><output id="set-voice-val"></output></label>
       <label class="row"><span>Render scale</span><input id="set-scale" type="range" min="0.5" max="1" step="0.05"><output id="set-scale-val"></output></label>
       <div class="checks">
         <label><input id="set-invert" type="checkbox"> Invert mouse Y</label>
         <label><input id="set-grain" type="checkbox"> Film grain</label>
         <label><input id="set-bloom" type="checkbox"> Bloom</label>
         <label><input id="set-fps" type="checkbox"> Show FPS</label>
+        <label><input id="set-subs" type="checkbox"> Subtitles</label>
       </div>
     </div>
     <nav class="menu"><button id="btn-settings-back" type="button">Back</button></nav>
+  </div>
+</section>
+
+
+<section id="extras" class="screen" hidden>
+  <div class="stack wide">
+    <h2>Extras</h2>
+    <div class="extras">
+      <nav class="menu" id="x-menu">
+        <button type="button" data-x="story" aria-current="true">The story</button>
+        <button type="button" data-x="notes">Notes found</button>
+        <button type="button" data-x="howto">How to play</button>
+        <button type="button" data-x="jukebox">Jukebox</button>
+        <button type="button" data-x="credits">Credits</button>
+        <button type="button" id="btn-extras-back">Back</button>
+      </nav>
+      <div class="xpanel" id="x-panel"></div>
+    </div>
   </div>
 </section>
 
@@ -325,6 +407,7 @@
       <div><dt>Knife kills</dt><dd id="over-knife">0</dd></div>
       <div><dt>Points</dt><dd id="over-points">0</dd></div>
     </dl>
+    <p class="over-erik" id="over-erik"></p>
     <nav class="menu">
       <button id="btn-again" type="button">Play again</button>
       <button id="btn-over-title" type="button">Quit to title</button>

@@ -22,6 +22,8 @@ import { setupRange, updateRange } from './range.js';
 import { PowerInteractable, PerkInteractable, MadDogInteractable, TrapInteractable, ReviveInteractable, createTraps, updateTraps } from './interactables/machines.js';
 import { updateLastStand, anyoneStanding } from './laststand.js';
 import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } from './powerups.js';
+import { createPA, updatePA } from './pa.js';
+import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -60,7 +62,12 @@ export class GameSim {
       ...(this.madDog ? [this.madDog] : []),
       ...this.traps.map((t) => new TrapInteractable(t)),
       new ReviveInteractable(),
+      ...(map.intercom ? [new IntercomInteractable(map.intercom)] : []),
+      ...(map.notes || []).map((n) => new NoteInteractable(n)),
+      ...(map.stewItems || []).map((s) => new StewItemInteractable(s)),
     ];
+    this.pa = createPA(this);
+    this.stewEgg = createStewEgg();
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);
     this.powerups = createPowerupState(this);
@@ -218,7 +225,11 @@ export class GameSim {
   }
 
   // --- events ---------------------------------------------------------------
-  emit(type, data = {}) { this.events.push({ type, t: this.time, ...data }); }
+  emit(type, data = {}) {
+    const e = { type, t: this.time, ...data };
+    this.events.push(e);
+    if (this.pa && this.pa.enabled && type !== 'erikSays') this.pa.inbox.push(e); // Erik listens to everything
+  }
   drainEvents() { const e = this.events; this.events = []; return e; }
 
   // --- main step ------------------------------------------------------------
@@ -248,6 +259,8 @@ export class GameSim {
       this.gameOver = true;
       this.emit('gameOver', { round: this.rounds.round, team: this.teamName });
     }
+    updateStewEgg(this);
+    updatePA(this, dt);
   }
 
   // Plain-object snapshot for networking / debugging.
@@ -264,6 +277,8 @@ export class GameSim {
       windows: this.windows.map((w) => ({ id: w.id, boards: w.boards })),
       doors: [...this.doorState].filter(([, s]) => s.open).map(([id]) => id),
       box: { phase: this.box.phase, weapon: this.box.weapon, spot: this.box.spot.id, timer: this.box.timer },
+      stewEgg: { found: [...this.stewEgg.found], playing: this.stewEgg.playing },
+      pa: this.pa.speaking ? { ...this.pa.speaking } : null,
     };
   }
 }

@@ -987,6 +987,7 @@ export const CONFIG = {
     sfx: 1.0,
     ambient: 0.7,
     music: 0.8,
+    voice: 1.0,              // Erik on the PA, the intercom
     reverbSeconds: 2.8,      // big gym echo
     reverbSend: 0.28,
     refDistance: 2.2,
@@ -995,6 +996,31 @@ export const CONFIG = {
     maxZombieVoices: 9,
     maxBuzzers: 6,           // flickering fixtures that get their own electrical buzz
     groanInterval: [2.2, 6.0],
+  },
+
+  // ---------------------------------------------------------------------------
+  // Erik on the PA (lines live in src/lore/erik.js)
+  // ---------------------------------------------------------------------------
+  pa: {
+    enabled: true,
+    introDelay: 3.5,         // seconds after round 1 starts
+    gap: 1.2,                // silence between two queued lines
+    cooldown: 14,            // minimum seconds between optional lines
+    chance: {                // odds that an optional event gets a comment
+      round: 0.45, roundEnd: 0.35, boxMoved: 0.75, madDog: 0.5, down: 0.8,
+      revived: 0.5, pressureCooker: 0.6, power: 1, cheddar: 1, cheddarEnd: 0.8,
+    },
+    idleEvery: [70, 120],    // random barb when he has been quiet this long
+    multiKill: 6,            // kills within multiKillWindow -> "those were my guests!"
+    multiKillWindow: 1.6,
+    intercomRange: 1.5,
+    intercomCooldown: 4,
+  },
+
+  // The Stew song Easter egg: find the 3 Stew items.
+  stewEgg: {
+    itemRange: 1.3,
+    songDelay: 2.2,          // after the third item: needle drop
   },
 
   // ---------------------------------------------------------------------------

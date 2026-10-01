@@ -1300,3 +1300,178 @@ export function boxThud(A, out, t) {
   click(A, out, t, 900, 1.5, 0.12, 0.8, 110);
   return 0.6;
 }
+
+// ---------------------------------------------------------------------------
+// Erik on the PA, the intercom, the Easter egg
+// ---------------------------------------------------------------------------
+
+// School PA "bing-bong" before Erik talks.
+export function paChime(A, out, t) {
+  const notes = [[740, 0], [587, 0.42]];
+  for (const [f, dt] of notes) {
+    for (const [m, g, d] of [[1, 0.35, 1.4], [2.01, 0.1, 0.7], [3.02, 0.05, 0.4], [4.2, 0.03, 0.25]]) {
+      const o = A.osc('sine', f * m, t + dt, d);
+      const gg = A.gain(0); A.env(gg, t + dt, 0.004, d, g);
+      o.connect(gg); gg.connect(out);
+    }
+  }
+  return 2.0;
+}
+
+// The PA chain: tinny band-limited speaker with hum and crackle.
+function paChain(A, out, t, dur, { hum = 0.02, crackle = 0.025 } = {}) {
+  const hp = A.filter('highpass', 420, 0.8);
+  const lp = A.filter('lowpass', 3300, 1.2);
+  const pk = A.filter('peaking', 1700, 1.2); pk.gain.value = 7;
+  const drive = A.shaper(0.25);
+  const g = A.gain(0.85);
+  hp.connect(pk); pk.connect(drive); drive.connect(lp); lp.connect(g); g.connect(out);
+  // mains hum
+  const h = A.osc('sawtooth', 60, t, dur + 0.4);
+  const hl = A.filter('lowpass', 300, 1);
+  const hg = A.gain(0); hg.gain.setValueAtTime(0.0001, t); hg.gain.linearRampToValueAtTime(hum, t + 0.05); hg.gain.setValueAtTime(hum, t + dur + 0.2); hg.gain.linearRampToValueAtTime(0.0001, t + dur + 0.4);
+  h.connect(hl); hl.connect(hg); hg.connect(out);
+  // crackle
+  const n = A.noiseSource('white', t, dur + 0.4);
+  const nh = A.filter('bandpass', 2400, 0.7);
+  const ng = A.gain(0);
+  const lfo = A.osc('square', 13, t, dur + 0.4);
+  const lg = A.gain(crackle);
+  lfo.connect(lg); lg.connect(ng.gain);
+  n.connect(nh); nh.connect(ng); ng.connect(out);
+  return hp;
+}
+
+const VOWELS = [
+  [[730, 6, 1], [1090, 7, 0.55], [2440, 9, 0.22]],  // ah
+  [[300, 6, 1], [2250, 9, 0.5], [3000, 10, 0.2]],   // ee
+  [[330, 6, 1], [870, 7, 0.5], [2240, 9, 0.15]],    // oo
+  [[530, 6, 1], [1840, 8, 0.5], [2480, 9, 0.2]],    // eh
+  [[570, 6, 1], [840, 7, 0.55], [2410, 9, 0.18]],   // aw
+  [[640, 6, 1], [1190, 7, 0.55], [2390, 9, 0.2]],   // uh
+];
+
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+// Turn a line of text into a babble of syllables that roughly follows it:
+// one syllable per ~3 letters, pauses at punctuation, pitch falls through a
+// sentence and jumps up on CAPS and "!". [VOICE PLACEHOLDER]
+export function babble(A, out, t, { text = '', dur = 2, f0 = 135, grit = 0.35, peak = 0.55, whine = 1 } = {}) {
+  let seed = hashStr(text);
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const tokens = text.split(/(\s+|[,.!?;:—…]+)/).filter((s) => s && s.trim());
+  // syllables: [vowel, weight, pitchMul, gapAfter]
+  const syl = [];
+  let sentencePos = 0;
+  for (const tok of tokens) {
+    if (/^[,.!?;:—…]+$/.test(tok)) {
+      if (syl.length) syl[syl.length - 1][3] += /[.!?…]/.test(tok) ? 0.35 : 0.18;
+      if (/[!]/.test(tok) && syl.length) syl[syl.length - 1][2] *= 1.25;
+      if (/[?]/.test(tok) && syl.length) syl[syl.length - 1][2] *= 1.3;
+      if (/[.!?…]/.test(tok)) sentencePos = 0;
+      continue;
+    }
+    const letters = tok.replace(/[^A-Za-z0-9']/g, '');
+    const n = Math.max(1, Math.round(letters.length / 3));
+    const loud = letters.length > 1 && letters === letters.toUpperCase() && /[A-Z]/.test(letters);
+    for (let i = 0; i < n; i++) {
+      const decl = 1.12 - Math.min(0.3, sentencePos * 0.025);
+      syl.push([Math.floor(rnd() * VOWELS.length), 1 + rnd() * 0.6, decl * (loud ? 1.35 : 1) * (1 + (rnd() - 0.5) * 0.18), i === n - 1 ? 0.06 : 0.015]);
+      sentencePos++;
+    }
+  }
+  if (!syl.length) return 0.1;
+  const total = syl.reduce((a, s) => a + s[1] * 0.16 + s[3], 0);
+  const k = Math.max(0.6, Math.min(1.6, (dur - 0.2) / total));
+  let tt = t + 0.05;
+  for (const [v, w, pm, gap] of syl) {
+    const d = w * 0.16 * k;
+    const f = f0 * pm * whine;
+    voice(A, out, tt, { f0: f, dur: d, formants: VOWELS[v], grit, breath: 0.12, vib: 5.5, vibDepth: 0.025, glide: 1 + (rnd() - 0.6) * 0.15, peak });
+    // the odd consonant hiss
+    if (rnd() < 0.35) {
+      const ns = A.noiseSource('white', tt - 0.03, 0.05);
+      const bp = A.filter('bandpass', 2800 + rnd() * 1500, 2);
+      const ng = A.gain(0); A.env(ng, tt - 0.03, 0.005, 0.04, peak * 0.25);
+      ns.connect(bp); bp.connect(ng); ng.connect(out);
+    }
+    tt += d + gap * k;
+  }
+  return tt - t + 0.2;
+}
+
+// [VOICE PLACEHOLDER: Erik Madsen over the school PA]
+export function erikPA(A, out, t, p = {}) {
+  const dur = p.dur || 3;
+  const chime = p.chime !== false;
+  const t0 = chime ? t + 1.0 : t;
+  if (chime) paChime(A, out, t);
+  const chain = paChain(A, out, t0, dur);
+  // mic thump as he leans in
+  const th = A.osc('sine', 90, t0 - 0.08, 0.12); th.frequency.exponentialRampToValueAtTime(40, t0 + 0.04);
+  const tg = A.gain(0); A.env(tg, t0 - 0.08, 0.005, 0.1, 0.35); th.connect(tg); tg.connect(chain);
+  babble(A, chain, t0, { text: p.text || '', dur, f0: 142, grit: 0.4, peak: 0.6, whine: p.angry ? 1.15 : 1 });
+  return (t0 - t) + dur + 0.6;
+}
+
+// [VOICE PLACEHOLDER: one of Stew talking into the principal's microphone]
+export function stewTalk(A, out, t, p = {}) {
+  const dur = p.dur || 2;
+  const lp = A.filter('lowpass', 5000, 0.7);
+  const boost = A.gain(2.6);
+  lp.connect(boost); boost.connect(out);
+  babble(A, lp, t, { text: p.text || '', dur, f0: 112, grit: 0.3, peak: 0.6 });
+  return dur + 0.3;
+}
+
+export function paperRustle(A, out, t) {
+  for (let i = 0; i < 3; i++) {
+    const n = A.noiseSource('white', t + i * 0.07, 0.12);
+    const bp = A.filter('bandpass', R(2500, 5000), 1.2);
+    const g = A.gain(0); A.env(g, t + i * 0.07, 0.01, 0.1, 0.25);
+    n.connect(bp); bp.connect(g); g.connect(out);
+  }
+  return 0.5;
+}
+
+// Picking up one of the three Stew items.
+export function stewItemGet(A, out, t, p = {}) {
+  const n = p.count || 1;
+  const base = [330, 392, 494][Math.min(2, n - 1)];
+  const notes = [1, 1.25, 1.5, 2];
+  notes.forEach((m, i) => {
+    const o = A.osc('square', base * m, t + i * 0.08, 0.3);
+    const lp = A.filter('lowpass', 2200, 2);
+    const g = A.gain(0); A.env(g, t + i * 0.08, 0.005, 0.28, 0.14);
+    o.connect(lp); lp.connect(g); g.connect(out);
+  });
+  // power chord stab
+  for (const m of [1, 1.5, 2]) {
+    const o = A.osc('sawtooth', base / 2 * m, t + 0.34, 0.6);
+    const sh = A.shaper(0.9);
+    const lp = A.filter('lowpass', 2400, 1);
+    const g = A.gain(0); A.env(g, t + 0.34, 0.005, 0.6, 0.12);
+    o.connect(sh); sh.connect(lp); lp.connect(g); g.connect(out);
+  }
+  return 1.2;
+}
+
+// Needle drop / tape clunk before the song.
+export function tapeClunk(A, out, t) {
+  click(A, out, t, 600, 2, 0.08, 0.9, 140);
+  click(A, out, t + 0.18, 1200, 3, 0.05, 0.6, 400);
+  const n = A.noiseSource('pink', t + 0.25, 1.6);
+  const bp = A.filter('bandpass', 1800, 0.6);
+  const g = A.gain(0); g.gain.setValueAtTime(0.0001, t + 0.25); g.gain.linearRampToValueAtTime(0.05, t + 0.4); g.gain.linearRampToValueAtTime(0.0001, t + 1.8);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  return 2;
+}
+
+// Tiny tick when your bullets connect.
+export function hitTick(A, out, t, p = {}) {
+  click(A, out, t, p.head ? 3600 : 2800, 6, 0.03, p.head ? 0.35 : 0.22, p.head ? 2400 : 1900);
+  return 0.08;
+}
+
+// Shared with the music (src/audio/music.js).
+export { voice as singVoice, VOWELS };

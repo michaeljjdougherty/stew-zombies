@@ -4,7 +4,37 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 7 — wonder weapons, Stew Bombs, and the box on the move.**
+**Current phase: 8 — Erik's on the PA.**
+
+- **The story:** ten years after the Great Stew Incident (a fire alarm, a goat
+  and the class president's sash), Erik Madsen threw the Last Bell High
+  reunion and cooked the stew himself, with a jar of "Batch 7" from the science
+  lab in it. Everyone ate it. Stew showed up late. All of the story text lives
+  in `src/lore/erik.js`.
+- **Erik on the PA:** he reacts to the game (the intro, milestone rounds,
+  Cheddar Rounds, the power, the box moving, you going down, multi-kills, game
+  over) and throws in the odd barb when it's quiet. Each line starts with the
+  school chime, plays as a placeholder voice through the PA speakers in every
+  room (their red light flickers while he talks) and shows as a subtitle.
+- **The intercom:** press F at the microphone on the principal's desk to talk
+  back. Eight scripted exchanges, then he just tells you to stop pressing the
+  button.
+- **Notes:** seven notes around the school (a flyer, a detention slip, Erik's
+  lab notebook, the stew recipe, the boiler log, an overdue notice, the Mad Dog
+  plaque). F to read; they're remembered under Extras → Notes found.
+- **Easter egg:** Erik hid three things he confiscated from Stew. Find all
+  three and the school plays **"We Go Stew"**, an original pop-punk song
+  generated in code (drums, two guitars, bass, gang vocals) with the lyrics as
+  subtitles. It unlocks in the Extras jukebox.
+- **Menus:** Extras (story, notes, how to play, jukebox, credits), title music,
+  Erik's last word on the game-over screen, voice volume and subtitle settings.
+- **Polish:** posters, banners and graffiti painted in code all over the
+  school, a red damage-direction indicator, and a hit tick sound.
+- **Voices are placeholders:** synthesized babble timed to each line. To swap in
+  real recordings later, play them from the `erikSays` / `stewSays` events in
+  `src/audio/director.js`.
+
+Phase 7 (built):
 
 - **The Fucci Gun** (Mystery Box): a designer energy pistol in black lacquer
   and gold. Gold plasma rings hit for 1000 and splash everything around the
@@ -180,18 +210,23 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   perks.js            perk effects, buying (and drinking), losing them
   laststand.js        going down, last stand pistol, self-revive, bleed out, revive
   powerups.js         drops, pickups and timed power-up effects
+  pa.js               Erik on the PA: when he talks, what he says, the intercom
   physics.js          character vs box collision, steps, gravity
   nav.js              region/portal pathing between rooms (closed doors block)
   interactables/      windows, doors & debris, wall weapons, mystery box,
-                      power switch, perk machines, Mad Dog Machine, traps, revive
+                      power switch, perk machines, Mad Dog Machine, traps, revive,
+                      intercom, lore notes, Stew items (lore.js)
 
+src/lore/erik.js      every line of story text: PA lines, intercom, notes, lyrics
 src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies, viewmodel, camera, effects, post
-src/audio/            Web Audio engine, synthesized sounds, event → sound director
+src/audio/            Web Audio engine, synthesized sounds, event → sound director,
+                      music.js (title theme and the Stew song sequencer)
 src/input/            keyboard/mouse → per-tick input commands
-src/ui/               HUD (tally marks, points, ammo), menus, settings, firing range panel
+src/ui/               HUD (tally marks, points, ammo, subtitles, notes), menus, extras,
+                      settings, firing range panel
 src/net/              notes for online co-op (Phase 9)
-tests/                headless tests: node tests/sim_headless.mjs, phase2_headless.mjs, phase3_headless.mjs
+tests/                headless tests: node tests/<name>_headless.mjs (one per phase)
 ```
 
 The simulation only takes **input commands** and produces **state + events**.
@@ -215,5 +250,5 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 5. ✅ Perk machines, Mad Dog Machine, last stand and revive
 6. ✅ Power-ups and Cheddar Rounds
 7. ✅ Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
-8. Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
+8. ✅ Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
 9. Online co-op for 2–4 players

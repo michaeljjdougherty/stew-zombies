@@ -18,6 +18,9 @@ import { SoundDirector } from './audio/director.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
+import { loadProgress, saveProgress } from './ui/progress.js';
+import { Extras } from './ui/extras.js';
+import { TitleMusic, StewSong } from './audio/music.js';
 
 const LOCAL_ID = 'p1';
 const canvas = document.getElementById('game');
@@ -43,6 +46,16 @@ sound.localId = LOCAL_ID;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the principal's office" : 'the ' + r.name.replace(/^The /, '')]));
 hud.localId = LOCAL_ID;
+
+// Notes found and the Stew song unlock, remembered in this browser.
+const progress = loadProgress();
+hud.onNoteRead = (id) => {
+  if (!progress.notes.includes(id)) { progress.notes.push(id); saveProgress(progress); }
+};
+const titleMusic = new TitleMusic(audio);
+const jukebox = new StewSong(audio);
+hud.lyricSource = () => (sound.song ? sound.song.lyric() : jukebox.playing ? jukebox.lyric() : null);
+let gameOverLine = '';
 
 renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
 renderer.onCheddarStep = (z) => sound.cheddarStep(z);
@@ -80,6 +93,8 @@ function applySettings(s) {
   renderer.applySettings(s);
   audio.setVolume('master', s.master);
   audio.setVolume('music', s.music);
+  audio.setVolume('voice', s.voice);
+  hud.subtitles = s.subtitles;
 }
 
 const menus = new Menus(settings, {
@@ -87,15 +102,40 @@ const menus = new Menus(settings, {
   range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
   resume: () => startPlaying(),
   restart: () => { restart(); startPlaying(); },
-  quit: () => { restart('zombies'); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); },
+  quit: () => { restart('zombies'); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => applySettings(s),
+  extras: () => { menus.show('extras'); extras.open(); },
+  extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
 });
+const extras = new Extras(CONFIG, {
+  progress: () => progress,
+  playSong: () => { audio.init(); audio.applyVolumes(); titleMusic.stop(0.6); jukebox.start('music', 0.75); },
+  stopSong: () => { jukebox.stop(0.5); startTitleMusic(); },
+  songLyric: () => jukebox.lyric(),
+  songPlaying: () => jukebox.playing,
+});
+
+// Title theme: browsers only allow sound after the first click or key press.
+function startTitleMusic() {
+  if (!audio.ready || (mode !== 'title' && mode !== 'over') || jukebox.playing) return;
+  titleMusic.start('music', 0.9);
+}
+const firstGesture = () => {
+  if (mode !== 'title') return;
+  audio.init();
+  audio.applyVolumes();
+  startTitleMusic();
+};
+window.addEventListener('pointerdown', firstGesture);
+window.addEventListener('keydown', firstGesture);
 applySettings(settings);
 menus.show('title');
 
 function startPlaying() {
   audio.init();
   audio.applyVolumes();
+  titleMusic.stop(0.8);
+  if (jukebox.playing) jukebox.stop(0.3);
   sound.startAmbience(renderer.map);
   input.enabled = true;
   input.reset();
@@ -142,6 +182,8 @@ function restart(gameMode = sim.mode) {
   }
   rangeUI.reset();
   rangeUI.setActive(false);
+  sound.stopSong();
+  gameOverLine = '';
   sound.sim = sim;
   sound.groanTimers.clear();
   hud.reset();
@@ -189,6 +231,8 @@ function tick(cmd) {
     hud.onEvent(e);
     rangeUI.onEvent(e);
     if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
+    if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
+    if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
   }
 }
 
@@ -217,7 +261,8 @@ function frame(now) {
       input.enabled = false;
       input.releaseLock();
       hud.show(false);
-      menus.showGameOver(sim.teamName, sim.rounds.round, player);
+      menus.showGameOver(sim.teamName, sim.rounds.round, player, gameOverLine);
+      if (sim.mode === 'zombies' && sim.rounds.round > progress.bestRound) { progress.bestRound = sim.rounds.round; saveProgress(progress); }
     }
   }
 
@@ -229,13 +274,14 @@ function frame(now) {
   if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
   rangeUI.update(fdt, sim, player, renderer.camera);
+  if (menus.current === 'extras') extras.update();
   input.endFrame();
 }
 requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus,
   get mode() { return mode; },
   debug: {
     // Run the simulation forward without rendering (for testing).

@@ -127,9 +127,11 @@ for running trains.
 - **A fifth Mystery Box spot in the Quad.** ✅ The box moves between the main
   hallway, the Quad, the loading dock, the library and the auditorium (Phase 7).
 - **Hidden Easter egg song:** find three Stew items around the school to play a
-  Stew song that's generated in code. Phase 8.
+  Stew song that's generated in code. ✅ Phase 8: a ladle on the kitchen
+  stove, the STEW JAMS mixtape on the band room piano, a can of stew on top of
+  the locker-room lockers by the science lab door.
 - **Erik's intercom:** using the PA in the principal's office makes Erik answer.
-  Phase 8.
+  ✅ Phase 8.
 
 ## Sources
 

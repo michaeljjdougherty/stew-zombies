@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS = {
   invertY: false,
   master: CONFIG.audio.master,
   music: CONFIG.audio.music,
+  voice: CONFIG.audio.voice,
+  subtitles: true,
   renderScale: CONFIG.graphics.renderScale,
   grain: true,
   bloom: true,

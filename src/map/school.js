@@ -431,6 +431,69 @@ export const SCHOOL = {
     { id: 'trap_dock', box: [31.8, -53.6, 34.2, -50.9], axis: 'x', lever: { room: 'kitchen', side: 'n', at: 36, y: 1.3 }, label: 'Loading Dock' },
   ],
 
+  // --- story ---------------------------------------------------------------
+  // Erik's PA microphone on the principal's desk: talk back to him.
+  intercom: { x: 28.0, y: 1.08, z: 18.8 },
+
+  // Notes to read (words in src/lore/erik.js). `wall` = pinned to a wall
+  // facing `yaw`; otherwise lying flat on whatever is under it.
+  notes: [
+    { id: 'flyer', x: 16.98, y: 1.55, z: 10, yaw: -Math.PI / 2, wall: true },
+    { id: 'detention', x: 20.1, y: 0.765, z: 23.85, yaw: 0.3 },
+    { id: 'labnotes', x: -25.6, y: 0.925, z: -23.9, yaw: -0.2 },
+    { id: 'recipe', x: 29.4, y: 0.955, z: -46.7, yaw: 0.5 },
+    { id: 'boiler', x: -27.6, y: 1.205, z: 11.0, yaw: 0.1 },
+    { id: 'library', x: -18.2, y: 0.955, z: -31.3, yaw: -0.4 },
+    { id: 'maddog', x: 6.7, y: 0.905, z: -76.4, yaw: 0.25 },
+  ],
+
+  // The three Stew items for the song Easter egg. Small and easy to miss.
+  stewItems: [
+    { id: 'ladle', x: 26.1, y: 0.955, z: -51.62, yaw: 0.4 },
+    { id: 'tape', x: -30.45, y: 1.105, z: -59.85, yaw: -0.7 },
+    { id: 'can', x: -18.9, y: 2.0, z: -12.78, yaw: 0 },
+  ],
+
+  // Wall-mounted PA speakers (Erik's voice; the light comes on when he talks).
+  paSpeakers: [
+    { room: 'court', side: 'e', at: -11, y: 6.6 },
+    { room: 'court', side: 'w', at: 11, y: 6.6 },
+    { room: 'hall', side: 'e', at: -12, y: 2.9 },
+    { room: 'office', side: 's', at: 21, y: 2.7 },
+    { room: 'principal', side: 's', at: 28, y: 2.7 },
+    { room: 'cafe', side: 'e', at: -23.5, y: 4.2 },
+    { room: 'kitchen', side: 'w', at: -44, y: 2.7 },
+    { room: 'auditorium', side: 'e', at: -70, y: 6.2 },
+    { room: 'auditorium', side: 'w', at: -60, y: 6.2 },
+    { room: 'lockers', side: 'e', at: -10, y: 2.9 },
+    { room: 'boiler', side: 'n', at: -20, y: 3.0 },
+    { room: 'lab', side: 'e', at: -26, y: 2.9 },
+    { room: 'library', side: 'w', at: -30, y: 3.8 },
+    { room: 'band', side: 'n', at: -28, y: 2.9 },
+    { room: 'quad', side: 'w', at: 11, y: 3.3, horn: true },
+  ],
+
+  // Posters, banners and graffiti (drawn in code: src/render/decals.js).
+  decals: [
+    { kind: 'vote', room: 'court', side: 'e', at: -10, y: 1.75, w: 0.9, h: 1.25, graffiti: true },
+    { kind: 'pennant', room: 'court', side: 'w', at: -10.5, y: 2.6, w: 2.2, h: 0.9 },
+    { kind: 'reunion', room: 'court', side: 's', at: -9.5, y: 6.2, w: 6, h: 1.3 },
+    { kind: 'noRunning', room: 'hall', side: 'w', at: -10, y: 2.6, w: 0.85, h: 0.6 },
+    { kind: 'vote', room: 'hall', side: 'e', at: 12.5, y: 2.6, w: 0.6, h: 0.82 },
+    { kind: 'menu', room: 'cafe', side: 'n', at: 22.9, y: 2.75, w: 2.6, h: 1.15 },
+    { kind: 'reunion', room: 'cafe', side: 's', at: 24.75, y: 3.6, w: 6, h: 1.1 },
+    { kind: 'batch7', x: 37.185, y: 1.45, z: -42.6, yaw: -Math.PI / 2, w: 0.32, h: 0.26 },
+    { kind: 'scienceFair', room: 'lab', side: 'w', at: -25.6, y: 1.75, w: 0.85, h: 1.1 },
+    { kind: 'read', room: 'library', side: 'e', at: -36.5, y: 1.9, w: 0.8, h: 1.1 },
+    { kind: 'concert', room: 'band', side: 's', at: -20, y: 1.7, w: 0.85, h: 1.15 },
+    { kind: 'graffitiStew', room: 'lockers', side: 'w', at: -5.5, y: 1.5, w: 2.4, h: 1.1 },
+    { kind: 'monitor', room: 'office', side: 'w', at: 23.2, y: 2.05, w: 0.6, h: 0.75 },
+    { kind: 'vote', room: 'principal', side: 'w', at: 18.6, y: 1.7, w: 0.6, h: 0.82 },
+    { kind: 'madDogsBanner', x: 4, y: 5.1, z: -79.38, yaw: 0, w: 8, h: 1.6 }, // on the back curtain
+    { kind: 'talentShow', room: 'auditorium', side: 's', at: 2, y: 2.2, w: 0.9, h: 1.25 },
+    { kind: 'graffitiWeGo', room: 'quad', side: 'w', at: -7, y: 1.5, w: 3.4, h: 1.3 },
+  ],
+
   // --- court decoration ------------------------------------------------------
   bleachers: [
     { side: 'north', x0: -10.5, x1: 10.5, rows: 6, rise: 0.42, depth: 0.65 },
