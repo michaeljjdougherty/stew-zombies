@@ -817,17 +817,21 @@ export class MapView {
         for (const s of [-1, 1]) {
           for (let i = 0; i < 22; i++) {
             const t = i / 21;
-            const l = new THREE.Mesh(linkGeo, chainMat);
+            // links are drawn as one instanced mesh per door (see syncChains)
+            const l = new THREE.Object3D();
             l.position.set(-half * 0.9 + t * d.width * 0.9, 0.4 + (s > 0 ? t : 1 - t) * 2.2 - Math.sin(t * Math.PI) * 0.15, 0.08);
             l.rotation.set(i % 2 ? Math.PI / 2 : 0, 0, Math.atan2(2.2 * s, d.width * 0.9));
-            grp.add(l);
             view.chains.push({ m: l, home: l.position.clone(), v: new THREE.Vector3((Math.random() - 0.5) * 1.5, Math.random() * 1.5, 1 + Math.random()) });
           }
         }
+        view.chainMesh = new THREE.InstancedMesh(linkGeo, chainMat, view.chains.length);
+        view.chainMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        grp.add(view.chainMesh);
+        this.syncChains(view);
         const lock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.05), new THREE.MeshStandardMaterial({ color: '#8a7a40', metalness: 0.8, roughness: 0.4 }));
         lock.position.set(0, 1.45, 0.11);
         grp.add(lock);
-        view.chains.push({ m: lock, home: lock.position.clone(), v: new THREE.Vector3(0, 0.5, 1.2) });
+        view.chains.push({ m: lock, home: lock.position.clone(), v: new THREE.Vector3(0, 0.5, 1.2), solo: true });
       }
       this.doorViews.set(d.id, view);
     }
@@ -1139,7 +1143,7 @@ export class MapView {
     for (const f of this.fixtures) {
       if (!f.on) {
         if (f.onAt != null && this.time >= f.onAt) { f.on = true; f.burst = 0.5 + Math.random() * 0.6; f.timer = 0; f.target = 1; }
-        else { f.level = 0; f.tubeMat.color.setRGB(0.06, 0.06, 0.05); if (f.beam) f.beam.material.opacity = 0; continue; }
+        else { f.level = 0; f.tubeMat.color.setRGB(0.06, 0.06, 0.05); if (f.beam) { f.beam.material.opacity = 0; f.beam.visible = false; } continue; }
       }
       f.timer -= dt;
       if (f.burst > 0) {
@@ -1156,7 +1160,7 @@ export class MapView {
       }
       f.level += (f.target - f.level) * Math.min(1, dt * 40);
       f.tubeMat.color.setRGB(2.6 * f.level + 0.06, 2.45 * f.level + 0.06, 2.1 * f.level + 0.05);
-      if (f.beam) f.beam.material.opacity = 0.045 * f.level;
+      if (f.beam) { f.beam.material.opacity = 0.045 * f.level; f.beam.visible = f.level > 0.02; }
     }
     if (eye) this.streamLights(eye);
     if (this.paLed) this.paLed.visible = Math.sin(this.time * 3) > -0.2;
@@ -1212,6 +1216,7 @@ export class MapView {
         c.m.position.addScaledVector(c.v, dt);
         if (c.m.position.y < 0.03) { c.m.position.y = 0.03; c.v.set(0, 0, 0); }
       }
+      if (v.t < 2.6 + dt) this.syncChains(v);
       for (const p of v.debris) {
         if (k >= 1) { p.m.visible = false; continue; }
         p.m.position.addScaledVector(p.v, dt * 0.8);
@@ -1221,11 +1226,26 @@ export class MapView {
     }
   }
 
+  // copy the animated chain links into the door's instanced mesh
+  syncChains(v) {
+    if (!v.chainMesh) return;
+    let i = 0;
+    for (const c of v.chains) {
+      if (c.solo) continue;
+      if (!c.m.visible) c.m.scale.setScalar(0); else c.m.scale.setScalar(1);
+      c.m.updateMatrix();
+      v.chainMesh.setMatrixAt(i++, c.m.matrix);
+    }
+    v.chainMesh.count = i;
+    v.chainMesh.instanceMatrix.needsUpdate = true;
+  }
+
   resetDoor(v) {
     v.t = -1;
     for (const leaf of v.leaves) leaf.hinge.rotation.y = 0;
     for (const p of v.debris) { p.m.visible = true; p.m.position.copy(p.home); p.m.scale.setScalar(1); }
     for (const c of v.chains) { c.m.visible = true; c.m.position.copy(c.home); c.v.set((Math.random() - 0.5) * 1.5, Math.random() * 1.5, 1 + Math.random()); }
+    this.syncChains(v);
   }
 }
 

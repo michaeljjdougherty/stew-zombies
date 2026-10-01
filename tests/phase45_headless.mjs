@@ -239,8 +239,8 @@ function makeGame(seed = 7) {
   const { sim, me, log, step, place } = makeGame(21);
   for (const d of sim.world.doors) sim.openDoor(d.id);
   sim.rounds.round = 8; sim.rounds.phase = 'intermission'; sim.rounds.timer = 0.1;
-  function survive(x, z, seconds, label) {
-    place(x, z, x, z - 1);
+  function survive(x, z, seconds, label, y = 0) {
+    place(x, z, x, z - 1, y);
     let maxStuck = 0, maxDoorway = 0;
     const stuck = new Map(), nearDoor = new Map();
     const start = log.length;
@@ -273,7 +273,7 @@ function makeGame(seed = 7) {
   check(quadLog.some((e) => e.type === 'zombieRise'), 'zombies rise out of the Quad planters');
   check(quadLog.some((e) => e.type === 'zombieEnter' && /fence/.test(e.windowId)), 'zombies climb the Quad fence');
   survive(4, -64, 90, 'auditorium floor');
-  survive(4, -74.5, 60, 'auditorium stage');
+  survive(4, -74.5, 60, 'auditorium stage', 0.9);
   survive(32, -61, 60, 'loading dock');
   survive(31, -46.5, 60, 'kitchen');
   survive(-24, -46, 60, 'library');

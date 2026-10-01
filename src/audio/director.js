@@ -214,7 +214,27 @@ export class SoundDirector {
       case 'playerDown': if (local) A.play(S.downed, {}, { gain: 1, reverb: 0.3 }); break;
       case 'playerRevived': if (local) A.play(S.revived, {}, { gain: 0.9, reverb: 0.2 }); break;
       case 'zombieRise': A.play(S.dirtRise, {}, { pos: e.pos, ref: 3 }); break;
+      case 'powerupSpawn': A.play(S.powerupSpawn, {}, { pos: { x: e.pos.x, y: 1.1, z: e.pos.z }, ref: 3, reverb: 0.4 }); break;
+      case 'powerupGrab': A.play(S.powerupGrab, { type: e.ptype }, { gain: 1, reverb: 0.5, bus: 'sfx' }); break;
+      case 'powerupEnd': A.play(S.powerupEnd, {}, { gain: 0.9, reverb: 0.3 }); break;
+      case 'powerupGone': if (!e.taken) A.play(S.powerupFizzle, {}, { gain: 0.6 }); break;
+      case 'cheddarStart': {
+        A.play(S.cheddarSting, {}, { bus: 'music', reverb: 0.7, gain: 1 });
+        A.play(S.thunder, { near: 0.5 }, { gain: 0.9, reverb: 0.8, delay: 0.4 });
+        const lp = A.listenerPos || { x: 0, z: 0 };
+        for (let i = 0; i < 3; i++) {
+          const a = Math.random() * Math.PI * 2;
+          A.play(S.dogHowl, { f0: R(280, 380) }, { pos: { x: lp.x + Math.cos(a) * 25, y: 2, z: lp.z + Math.sin(a) * 25 }, ref: 8, reverb: 1, delay: 1 + i * 0.7 });
+        }
+        break;
+      }
+      case 'cheddarStrike':
+        A.play(S.thunder, { near: 1 }, { pos: { x: e.pos.x, y: 4, z: e.pos.z }, ref: 10, reverb: 0.6, gain: 1.1 });
+        A.play(S.dogGrowl, { f0: R(65, 90), dur: 0.8 }, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3, delay: 0.5 });
+        break;
+      case 'cheddarEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'zombieKilled':
+        if (e.zombieType === 'cheddar') A.play(S.dogYelp, {}, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3 });
         if (e.kind === 'electric') A.play(S.electrocute, {}, { pos: { x: e.pos.x, y: 1.2, z: e.pos.z }, ref: 3 });
         this.groanTimers.delete(e.id);
         A.play(S.gore, {}, { pos: { x: e.pos.x, y: 1, z: e.pos.z }, gain: 0.7, ref: 2.5 });
@@ -226,6 +246,8 @@ export class SoundDirector {
         break;
       }
       case 'zombieSwing': {
+        const sz = sim.zombieById(e.id);
+        if (sz && sz.type === 'cheddar') { A.play(S.dogBark, {}, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3 }); break; }
         const late = sim.rounds.round >= 6;
         A.play(S.zombieSnarl, { f0: R(late ? 150 : 110, late ? 220 : 160), dur: R(0.3, 0.5) }, { pos: { x: e.pos.x, y: 1.6, z: e.pos.z }, ref: 3 });
         break;
@@ -246,6 +268,13 @@ export class SoundDirector {
       case 'roundEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'roundStart': A.play(S.roundStartSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
     }
+  }
+
+  cheddarStep(z) {
+    if (!this.A.ready) return;
+    const lp = this.A.listenerPos;
+    if (lp && Math.hypot(z.pos.x - lp.x, z.pos.z - lp.z) > 18) return;
+    this.A.play(S.pawStep, {}, { pos: { x: z.pos.x, y: 0.1, z: z.pos.z }, ref: 1.5, rolloff: 1.4, gain: 0.8 });
   }
 
   zombieFootstep(z) {
@@ -290,9 +319,10 @@ export class SoundDirector {
       if (t <= 0) {
         if (voices < this.cfg.audio.maxZombieVoices) {
           const aggressive = z.type !== 'walker';
-          const recipe = aggressive && Math.random() < 0.7 ? S.zombieSnarl : S.zombieGroan;
+          const dog = z.type === 'cheddar';
+          const recipe = dog ? S.dogGrowl : aggressive && Math.random() < 0.7 ? S.zombieSnarl : S.zombieGroan;
           const late = Math.min(1, Math.max(0, (round - 3) / 10));
-          const f0 = aggressive ? R(120, 180) * (1 + late * 0.4) : R(62, 100) * (1 + late * 0.25);
+          const f0 = dog ? R(60, 95) : aggressive ? R(120, 180) * (1 + late * 0.4) : R(62, 100) * (1 + late * 0.25);
           const id = z.id;
           A.play(recipe, { f0 }, {
             pos: { x: z.pos.x, y: 1.6, z: z.pos.z }, ref: 2.5,

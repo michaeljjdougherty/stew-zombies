@@ -87,6 +87,14 @@ export class RangeUI {
     $('rp-ammo').addEventListener('change', (e) => this.h.setAmmo(e.target.checked));
     $('rp-moving').addEventListener('change', (e) => this.h.setMoving(e.target.checked));
     $('rp-horde').addEventListener('click', () => { this.h.horde(); this.h.close(); });
+    $('rp-cheddar').addEventListener('click', () => { this.h.cheddars(); this.h.close(); });
+    for (const [id, d] of Object.entries(this.cfg.powerups.list)) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sm'; b.textContent = d.name; b.title = d.desc;
+      b.style.setProperty('--c', d.color);
+      b.addEventListener('click', () => { this.h.drop(id); this.h.close(); });
+      $('rp-drops').appendChild(b);
+    }
     $('rp-clear').addEventListener('click', () => this.h.clear());
     $('rp-reset').addEventListener('click', () => { this.reset(); this.refresh(); });
     $('rp-close').addEventListener('click', () => this.h.close());

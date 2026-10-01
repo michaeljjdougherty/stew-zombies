@@ -4,8 +4,27 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 4 & 5 — the whole school, power, traps, perks, the Mad Dog
-Machine, last stand.**
+**Current phase: 6 — power-ups and Cheddar Rounds.**
+
+- **Power-ups** drop from zombies you kill inside the map (up to 4 a round,
+  more likely as your points add up). Walk over one to grab it; they blink and
+  vanish after 30 seconds.
+
+  | Power-up | What it does |
+  |---|---|
+  | Full Pantry | all ammo and grenades refilled, for everyone |
+  | One Bite | everything dies in one hit for 30 s |
+  | Double Dough | double points for 30 s |
+  | Pressure Cooker | every zombie on the map dies, +400 points |
+  | Shop Class | every barrier rebuilt, +200 points |
+  | Clearance Sale | the Mystery Box costs 10 for 30 s |
+
+- **Cheddar Rounds:** the first lands on round 5, 6 or 7, then every 4–6
+  rounds. A yellow haze rolls in, thunder rumbles, and Erik's rabid hounds
+  (Cheddars) come down with lightning strikes near you instead of zombies.
+  They're fast and bite hard. The last one killed leaves a Full Pantry.
+
+Phases 4 & 5 (built):
 
 - **The map:** two paths from the court meet in the auditorium. The west path
   runs through the locker rooms, science lab, library and band & art rooms,
@@ -107,6 +126,7 @@ the weapons & options panel:
 - Infinite ammo, moving targets, send a horde at that round's strength, clear zombies.
 - **Mad Dog upgraded** switches every gun in the list to its upgraded version.
 - Perk buttons switch each perk on or off instantly.
+- Drop any power-up in front of you, or send a pack of Cheddars.
 
 The top-left readout shows the gun's stats, last hit, damage per second, time
 to kill, accuracy and kills, and damage numbers float off every hit (gold for
@@ -140,6 +160,7 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   range.js            firing range mode: target dummies, hordes, infinite ammo
   perks.js            perk effects, buying (and drinking), losing them
   laststand.js        going down, last stand pistol, self-revive, bleed out, revive
+  powerups.js         drops, pickups and timed power-up effects
   physics.js          character vs box collision, steps, gravity
   nav.js              region/portal pathing between rooms (closed doors block)
   interactables/      windows, doors & debris, wall weapons, mystery box,
@@ -173,7 +194,7 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 3. ✅ Full weapon list, recoil/reload/sound per gun, grenades
 4. ✅ Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
 5. ✅ Perk machines, Mad Dog Machine, last stand and revive
-6. Power-ups and Cheddar Rounds
+6. ✅ Power-ups and Cheddar Rounds
 7. Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
 8. Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
 9. Online co-op for 2–4 players

@@ -2,7 +2,8 @@
 // Round manager: counts, spawn pacing, intermissions.
 // =============================================================================
 import { zombieCountForRound, zombieHealthForRound } from '../config.js';
-import { spawnZombie, spawnRising } from './zombies.js';
+import { spawnZombie, spawnRising, spawnCheddar } from './zombies.js';
+import { resetRoundDrops, spawnPowerup } from './powerups.js';
 import { dist2D } from '../core/math.js';
 
 export function createRoundState(sim) {
@@ -15,7 +16,38 @@ export function createRoundState(sim) {
     spawnTimer: 0,
     spawnInterval: sim.cfg.rounds.spawnIntervalStart,
     killed: 0,
+    cheddar: false,          // is this a Cheddar Round?
+    cheddarIndex: 0,         // how many Cheddar Rounds so far
+    cheddarNext: sim.rng.int ? sim.rng.int(sim.cfg.cheddar.firstRound[0], sim.cfg.cheddar.firstRound[1]) : sim.cfg.cheddar.firstRound[0],
+    preTimer: 0,
   };
+}
+
+export function cheddarHealth(sim, idx) {
+  const h = sim.cfg.cheddar.health;
+  return idx <= h.length ? h[idx - 1] : h[h.length - 1] + 600 * (idx - h.length);
+}
+
+// Somewhere open, inside the map, a few metres from a player.
+function strikePoint(sim) {
+  const ch = sim.cfg.cheddar;
+  const players = sim.players.filter((p) => p.alive && !p.downed);
+  const list = players.length ? players : sim.players.filter((p) => p.alive);
+  if (!list.length) return null;
+  const p = list[Math.floor(sim.rng.next() * list.length)];
+  for (let tries = 0; tries < 30; tries++) {
+    const a = sim.rng.range(0, Math.PI * 2);
+    const d = sim.rng.range(ch.spawnDist[0], ch.spawnDist[1]) * (tries > 20 ? 0.5 : 1);
+    const pos = { x: p.pos.x + Math.cos(a) * d, y: 0, z: p.pos.z + Math.sin(a) * d };
+    const r = sim.nav.regionAt(pos);
+    if (!r) continue;
+    const room = sim.world.roomById.get(sim.nav.roomOfRegion(r));
+    if (!room || !sim.openZones.has(room.zone)) continue;
+    const rad = ch.radius + 0.2;
+    if (sim.world.solids.some((b) => b.minY < 1 && b.maxY > 0.1 && pos.x > b.minX - rad && pos.x < b.maxX + rad && pos.z > b.minZ - rad && pos.z < b.maxZ + rad)) continue;
+    if (sim.nav.regionAt(pos) && Math.abs(pos.y - p.pos.y) < 2) return pos;
+  }
+  return { x: p.pos.x + 3, y: 0, z: p.pos.z };
 }
 
 function startRound(sim, n) {
@@ -23,6 +55,22 @@ function startRound(sim, n) {
   const players = sim.players.length;
   R.round = n;
   R.phase = 'active';
+  resetRoundDrops(sim);
+  R.cheddar = sim.mode !== 'range' && n === R.cheddarNext;
+  if (R.cheddar) {
+    const ch = sim.cfg.cheddar;
+    R.cheddarIndex++;
+    R.cheddarNext = n + Math.round(sim.rng.range(ch.every[0], ch.every[1]));
+    R.total = Math.min(ch.maxCount, (ch.perPlayer + ch.addPerRound * (R.cheddarIndex - 1)) * players);
+    R.toSpawn = R.total;
+    R.killed = 0;
+    R.preTimer = ch.preRoundTime;
+    R.spawnTimer = 0;
+    for (const p of sim.players) { p.boardPointsThisRound = 0; if (sim.cfg.equipment.frag.refillEachRound && p.alive) p.grenades = Math.max(p.grenades, p.grenadeMax); }
+    sim.emit('roundStart', { round: n, zombies: R.total, cheddar: true, health: cheddarHealth(sim, R.cheddarIndex) });
+    sim.emit('cheddarStart', { round: n, count: R.total });
+    return;
+  }
   R.total = zombieCountForRound(n, players, c);
   R.toSpawn = R.total;
   R.killed = 0;
@@ -60,6 +108,7 @@ export function updateRounds(sim, dt) {
     if (R.timer <= 0) startRound(sim, R.round + 1);
     return;
   }
+  if (R.cheddar) { updateCheddarRound(sim, dt); return; }
   // active
   const alive = sim.zombies.length;
   if (R.toSpawn > 0 && alive < c.maxAlive) {
@@ -78,5 +127,29 @@ export function updateRounds(sim, dt) {
     R.phase = 'intermission';
     R.timer = c.intermission;
     sim.emit('roundEnd', { round: R.round });
+  }
+}
+
+function updateCheddarRound(sim, dt) {
+  const R = sim.rounds, ch = sim.cfg.cheddar;
+  if (R.preTimer > 0) { R.preTimer -= dt; return; }
+  const alive = sim.zombies.filter((z) => z.state !== 'dead').length;
+  if (R.toSpawn > 0 && alive < ch.maxAlive) {
+    R.spawnTimer -= dt;
+    if (R.spawnTimer <= 0) {
+      const pos = strikePoint(sim);
+      if (pos) { spawnCheddar(sim, pos, cheddarHealth(sim, R.cheddarIndex)); R.toSpawn--; }
+      R.spawnTimer = sim.rng.range(ch.spawnInterval[0], ch.spawnInterval[1]);
+    }
+  }
+  if (R.toSpawn <= 0 && alive === 0) {
+    // the last hound leaves a Full Pantry behind
+    const at = sim.lastKill ? sim.lastKill.pos : (sim.players[0] ? sim.players[0].pos : { x: 0, z: 0 });
+    spawnPowerup(sim, 'fullPantry', at);
+    R.cheddar = false;
+    R.phase = 'intermission';
+    R.timer = sim.cfg.rounds.intermission;
+    sim.emit('cheddarEnd', { round: R.round });
+    sim.emit('roundEnd', { round: R.round, cheddar: true });
   }
 }

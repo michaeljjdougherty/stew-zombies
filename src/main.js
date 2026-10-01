@@ -8,7 +8,7 @@
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
 import { RANGE } from './map/range.js';
-import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk } from './sim/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
@@ -44,6 +44,8 @@ const hud = new HUD(CONFIG);
 hud.localId = LOCAL_ID;
 
 renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
+renderer.onCheddarStep = (z) => sound.cheddarStep(z);
+renderer.cheddars.onFootstep = renderer.onCheddarStep;
 
 // Firing range: weapons & options panel, stats, damage numbers
 const rangeUI = new RangeUI(CONFIG, {
@@ -53,6 +55,8 @@ const rangeUI = new RangeUI(CONFIG, {
   setAmmo: (on) => { sim.range.infiniteAmmo = on; },
   setMoving: (on) => { sim.range.moving = on; },
   horde: () => spawnHorde(sim),
+  cheddars: () => rangeCheddars(sim),
+  drop: (id) => rangeDrop(sim, player, id),
   clear: () => clearZombies(sim),
   close: () => closeRangePanel(),
 });
@@ -229,7 +233,7 @@ requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input, rangeUI,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound,
   get mode() { return mode; },
   debug: {
     // Run the simulation forward without rendering (for testing).

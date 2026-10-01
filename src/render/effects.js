@@ -285,6 +285,50 @@ export class Effects {
     t.life = 0.05;
   }
 
+  // A lightning bolt from the sky to `pos` (Cheddar strikes).
+  lightning(pos) {
+    if (!this.bolts) {
+      this.bolts = [];
+      for (let i = 0; i < 4; i++) {
+        const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(3, 3, 2.4), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+        const lines = [];
+        for (let k = 0; k < 3; k++) {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(24 * 3), 3));
+          const l = new THREE.Line(geo, mat); l.frustumCulled = false; l.visible = false;
+          this.scene.add(l); lines.push(l);
+        }
+        this.bolts.push({ lines, mat, life: 0 });
+      }
+      this.boltIdx = 0;
+      this.boltLight = this.blastLight; // share the explosion light (no extra light in the shaders)
+    }
+    const b = this.bolts[this.boltIdx];
+    this.boltIdx = (this.boltIdx + 1) % this.bolts.length;
+    b.lines.forEach((l, k) => {
+      const arr = l.geometry.attributes.position.array;
+      let x = pos.x + (Math.random() - 0.5) * 3, z = pos.z + (Math.random() - 0.5) * 3;
+      for (let i = 0; i < 24; i++) {
+        const t = i / 23;
+        const y = 18 * (1 - t);
+        if (i === 23) { x = pos.x; z = pos.z; } else { x += (Math.random() - 0.5) * 0.9 + (pos.x - x) * 0.12; z += (Math.random() - 0.5) * 0.9 + (pos.z - z) * 0.12; }
+        arr[i * 3] = x + (k ? (Math.random() - 0.5) * 0.15 : 0); arr[i * 3 + 1] = y; arr[i * 3 + 2] = z + (k ? (Math.random() - 0.5) * 0.15 : 0);
+      }
+      l.geometry.attributes.position.needsUpdate = true;
+      l.visible = true;
+    });
+    b.life = 0.22;
+    b.mat.opacity = 1;
+    this.boltLight.position.set(pos.x, 2, pos.z);
+    this.boltLight.color.set(0xfff0c0);
+    this.boltLight.intensity = 400;
+    this.boltT = 0.25;
+    const p = new THREE.Vector3(pos.x, 0.1, pos.z);
+    for (let i = 0; i < 30; i++) this.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 8, 1 + Math.random() * 5, (Math.random() - 0.5) * 8), { life: 0.4 + Math.random() * 0.4, size: 0.015, color: [4, 3.4, 1.6], gravity: 10, drag: 1 });
+    for (let i = 0; i < 4; i++) this.puff(p.clone().add(new THREE.Vector3((Math.random() - 0.5), 0.2, (Math.random() - 0.5))), { color: 0x5a5040, size: 0.6, grow: 2.5, life: 1.3, alpha: 0.5 });
+    this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(pos.x, 0.005, pos.z), UP, 1.6);
+  }
+
   // Mad Dog explosive rounds: a quick pop, no scorch.
   smallExplosion(pos, radius = 2) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
@@ -308,6 +352,7 @@ export class Effects {
   explosion(pos, radius = 4) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
     const k = radius / 4.5;
+    this.blastLight.color.set(0xff9a40);
     this.blastLight.position.copy(p).y += 0.4;
     this.blastLight.intensity = 260 * k;
     this.blastT = 0.32;
@@ -430,6 +475,17 @@ export class Effects {
       f.s.material.color.setRGB(3 - k * 1.5, 1.6 - k * 1.2, 0.6 - k * 0.5);
     }
     if (this.blastT > 0) { this.blastT -= dt; this.blastLight.intensity *= Math.exp(-dt * 9); if (this.blastT <= 0) this.blastLight.intensity = 0; }
+
+    // lightning bolts
+    if (this.bolts) {
+      for (const b of this.bolts) {
+        if (b.life <= 0) continue;
+        b.life -= dt;
+        b.mat.opacity = Math.max(0, b.life / 0.22) * (Math.random() < 0.3 ? 0.4 : 1);
+        if (b.life <= 0) for (const l of b.lines) l.visible = false;
+      }
+      if (this.boltT > 0) { this.boltT -= dt; this.boltLight.intensity *= Math.exp(-dt * 12); if (this.boltT <= 0) this.boltLight.intensity = 0; }
+    }
 
     // muzzle light
     if (this.muzzleT > 0) { this.muzzleT -= dt; if (this.muzzleT <= 0) this.muzzleLight.intensity = 0; }

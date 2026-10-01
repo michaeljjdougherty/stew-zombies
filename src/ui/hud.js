@@ -3,6 +3,7 @@
 // Reads sim state; never changes it.
 // =============================================================================
 import { TallyCounter } from './tally.js';
+import { powerupIconURL } from '../render/powerupIcons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,7 +15,7 @@ export class HUD {
     this.el = {
       points: $('points'), popups: $('popups'), wname: $('wname'), clip: $('clip'), reserve: $('reserve'),
       ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'),
-      promptsub: $('promptsub'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
+      promptsub: $('promptsub'), powerups: $('powerups'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
     };
     this.shownPoints = null;
     this.hitT = 0;
@@ -59,6 +60,17 @@ export class HUD {
         break;
       case 'shot':
         if (e.playerId === this.localId && this.cfg.hud.hitmarkers && e.impacts.some((h) => h.kind === 'zombie')) this.hitT = 0.12;
+        break;
+      case 'powerupGrab': {
+        const d = this.cfg.powerups.list[e.ptype];
+        this.toast(d.name, d.desc, d.color, 2.6);
+        break;
+      }
+      case 'cheddarStart':
+        this.toast('Cheddar Round', 'here, boy', '#ffb020', 4);
+        break;
+      case 'cheddarEnd':
+        this.toast('Cheddar Round over', '', '#ffb020', 2.5);
         break;
       case 'powerOn':
         this.toast('The power is on', 'perks, traps and the Mad Dog Machine are live', '#ffd23a', 3.5);
@@ -139,6 +151,25 @@ export class HUD {
     if (p.rebuilding) prompt = 'Rebuilding barrier';
     this.set('prompt', this.el.prompt, prompt);
     this.set('promptsub', this.el.promptsub, p.prompt && p.prompt.sub ? p.prompt.sub : '');
+
+    // timed power-ups
+    const act = sim.powerups.active;
+    const puKey = Object.entries(act).filter(([, t]) => t > 0).map(([k, t]) => k + ':' + Math.ceil(t)).join(',');
+    if (puKey !== this.last.pu) {
+      this.last.pu = puKey;
+      this.el.powerups.textContent = '';
+      for (const [k, t] of Object.entries(act)) {
+        if (!(t > 0)) continue;
+        const d = this.cfg.powerups.list[k];
+        const el = document.createElement('div');
+        el.className = 'pu' + (t < 6 ? ' low' : '');
+        el.style.setProperty('--c', d.color);
+        const img = document.createElement('img'); img.src = powerupIconURL(k, d.color); img.alt = d.name;
+        const sec = document.createElement('span'); sec.textContent = String(Math.ceil(t));
+        el.append(img, sec);
+        this.el.powerups.appendChild(el);
+      }
+    }
 
     // perks
     const perkKey = p.perks.join(',');

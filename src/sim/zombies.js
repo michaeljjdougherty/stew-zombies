@@ -5,8 +5,16 @@
 import { moveBody, separateCircles } from './physics.js';
 import { rotY, angleWrap, dist2D } from '../core/math.js';
 import { zombieHealthForRound } from '../config.js';
+import { maybeDrop, powerupActive } from './powerups.js';
 
 let _hitboxCache = [];
+
+// Zombie settings for this zombie: Cheddars override the bits that differ.
+export function zcfg(sim, z) {
+  if (z.type !== 'cheddar') return sim.cfg.zombie;
+  if (!sim._cheddarCfg) sim._cheddarCfg = { ...sim.cfg.zombie, ...sim.cfg.cheddar };
+  return sim._cheddarCfg;
+}
 
 export function pickZombieType(sim, round) {
   const c = sim.cfg.zombie;
@@ -58,11 +66,20 @@ export function spawnRising(sim, spot, round) {
   return z;
 }
 
+// Cheddar Rounds: a hound comes down with a lightning strike.
+export function spawnCheddar(sim, pos, health) {
+  const z = makeZombie(sim, { type: 'cheddar', pos, yaw: sim.rng.range(-Math.PI, Math.PI), health, state: 'spawning' });
+  sim.zombies.push(z);
+  sim.emit('cheddarStrike', { id: z.id, pos: { ...z.pos } });
+  sim.emit('zombieSpawn', { id: z.id, zombieType: 'cheddar', pos: { ...z.pos }, windowId: null });
+  return z;
+}
+
 // Build a zombie record. Used by window spawns and by the firing range
 // (standing target dummies and hordes that start inside).
 export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state = 'chase', windowId = null }) {
-  const c = sim.cfg.zombie;
-  const range = type === 'sprinter' ? c.sprintSpeed : type === 'runner' ? c.runSpeed : c.walkSpeed;
+  const c = type === 'cheddar' ? { ...sim.cfg.zombie, ...sim.cfg.cheddar } : sim.cfg.zombie;
+  const range = type === 'cheddar' ? c.speed : type === 'sprinter' ? c.sprintSpeed : type === 'runner' ? c.runSpeed : c.walkSpeed;
   return {
     id: sim.nextId++,
     type,
@@ -84,7 +101,7 @@ export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state =
     tearTimer: 0,
     climbT: 0,
     targetId: null,
-    scale: sim.rng.range(0.93, 1.07),
+    scale: type === 'cheddar' ? sim.rng.range(0.9, 1.1) : sim.rng.range(0.93, 1.07),
     seed: Math.floor(sim.rng.next() * 1e9),
     moveSpeed: 0,
     region: sim.nav ? sim.nav.regionAt(pos) : null,
@@ -117,6 +134,12 @@ export function zombieHitboxes(z) {
   const reach = z.type === 'walker' ? 0.62 : 0.35;
   const hb = _hitboxCache;
   hb.length = 0;
+  if (z.type === 'cheddar') {
+    if (z.limbs.head) hb.push({ part: 'head', sphere: true, c: P(0, 0.66, 0.62), r: 0.17 * s });
+    hb.push({ part: 'torso', a: P(0, 0.58, -0.42), b: P(0, 0.62, 0.38), r: 0.22 * s });
+    hb.push({ part: 'legs', a: P(0, 0.08, 0), b: P(0, 0.42, 0), r: 0.24 * s });
+    return hb;
+  }
   if (z.crawler) {
     // dragging itself along the floor, head low and forward
     if (z.limbs.head) hb.push({ part: 'head', sphere: true, c: P(0, 0.34, 0.78), r: 0.17 * s });
@@ -157,9 +180,16 @@ function setState(sim, z, s) {
 }
 
 export function updateZombies(sim, dt) {
-  const c = sim.cfg.zombie;
   for (const z of sim.zombies) {
+    const c = zcfg(sim, z);
     z.stateTime += dt;
+    if (z.state === 'spawning') {
+      z.moveSpeed = 0;
+      const p = nearestPlayer(sim, z.pos);
+      if (p) faceToward(z, p.pos.x - z.pos.x, p.pos.z - z.pos.z, c.turnRate, dt);
+      if (z.stateTime >= c.spawnTime) { setState(sim, z, 'chase'); z.region = sim.nav.regionAt(z.pos); }
+      continue;
+    }
     if (z.stun > 0) z.stun -= dt;
     if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
     if (z.state === 'rising') {
@@ -339,7 +369,7 @@ function startClimb(sim, z, win) {
 
 // Attack logic. `throughWindow` = zombie is at a window swiping at players inside.
 function updateAttack(sim, z, dt, throughWindow, win, target) {
-  const c = sim.cfg.zombie;
+  const c = zcfg(sim, z);
   const a = z.attack;
   if (a.phase === 'windup') {
     a.t -= dt;
@@ -411,12 +441,13 @@ export function damageZombie(sim, z, amount, info) {
   const c = sim.cfg.zombie;
   const pts = sim.cfg.points;
   const player = sim.playerById(info.playerId);
+  if (player && powerupActive(sim, 'oneBite') && z.state !== 'dummy') amount = Math.max(amount, z.health);
   z.health -= amount;
   z.stun = c.hitStun;
   sim.emit('zombieHit', { id: z.id, playerId: info.playerId, part: info.part, kind: info.kind, point: info.point, dir: info.dir, damage: amount });
 
   // blasts tear limbs off; a big one that doesn't kill can take the legs (crawler)
-  if (info.kind === 'explosive' && z.health > 0) {
+  if (info.kind === 'explosive' && z.health > 0 && z.type !== 'cheddar') {
     const big = amount >= z.maxHealth * c.crawlerDamageFrac;
     if (big && !z.crawler && (z.state === 'chase' || z.state === 'dummy') && sim.rng.chance(c.crawlerChance)) {
       z.crawler = true;
@@ -471,8 +502,10 @@ export function killZombie(sim, z, info = {}) {
   }
   const wasState = z.state;
   z.state = 'dead';
+  sim.lastKill = { pos: { ...z.pos }, type: z.type };
   sim.emit('zombieKilled', {
-    id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind,
+    id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind, zombieType: z.type,
     dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId, force: info.force || 0, crawler: !!z.crawler,
   });
+  maybeDrop(sim, z, { ...info, wasState });
 }

@@ -91,6 +91,12 @@
   #revive[hidden] { display: none; }
   #revive .bar i { background: #4fa3e0; }
 
+  #powerups { position: absolute; left: 50%; bottom: max(18px, 3vh); transform: translateX(-50%); display: flex; gap: 14px; }
+  #powerups .pu { display: grid; justify-items: center; gap: 2px; font: 700 12px var(--mono); color: var(--ink); text-shadow: 0 1px 2px #000; }
+  #powerups .pu img { width: 46px; height: 46px; filter: drop-shadow(0 0 8px var(--c)) drop-shadow(0 2px 2px #000); }
+  #powerups .pu.low img { animation: puBlink .35s steps(2) infinite; }
+  @keyframes puBlink { 50% { opacity: .25; } }
+
   /* ---------------- Firing range ---------------- */
   body.range-mode #tally { display: none; }
   #rangehud { position: absolute; left: max(16px, 2.2vw); top: max(12px, 2vh); font-size: 13px; line-height: 1.6; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 6px #000; max-width: min(760px, 70vw); }
@@ -125,7 +131,7 @@
   #rp-hp { font-size: 12px; color: var(--muted); margin-left: 4px; }
   .rp-opts label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   .rp-opts input { accent-color: var(--blood-hi); }
-  #rp-perks button.sm { border-color: color-mix(in srgb, var(--c) 60%, transparent); }
+  #rp-perks button.sm, #rp-drops button.sm { border-color: color-mix(in srgb, var(--c) 60%, transparent); }
   #rp-perks button.sm.on { background: color-mix(in srgb, var(--c) 45%, transparent); color: #fff; }
   .rp button.sm { all: unset; cursor: pointer; font: 13px var(--body); font-weight: 700; padding: 6px 12px; border: 1px solid var(--line); color: var(--ink); text-transform: uppercase; letter-spacing: 1px; }
   .rp button.sm:hover, .rp button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
@@ -204,6 +210,7 @@
   <div id="prompt"></div>
   <div id="promptsub"></div>
   <div id="perks"></div>
+  <div id="powerups"></div>
   <div id="toast"><div class="t1"></div><div class="t2"></div></div>
   <div id="downed" hidden><div class="big">You're down</div><div class="small"></div><div class="bar"><i></i></div></div>
   <div id="revive" hidden><span>Reviving</span><div class="bar"><i></i></div></div>
@@ -233,9 +240,11 @@
       <label><input id="rp-upgraded" type="checkbox"> Mad Dog upgraded</label>
     </div>
     <div class="rp-opts" id="rp-perks"><span>Perks:</span></div>
+    <div class="rp-opts" id="rp-drops"><span>Drop a power-up:</span></div>
     <div class="rp-foot">
       <div style="display:flex; gap:10px; flex-wrap:wrap">
         <button id="rp-horde" class="sm primary" type="button">Send a horde</button>
+        <button id="rp-cheddar" class="sm primary" type="button">Send Cheddars</button>
         <button id="rp-clear" class="sm" type="button">Clear zombies</button>
         <button id="rp-reset" class="sm" type="button">Reset stats</button>
       </div>
@@ -247,7 +256,7 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phases 4 &amp; 5 · The whole school, power, perks, the Mad Dog Machine</span>
+    <span class="eyebrow">Phase 6 · Power-ups and Cheddar Rounds</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>

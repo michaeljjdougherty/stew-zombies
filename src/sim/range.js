@@ -4,7 +4,9 @@
 // horde at any round's strength to test guns against moving zombies.
 // Logic only; the panel and stats live in src/ui/range.js.
 // =============================================================================
-import { makeZombie, pickZombieType } from './zombies.js';
+import { makeZombie, pickZombieType, spawnCheddar } from './zombies.js';
+import { spawnPowerup } from './powerups.js';
+import { cheddarHealth } from './rounds.js';
 import { zombieHealthForRound } from '../config.js';
 import { giveWeapon } from './weapons.js';
 import { givePerk, applyPerkStats } from './perks.js';
@@ -100,4 +102,20 @@ export function rangeTogglePerk(sim, p, id) {
   const i = p.perks.indexOf(id);
   if (i >= 0) { p.perks.splice(i, 1); applyPerkStats(sim, p); sim.emit('perksLost', { playerId: p.id, perks: [id] }); }
   else givePerk(sim, p, id);
+}
+
+// Drop a power-up a couple of metres in front of the player.
+export function rangeDrop(sim, p, type) {
+  if (!sim.cfg.powerups.list[type]) return;
+  spawnPowerup(sim, type, { x: p.pos.x - Math.sin(p.yaw) * 2.5, z: p.pos.z - Math.cos(p.yaw) * 2.5 });
+}
+
+// A pack of Cheddars down the range (health from the zombie strength round).
+export function rangeCheddars(sim, count = 6) {
+  const spots = sim.mapData.hordeSpawns || [];
+  const idx = Math.max(1, Math.round(sim.range.round / 5));
+  for (let i = 0; i < count; i++) {
+    const sp = spots[i % spots.length];
+    spawnCheddar(sim, { x: sp.x + sim.rng.range(-1.5, 1.5), y: 0, z: sp.z + 8 + sim.rng.range(-3, 3) }, cheddarHealth(sim, idx));
+  }
 }

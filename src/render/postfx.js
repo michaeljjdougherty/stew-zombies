@@ -118,6 +118,7 @@ export class PostFX {
     u.damage.value = state.damage;
     u.lowHealth.value = state.lowHealth;
     u.flash.value = state.flash || 0;
+    u.tint.value.w = state.tint || 0;
     this.composer.render(dt);
   }
 }

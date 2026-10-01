@@ -1040,3 +1040,131 @@ export function smallBoom(A, out, t) {
   o.connect(og); og.connect(out);
   return 0.5;
 }
+
+// --- Phase 6: power-ups and Cheddar Rounds ------------------------------------
+
+export function powerupSpawn(A, out, t) {
+  [1318, 1568, 1976, 2637].forEach((f, i) => {
+    const o = A.osc('sine', f, t + i * 0.05, 0.4);
+    const g = A.gain(0); A.env(g, t + i * 0.05, 0.005, 0.35, 0.12);
+    o.connect(g); g.connect(out);
+  });
+  return 0.7;
+}
+
+// [VOICE PLACEHOLDER: the announcer calls out the power-up's name]
+function announcer(A, out, t, syllables = 3) {
+  for (let i = 0; i < syllables; i++) {
+    voice(A, out, t + i * 0.2, { f0: 95 + (i % 2) * 15, dur: 0.18, formants: [[650 - i * 60, 5, 1], [1150 + i * 120, 6, 0.6], [2500, 8, 0.25]], grit: 0.5, breath: 0.15, peak: 0.55 });
+  }
+}
+
+export function powerupGrab(A, out, t, p = {}) {
+  const type = p.type;
+  // pickup swell
+  const o = A.osc('triangle', 520, t, 0.5);
+  o.frequency.exponentialRampToValueAtTime(1560, t + 0.35);
+  const g = A.gain(0); A.env(g, t, 0.01, 0.45, 0.25);
+  o.connect(g); g.connect(out);
+  announcer(A, out, t + 0.35, type === 'pressureCooker' ? 4 : 3);
+  if (type === 'pressureCooker') {
+    const n = A.noiseSource('brown', t + 0.05, 2.5);
+    const lp = A.filter('lowpass', 900, 0.7); lp.frequency.exponentialRampToValueAtTime(90, t + 2.2);
+    const ng = A.gain(0); A.env(ng, t + 0.05, 0.01, 2.2, 1.8);
+    n.connect(lp); lp.connect(ng); ng.connect(out);
+    const s = A.osc('sine', 60, t, 2); s.frequency.exponentialRampToValueAtTime(25, t + 1.6);
+    const sg = A.gain(0); A.env(sg, t, 0.01, 1.8, 1.6); s.connect(sg); sg.connect(out);
+  } else if (type === 'doubleDough' || type === 'clearanceSale') {
+    click(A, out, t + 0.05, 3200, 6, 0.04, 0.6, 2093);   // ka-
+    click(A, out, t + 0.16, 4200, 6, 0.08, 0.7, 2637);   // -ching
+  } else if (type === 'fullPantry') {
+    for (let i = 0; i < 6; i++) click(A, out, t + 0.05 + i * 0.05, 2200 + i * 200, 4, 0.03, 0.4);
+  } else if (type === 'shopClass') {
+    for (const d of [0.05, 0.2, 0.35]) click(A, out, t + d, 2600, 1.2, 0.03, 0.6, 1250);
+  } else if (type === 'oneBite') {
+    click(A, out, t + 0.05, 700, 1.5, 0.12, 1.0, 120);
+    voice(A, out, t + 0.1, { f0: 70, dur: 0.6, formants: [[300, 4, 1], [800, 5, 0.6]], grit: 0.9, breath: 0.4, vib: 9, vibDepth: 0.08, peak: 0.5 });
+  }
+  return 2.6;
+}
+
+export function powerupEnd(A, out, t) {
+  [988, 784, 587].forEach((f, i) => {
+    const o = A.osc('triangle', f, t + i * 0.1, 0.3);
+    const g = A.gain(0); A.env(g, t + i * 0.1, 0.005, 0.25, 0.14);
+    o.connect(g); g.connect(out);
+  });
+  return 0.6;
+}
+
+export function powerupFizzle(A, out, t) {
+  const o = A.osc('sine', 900, t, 0.3);
+  o.frequency.exponentialRampToValueAtTime(200, t + 0.25);
+  const g = A.gain(0); A.env(g, t, 0.005, 0.25, 0.15);
+  o.connect(g); g.connect(out);
+  return 0.4;
+}
+
+export function thunder(A, out, t, p = {}) {
+  const near = p.near ?? 1;
+  // crack
+  const c = A.noiseSource('white', t, 0.25);
+  const hp = A.filter('highpass', 1200, 0.6);
+  const cg = A.gain(0); A.env(cg, t, 0.002, 0.2, 1.2 * near);
+  c.connect(hp); hp.connect(cg); cg.connect(out);
+  // rolling rumble
+  const n = A.noiseSource('brown', t + 0.05, 3.5);
+  const lp = A.filter('lowpass', 500, 0.6);
+  lp.frequency.exponentialRampToValueAtTime(90, t + 3);
+  const g = A.gain(0); A.env(g, t + 0.05, 0.08, 3, 1.4);
+  const lfo = A.osc('sine', 3.5, t, 3.5); const lg = A.gain(0.4); lfo.connect(lg); lg.connect(g.gain);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  return 3.6;
+}
+
+// [VOICE PLACEHOLDER: hounds] growl / bark / yelp, formant-filtered buzz
+export function dogGrowl(A, out, t, p = {}) {
+  voice(A, out, t, { f0: p.f0 || 75, dur: p.dur || 0.9, formants: [[350, 4, 1], [900, 5, 0.6], [2200, 7, 0.25]], grit: 0.95, breath: 0.45, vib: 13, vibDepth: 0.1, peak: 0.5 });
+  return (p.dur || 0.9) + 0.2;
+}
+
+export function dogBark(A, out, t) {
+  voice(A, out, t, { f0: 210, dur: 0.14, formants: [[600, 3, 1], [1400, 4, 0.8], [2800, 6, 0.35]], grit: 0.95, breath: 0.3, glide: 0.55, peak: 0.85 });
+  return 0.3;
+}
+
+export function dogYelp(A, out, t) {
+  voice(A, out, t, { f0: 520, dur: 0.22, formants: [[900, 3, 1], [2000, 5, 0.6]], grit: 0.6, breath: 0.25, glide: 0.5, peak: 0.6 });
+  const n = A.noiseSource('brown', t + 0.05, 0.5);
+  const lp = A.filter('lowpass', 900, 0.8);
+  const g = A.gain(0); A.env(g, t + 0.05, 0.005, 0.4, 0.8);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  return 0.6;
+}
+
+export function dogHowl(A, out, t, p = {}) {
+  const f = p.f0 || 330;
+  voice(A, out, t, { f0: f, dur: 2.2, formants: [[700, 6, 1], [1100, 8, 0.5]], grit: 0.25, breath: 0.2, vib: 5, vibDepth: 0.03, glide: 1.25, peak: 0.45 });
+  return 2.5;
+}
+
+export function pawStep(A, out, t) {
+  click(A, out, t, 1100, 2, 0.03, 0.25);
+  return 0.1;
+}
+
+export function cheddarSting(A, out, t) {
+  // ominous low brass-ish chord rising, cut by a cymbal swell
+  for (const [f, d] of [[55, 0], [82.4, 0.1], [98, 0.2], [146.8, 0.3]]) {
+    const o = A.osc('sawtooth', f, t + d, 3.5);
+    o.frequency.linearRampToValueAtTime(f * 1.06, t + 3);
+    const lp = A.filter('lowpass', 600, 1); lp.frequency.linearRampToValueAtTime(1600, t + 2.5);
+    const g = A.gain(0); A.env(g, t + d, 0.6, 2.8, 0.12);
+    o.connect(lp); lp.connect(g); g.connect(out);
+  }
+  const n = A.noiseSource('white', t + 1.5, 2);
+  const hp = A.filter('highpass', 6000, 0.7);
+  const ng = A.gain(0); ng.gain.setValueAtTime(0.0001, t + 1.5); ng.gain.exponentialRampToValueAtTime(0.25, t + 3.2); ng.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
+  n.connect(hp); hp.connect(ng); ng.connect(out);
+  return 3.8;
+}

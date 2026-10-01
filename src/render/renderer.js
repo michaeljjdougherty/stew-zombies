@@ -13,6 +13,8 @@ import { PostFX } from './postfx.js';
 import { BoxView } from './boxView.js';
 import { ProjectileViews } from './projectileView.js';
 import { MachinesView } from './machinesView.js';
+import { PowerupViews } from './powerupView.js';
+import { CheddarViews } from './cheddarView.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -63,11 +65,16 @@ export class GameRenderer {
         zombies: new ZombieViews(scene, effects, cfg),
         projectiles: new ProjectileViews(scene, effects),
         machines: new MachinesView(scene, sim, cfg, map),
+        powerups: new PowerupViews(scene, cfg),
+        cheddars: new CheddarViews(scene, effects, cfg),
       };
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars });
+    if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
+    this.fogBase = new THREE.Color(cfg.graphics.fogColor);
+    this.hazeColor = new THREE.Color('#5a4410');
     this.zombies.onFootstep = footstep;
     this.mapData = sim.mapData;
     if (this.post) this.post.mainPass.scene = w.scene;
@@ -88,6 +95,8 @@ export class GameRenderer {
     this.effects.clear();
     this.zombies.clear();
     this.projectiles.clear();
+    this.powerups.clear();
+    this.cheddars.clear();
   }
 
   setSim(sim) {
@@ -138,6 +147,8 @@ export class GameRenderer {
       this.viewmodel.onEvent(e, id);
       this.projectiles.onEvent(e);
       this.machines.onEvent(e, this.effects);
+      this.powerups.onEvent(e, this.effects);
+      this.cheddars.onEvent(e);
       switch (e.type) {
         case 'shot': {
           let from;
@@ -160,6 +171,15 @@ export class GameRenderer {
           if (p) this.rig.explosion(e, p.pos);
           break;
         }
+        case 'cheddarStrike':
+          this.effects.lightning(e.pos);
+          this.flash = Math.max(this.flash || 0, 0.35);
+          if (this.sim.playerById(id)) this.rig.explosion({ pos: e.pos, radius: 3, shake: 0.5 }, this.sim.playerById(id).pos);
+          break;
+        case 'powerupGrab':
+          if (e.ptype === 'pressureCooker') this.flash = 1;
+          else this.flash = Math.max(this.flash || 0, 0.12);
+          break;
         case 'zombieRise': {
           const pos = new THREE.Vector3(e.pos.x, 0.05, e.pos.z);
           for (let i = 0; i < 4; i++) this.effects.puff(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.1, (Math.random() - 0.5) * 0.8)), { color: 0x3a3024, size: 0.5, grow: 2.2, life: 1.4, alpha: 0.5, vel: new THREE.Vector3(0, 0.6, 0) });
@@ -258,6 +278,17 @@ export class GameRenderer {
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);
     this.machines.update(dt);
+    this.powerups.update(dt, sim, this.camera);
+    this.cheddars.update(sim, this.zombies.prev, dt, alpha, time);
+
+    // Cheddar Round haze: yellow tint, thicker yellow-brown fog, distant lightning
+    const hazeTarget = sim.rounds.cheddar ? 1 : 0;
+    this.haze = (this.haze || 0) + (hazeTarget - (this.haze || 0)) * Math.min(1, dt * 0.8);
+    this.scene.fog.color.copy(this.fogBase).lerp(this.hazeColor, this.haze * 0.8);
+    this.scene.background = this.scene.fog.color;
+    this.scene.fog.density = this.cfg.graphics.fogDensity * (1 + this.haze * 0.9);
+    if (sim.rounds.cheddar && Math.random() < dt * 0.25) this.flash = Math.max(this.flash || 0, 0.18 + Math.random() * 0.2);
+    this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
     this.effects.update(dt);
 
     if (p) {
@@ -269,7 +300,7 @@ export class GameRenderer {
 
     this.damage = Math.max(0, this.damage - dt * 1.6);
     const lowHealth = p && p.alive ? Math.max(0, 1 - p.health / (p.maxHealth * 0.55)) : (p ? 1 : 0);
-    this.post.render(dt, { damage: this.damage, lowHealth });
+    this.post.render(dt, { damage: this.damage, lowHealth, flash: this.flash || 0, tint: (this.haze || 0) * this.cfg.cheddar.haze });
     this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }
 }

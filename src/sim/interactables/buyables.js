@@ -3,6 +3,9 @@
 // Same interface as windows.js.
 // =============================================================================
 import { giveWeapon } from '../weapons.js';
+import { powerupActive } from '../powerups.js';
+
+const boxCost = (sim) => (powerupActive(sim, 'clearanceSale') ? sim.cfg.powerups.list.clearanceSale.boxCost : sim.cfg.box.cost);
 
 function flatDist(p, pos) { return Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z); }
 
@@ -134,7 +137,7 @@ export class BoxInteractable {
   }
   prompt(sim) {
     if (this.phase === 'offering') return { text: `Press [F] to take ${sim.cfg.weapons[this.weapon].name}`, cost: null };
-    return { text: 'Press [F] for the Mystery Box', cost: sim.cfg.box.cost };
+    return { text: 'Press [F] for the Mystery Box', cost: boxCost(sim) };
   }
   pick(sim, p) {
     const w = sim.cfg.box.weights;
@@ -148,7 +151,7 @@ export class BoxInteractable {
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     if (this.phase === 'idle') {
-      if (!pay(sim, p, sim.cfg.box.cost)) return;
+      if (!pay(sim, p, boxCost(sim))) return;
       this.phase = 'spinning';
       this.timer = sim.cfg.box.spinTime;
       this.buyerId = p.id;

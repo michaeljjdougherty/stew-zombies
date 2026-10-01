@@ -21,6 +21,7 @@ import { updateProjectiles } from './projectiles.js';
 import { setupRange, updateRange } from './range.js';
 import { PowerInteractable, PerkInteractable, MadDogInteractable, TrapInteractable, ReviveInteractable, createTraps, updateTraps } from './interactables/machines.js';
 import { updateLastStand, anyoneStanding } from './laststand.js';
+import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } from './powerups.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -62,6 +63,7 @@ export class GameSim {
     ];
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);
+    this.powerups = createPowerupState(this);
     if (mode === 'range') setupRange(this);
   }
 
@@ -92,6 +94,8 @@ export class GameSim {
 
   addPoints(p, amount, reason) {
     if (!amount) return;
+    if (amount > 0 && reason !== 'powerup' && powerupActive(this, 'doubleDough')) amount *= 2;
+    notePointsEarned(this, amount);
     p.points += amount;
     this.emit('points', { playerId: p.id, amount, reason, total: p.points });
   }
@@ -231,6 +235,7 @@ export class GameSim {
     for (const it of this.interactables) if (it.update) it.update(this, dt);
     for (const p of this.players) if (p.downed) updateLastStand(this, p, dt);
     updateTraps(this, dt);
+    updatePowerups(this, dt);
     updateZombies(this, dt);
     updateProjectiles(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {

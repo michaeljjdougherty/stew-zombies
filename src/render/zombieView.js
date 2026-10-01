@@ -265,6 +265,7 @@ export class ZombieViews {
     // create views for new zombies, sync
     const seen = new Set();
     for (const z of sim.zombies) {
+      if (z.type === 'cheddar') continue; // drawn by CheddarViews
       seen.add(z.id);
       let v = this.views.get(z.id);
       if (!v) { v = this.build(z); this.syncLimbs(v, z); this.views.set(z.id, v); }

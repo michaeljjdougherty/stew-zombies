@@ -197,7 +197,9 @@ export const SCHOOL = {
   navRegions: [
     { id: 'court', rect: [-17, -13, 17, 13], room: 'court' },
     { id: 'hall', rect: [17.5, -22, 21.5, 16], room: 'hall' },
-    { id: 'office', rect: [17.5, 16.5, 25.25, 26], room: 'office' },
+    // the front counter splits the office; get around it at either end
+    { id: 'office', rect: [17.5, 16.5, 25.25, 19.4], room: 'office' },
+    { id: 'office_back', rect: [17.5, 19.4, 25.25, 26], room: 'office' },
     { id: 'principal', rect: [25.75, 16.5, 30, 26], room: 'principal' },
     { id: 'stage', rect: [33.5, -38, 38, -25], room: 'cafe' },
     { id: 'cafe', rect: [17.5, -40.5, 38, -22.5], room: 'cafe' },
@@ -219,7 +221,9 @@ export const SCHOOL = {
     { a: 'court', b: 'hall', x: 17.25, z: 6, axis: 'x', width: 2.6, door: 'door_hall' },
     { a: 'hall', b: 'cafe', x: 19.5, z: -22.25, axis: 'z', width: 2.6, door: 'door_cafe' },
     { a: 'hall', b: 'office', x: 19.5, z: 16.25, axis: 'z', width: 3.0, door: 'debris_office' },
-    { a: 'office', b: 'principal', x: 25.5, z: 22.65, axis: 'x', width: 1.3 },
+    { a: 'office', b: 'office_back', x: 18.15, z: 19.7, axis: 'z', width: 1.2 },
+    { a: 'office', b: 'office_back', x: 24.3, z: 19.7, axis: 'z', width: 1.8 },
+    { a: 'office_back', b: 'principal', x: 25.5, z: 22.65, axis: 'x', width: 1.3 },
     { a: 'cafe', b: 'stage', x: 33.3, z: -31, axis: 'x', width: 2.8 },
     // the Quad
     { a: 'hall', b: 'quad', x: 21.75, z: 9, axis: 'x', width: 2.6, door: 'door_quad_hall' },
@@ -321,7 +325,6 @@ export const SCHOOL = {
     { kind: 'trash', box: [17.95, 0, -17.4, 18.45, 0.9, -16.9] },
     // front office
     { kind: 'counter', box: [18.8, 0, 19.4, 23.4, 1.05, 20.0] },
-    { kind: 'counter', box: [22.8, 0, 20.0, 23.4, 1.05, 22.2] },
     { kind: 'cabinets', box: [17.5, 0, 21.2, 18.1, 1.35, 25.2], face: 'e' },
     { kind: 'desk', box: [19.2, 0, 23.4, 20.9, 0.76, 24.3] },
     // principal's office

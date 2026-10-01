@@ -814,6 +814,60 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // Power-ups: dropped by zombies you kill inside the map. A drop happens when
+  // the team's earned points pass the next threshold (each threshold is a bit
+  // further away), plus a small random chance, up to `maxPerRound`.
+  // ---------------------------------------------------------------------------
+  powerups: {
+    maxPerRound: 4,
+    firstThreshold: 2000,
+    thresholdGrowth: 1.14,
+    randomChance: 0.02,
+    life: 30,                // seconds a drop sits there before vanishing
+    blinkAt: 8,              // starts blinking with this many seconds left
+    pickupRange: 1.3,
+    duration: 30,            // timed power-ups (One Bite, Double Dough, Clearance Sale)
+    list: {
+      fullPantry: { name: 'Full Pantry', desc: 'all ammo and grenades refilled', weight: 1, color: '#7cff7a' },
+      oneBite: { name: 'One Bite', desc: 'everything dies in one hit', weight: 1, color: '#ff4a3a', timed: true },
+      doubleDough: { name: 'Double Dough', desc: 'double points', weight: 1, color: '#ffd23a', timed: true },
+      pressureCooker: { name: 'Pressure Cooker', desc: 'every zombie on the map is gone', weight: 0.7, color: '#ff8a1a', points: 400 },
+      shopClass: { name: 'Shop Class', desc: 'every barrier rebuilt', weight: 0.6, color: '#c8a46a', points: 200 },
+      clearanceSale: { name: 'Clearance Sale', desc: 'the Mystery Box costs 10', weight: 0.5, color: '#ff4fd8', timed: true, boxCost: 10 },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Cheddar Rounds: every few rounds a yellow haze rolls in and Erik's rabid
+  // hounds ("Cheddars") come down with the lightning instead of zombies.
+  // The last one killed leaves a Full Pantry behind.
+  // ---------------------------------------------------------------------------
+  cheddar: {
+    firstRound: [5, 7],      // the first one lands on one of these rounds
+    every: [4, 6],           // then again this many rounds later
+    perPlayer: 6,            // hounds per player on the first Cheddar Round...
+    addPerRound: 2,          // ...plus this many more each Cheddar Round after
+    maxCount: 32,
+    maxAlive: 8,
+    health: [400, 900, 1600, 2200], // by Cheddar Round number (last value repeats +600)
+    speed: [5.2, 6.0],
+    spawnInterval: [0.9, 1.8],
+    spawnDist: [7, 15],      // lightning strikes this far from a player
+    spawnTime: 0.9,          // seconds from the strike until it attacks
+    radius: 0.38,
+    height: 0.95,
+    turnRate: 9,
+    accel: 16,
+    attackRange: 1.15,
+    attackHitRange: 1.5,
+    attackWindup: 0.22,
+    attackRecover: 0.45,
+    attackDamage: 35,
+    haze: 0.32,              // strength of the yellow screen tint
+    preRoundTime: 4,         // haze and thunder before the first strike
+  },
+
+  // ---------------------------------------------------------------------------
   // Last stand
   // ---------------------------------------------------------------------------
   lastStand: {
