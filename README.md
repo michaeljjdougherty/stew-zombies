@@ -86,9 +86,9 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 1. ✅ Movement, camera, controls, M1912, knife, zombies, rounds, points, windows (basketball court)
 2. ✅ Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
 3. Full weapon list, recoil/reload/sound per gun, grenades
-4. Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
+4. Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
 5. Perk machines, Mad Dog Machine, last stand and revive
 6. Power-ups and Cheddar Rounds
-7. Fucci Gun, The Chopper, Stew Bomb, box movement
-8. Erik's PA taunts, lore, menus, full visual and sound polish
+7. Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
+8. Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
 9. Online co-op for 2–4 players

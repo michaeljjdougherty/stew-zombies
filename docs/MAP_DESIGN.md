@@ -108,29 +108,28 @@ for running trains.
 |---|---|---|---|
 | Basketball court | STEW banner, scoreboard | spawn, M15, 4 windows | early rounds, around the center circle |
 | Main hallway | lockers, flickering lights | Olympus, first box spot, links everything | no (connector) |
-| Front office | the PA microphone | Erik's PA, Easter egg item, shortcut to the Quad | no |
+| Front office | the PA microphone | Erik's intercom, Easter egg item, shortcut to the Quad | no |
 | The Quad (new) | dead fountain and flagpole | box spot, wall weapon, outdoor loop | **yes, mid-game** |
 | Cafeteria | stage and lunch line | MP41, perk machine | yes, a loop around the tables |
-| Kitchen | hanging pots, freezers | path to the dock, trap (proposed) | no (tight, tense) |
+| Kitchen | hanging pots, freezers | path to the dock, electric trap | no (tight, tense) |
 | Loading dock | the bus, dumpsters | Staykout, box spot | small loop around the bus |
-| Locker rooms | showers | MP6K, stairs to the boiler room, trap (proposed) | no (tight, dangerous) |
+| Locker rooms | showers | MP6K, stairs to the boiler room, electric trap | no (tight, dangerous) |
 | Boiler room | the big power lever | **power** | no |
 | Science lab | glowing shelves | perk machine, AK-75u | small |
 | Library | balcony stairs | M17, box spot | loop around the shelves |
 | Band and art rooms | instruments, easels | perk machine, MPK, PM64 | no |
 | Auditorium | red curtains, Mad Dog Machine | Mad Dog Machine, last perk, box spot | **yes, the best late-game spot** |
 
-## Proposed extras (not in the original spec)
-
-These are classic features that would give rooms more to do. They need a
-yes before they get built.
+## Extras (approved, beyond the original spec)
 
 - **Electric traps** (once the power is on): in the kitchen and locker room
-  doorways, for about 1000 points each, with a cooldown.
+  doorways, for about 1000 points each, with a cooldown. Built in Phase 4.
+- **A fifth Mystery Box spot in the Quad.** Built in Phase 4, and added to the
+  box's moves in Phase 7.
 - **Hidden Easter egg song:** find three Stew items around the school to play a
-  Stew song that's generated in code (Phase 8).
-- **Erik's intercom:** using the PA in the principal's office makes Erik answer
-  (Phase 8).
+  Stew song that's generated in code. Phase 8.
+- **Erik's intercom:** using the PA in the principal's office makes Erik answer.
+  Phase 8.
 
 ## Sources
 
