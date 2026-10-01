@@ -123,6 +123,8 @@ export class Input {
     c.meleePressed = e.has('melee');
     c.usePressed = e.has('use');
     c.grenadePressed = e.has('grenade');
+    c.tactical = k.has('tactical');
+    c.tacticalPressed = e.has('tactical');
     c.weaponSlot = e.has('weapon1') ? 0 : e.has('weapon2') ? 1 : -1;
     c.weaponCycle = this.wheel !== 0 ? 1 : 0;
     this.wheel = 0;

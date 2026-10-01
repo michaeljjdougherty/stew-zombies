@@ -108,6 +108,8 @@ export class WallBuyInteractable {
 
 // ---------------------------------------------------------------------------
 // Mystery box: pay, it spins, lands on a weapon, the buyer takes it (or loses it).
+// After a few pulls it lands on Erik's bobblehead instead: you get your points
+// back and the box flies off to another spot.
 export class BoxInteractable {
   constructor(sim) {
     this.id = 'use_box';
@@ -115,12 +117,19 @@ export class BoxInteractable {
     this.requireLook = true;
     const spots = sim.world.boxSpots;
     this.spot = spots.find((s) => s.start) || spots[0];
-    this.phase = 'idle';   // idle | spinning | offering | closing
+    this.phase = 'idle';   // idle | spinning | offering | closing | leaving | arriving
     this.timer = 0;
     this.weapon = null;
     this.buyerId = null;
-    this.uses = 0;
+    this.uses = 0;         // pulls in this spot
+    this.totalUses = 0;
+    this.paid = 0;
+    this.moveAt = this.rollMove(sim);
     this.place();
+  }
+  rollMove(sim) {
+    const b = sim.cfg.box;
+    return Math.max(b.firstMoveMin, sim.rng.int(b.moveAfter[0], b.moveAfter[1]));
   }
   place() {
     const s = this.spot;
@@ -135,53 +144,96 @@ export class BoxInteractable {
     if (this.phase === 'idle') return true;
     return this.phase === 'offering' && p.id === this.buyerId;
   }
+  itemName(sim, id) {
+    return sim.cfg.weapons[id] ? sim.cfg.weapons[id].name : sim.cfg.equipment[id] ? sim.cfg.equipment[id].name : id;
+  }
   prompt(sim) {
-    if (this.phase === 'offering') return { text: `Press [F] to take ${sim.cfg.weapons[this.weapon].name}`, cost: null };
+    if (this.phase === 'offering') return { text: `Press [F] to take ${this.itemName(sim, this.weapon)}`, cost: null };
     return { text: 'Press [F] for the Mystery Box', cost: boxCost(sim) };
   }
   pick(sim, p) {
     const w = sim.cfg.box.weights;
     const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
-    const pool = Object.entries(w).filter(([id]) => sim.cfg.weapons[id] && !held.has(id));
+    const ok = (id) => (sim.cfg.weapons[id] && !held.has(id)) || (id === 'stewBomb' && p.stewBombs <= 0);
+    const pool = Object.entries(w).filter(([id]) => ok(id));
     const total = pool.reduce((a, [, v]) => a + v, 0);
     let r = sim.rng.next() * total;
     for (const [id, v] of pool) { r -= v; if (r <= 0) return id; }
     return pool.length ? pool[pool.length - 1][0] : 'M15';
   }
+  canMove(sim) {
+    return sim.world.boxSpots.length > 1 && !powerupActive(sim, 'clearanceSale');
+  }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     if (this.phase === 'idle') {
-      if (!pay(sim, p, boxCost(sim))) return;
+      const cost = boxCost(sim);
+      if (!pay(sim, p, cost)) return;
+      this.paid = cost;
       this.phase = 'spinning';
       this.timer = sim.cfg.box.spinTime;
       this.buyerId = p.id;
-      this.weapon = this.pick(sim, p);
       this.uses++;
+      this.totalUses++;
+      this.weapon = this.uses >= this.moveAt && this.canMove(sim) ? 'bobble' : this.pick(sim, p);
       sim.emit('boxOpen', { playerId: p.id, spot: this.spot.id, weapon: this.weapon, spinTime: this.timer });
     } else if (this.phase === 'offering' && p.id === this.buyerId) {
-      giveWeapon(sim, p, this.weapon);
+      if (this.weapon === 'stewBomb') {
+        p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase;
+      } else giveWeapon(sim, p, this.weapon);
       sim.emit('boxTaken', { playerId: p.id, weapon: this.weapon });
       this.phase = 'closing';
       this.timer = sim.cfg.box.closeTime;
     }
   }
+  // Erik's bobblehead: refund, then off to a different spot.
+  moveTo(sim, spot) {
+    const W = sim.world;
+    W.solids = W.solids.filter((b) => b !== this.spot.collider);
+    this.spot = spot;
+    W.solids.push(spot.collider);
+    this.place();
+  }
   update(sim, dt) {
     if (this.phase === 'idle') return;
     this.timer -= dt;
     if (this.timer > 0) return;
+    const b = sim.cfg.box;
     if (this.phase === 'spinning') {
+      if (this.weapon === 'bobble') {
+        const p = sim.playerById(this.buyerId);
+        if (p) { p.points += this.paid; sim.emit('points', { playerId: p.id, amount: this.paid, reason: 'refund', total: p.points }); }
+        this.phase = 'leaving';
+        this.timer = b.leaveTime;
+        sim.emit('boxBobble', { playerId: this.buyerId, spot: this.spot.id });
+        return;
+      }
       this.phase = 'offering';
-      this.timer = sim.cfg.box.offerTime;
+      this.timer = b.offerTime;
       sim.emit('boxLanded', { weapon: this.weapon, playerId: this.buyerId });
     } else if (this.phase === 'offering') {
       this.phase = 'closing';
-      this.timer = sim.cfg.box.closeTime;
+      this.timer = b.closeTime;
       sim.emit('boxExpired', { weapon: this.weapon });
     } else if (this.phase === 'closing') {
       this.phase = 'idle';
       this.weapon = null;
       this.buyerId = null;
       sim.emit('boxClosed', {});
+    } else if (this.phase === 'leaving') {
+      const others = sim.world.boxSpots.filter((s) => s !== this.spot);
+      const from = this.spot.id;
+      this.moveTo(sim, others[Math.floor(sim.rng.next() * others.length)]);
+      this.uses = 0;
+      this.moveAt = this.rollMove(sim);
+      this.phase = 'arriving';
+      this.timer = b.arriveTime;
+      this.weapon = null;
+      this.buyerId = null;
+      sim.emit('boxMoved', { from, to: this.spot.id, room: this.spot.room });
+    } else if (this.phase === 'arriving') {
+      this.phase = 'idle';
+      sim.emit('boxArrived', { spot: this.spot.id });
     }
   }
 }

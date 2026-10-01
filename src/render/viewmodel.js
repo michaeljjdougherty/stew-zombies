@@ -147,11 +147,30 @@ export class Viewmodel {
     frag.scale.set(1, 1.2, 1); frag.position.set(0, 0.025, -0.015);
     this.grenadeArm.add(frag);
     this.fragMesh = frag;
-    b(0.012, 0.02, 0.012, m.metal, 0, 0.07, -0.015);            // fuse head
-    b(0.008, 0.06, 0.016, m.metal, 0.02, 0.03, -0.015).rotation.z = -0.25; // spoon
+    const fuse = b(0.012, 0.02, 0.012, m.metal, 0, 0.07, -0.015);            // fuse head
+    const spoon = b(0.008, 0.06, 0.016, m.metal, 0.02, 0.03, -0.015); spoon.rotation.z = -0.25; // spoon
+    this.fragParts = [frag, fuse, spoon];
+    // a Stew Bomb: little steel pot, lid, ladle sticking out
+    const pot = new THREE.Group(); pot.position.set(0, 0.03, -0.02); this.grenadeArm.add(pot);
+    const steel = new THREE.MeshStandardMaterial({ color: '#9a9890', metalness: 0.85, roughness: 0.3 });
+    pot.add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.06, 16), steel));
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.008, 16), steel); lid.position.y = 0.034; pot.add(lid);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), m.metal); knob.position.y = 0.043; pot.add(knob);
+    for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.008, 0.01), m.metal); h.position.set(sx * 0.055, 0.015, 0); pot.add(h); }
+    const ladle = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.09, 6), steel); ladle.position.set(0.02, 0.07, 0); ladle.rotation.z = -0.4; pot.add(ladle);
+    const fuseLight = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.4, 0.2) })); fuseLight.position.set(0, 0.0, 0.046); pot.add(fuseLight);
+    pot.visible = false;
+    this.potMesh = pot;
     const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.42, 10), m.sleeve);
     arm.position.set(-0.07, -0.14, 0.16); arm.rotation.set(1.0, 0, 0.5);
     this.grenadeArm.add(arm);
+  }
+
+  // What's in the throwing hand: a frag or a Stew Bomb.
+  showHeld(on) {
+    const stew = this.heldKind === 'stew';
+    for (const q of this.fragParts) q.visible = on && !stew;
+    this.potMesh.visible = on && stew;
   }
 
   // Left hand holding a perk bottle.
@@ -210,7 +229,7 @@ export class Viewmodel {
         if (fs > 0) {
           const f = this.flash[side];
           f.visible = true;
-          if (def && def.view.camo) f.material.color.set(def.view.camo).multiplyScalar(2.6).lerp(new THREE.Color(2.4, 2.2, 2), 0.35);
+          if (def && (def.view.camo || def.view.flashColor)) f.material.color.set(def.view.camo || def.view.flashColor).multiplyScalar(2.6).lerp(new THREE.Color(2.4, 2.2, 2), 0.35);
           else f.material.color.setRGB(2.2, 1.7, 1.2);
           f.material.rotation = Math.random() * Math.PI * 2;
           f.scale.setScalar((0.09 + Math.random() * 0.06) * fs);
@@ -405,6 +424,12 @@ export class Viewmodel {
       if (m.parts.cylinder && !this.reload) m.parts.cylinder.rotation.z = this.cylSpin;
       // crossbow bolt / ballistic blade only show while loaded
       const loaded = (side === 'L' ? slot.clipL : slot.clip) > 0;
+      if (m.parts.saw) {
+        this.sawSpin = (this.sawSpin || 0) + dt * (8 + this.slideBack.R * 60);
+        m.parts.saw.rotation.y = -this.sawSpin;
+        m.parts.saw.visible = (side === 'L' ? slot.clipL : slot.clip) > 0 && !(this.reload && this.reload.t / this.reload.total < 0.6);
+      }
+      if (m.parts.core) m.parts.core.scale.setScalar(slot.clip > 0 ? 1 + Math.sin(this.time * 9) * 0.15 + this.slideBack.R * 0.8 : 0.3);
       if (m.parts.boltShaft) m.parts.boltShaft.visible = loaded && !(this.reload && this.reload.t / this.reload.total < 0.55);
       if (m.parts.blade) m.parts.blade.visible = loaded && !(this.reload && this.reload.t / this.reload.total < 0.5);
     }
@@ -436,7 +461,8 @@ export class Viewmodel {
         gunDip = Math.max(gunDip, t);
         this.grenadeArm.position.set(lerp(-0.25, -0.12, t), lerp(-0.35, -0.1, t) + Math.sin(this.time * 9) * 0.002, -0.32);
         this.grenadeArm.rotation.set(0.2, 0.2, 0.3);
-        this.fragMesh.visible = true;
+        this.heldKind = p.throwing.kind || 'frag';
+        this.showHeld(true);
       } else {
         this.throwT += dt;
         const t = clamp01(this.throwT / 0.4);
@@ -445,7 +471,7 @@ export class Viewmodel {
         const swing = seg(t, 0, 0.3), drop = seg(t, 0.35, 1);
         this.grenadeArm.position.set(-0.12 + swing * 0.08, -0.1 + swing * 0.06 - drop * 0.45, -0.32 - swing * 0.18 + drop * 0.1);
         this.grenadeArm.rotation.set(0.2 - swing * 0.35 + drop * 0.5, 0.2 - swing * 0.15, 0.3);
-        this.fragMesh.visible = t < 0.25;
+        this.showHeld(t < 0.25);
         if (t >= 1) { this.throwT = -1; this.grenadeArm.visible = false; }
       }
     } else this.grenadeArm.visible = false;

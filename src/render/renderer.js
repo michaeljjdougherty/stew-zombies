@@ -63,10 +63,18 @@ export class GameRenderer {
         scene, map, effects,
         box: new BoxView(scene, sim, cfg, map),
         zombies: new ZombieViews(scene, effects, cfg),
-        projectiles: new ProjectileViews(scene, effects),
+        projectiles: new ProjectileViews(scene, effects, cfg),
         machines: new MachinesView(scene, sim, cfg, map),
         powerups: new PowerupViews(scene, cfg),
         cheddars: new CheddarViews(scene, effects, cfg),
+      };
+      w.box.onLand = (spot) => {
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          effects.puff(new THREE.Vector3(spot.x + Math.cos(a) * 0.6, 0.2, spot.z + Math.sin(a) * 0.6), { color: 0x6a6052, size: 0.5, grow: 2.5, life: 1.3, alpha: 0.45, vel: new THREE.Vector3(Math.cos(a) * 1.2, 0.3, Math.sin(a) * 1.2) });
+        }
+        const p = this.sim.playerById(this.localId);
+        if (p) this.rig.explosion({ pos: { x: spot.x, y: 0, z: spot.z }, radius: 2, shake: 0.4 }, p.pos);
       };
       this.worlds.set(sim.mapData.id, w);
     }
@@ -165,10 +173,20 @@ export class GameRenderer {
           break;
         }
         case 'explosion': {
-          if (this.cfg.explosions[e.etype]?.small) this.effects.smallExplosion(e.pos, e.radius);
+          if (this.cfg.explosions[e.etype]?.energy) this.effects.energyBurst(e.pos, this.cfg.explosions[e.etype].energy, e.radius);
+          else if (this.cfg.explosions[e.etype]?.small) this.effects.smallExplosion(e.pos, e.radius);
           else this.effects.explosion(e.pos, e.radius);
           const p = this.sim.playerById(id);
           if (p) this.rig.explosion(e, p.pos);
+          break;
+        }
+        case 'sawHit':
+          this.effects.bloodBurst(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), { x: Math.random() - 0.5, y: 0.5, z: Math.random() - 0.5 }, 30, 1.4);
+          break;
+        case 'sawRicochet': case 'sawStick': {
+          const n = e.normal || { x: 0, y: 1, z: 0 };
+          for (let i = 0; i < 16; i++) this.effects.spawnParticle(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), new THREE.Vector3(n.x * 3 + (Math.random() - 0.5) * 6, Math.random() * 4, n.z * 3 + (Math.random() - 0.5) * 6), { life: 0.3, size: 0.01, color: [5, 3, 1], gravity: 10, drag: 1 });
+          if (e.type === 'sawStick' && e.normal) this.effects.bulletHole(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), new THREE.Vector3(n.x, n.y, n.z));
           break;
         }
         case 'cheddarStrike':

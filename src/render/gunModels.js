@@ -701,7 +701,106 @@ function bknife(m) {
   };
 }
 
+// --- wonder weapons -------------------------------------------------------
+let extra = null;
+function extraMats() {
+  if (extra) return extra;
+  const std = (o) => new THREE.MeshStandardMaterial(o);
+  extra = {
+    gold: std({ color: '#c9a23a', metalness: 0.9, roughness: 0.25 }),
+    lacquer: std({ color: '#15110e', metalness: 0.3, roughness: 0.15 }),
+    cream: std({ map: T.gloveTexture(), color: '#e2d2ae', roughness: 0.75 }),
+    crimson: std({ color: '#7a0f1a', metalness: 0.2, roughness: 0.35 }),
+    red: std({ map: T.metalTexture({ color: '#7a1a12', rust: 0.7 }), metalness: 0.4, roughness: 0.6 }),
+    yellow: std({ color: '#c9a020', roughness: 0.6 }),
+    steel: std({ color: '#c4c4be', metalness: 0.95, roughness: 0.22 }),
+    glowGold: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.4, 0.7) }),
+    glowRed: new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.5, 0.2) }),
+  };
+  return extra;
+}
+
+// The Fucci Gun: black lacquer and gold, an emitter of stacked gold rings
+// around a glowing core, cream leather grip.
+function fucci(m) {
+  const X = extraMats();
+  const g = new THREE.Group();
+  const { box, cylZ, ring } = helpers(g);
+  box(0.034, 0.048, 0.19, X.lacquer, 0, 0.004, -0.02);                  // body
+  box(0.036, 0.008, 0.19, X.gold, 0, 0.031, -0.02);                     // gold top rail
+  box(0.037, 0.008, 0.12, X.crimson, 0, -0.008, -0.03);                 // stripe
+  box(0.0372, 0.0025, 0.12, X.gold, 0, -0.0035, -0.03);
+  box(0.0372, 0.0025, 0.12, X.gold, 0, -0.0125, -0.03);
+  box(0.004, 0.026, 0.07, X.gold, 0, 0.045, 0.02);                      // fin
+  box(0.012, 0.008, 0.012, X.gold, 0, 0.04, -0.1);                      // front sight
+  cylZ(0.022, 0.028, 0.06, X.lacquer, 0, 0.006, -0.145);                // emitter
+  for (let i = 0; i < 3; i++) ring(0.026 + i * 0.002, X.gold, 0, 0.006, -0.13 - i * 0.022);
+  const core = new THREE.Group(); core.position.set(0, 0.006, -0.175); g.add(core);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), X.glowGold); core.add(orb);
+  for (const sx of [-1, 1]) box(0.005, 0.005, 0.11, X.glowGold, sx * 0.0185, 0.012, -0.03);   // side coils
+  box(0.0372, 0.014, 0.014, X.gold, 0, 0.004, 0.05);                    // monogram plate
+  box(0.004, 0.004, 0.05, X.gold, 0, -0.04, 0.0);                       // trigger guard
+  box(0.004, 0.022, 0.004, X.gold, 0, -0.03, -0.024);
+  box(0.004, 0.02, 0.004, X.lacquer, 0, -0.03, 0.006);
+  const gr = new THREE.Group(); gr.position.set(0, -0.02, 0.065); gr.rotation.x = -0.25; g.add(gr);
+  box(0.028, 0.105, 0.044, X.cream, 0, -0.055, 0, gr);
+  box(0.031, 0.012, 0.047, X.gold, 0, -0.11, 0, gr);                    // butt cap
+  const mag = new THREE.Group(); gr.add(mag);
+  box(0.02, 0.03, 0.03, X.gold, 0, -0.125, 0, mag);
+  return {
+    group: g, parts: { mag, core }, muzzleAt: [0, 0.006, -0.19],
+    right: { pos: [0.004, -0.062, 0.07], rot: [-0.25, 0, 0], kind: 'grip' },
+    left: { pos: [-0.022, -0.08, 0.06], rot: [-0.2, 0.3, 0.5], kind: 'cup' },
+    hip: { x: 0.11, y: -0.08, z: -0.34, ry: 0.07, rz: -0.18, rx: 0.03 },
+    aim: { y: -0.042, z: -0.34 },
+  };
+}
+
+// The Chopper: a red housing with a buzz-saw blade exposed at the front,
+// a motor at the back, a carry handle on top.
+function chopper(m) {
+  const X = extraMats();
+  const g = new THREE.Group();
+  const { box, cylZ } = helpers(g);
+  box(0.075, 0.095, 0.3, X.red, 0, 0, -0.04);                          // housing
+  for (let i = 0; i < 5; i++) box(0.077, 0.018, 0.02, i % 2 ? m.black : X.yellow, 0, -0.035, -0.14 + i * 0.022);
+  for (let i = 0; i < 4; i++) box(0.078, 0.004, 0.18, m.darkMetal, 0, 0.044 - i * 0.012, 0.01);
+  cylZ(0.042, 0.042, 0.12, m.darkMetal, 0, 0.01, 0.15);                 // motor
+  for (let i = 0; i < 6; i++) cylZ(0.046, 0.046, 0.006, m.metal, 0, 0.01, 0.1 + i * 0.018);
+  cylZ(0.01, 0.01, 0.07, m.black, 0.03, 0.06, 0.16);                    // exhaust
+  // guard over the top half of the blade
+  // the blade rides flat on top of the nose, half hidden under a shroud
+  box(0.07, 0.03, 0.06, X.red, 0, 0.055, -0.15);                      // shroud
+  box(0.072, 0.006, 0.06, X.yellow, 0, 0.071, -0.15);
+  const saw = new THREE.Group(); saw.position.set(0, 0.058, -0.24); g.add(saw);
+  saw.add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.005, 28), X.steel));
+  saw.add(new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.014, 10), m.darkMetal));
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.005, 0.012), X.steel);
+    t.position.set(Math.cos(a) * 0.095, 0, Math.sin(a) * 0.095);
+    t.rotation.y = -a + 0.5;
+    saw.add(t);
+  }
+  cylZ(0.008, 0.008, 0.08, m.darkMetal, 0, 0.05, -0.2);                 // spindle arm
+  // carry handle
+  box(0.012, 0.012, 0.15, m.black, 0, 0.078, -0.06);
+  box(0.01, 0.03, 0.01, m.black, 0, 0.062, -0.13);
+  box(0.01, 0.03, 0.01, m.black, 0, 0.062, 0.01);
+  box(0.004, 0.012, 0.004, X.glowRed, 0.04, 0.03, 0.06);                // power light
+  grip(g, box, m.black, 0.07, -0.045, -0.25, 0.09);
+  box(0.004, 0.004, 0.05, m.metal, 0, -0.07, 0.04);
+  return {
+    group: g, parts: { saw }, muzzleAt: [0, 0.058, -0.34],
+    right: { pos: [0.004, -0.085, 0.075], rot: [-0.25, 0, 0], kind: 'grip' },
+    left: { pos: [-0.03, -0.05, -0.15], rot: [0.1, 0.2, 1.2], kind: 'under' },
+    hip: { x: 0.15, y: -0.118, z: -0.37, ry: 0.1, rz: -0.05, rx: 0.12 },
+    aim: { y: -0.1, z: -0.4 },
+  };
+}
+
 const BUILDERS = {
+  fucci, chopper,
   pistol, revolver, rifle, doubleBarrel, smg, carbine,
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,
 };

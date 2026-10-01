@@ -17,6 +17,7 @@ export function emptyCommand() {
     fire: false, firePressed: false,
     ads: false, adsPressed: false,   // right click (also the left gun when dual wielding)
     grenade: false, grenadePressed: false,
+    tactical: false, tacticalPressed: false,   // [Q] stew bomb
     jumpPressed: false,
     reloadPressed: false,
     meleePressed: false,
@@ -61,6 +62,7 @@ export function createPlayer(sim, id, name, spawn) {
     loadout: createLoadout(sim, sim.cfg.startingWeapon),
     grenades: sim.cfg.equipment.frag.startWith,
     grenadeMax: sim.cfg.equipment.frag.startWith,
+    stewBombs: 0,
     throwing: null,           // grenade in hand: { phase: 'cook' | 'recover', t }
     melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
     moveSpeed: 0,             // horizontal speed, for camera bob / audio
@@ -88,7 +90,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (ml > 1) { mx /= ml; my /= ml; }
   const w = p.loadout;
   const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching && !downed;
-  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || !!p.throwing || !!p.drinking;
+  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || cmd.tacticalPressed || !!p.throwing || !!p.drinking;
   if (p.sprinting) {
     if (!wantsSprint || p.stamina <= 0 || interrupt) {
       p.sprinting = false;

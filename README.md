@@ -4,7 +4,25 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 6 — power-ups and Cheddar Rounds.**
+**Current phase: 7 — wonder weapons, Stew Bombs, and the box on the move.**
+
+- **The Fucci Gun** (Mystery Box): a designer energy pistol in black lacquer
+  and gold. Gold plasma rings hit for 1000 and splash everything around the
+  impact. Mad Dog upgrade: **Fucci Haute Couture** (pink plasma, 40-round mag,
+  double damage, bigger splash).
+- **The Chopper** (Mystery Box): a buzz-saw launcher. Every blade cuts through
+  a whole line of zombies, taking arms off, and ricochets off walls three
+  times before it buries itself. Mad Dog upgrade: **The Meat Grinder** (triple
+  damage, six ricochets, 10 blades a mag).
+- **Stew Bombs** (Mystery Box, press **Q**, 3 at a time): a pot of stew with a
+  ladle banging out a tune. Every zombie within ~30 m drops what it's doing
+  and crowds round it for 7 seconds, then it blows.
+- **The box moves:** after 5–9 pulls in one spot it lands on Erik's
+  bobblehead instead. You get your points back, it laughs at you, and the box
+  flies off to one of five spots: the main hallway, **the Quad**, the loading
+  dock, the library or the auditorium. Follow the blue light.
+
+Phase 6 (built):
 
 - **Power-ups** drop from zombies you kill inside the map (up to 4 a round,
   more likely as your points add up). Walk over one to grab it; they blink and
@@ -108,6 +126,7 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | Space · C | Jump · crouch |
 | R | Reload (sprinting cancels it; firing cancels a shotgun's shell reload) |
 | G | Frag grenade: hold to cook, release to throw. You start with 2 and are topped back up every round; the wall buy (250) raises that to 4 |
+| Q | Stew Bomb (from the Mystery Box) |
 | V or E | Knife (lunges at nearby zombies) |
 | F | Buy doors, debris, wall weapons and the Mystery Box |
 | F (hold) | Rebuild a window barrier, one plank at a time |
@@ -126,7 +145,7 @@ the weapons & options panel:
 - Infinite ammo, moving targets, send a horde at that round's strength, clear zombies.
 - **Mad Dog upgraded** switches every gun in the list to its upgraded version.
 - Perk buttons switch each perk on or off instantly.
-- Drop any power-up in front of you, or send a pack of Cheddars.
+- Drop any power-up in front of you, send a pack of Cheddars, or take Stew Bombs.
 
 The top-left readout shows the gun's stats, last hit, damage per second, time
 to kill, accuracy and kills, and damage numbers float off every hit (gold for
@@ -195,6 +214,6 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 4. ✅ Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
 5. ✅ Perk machines, Mad Dog Machine, last stand and revive
 6. ✅ Power-ups and Cheddar Rounds
-7. Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
+7. ✅ Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
 8. Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
 9. Online co-op for 2–4 players

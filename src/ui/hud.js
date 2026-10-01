@@ -72,6 +72,13 @@ export class HUD {
       case 'cheddarEnd':
         this.toast('Cheddar Round over', '', '#ffb020', 2.5);
         break;
+      case 'boxBobble':
+        if (e.playerId === this.localId) this.toast('Bye bye', 'the Mystery Box is moving · points refunded', '#7fcfff', 3);
+        break;
+      case 'boxMoved': {
+        this.toast('The box has moved', this.roomNames && this.roomNames[e.room] ? 'look for the light in ' + this.roomNames[e.room] : 'look for the light', '#7fcfff', 3);
+        break;
+      }
       case 'powerOn':
         this.toast('The power is on', 'perks, traps and the Mad Dog Machine are live', '#ffd23a', 3.5);
         break;
@@ -125,7 +132,7 @@ export class HUD {
     this.set('wcolor', this.el.wname.style, def.view.camo || '', 'color');
     this.set('clip', this.el.clip, String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
-    this.set('grenades', this.el.grenades, '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
+    this.set('grenades', this.el.grenades, '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('reserve', this.el.reserve, String(slot.reserve));

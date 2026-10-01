@@ -335,8 +335,6 @@ export const SCHOOL = {
     { kind: 'step', box: [32.6, 0, -32.4, 33.5, 0.45, -29.6] },
     { kind: 'counter', box: [18.4, 0, -40.5, 27.4, 1.0, -39.4], lunch: true },
     ...[-27.4, -31.4, -35.4].flatMap((z) => [21.6, 28.6].map((x) => ({ kind: 'table', box: [x - 2.6, 0, z - 0.45, x + 2.6, 0.76, z + 0.45] }))),
-    // mystery box starting spot (solid)
-    { kind: 'boxBase', box: [20.93, 0, -3.55, 21.5, 0.62, -2.45] },
 
     // kitchen
     { kind: 'counter', box: [24, 0, -50.5, 24.75, 0.95, -42], steel: true },
@@ -402,10 +400,14 @@ export const SCHOOL = {
     { weapon: 'MPK', room: 'band', side: 's', at: -30, y: 1.5 },
   ],
 
-  // Mystery box locations. `start` = where it is at the beginning.
-  // (The box only moves from Phase 7 on; the other spots are placed already.)
+  // Mystery box locations. `start` = where it is at the beginning. The box
+  // sits against a wall, facing `yaw` (its front points into the room).
   boxSpots: [
     { id: 'box_hall', room: 'hall', x: 21.2, z: -3, yaw: -Math.PI / 2, start: true },
+    { id: 'box_quad', room: 'quad', x: 35, z: -21.7, yaw: 0 },
+    { id: 'box_dock', room: 'dock', x: 36.5, z: -52.8, yaw: Math.PI },
+    { id: 'box_library', room: 'library', x: -33.7, z: -48, yaw: Math.PI / 2 },
+    { id: 'box_auditorium', room: 'auditorium', x: 9, z: -52.3, yaw: Math.PI },
   ],
 
   // Power switch (boiler room) and what needs it.

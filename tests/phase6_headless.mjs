@@ -84,7 +84,7 @@ const addZ = (sim, x, z, hp = 500) => { const zz = makeZombie(sim, { pos: { x, z
   grab('shopClass');
   check(sim.windows.every((w) => w.boards === w.maxBoards), 'Shop Class rebuilds every barrier');
 
-  sim.box.uses = 1;
+  sim.box.uses = 1; sim.box.totalUses = 1;
   grab('clearanceSale');
   const boxIt = sim.interactables.find((i) => i.kind === 'box');
   check(boxIt.prompt(sim, me).cost === 10, 'Clearance Sale: box costs 10');

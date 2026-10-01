@@ -8,7 +8,7 @@
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
 import { RANGE } from './map/range.js';
-import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars } from './sim/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
@@ -41,6 +41,7 @@ const audio = new AudioEngine(CONFIG);
 const sound = new SoundDirector(audio, sim, CONFIG);
 sound.localId = LOCAL_ID;
 const hud = new HUD(CONFIG);
+hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the principal's office" : 'the ' + r.name.replace(/^The /, '')]));
 hud.localId = LOCAL_ID;
 
 renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
@@ -56,6 +57,7 @@ const rangeUI = new RangeUI(CONFIG, {
   setMoving: (on) => { sim.range.moving = on; },
   horde: () => spawnHorde(sim),
   cheddars: () => rangeCheddars(sim),
+  stewBombs: () => rangeStewBombs(sim, player),
   drop: (id) => rangeDrop(sim, player, id),
   clear: () => clearZombies(sim),
   close: () => closeRangePanel(),

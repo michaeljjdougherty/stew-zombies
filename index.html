@@ -58,6 +58,8 @@
   #hint { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font-size: 15px; color: #e8b06a; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   #grenades { display: flex; gap: 5px; justify-content: flex-end; margin-top: 4px; min-height: 14px; }
   #grenades i { width: 10px; height: 13px; border-radius: 45% 45% 40% 40%; background: #5d6a4a; box-shadow: 0 1px 0 #000, inset 0 -3px 0 rgba(0,0,0,.35); position: relative; }
+  #grenades b { width: 15px; height: 11px; margin-top: 2px; border-radius: 2px 2px 5px 5px; background: #a8a69c; box-shadow: 0 1px 0 #000, inset 0 -3px 0 rgba(0,0,0,.3); position: relative; }
+  #grenades b::before { content: ""; position: absolute; left: -2px; right: -2px; top: -3px; height: 3px; background: #c8c6bc; border-radius: 2px; }
   #grenades i::before { content: ""; position: absolute; left: 3px; top: -3px; width: 4px; height: 3px; background: #8b8a84; }
   #clipL:empty + .bar { display: none; }
   #ammo .bar { margin: 0 5px; font-size: 22px; color: var(--muted); }
@@ -245,6 +247,7 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap">
         <button id="rp-horde" class="sm primary" type="button">Send a horde</button>
         <button id="rp-cheddar" class="sm primary" type="button">Send Cheddars</button>
+        <button id="rp-stew" class="sm" type="button">Take Stew Bombs</button>
         <button id="rp-clear" class="sm" type="button">Clear zombies</button>
         <button id="rp-reset" class="sm" type="button">Reset stats</button>
       </div>
@@ -256,7 +259,7 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phase 6 · Power-ups and Cheddar Rounds</span>
+    <span class="eyebrow">Phase 7 · Wonder weapons, Stew Bombs, the box on the move</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
@@ -271,6 +274,7 @@
       <dt>R</dt><dd>Reload (sprint to cancel)</dd>
       <dt>V or E</dt><dd>Knife</dd>
       <dt>G</dt><dd>Frag grenade (hold to cook, release to throw)</dd>
+      <dt>Q</dt><dd>Stew Bomb, if the box gave you some (draws zombies in, then blows)</dd>
       <dt>F</dt><dd>Buy doors, weapons and the Mystery Box · hold to rebuild barriers</dd>
       <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
       <dt>Esc</dt><dd>Pause</dd>

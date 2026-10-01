@@ -51,7 +51,7 @@ export function updateRange(sim, dt) {
     if (p.points < rc.startPoints / 2) p.points = rc.startPoints;
     if (!R.infiniteAmmo) continue;
     for (const slot of p.loadout.slots) slot.reserve = sim.cfg.weapons[slot.id].reserve;
-    if (!p.throwing) p.grenades = Math.max(p.grenades, p.grenadeMax);
+    if (!p.throwing) { p.grenades = Math.max(p.grenades, p.grenadeMax); if (p.stewBombs > 0) p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; }
   }
 }
 
@@ -119,3 +119,5 @@ export function rangeCheddars(sim, count = 6) {
     spawnCheddar(sim, { x: sp.x + sim.rng.range(-1.5, 1.5), y: 0, z: sp.z + 8 + sim.rng.range(-3, 3) }, cheddarHealth(sim, idx));
   }
 }
+
+export function rangeStewBombs(sim, p) { p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; }

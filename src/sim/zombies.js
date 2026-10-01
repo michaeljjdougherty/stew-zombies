@@ -6,6 +6,7 @@ import { moveBody, separateCircles } from './physics.js';
 import { rotY, angleWrap, dist2D } from '../core/math.js';
 import { zombieHealthForRound } from '../config.js';
 import { maybeDrop, powerupActive } from './powerups.js';
+import { activeLure } from './projectiles.js';
 
 let _hitboxCache = [];
 
@@ -271,12 +272,16 @@ export function updateZombies(sim, dt) {
       }
 
       case 'chase': {
-        const target = nearestPlayer(sim, z.pos);
+        // a Stew Bomb nearby beats any player
+        const lure = activeLure(sim, z.pos);
+        const target = lure ? null : nearestPlayer(sim, z.pos);
+        const goTo = lure ? { pos: lure.pos, region: lure.region } : target;
         z.targetId = target ? target.id : null;
+        z.lured = !!lure;
         z.region = sim.nav.regionAt(z.pos, z.region);
         let dirX = 0, dirZ = 0;
-        if (target) {
-          const goal = sim.nav.nextPoint(z.pos, z.region, target.pos, target.region);
+        if (goTo) {
+          const goal = sim.nav.nextPoint(z.pos, z.region, goTo.pos, goTo.region);
           const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z;
           const d = Math.hypot(dx, dz) || 1;
           dirX = dx / d; dirZ = dz / d;
@@ -324,6 +329,7 @@ export function updateZombies(sim, dt) {
         if (z.stun > 0) speed *= 0.35;
         // stop short when already in swing range
         if (target && dist2D(target.pos, z.pos) < c.attackRange * 0.75) speed *= 0.1;
+        if (lure && dist2D(lure.pos, z.pos) < 1.4) speed *= 0.05; // crowd round the pot
 
         const k = 1 - Math.exp(-c.accel * dt);
         z.vel.x += (dirX * speed - z.vel.x) * k;
@@ -469,6 +475,13 @@ export function damageZombie(sim, z, amount, info) {
     if (z.limbDamage[info.part] >= z.maxHealth * c.armLossFraction) {
       z.limbs[info.part] = false;
       sim.emit('zombieLimb', { id: z.id, limb: info.part, dir: info.dir });
+    }
+  }
+
+  // saw blades take arms off as they go through
+  if (info.kind === 'saw' && z.type !== 'cheddar') {
+    for (const limb of ['armL', 'armR']) {
+      if (z.limbs[limb] && sim.rng.chance(0.45)) { z.limbs[limb] = false; sim.emit('zombieLimb', { id: z.id, limb, dir: info.dir }); }
     }
   }
 

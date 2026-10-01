@@ -12,6 +12,8 @@ export function gunshot(A, out, t, p = {}) {
   if (p.kind === 'launcher') return launcherFire(A, out, t, p);
   if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);
   if (p.kind === 'blade') return bladeFire(A, out, t, p);
+  if (p.kind === 'fucci') return fucciFire(A, out, t, p);
+  if (p.kind === 'saw') return sawFire(A, out, t, p);
   const pitch = (p.pitch || 1) * R(0.96, 1.04);
   const body = p.body || 2200, thumpF = p.thump || 140;
   const mix = A.gain(1);
@@ -1167,4 +1169,134 @@ export function cheddarSting(A, out, t) {
   const ng = A.gain(0); ng.gain.setValueAtTime(0.0001, t + 1.5); ng.gain.exponentialRampToValueAtTime(0.25, t + 3.2); ng.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
   n.connect(hp); hp.connect(ng); ng.connect(out);
   return 3.8;
+}
+
+// --- Phase 7: wonder weapons, Stew Bombs, the box moving ----------------------
+
+function fucciFire(A, out, t, p = {}) {
+  const up = p.upgraded ? 1.35 : 1;
+  // a bright "pew" sweeping down, with a shimmering harmonic on top
+  const o = A.osc('square', 1500 * up, t, 0.25);
+  o.frequency.exponentialRampToValueAtTime(260 * up, t + 0.18);
+  const lp = A.filter('lowpass', 3200, 2);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.2, 0.35);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  const o2 = A.osc('sine', 3000 * up, t, 0.3);
+  o2.frequency.exponentialRampToValueAtTime(900 * up, t + 0.25);
+  const g2 = A.gain(0); A.env(g2, t, 0.002, 0.25, 0.15);
+  o2.connect(g2); g2.connect(out);
+  const n = A.noiseSource('white', t, 0.1);
+  const bp = A.filter('bandpass', 5000, 2);
+  const g3 = A.gain(0); A.env(g3, t, 0.001, 0.06, 0.25);
+  n.connect(bp); bp.connect(g3); g3.connect(out);
+  return 0.5;
+}
+
+export function fucciImpact(A, out, t) {
+  const o = A.osc('sawtooth', 420, t, 0.4);
+  o.frequency.exponentialRampToValueAtTime(70, t + 0.3);
+  const lp = A.filter('lowpass', 1800, 1.5);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.3, 0.5);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  const n = A.noiseSource('pink', t, 0.3);
+  const ng = A.gain(0); A.env(ng, t, 0.002, 0.25, 0.5);
+  n.connect(ng); ng.connect(out);
+  return 0.5;
+}
+
+function sawFire(A, out, t) {
+  // motor rev up, then the launch thunk, then the blade's whine flying off
+  const o = A.osc('sawtooth', 90, t, 0.6);
+  o.frequency.exponentialRampToValueAtTime(420, t + 0.15);
+  const lp = A.filter('lowpass', 1600, 1.5);
+  const g = A.gain(0); A.env(g, t, 0.01, 0.4, 0.4);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  click(A, out, t + 0.02, 700, 1.5, 0.08, 1.0, 140);
+  const w = A.osc('square', 1800, t + 0.03, 0.8);
+  w.frequency.exponentialRampToValueAtTime(1100, t + 0.8);
+  const bp = A.filter('bandpass', 2200, 6);
+  const wg = A.gain(0); A.env(wg, t + 0.03, 0.02, 0.7, 0.12);
+  w.connect(bp); bp.connect(wg); wg.connect(out);
+  return 0.9;
+}
+
+export function sawCut(A, out, t) {
+  const n = A.noiseSource('white', t, 0.25);
+  const bp = A.filter('bandpass', 2600, 2);
+  bp.frequency.exponentialRampToValueAtTime(900, t + 0.2);
+  const g = A.gain(0); A.env(g, t, 0.003, 0.2, 0.6);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  const m = A.noiseSource('brown', t, 0.2);
+  const lp = A.filter('lowpass', 500, 1);
+  const mg = A.gain(0); A.env(mg, t, 0.003, 0.15, 0.6);
+  m.connect(lp); lp.connect(mg); mg.connect(out);
+  return 0.35;
+}
+
+export function sawRicochet(A, out, t) {
+  click(A, out, t, 3400, 4, 0.05, 0.9, 1750);
+  const o = A.osc('sine', 2600, t, 0.4);
+  o.frequency.exponentialRampToValueAtTime(1500, t + 0.35);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.35, 0.15);
+  o.connect(g); g.connect(out);
+  return 0.5;
+}
+
+export function sawStick(A, out, t) {
+  click(A, out, t, 1500, 2, 0.1, 1.0, 380);
+  const o = A.osc('triangle', 380, t, 0.6);
+  const lfo = A.osc('sine', 30, t, 0.6); const lg = A.gain(60); lfo.connect(lg); lg.connect(o.frequency);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.55, 0.25);   // twang
+  o.connect(g); g.connect(out);
+  return 0.7;
+}
+
+// The Stew Bomb's tune: a ladle banging the pot and a wonky little melody.
+export function stewBombTune(A, out, t, p = {}) {
+  const dur = p.duration || 7;
+  const notes = [392, 440, 494, 392, 523, 494, 440, 330, 349, 392, 440, 349, 392, 330, 294, 262];
+  const step = 0.22;
+  for (let i = 0, tt = t; tt < t + dur - 0.1; i++, tt += step) {
+    const f = notes[i % notes.length] * (1 + Math.floor(i / notes.length) * 0.06); // creeps sharp
+    const o = A.osc('square', f, tt, step);
+    const lp = A.filter('lowpass', 1400, 3);
+    const g = A.gain(0); A.env(g, tt, 0.01, step * 0.9, 0.09);
+    o.connect(lp); lp.connect(g); g.connect(out);
+    if (i % 2 === 0) click(A, out, tt, 2400 + (i % 4) * 300, 8, 0.06, 0.6, 1900 + (i % 4) * 150); // clang
+  }
+  return dur + 0.2;
+}
+
+export function stewBombLand(A, out, t) {
+  click(A, out, t, 1900, 5, 0.08, 0.8, 1300);
+  click(A, out, t + 0.1, 2300, 6, 0.06, 0.5, 1600);
+  return 0.4;
+}
+
+// [VOICE PLACEHOLDER: Erik laughing at you from the bobblehead]
+export function erikLaugh(A, out, t) {
+  for (let i = 0; i < 5; i++) {
+    voice(A, out, t + i * 0.16, { f0: 150 - i * 8, dur: 0.12, formants: [[700, 5, 1], [1200, 6, 0.6], [2600, 8, 0.25]], grit: 0.35, breath: 0.3, peak: 0.5 });
+  }
+  return 1.1;
+}
+
+export function boxWhoosh(A, out, t) {
+  const n = A.noiseSource('pink', t, 2.2);
+  const bp = A.filter('bandpass', 300, 0.8);
+  bp.frequency.exponentialRampToValueAtTime(2500, t + 2);
+  const g = A.gain(0); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 1.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  const o = A.osc('sine', 200, t, 2.2); o.frequency.exponentialRampToValueAtTime(900, t + 2.1);
+  const og = A.gain(0); A.env(og, t, 1.2, 1, 0.15); o.connect(og); og.connect(out);
+  return 2.4;
+}
+
+export function boxThud(A, out, t) {
+  const n = A.noiseSource('brown', t, 0.5);
+  const lp = A.filter('lowpass', 350, 1);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.45, 1.4);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  click(A, out, t, 900, 1.5, 0.12, 0.8, 110);
+  return 0.6;
 }

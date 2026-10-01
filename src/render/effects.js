@@ -266,6 +266,7 @@ export class Effects {
   }
 
   muzzle(pos) {
+    this.muzzleLight.color.set(0xffb060);
     this.muzzleLight.position.copy(pos);
     this.muzzleLight.intensity = 9;
     this.muzzleT = 0.05;
@@ -329,6 +330,35 @@ export class Effects {
     this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(pos.x, 0.005, pos.z), UP, 1.6);
   }
 
+  // Fucci Gun hit: a flash of colored plasma, rings of sparks, a scorch.
+  energyBurst(pos, color = '#ffcf4a', radius = 2.4) {
+    const p = new THREE.Vector3(pos.x, pos.y, pos.z);
+    const c = new THREE.Color(color);
+    for (let i = 0; i < 4; i++) {
+      const f = this.fires[this.fireIdx];
+      this.fireIdx = (this.fireIdx + 1) % this.fires.length;
+      f.s.position.copy(p);
+      f.vel.set((Math.random() - 0.5) * 2, 0.4 + Math.random(), (Math.random() - 0.5) * 2);
+      f.size = 0.5 + Math.random() * 0.5 * radius / 2.4;
+      f.life = f.max = 0.18 + Math.random() * 0.1;
+      f.s.material.rotation = Math.random() * 6.28;
+      f.s.visible = true;
+      f.tint = c;
+    }
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2, up = Math.random() * 0.6;
+      const v = new THREE.Vector3(Math.cos(a) * 6, up * 5, Math.sin(a) * 6).multiplyScalar(0.5 + Math.random() * 0.6);
+      this.spawnParticle(p, v, { life: 0.25 + Math.random() * 0.3, size: 0.014, color: [c.r * 4, c.g * 4, c.b * 4], gravity: 3, drag: 2 });
+    }
+    this.puff(p, { color: c.getHex(), size: 0.5, grow: 2.5, life: 0.4, alpha: 0.35 });
+    this.muzzleLight.position.copy(p);
+    this.muzzleLight.color.copy(c);
+    this.muzzleLight.intensity = 18;
+    this.muzzleT = 0.08;
+    const h = this.sim.raycastWorld({ x: p.x, y: p.y + 0.1, z: p.z }, { x: 0, y: -1, z: 0 }, 1.2);
+    if (h) this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(h.point.x, h.point.y, h.point.z), new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z), 0.9);
+  }
+
   // Mad Dog explosive rounds: a quick pop, no scorch.
   smallExplosion(pos, radius = 2) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
@@ -340,7 +370,7 @@ export class Effects {
       f.size = 0.5 + Math.random() * 0.4 * radius / 2;
       f.life = f.max = 0.14 + Math.random() * 0.1;
       f.s.material.rotation = Math.random() * 6.28;
-      f.s.visible = true;
+      f.s.visible = true; f.tint = null;
     }
     this.puff(p, { color: 0x2e2a26, size: 0.45, grow: 2, life: 0.9, alpha: 0.4, vel: new THREE.Vector3(0, 0.5, 0) });
     for (let i = 0; i < 6; i++) this.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 7, 1 + Math.random() * 4, (Math.random() - 0.5) * 7), { life: 0.25, size: 0.012, color: [5, 2.4, 0.8], gravity: 10, drag: 1 });
@@ -365,6 +395,7 @@ export class Effects {
       f.life = f.max = 0.25 + Math.random() * 0.25;
       f.s.material.rotation = Math.random() * 6.28;
       f.s.visible = true;
+      f.tint = null;
     }
     for (let i = 0; i < 10; i++) {
       const v = new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.3 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6).multiplyScalar(k);
@@ -472,7 +503,8 @@ export class Effects {
       f.s.position.addScaledVector(f.vel, dt);
       f.s.scale.setScalar(f.size * (0.6 + k * 1.2));
       f.s.material.opacity = (1 - k) * (1 - k);
-      f.s.material.color.setRGB(3 - k * 1.5, 1.6 - k * 1.2, 0.6 - k * 0.5);
+      if (f.tint) f.s.material.color.setRGB(f.tint.r * 3 * (1 - k * 0.5), f.tint.g * 3 * (1 - k * 0.5), f.tint.b * 3 * (1 - k * 0.5));
+      else f.s.material.color.setRGB(3 - k * 1.5, 1.6 - k * 1.2, 0.6 - k * 0.5);
     }
     if (this.blastT > 0) { this.blastT -= dt; this.blastLight.intensity *= Math.exp(-dt * 9); if (this.blastT <= 0) this.blastLight.intensity = 0; }
 

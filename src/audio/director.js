@@ -101,7 +101,7 @@ export class SoundDirector {
     switch (e.type) {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
-        A.play(S.gunshot, def.sound, local ? { reverb: 0.35, gain: 0.8 } : { pos: e.origin, reverb: 0.4 });
+        A.play(S.gunshot, { ...def.sound, upgraded: !!def.upgraded }, local ? { reverb: 0.35, gain: 0.8 } : { pos: e.origin, reverb: 0.4 });
         if (local && e.action) {
           const delay = 0.08 + (e.action === 'bolt' ? 0.05 : 0);
           if (e.clip > 0 || e.action === 'pump') A.play(e.action === 'bolt' ? S.boltCycle : S.pumpRack, {}, { gain: 0.85, delay, reverb: 0.08 });
@@ -117,6 +117,7 @@ export class SoundDirector {
       case 'projectileBounce': A.play(S.grenadeBounce, { speed: e.speed }, { pos: e.pos, ref: 2 }); break;
       case 'projectileStick': A.play(S.stickThunk, { flesh: e.zombieId != null }, { pos: e.pos, ref: 2 }); break;
       case 'explosion': {
+        if (this.cfg.explosions[e.etype]?.energy) { A.play(S.fucciImpact, {}, { pos: e.pos, ref: 3, reverb: 0.4, gain: 0.9 }); break; }
         if (this.cfg.explosions[e.etype]?.small) { A.play(S.smallBoom, {}, { pos: e.pos, ref: 3, reverb: 0.3, gain: 0.8 }); break; }
         const p = sim.playerById(this.localId);
         const d = p ? Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z) : 10;
@@ -232,6 +233,21 @@ export class SoundDirector {
         A.play(S.thunder, { near: 1 }, { pos: { x: e.pos.x, y: 4, z: e.pos.z }, ref: 10, reverb: 0.6, gain: 1.1 });
         A.play(S.dogGrowl, { f0: R(65, 90), dur: 0.8 }, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3, delay: 0.5 });
         break;
+      case 'sawHit': A.play(S.sawCut, {}, { pos: e.pos, ref: 3 }); break;
+      case 'sawRicochet': A.play(S.sawRicochet, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
+      case 'sawStick': A.play(S.sawStick, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
+      case 'stewBombLand': {
+        A.play(S.stewBombLand, {}, { pos: e.pos, ref: 3 });
+        A.play(S.stewBombTune, { duration: this.cfg.equipment.stewBomb.lureTime }, { pos: { x: e.pos.x, y: 0.4, z: e.pos.z }, ref: 4, reverb: 0.5, gain: 1.1 });
+        break;
+      }
+      case 'boxBobble': {
+        const b = sim.box.pos;
+        A.play(S.erikLaugh, {}, { pos: b, ref: 4, reverb: 0.5, gain: 1.1, delay: 0.2 });
+        A.play(S.boxWhoosh, {}, { pos: b, ref: 5, reverb: 0.5, delay: this.cfg.box.leaveTime * 0.4 });
+        break;
+      }
+      case 'boxMoved': A.play(S.boxThud, {}, { pos: sim.box.pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;
       case 'cheddarEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'zombieKilled':
         if (e.zombieType === 'cheddar') A.play(S.dogYelp, {}, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3 });

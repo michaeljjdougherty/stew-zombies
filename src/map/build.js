@@ -132,7 +132,14 @@ export function buildMap(map, cfg = CONFIG) {
     return { id: 'wall_' + wb.weapon + '_' + i, weapon: wb.weapon, room: wb.room, zone: room.zone, pos: { x: p.x, y: wb.y, z: p.z }, normal: si.normal };
   });
 
-  const boxSpots = (map.boxSpots || []).map((b) => ({ ...b, zone: roomById.get(b.room).zone }));
+  // each box spot gets a collider; only the one the box is at is solid
+  const boxSpots = (map.boxSpots || []).map((b) => {
+    const along = Math.abs(Math.sin(b.yaw)) > 0.5; // box's long side runs along z
+    const hw = 0.55, hd = 0.29;
+    const hx = along ? hd : hw, hz = along ? hw : hd;
+    return { ...b, zone: roomById.get(b.room).zone, collider: box(b.x - hx, 0, b.z - hz, b.x + hx, 0.62, b.z + hz, 'boxBase', { spot: b.id }) };
+  });
+  const startSpot = boxSpots.find((b) => b.start) || boxSpots[0];
 
   // A point on a wall's inside face plus the normal pointing into the room.
   const onWall = (a, inset = 0) => {
@@ -176,7 +183,7 @@ export function buildMap(map, cfg = CONFIG) {
     traps,
     groundSpawns,
     // mutable collision lists
-    solids: [...walls, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values(), ...perkMachines.map((m) => m.box)],
+    solids: [...walls, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values(), ...perkMachines.map((m) => m.box), ...(startSpot ? [startSpot.collider] : [])],
     playerBlockers: windows.map((w) => w.blocker),
     navRegions: map.navRegions,
     portals: map.portals,

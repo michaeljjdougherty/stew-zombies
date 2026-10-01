@@ -166,6 +166,7 @@ export const CONFIG = {
       weapon1: ['Digit1'],
       weapon2: ['Digit2'],
       grenade: ['KeyG'],
+      tactical: ['KeyQ'],
     },
   },
 
@@ -670,6 +671,34 @@ export const CONFIG = {
       view: { model: 'bknife', flash: 0 },
       upgrade: { name: 'Soul Splitter', color: '#e00000', magSize: 1, reserve: 12, impactMult: 3, meleeMult: 3 },
     }),
+
+    // ---- wonder weapons (Mystery Box only) ------------------------------------
+    // The Fucci Gun: a designer energy pistol. Gold rings of plasma that hit
+    // hard and splash everything around the impact.
+    'Fucci Gun': gun('pistol', {
+      name: 'Fucci Gun', boxOnly: true, wonder: true,
+      fireMode: 'semi', rpm: 190, damage: 0, magSize: 20, reserve: 160,
+      reloadTime: 2.4, reloadEmptyTime: 2.6, drawTime: 0.55,
+      projectile: { type: 'fucci', speed: 40, gravity: 0, impactDamage: 1000, headMult: 1.5, explode: 'fucci' },
+      spread: { hipBase: 1.1, hipMax: 3, perShot: 0.6, ads: 0.15, adsPerShot: 0.15 },
+      recoil: { pitch: 1.6, yaw: 0.3, recovery: 9, adsMult: 0.7, viewKick: 1 },
+      sound: { kind: 'fucci', body: 0, thump: 0, crack: 0, tail: 0.4, pitch: 1 },
+      view: { model: 'fucci', flash: 0.9, flashColor: '#ffcf4a' },
+      upgrade: { name: 'Fucci Haute Couture', color: '#ff2fa0', magSize: 40, impactMult: 2, explodeUp: true },
+    }),
+    // The Chopper: a buzz-saw launcher. Each blade cuts through every zombie
+    // in a line and ricochets off walls a few times before it falls.
+    'The Chopper': gun('launcher', {
+      name: 'The Chopper', boxOnly: true, wonder: true,
+      fireMode: 'semi', rpm: 100, damage: 0, magSize: 6, reserve: 42,
+      reloadStyle: 'mag', reloadTime: 2.8, reloadEmptyTime: 3.0, drawTime: 0.7,
+      projectile: { type: 'saw', speed: 21, gravity: 0, impactDamage: 2600, headMult: 1, bounces: 3, life: 4 },
+      spread: { hipBase: 0.8, hipMax: 2, perShot: 0.4, ads: 0.1 },
+      recoil: { pitch: 2.4, yaw: 0.6, recovery: 7, adsMult: 0.8, viewKick: 1.4 },
+      sound: { kind: 'saw', body: 0, thump: 0, crack: 0, tail: 0.3, pitch: 1 },
+      view: { model: 'chopper', flash: 0 },
+      upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 10, impactMult: 3, sawBounces: 6 },
+    }),
   },
 
   startingWeapon: 'M1912',
@@ -711,7 +740,15 @@ export const CONFIG = {
       Pyton: 1.2, CZ76: 0.9, 'CZ76 Dual': 0.8, Spectur: 1.1, Komando: 1.1, FAMOS: 1.1, AWG: 1, Galill: 0.9, G12: 1,
       'SPAZ-13': 1, HS11: 0.9, HK22: 0.9, RPKK: 0.9, Dragunoff: 0.9, L97A1: 0.8, 'China Pond': 0.9,
       'Kross-Bow': 0.9, 'Ballistik Knife': 0.6,
+      'Fucci Gun': 0.5, 'The Chopper': 0.45, stewBomb: 0.7,
     },
+    // The box leaves after this many pulls (random in the range): the last pull
+    // is Erik's bobblehead, you get your points back, and it flies off to
+    // another spot.
+    moveAfter: [5, 9],
+    firstMoveMin: 4,         // never leaves before this many pulls in a spot
+    leaveTime: 5,            // seconds the bobblehead taunts you before it goes
+    arriveTime: 2.5,
   },
 
   // ---------------------------------------------------------------------------
@@ -734,6 +771,20 @@ export const CONFIG = {
       throwLock: 0.45,       // can't fire this long after a throw
       explode: 'frag',
     },
+    // Stew Bombs (from the Mystery Box, [Q]): a pot of stew with a ladle that
+    // bangs out a tune. Every zombie nearby comes to it, then it blows.
+    stewBomb: {
+      name: 'Stew Bombs',
+      perPurchase: 3,
+      lureTime: 7,           // seconds it draws zombies before exploding
+      lureRadius: 32,        // zombies within this many metres come running
+      throwSpeed: 13,
+      throwUp: 3.4,
+      gravity: 16,
+      bounce: 0.2,
+      friction: 0.5,
+      explode: 'stewBomb',
+    },
   },
 
   // Explosion types: radius (m), damage at the center to zombies, and
@@ -747,6 +798,9 @@ export const CONFIG = {
     stewpot: { radius: 2.2, damage: 650, selfDamage: 18, minFrac: 0.35, shake: 0.2, small: true },
     launcherUp: { radius: 5.2, damage: 4200, selfDamage: 80, minFrac: 0.25, shake: 1.2 },
     boltUp: { radius: 4.2, damage: 3600, selfDamage: 60, minFrac: 0.25, shake: 0.9 },
+    fucci: { radius: 2.4, damage: 500, selfDamage: 22, minFrac: 0.35, shake: 0.15, energy: '#ffcf4a' },
+    fucciUp: { radius: 3.0, damage: 1600, selfDamage: 22, minFrac: 0.35, shake: 0.2, energy: '#ff2fa0' },
+    stewBomb: { radius: 5.5, damage: 3200, selfDamage: 50, minFrac: 0.3, shake: 1.0 },
   },
 
   // ---------------------------------------------------------------------------

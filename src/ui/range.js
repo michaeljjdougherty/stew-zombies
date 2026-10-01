@@ -9,13 +9,14 @@ import { zombieHealthForRound } from '../config.js';
 const $ = (id) => document.getElementById(id);
 
 const GROUPS = [
+  ['Wonder weapons', (d) => !!d.wonder],
   ['Pistols', (d) => d.class === 'pistol' && !d.projectile],
   ['SMGs', (d) => d.class === 'smg'],
   ['Rifles', (d) => d.class === 'ar' || d.class === 'rifle'],
   ['Shotguns', (d) => d.class === 'shotgun'],
   ['LMGs', (d) => d.class === 'lmg'],
   ['Snipers', (d) => d.class === 'sniper'],
-  ['Special', (d) => !!d.projectile],
+  ['Special', (d) => !!d.projectile && !d.wonder],
 ];
 
 export function reloadSeconds(def) {
@@ -88,6 +89,7 @@ export class RangeUI {
     $('rp-moving').addEventListener('change', (e) => this.h.setMoving(e.target.checked));
     $('rp-horde').addEventListener('click', () => { this.h.horde(); this.h.close(); });
     $('rp-cheddar').addEventListener('click', () => { this.h.cheddars(); this.h.close(); });
+    $('rp-stew').addEventListener('click', () => { this.h.stewBombs(); this.h.close(); });
     for (const [id, d] of Object.entries(this.cfg.powerups.list)) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'sm'; b.textContent = d.name; b.title = d.desc;

@@ -36,7 +36,7 @@ function pickType(sim) {
   const pool = Object.entries(list).filter(([id]) => {
     if (id === P.last) return false;
     if (id === 'shopClass' && !anyBoardsDown) return false;
-    if (id === 'clearanceSale' && sim.box.uses === 0) return false;
+    if (id === 'clearanceSale' && sim.box.totalUses === 0) return false;
     return true;
   });
   const total = pool.reduce((a, [, d]) => a + d.weight, 0);
@@ -80,6 +80,7 @@ function apply(sim, type, p) {
       for (const q of sim.players) {
         if (!q.alive) continue;
         refillAll(sim, q);
+        if (q.stewBombs > 0) q.stewBombs = sim.cfg.equipment.stewBomb.perPurchase;
         if (q.downed && q.downed.saved) for (const s of q.downed.saved.slots) {
           const wd = sim.cfg.weapons[s.id]; s.clip = wd.magSize; if (wd.dual) s.clipL = wd.magSize; s.reserve = wd.reserve;
         }

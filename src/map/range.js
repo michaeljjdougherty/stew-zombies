@@ -65,7 +65,6 @@ export const RANGE = {
     { kind: 'table', box: [0.6, 0, 5.7, 3.6, 0.78, 6.5] },
     { kind: 'cabinets', box: [7.4, 0, 4.6, 8, 1.35, 6.8], face: 'w' },
     { kind: 'trash', box: [-7.5, 0, 6.2, -7, 0.9, 6.7] },
-    { kind: 'boxBase', box: [-8, 0, 2.95, -7.43, 0.62, 4.05] },
   ],
 
   wallBuys: [

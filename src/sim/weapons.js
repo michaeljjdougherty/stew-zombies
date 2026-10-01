@@ -165,7 +165,7 @@ function fire(sim, p, slot, def, side) {
     const d = coneDir(dir, spread * DEG, sim.rng);
     const off = side === 'L' ? -0.12 : 0.12;
     const start = { x: eye.x + d.x * 0.5 + Math.cos(p.yaw) * off * 0.5, y: eye.y + d.y * 0.5 - 0.06, z: eye.z + d.z * 0.5 - Math.sin(p.yaw) * off * 0.5 };
-    spawnProjectile(sim, def.projectile.type, start, { x: d.x * def.projectile.speed, y: d.y * def.projectile.speed, z: d.z * def.projectile.speed }, p.id, { ...def.projectile, weapon: slot.id });
+    spawnProjectile(sim, def.projectile.type, start, { x: d.x * def.projectile.speed, y: d.y * def.projectile.speed, z: d.z * def.projectile.speed }, p.id, { ...def.projectile, weapon: slot.id, ricochets: def.sawBounces ?? def.projectile.bounces });
   } else {
     const pellets = def.pellets || 1;
     // Pellets that hit the same zombie are summed into one hit (one set of points).
@@ -349,35 +349,43 @@ export function refillAll(sim, p) {
 // ---------------------------------------------------------------------------
 function updateGrenade(sim, p, cmd, dt) {
   const g = sim.cfg.equipment.frag;
+  const sb = sim.cfg.equipment.stewBomb;
   const t = p.throwing;
   if (!t) {
-    if (cmd.grenadePressed && p.grenades > 0 && p.alive && !p.downed && !p.drinking && p.melee.timer <= 0) {
+    const free = p.alive && !p.downed && !p.drinking && p.melee.timer <= 0;
+    const frag = cmd.grenadePressed && p.grenades > 0;
+    const stew = cmd.tacticalPressed && p.stewBombs > 0;
+    if (free && (frag || stew)) {
       if (p.loadout.reloading) cancelReload(sim, p);
       p.sprinting = false;
       p.loadout.adsAmount = 0;
-      p.grenades--;
-      p.throwing = { phase: 'cook', t: 0 };
-      sim.emit('grenadePull', { playerId: p.id });
+      if (frag) p.grenades--; else p.stewBombs--;
+      p.throwing = { phase: 'cook', t: 0, kind: frag ? 'frag' : 'stew' };
+      sim.emit('grenadePull', { playerId: p.id, kind: p.throwing.kind });
     }
     return;
   }
   if (t.phase === 'cook') {
     t.t += dt;
-    if (t.t >= g.fuse) {
+    const stew = t.kind === 'stew';
+    if (!stew && t.t >= g.fuse) {
       // held it too long
       const eye = sim.eyePosition(p);
       explode(sim, { x: eye.x, y: eye.y - 0.3, z: eye.z }, 'cookedOff', p.id);
       p.throwing = { phase: 'recover', t: g.throwLock };
       return;
     }
-    if (!cmd.grenade && t.t >= g.minCook) {
+    // stew bombs can't be cooked: they go as soon as the arm is back
+    if ((stew || !cmd.grenade) && t.t >= g.minCook) {
       const eye = sim.eyePosition(p);
       const d = lookDir(p.yaw, p.pitch + 0.08);
       const start = { x: eye.x + d.x * 0.4 + Math.cos(p.yaw) * 0.1, y: eye.y + d.y * 0.4, z: eye.z + d.z * 0.4 - Math.sin(p.yaw) * 0.1 };
-      const vel = { x: d.x * g.throwSpeed + p.vel.x * 0.5, y: d.y * g.throwSpeed + g.throwUp, z: d.z * g.throwSpeed + p.vel.z * 0.5 };
-      spawnProjectile(sim, 'frag', start, vel, p.id, { gravity: g.gravity, bounce: g.bounce, friction: g.friction, fuse: g.fuse - t.t, explode: g.explode });
-      p.throwing = { phase: 'recover', t: g.throwLock };
-      sim.emit('grenadeThrow', { playerId: p.id, cooked: t.t });
+      const e = stew ? sb : g;
+      const vel = { x: d.x * e.throwSpeed + p.vel.x * 0.5, y: d.y * e.throwSpeed + e.throwUp, z: d.z * e.throwSpeed + p.vel.z * 0.5 };
+      if (stew) spawnProjectile(sim, 'stewbomb', start, vel, p.id, { gravity: sb.gravity, bounce: sb.bounce, friction: sb.friction, fuse: sb.lureTime + 1.2, explode: sb.explode });
+      else spawnProjectile(sim, 'frag', start, vel, p.id, { gravity: g.gravity, bounce: g.bounce, friction: g.friction, fuse: g.fuse - t.t, explode: g.explode });
+      p.throwing = { phase: 'recover', t: g.throwLock, kind: t.kind };
+      sim.emit('grenadeThrow', { playerId: p.id, cooked: t.t, kind: t.kind });
     }
     return;
   }

@@ -21,13 +21,17 @@ export function spawnProjectile(sim, type, pos, vel, ownerId, opts = {}) {
     impactDamage: opts.impactDamage || 0,
     headMult: opts.headMult || 1,
     weapon: opts.weapon || null,
+    ricochets: opts.ricochets ?? opts.bounces ?? 0,   // saw blades bounce off walls this many times
+    life: opts.life ?? Infinity,
+    hitIds: null,          // zombies a saw blade has already cut
+    lure: type === 'stewbomb',
     stuck: null,          // { zombieId, local:{x,y,z}, yaw } or { wall:true }
     resting: false,
     age: 0,
     done: false,
   };
   sim.projectiles.push(pr);
-  sim.emit('projectileSpawn', { id: pr.id, ptype: type, pos: { ...pr.pos }, vel: { ...pr.vel }, ownerId });
+  sim.emit('projectileSpawn', { id: pr.id, ptype: type, pos: { ...pr.pos }, vel: { ...pr.vel }, ownerId, weapon: pr.weapon });
   return pr;
 }
 
@@ -52,6 +56,7 @@ export function updateProjectiles(sim, dt) {
     pr.fuse -= dt;
     if (pr.fuse <= 0) detonate(sim, pr);
     else if (pr.type === 'blade' && pr.age > 8) { pr.done = true; sim.emit('projectileGone', { id: pr.id }); }
+    else if (pr.age > pr.life) { pr.done = true; sim.emit('projectileGone', { id: pr.id, fizzle: true }); }
   }
   if (sim.projectiles.some((p) => p.done)) sim.projectiles = sim.projectiles.filter((p) => !p.done);
 }
@@ -62,6 +67,24 @@ function step(sim, pr, dt) {
   const len = Math.hypot(dx, dy, dz);
   if (len < 1e-6) return;
   const dir = { x: dx / len, y: dy / len, z: dz / len };
+
+  // saw blades cut through every zombie along the way (each one once)
+  if (pr.type === 'saw') {
+    const all = sim.hitscan(pr.pos, dir, len, 16).filter((h) => h.kind === 'zombie');
+    pr.hitIds ||= new Set();
+    for (const h of all) {
+      if (pr.hitIds.has(h.zombieId)) continue;
+      pr.hitIds.add(h.zombieId);
+      const z = sim.zombieById(h.zombieId);
+      if (!z) continue;
+      damageZombie(sim, z, pr.impactDamage, { playerId: pr.ownerId, part: h.part === 'head' ? 'head' : 'torso', kind: 'saw', dir, point: h.point, weapon: pr.weapon, force: 1 });
+      sim.emit('sawHit', { id: pr.id, pos: { ...h.point }, zombieId: h.zombieId });
+    }
+    const wh = sim.raycastWorld(pr.pos, dir, len);
+    if (wh) { hitWorld(sim, pr, wh, dir); return; }
+    pr.pos.x += dx; pr.pos.y += dy; pr.pos.z += dz;
+    return;
+  }
 
   // zombies first (grenades bounce off them, everything else hits)
   const hits = sim.hitscan(pr.pos, dir, len, 1);
@@ -80,7 +103,7 @@ function step(sim, pr, dt) {
 function hitZombie(sim, pr, h, dir) {
   const z = sim.zombieById(h.zombieId);
   if (!z) return;
-  if (pr.type === 'frag') {
+  if (pr.type === 'frag' || pr.type === 'stewbomb') {
     // bounce off the body
     pr.vel.x *= -0.25; pr.vel.z *= -0.25; pr.vel.y *= 0.3;
     return;
@@ -89,7 +112,7 @@ function hitZombie(sim, pr, h, dir) {
     const dmg = pr.impactDamage * (h.part === 'head' ? pr.headMult : 1);
     damageZombie(sim, z, dmg, { playerId: pr.ownerId, part: h.part, kind: pr.type === 'blade' ? 'blade' : 'bullet', dir, point: h.point, weapon: pr.weapon });
   }
-  if (pr.type === 'launcher') {
+  if (pr.type === 'launcher' || pr.type === 'fucci') {
     pr.pos = { ...h.point };
     detonate(sim, pr);
   } else if (pr.type === 'bolt' || pr.type === 'blade') {
@@ -105,7 +128,23 @@ function hitZombie(sim, pr, h, dir) {
 
 function hitWorld(sim, pr, h, dir) {
   const n = h.normal;
-  if (pr.type === 'launcher') { pr.pos = { x: h.point.x + n.x * 0.05, y: h.point.y + n.y * 0.05, z: h.point.z + n.z * 0.05 }; detonate(sim, pr); return; }
+  if (pr.type === 'launcher' || pr.type === 'fucci') { pr.pos = { x: h.point.x + n.x * 0.05, y: h.point.y + n.y * 0.05, z: h.point.z + n.z * 0.05 }; detonate(sim, pr); return; }
+  if (pr.type === 'saw') {
+    pr.pos = { x: h.point.x + n.x * 0.06, y: h.point.y + n.y * 0.06, z: h.point.z + n.z * 0.06 };
+    if (pr.ricochets <= 0 || n.y > 0.7) {
+      // spent: it buries itself in the wall (or floor)
+      pr.done = true;
+      sim.emit('sawStick', { id: pr.id, pos: { ...pr.pos }, normal: { ...n } });
+      sim.emit('projectileGone', { id: pr.id });
+      return;
+    }
+    pr.ricochets--;
+    const vn = pr.vel.x * n.x + pr.vel.y * n.y + pr.vel.z * n.z;
+    pr.vel.x -= 2 * vn * n.x; pr.vel.y -= 2 * vn * n.y; pr.vel.z -= 2 * vn * n.z;
+    pr.hitIds = null; // it can cut the same zombie again on the way back
+    sim.emit('sawRicochet', { id: pr.id, pos: { ...pr.pos } });
+    return;
+  }
   if (pr.type === 'bolt' || pr.type === 'blade') {
     pr.pos = { x: h.point.x - dir.x * 0.05, y: h.point.y - dir.y * 0.05, z: h.point.z - dir.z * 0.05 };
     pr.stuck = { wall: true };
@@ -124,7 +163,13 @@ function hitWorld(sim, pr, h, dir) {
   pr.vel.x *= f + (1 - f) * Math.abs(n.x); pr.vel.z *= f + (1 - f) * Math.abs(n.z); pr.vel.y *= f + (1 - f) * Math.abs(n.y);
   pr.pos = { x: h.point.x + n.x * 0.04, y: h.point.y + n.y * 0.04, z: h.point.z + n.z * 0.04 };
   if (speed > 1.5) sim.emit('projectileBounce', { id: pr.id, pos: { ...pr.pos }, speed });
-  if (n.y > 0.7 && Math.hypot(pr.vel.x, pr.vel.y, pr.vel.z) < 0.6) { pr.resting = true; pr.vel = { x: 0, y: 0, z: 0 }; }
+  if (n.y > 0.7 && Math.hypot(pr.vel.x, pr.vel.y, pr.vel.z) < 0.6) {
+    pr.resting = true; pr.vel = { x: 0, y: 0, z: 0 };
+    if (pr.type === 'stewbomb') {
+      pr.region = sim.nav.regionAt(pr.pos);
+      sim.emit('stewBombLand', { id: pr.id, pos: { ...pr.pos } });
+    }
+  }
 }
 
 function detonate(sim, pr) {
@@ -160,4 +205,16 @@ export function explode(sim, pos, typeName, ownerId) {
       if (dmg > 1) sim.damagePlayer(owner, dmg, { pos: { x: pos.x, z: pos.z } });
     }
   }
+}
+
+// The Stew Bomb that is drawing zombies to `pos` (nearest one in range), if any.
+export function activeLure(sim, pos) {
+  let best = null, bd = Infinity;
+  const r = sim.cfg.equipment.stewBomb.lureRadius;
+  for (const pr of sim.projectiles) {
+    if (!pr.lure || pr.done || !pr.region) continue;
+    const d = Math.hypot(pr.pos.x - pos.x, pr.pos.z - pos.z);
+    if (d < r && d < bd) { bd = d; best = pr; }
+  }
+  return best;
 }
