@@ -65,8 +65,9 @@ check(sim.doorOpen('debris_office'), 'office debris cleared');
 // 6. pathing: stand in different rooms; zombies must reach us
 function survive(x, z, seconds, label) {
   place(x, z, x, z - 1);
-  let hits = 0, maxStuck = 0;
+  let hits = 0, maxStuck = 0, maxDoorway = 0;
   const stuck = new Map();
+  const nearDoor = new Map();
   const startLog = log.length;
   for (let t = 0; t < seconds * 60; t++) {
     me.maxHealth = 1e9; me.health = 1e9; // god mode
@@ -76,18 +77,29 @@ function survive(x, z, seconds, label) {
       const s = (zb.moveSpeed < 0.15 && Math.hypot(zb.pos.x - me.pos.x, zb.pos.z - me.pos.z) > 2) ? (stuck.get(zb.id) || 0) + dt : 0;
       stuck.set(zb.id, s);
       maxStuck = Math.max(maxStuck, s);
+      // hanging around a doorway without getting any closer (e.g. turning back and forth)
+      const dist = Math.hypot(zb.pos.x - me.pos.x, zb.pos.z - me.pos.z);
+      const inDoor = sim.world.portals.some((pt) => Math.hypot(zb.pos.x - pt.x, zb.pos.z - pt.z) < 1.6) && dist > 2.5;
+      let rec = nearDoor.get(zb.id);
+      if (!rec || !inDoor || dist < rec.best - 0.5) rec = { best: dist, t: 0 };
+      else rec.t += dt;
+      nearDoor.set(zb.id, rec);
+      maxDoorway = Math.max(maxDoorway, rec.t);
     }
   }
   hits = log.slice(startLog).filter((e) => e.type === 'playerHit').length;
   const zones = [...sim.activeZones()].join(',');
   check(hits > 0, `${label}: zombies reached player (${hits} hits, zones ${zones}, round ${sim.rounds.round}, alive ${sim.zombies.length})`);
   check(maxStuck < 6, `${label}: no zombie stuck > 6s (max ${maxStuck.toFixed(1)}s)`);
+  check(maxDoorway < 4, `${label}: no zombie stalled in a doorway > 4s (max ${maxDoorway.toFixed(1)}s)`);
   // clear zombies for the next scenario
   for (const zb of [...sim.zombies]) { zb.health = 0; }
   for (const zb of sim.zombies) zb.state = 'dead';
   sim.zombies.length = 0;
 }
 survive(19.5, 0, 90, 'hallway');
+survive(20.3, 8.6, 90, 'hallway by the window (reported spot)');
+survive(19.0, 10.5, 60, 'hallway near the court door');
 survive(35.5, -31, 90, 'cafeteria stage');
 survive(28.5, 24.5, 90, 'principal office');
 survive(21.6, -31.4, 60, 'between cafeteria tables');

@@ -182,6 +182,19 @@ export function updateZombies(sim, dt) {
           const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z;
           const d = Math.hypot(dx, dz) || 1;
           dirX = dx / d; dirZ = dz / d;
+          // steer around corners, locker ends and furniture in the way
+          if (d > 0.8) {
+            const look = Math.min(0.9, d);
+            if (blocked(sim, z, dirX, dirZ, look)) {
+              const pref = z.avoidSign || 1;
+              for (const a of [0.45, -0.45, 0.9, -0.9, 1.35, -1.35]) {
+                const ang = a * pref;
+                const c = Math.cos(ang), sn = Math.sin(ang);
+                const tx = dirX * c - dirZ * sn, tz = dirX * sn + dirZ * c;
+                if (!blocked(sim, z, tx, tz, look)) { dirX = tx; dirZ = tz; z.avoidSign = Math.sign(ang); break; }
+              }
+            }
+          }
           // stuck on furniture? step sideways for a moment
           if (z.sidestep > 0) {
             z.sidestep -= dt;
@@ -302,6 +315,19 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
     a.t = c.attackWindup;
     sim.emit('zombieSwing', { id: z.id, pos: { ...z.pos } });
   }
+}
+
+// Would a step of `dist` in direction (dx,dz) run into something too tall to step onto?
+function blocked(sim, z, dx, dz, dist) {
+  const px = z.pos.x + dx * dist, pz = z.pos.z + dz * dist;
+  const r = z.radius * 0.9, y0 = z.pos.y + z.stepHeight, y1 = z.pos.y + z.height;
+  for (const b of sim.world.solids) {
+    if (b.maxY <= y0 || b.minY >= y1) continue;
+    const cx = px < b.minX ? b.minX : px > b.maxX ? b.maxX : px;
+    const cz = pz < b.minZ ? b.minZ : pz > b.maxZ ? b.maxZ : pz;
+    if ((px - cx) ** 2 + (pz - cz) ** 2 < r * r) return true;
+  }
+  return false;
 }
 
 // No swiping through walls.

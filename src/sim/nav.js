@@ -71,7 +71,12 @@ export class Nav {
     if (!p) return to;
     const k = p.axis;                 // axis we cross along
     const other = k === 'x' ? 'z' : 'x';
-    const s = Math.sign(p[k] - from[k]) || 1; // direction of travel through it
+    // direction of travel through it: toward the far region, wherever we are
+    // (an agent standing in the doorway itself must keep going, not turn back)
+    const next = p.a === region ? p.b : p.a;
+    const nr = this.regions.find((r) => r.id === next);
+    const nc = k === 'x' ? (nr.rect[0] + nr.rect[2]) / 2 : (nr.rect[1] + nr.rect[3]) / 2;
+    const s = Math.sign(nc - p[k]) || 1;
     const reach = this.sim.cfg.zombie.portalReach;
     const lateral = Math.abs(from[other] - p[other]);
     const along = Math.abs(from[k] - p[k]);
