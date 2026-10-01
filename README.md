@@ -76,12 +76,17 @@ online co-op drop in later (see `src/net/README.md`).
 In the browser console, `STEW.sim` is the live game state and
 `STEW.debug.run(seconds)` fast-forwards the simulation.
 
+## Map design
+
+The layout rules and the plan for the whole school (two paths, training spots,
+what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
+
 ## Build plan
 
 1. ✅ Movement, camera, controls, M1912, knife, zombies, rounds, points, windows (basketball court)
 2. ✅ Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
 3. Full weapon list, recoil/reload/sound per gun, grenades
-4. Rest of the map, second path, boiler room, auditorium, power switch
+4. Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
 5. Perk machines, Mad Dog Machine, last stand and revive
 6. Power-ups and Cheddar Rounds
 7. Fucci Gun, The Chopper, Stew Bomb, box movement
