@@ -69,6 +69,14 @@ export function zombieHitboxes(z) {
   const reach = z.type === 'walker' ? 0.62 : 0.35;
   const hb = _hitboxCache;
   hb.length = 0;
+  if (z.crawler) {
+    // dragging itself along the floor, head low and forward
+    if (z.limbs.head) hb.push({ part: 'head', sphere: true, c: P(0, 0.34, 0.78), r: 0.17 * s });
+    hb.push({ part: 'torso', a: P(0, 0.26, 0.02), b: P(0, 0.3, 0.58), r: 0.24 * s });
+    if (z.limbs.armL) hb.push({ part: 'armL', a: P(0.26, 0.3, 0.55), b: P(0.3, 0.08, 1.1), r: 0.085 * s });
+    if (z.limbs.armR) hb.push({ part: 'armR', a: P(-0.26, 0.3, 0.55), b: P(-0.3, 0.08, 1.1), r: 0.085 * s });
+    return hb;
+  }
   if (z.limbs.head) hb.push({ part: 'head', sphere: true, c: P(0, 1.6, 0.1), r: 0.17 * s });
   hb.push({ part: 'torso', a: P(0, 0.98, 0), b: P(0, 1.38, 0.06), r: 0.25 * s });
   hb.push({ part: 'legs', a: P(0, 0.12, 0), b: P(0, 0.9, 0), r: 0.21 * s });
@@ -347,6 +355,23 @@ export function damageZombie(sim, z, amount, info) {
   z.stun = c.hitStun;
   sim.emit('zombieHit', { id: z.id, part: info.part, kind: info.kind, point: info.point, dir: info.dir, damage: amount });
 
+  // blasts tear limbs off; a big one that doesn't kill can take the legs (crawler)
+  if (info.kind === 'explosive' && z.health > 0) {
+    const big = amount >= z.maxHealth * c.crawlerDamageFrac;
+    if (big && !z.crawler && z.state === 'chase' && sim.rng.chance(c.crawlerChance)) {
+      z.crawler = true;
+      z.height = 0.7;
+      z.speed = Math.min(z.speed, sim.rng.range(c.crawlSpeed[0], c.crawlSpeed[1]));
+      sim.emit('zombieLimb', { id: z.id, limb: 'legs', dir: info.dir });
+    }
+    for (const limb of ['armL', 'armR']) {
+      if (z.limbs[limb] && sim.rng.chance(big ? 0.4 : 0.15)) {
+        z.limbs[limb] = false;
+        sim.emit('zombieLimb', { id: z.id, limb, dir: info.dir });
+      }
+    }
+  }
+
   // arms come off after enough damage to them
   if ((info.part === 'armL' || info.part === 'armR') && z.limbs[info.part]) {
     z.limbDamage[info.part] += amount;
@@ -388,6 +413,6 @@ export function killZombie(sim, z, info = {}) {
   z.state = 'dead';
   sim.emit('zombieKilled', {
     id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind,
-    dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId,
+    dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId, force: info.force || 0, crawler: !!z.crawler,
   });
 }

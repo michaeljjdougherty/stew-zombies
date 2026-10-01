@@ -120,7 +120,9 @@ export class ZombieViews {
       const knee = new THREE.Group(); knee.position.y = -0.45; hip.add(knee);
       mk(G.shin, pants, knee, 0, -0.21, 0);
       mk(G.foot, this.pantsMats[3], knee, 0, -0.45, 0.05);
-      return { hip, knee };
+      const stump = mk(G.stump, this.goreMat, hip, 0, -0.44, 0);
+      stump.visible = false;
+      return { hip, knee, stump };
     };
     const armL = arm(1), armR = arm(-1), legL = leg(1), legR = leg(-1);
 
@@ -139,10 +141,23 @@ export class ZombieViews {
       headTilt: (r(9) - 0.5) * 0.6,
       flinch: 0, flinchVel: 0,
       swing: 0,
-      limbs: { armL: true, armR: true, head: true },
+      limbs: { armL: true, armR: true, head: true, legs: true },
+      crawler: false,
       type: z.type,
       seedR: r,
     };
+  }
+
+  // match a fresh view to limbs already lost in the sim (no effects)
+  syncLimbs(v, z) {
+    if (z.crawler) {
+      v.crawler = true; v.limbs.legs = false;
+      for (const l of [v.legL, v.legR]) { l.knee.visible = false; l.stump.visible = true; }
+    }
+    for (const a of ['armL', 'armR']) {
+      if (z.limbs && z.limbs[a] === false) { v.limbs[a] = false; v[a].elbow.visible = false; v[a].stump.visible = true; }
+    }
+    if (z.limbs && z.limbs.head === false) { v.limbs.head = false; v.head.visible = false; v.neckStump.visible = true; }
   }
 
   beginStep(sim) {
@@ -172,6 +187,18 @@ export class ZombieViews {
     if (!v.limbs[limb]) return;
     v.limbs[limb] = false;
     const d = dir || { x: 0, y: 0, z: 1 };
+    if (limb === 'legs') {
+      v.crawler = true;
+      for (const l of [v.legL, v.legR]) {
+        const wp = new THREE.Vector3(); l.knee.getWorldPosition(wp);
+        const wq = new THREE.Quaternion(); l.knee.getWorldQuaternion(wq);
+        l.knee.visible = false;
+        l.stump.visible = true;
+        this.effects.bloodBurst(wp, d, 22, 1.1);
+        this.effects.flyingLimb(l.knee, wp, wq, d, v.root.scale.x);
+      }
+      return;
+    }
     if (limb === 'head') {
       const wp = new THREE.Vector3(); v.head.getWorldPosition(wp);
       v.head.visible = false;
@@ -190,7 +217,27 @@ export class ZombieViews {
     }
   }
 
+  // a close blast turns the zombie into pieces
+  explodeBody(v, e) {
+    const d = e.dir || { x: 0, y: 1, z: 0 };
+    const c = new THREE.Vector3(); v.torso.getWorldPosition(c);
+    this.effects.bloodBurst(c, d, 70, 1.8);
+    this.effects.gibs(c, d, 14, this.goreMat, v.skinMat);
+    const parts = [v.armL.elbow, v.armR.elbow, v.head];
+    if (!v.crawler) parts.push(v.legL.knee, v.legR.knee);
+    for (const part of parts) {
+      if (!part.visible) continue;
+      const wp = new THREE.Vector3(); part.getWorldPosition(wp);
+      const wq = new THREE.Quaternion(); part.getWorldQuaternion(wq);
+      this.effects.flyingLimb(part, wp, wq, { x: d.x + (Math.random() - 0.5) * 1.5, y: 0, z: d.z + (Math.random() - 0.5) * 1.5 }, v.root.scale.x);
+    }
+    this.scene.remove(v.root);
+    const p = v.root.position;
+    for (let i = 0; i < 3; i++) this.effects.bloodDecal(new THREE.Vector3(p.x + (Math.random() - 0.5) * 2, 0, p.z + (Math.random() - 0.5) * 2), new THREE.Vector3(0, 1, 0), 0.8 + Math.random() * 0.8);
+  }
+
   makeCorpse(v, e) {
+    if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
     const d = e.dir || { x: 0, y: 0, z: 0 };
     const fwdX = Math.sin(v.root.rotation.y), fwdZ = Math.cos(v.root.rotation.y);
     const fromFront = d.x * fwdX + d.z * fwdZ < 0;
@@ -204,6 +251,7 @@ export class ZombieViews {
       headshot: e.headshot,
       knockback: e.kind === 'knife' ? 0.2 : 0.35,
       kd: { x: d.x, z: d.z },
+      crawler: v.crawler,
     });
     if (e.headshot && v.limbs.head) this.loseLimb(v, 'head', e.dir);
     v.glow.visible = false;
@@ -219,7 +267,7 @@ export class ZombieViews {
     for (const z of sim.zombies) {
       seen.add(z.id);
       let v = this.views.get(z.id);
-      if (!v) { v = this.build(z); this.views.set(z.id, v); }
+      if (!v) { v = this.build(z); this.syncLimbs(v, z); this.views.set(z.id, v); }
       const p = this.prev.get(z.id);
       const x = p ? p.x + (z.pos.x - p.x) * alpha : z.pos.x;
       const y = p ? p.y + (z.pos.y - p.y) * alpha : z.pos.y;
@@ -326,8 +374,31 @@ export class ZombieViews {
       v.torso.rotation.x = lean + slash * 0.25;
     }
 
+    if (v.crawler) this.crawlPose(v, z, time);
+
     // eyes glow a little brighter for sprinters
     v.glow.material.opacity = 0.9;
+  }
+
+  // legless: drag itself along the floor with alternating arms
+  crawlPose(v, z, time) {
+    const ph = v.phase * 1.4;
+    const s = Math.sin(ph), moving = Math.min(1, z.moveSpeed / 0.3);
+    v.hips.position.y = 0.2 + Math.abs(Math.sin(ph)) * 0.02 * moving;
+    v.hips.rotation.set(0, s * 0.15 * moving, s * 0.08 * moving);
+    v.torso.rotation.set(1.42, -s * 0.12 * moving, s * 0.1 * moving);
+    v.neck.rotation.x = -1.0 + Math.sin(time * 1.1) * 0.08;
+    v.legL.hip.rotation.x = 1.45 + s * 0.15 * moving;
+    v.legR.hip.rotation.x = 1.45 - s * 0.15 * moving;
+    const reach = -2.4;
+    v.armL.shoulder.rotation.set(reach + s * 0.55 * moving, 0, 0.25);
+    v.armR.shoulder.rotation.set(reach - s * 0.55 * moving, 0, -0.25);
+    v.armL.elbow.rotation.x = -0.3 - Math.max(0, -s) * 0.7 * moving;
+    v.armR.elbow.rotation.x = -0.3 - Math.max(0, s) * 0.7 * moving;
+    if (z.attack.phase === 'windup' || z.attack.phase === 'recover') {
+      v.armR.shoulder.rotation.x = reach - 0.6 + Math.sin(time * 14) * 0.3;
+      v.neck.rotation.x = -1.3;
+    }
   }
 
   updateCorpses(dt) {
@@ -338,9 +409,16 @@ export class ZombieViews {
       c.t += dt;
       const ft = Math.min(1, c.t / c.fallTime);
       const e = ft * ft; // accelerate like gravity
-      v.body.rotation.x = c.dir * e * (Math.PI / 2 - 0.08);
-      v.body.rotation.z = c.twist * e;
-      v.body.position.y = e * 0.14;
+      if (c.crawler) {
+        // already on the ground: just slump flat
+        v.hips.position.y += (0.14 - v.hips.position.y) * Math.min(1, dt * 8);
+        v.torso.rotation.x += (1.55 - v.torso.rotation.x) * Math.min(1, dt * 8);
+        v.body.rotation.z = c.twist * e * 0.3;
+      } else {
+        v.body.rotation.x = c.dir * e * (Math.PI / 2 - 0.08);
+        v.body.rotation.z = c.twist * e;
+        v.body.position.y = e * 0.14;
+      }
       if (c.t < 0.3) {
         v.root.position.x += c.kd.x * c.knockback * dt * 3;
         v.root.position.z += c.kd.z * c.knockback * dt * 3;
@@ -353,7 +431,7 @@ export class ZombieViews {
       v.armR.shoulder.rotation.x += (c.armR * 1.5 - v.armR.shoulder.rotation.x) * limp * 0.2;
       v.legL.knee.rotation.x += (c.legBend - v.legL.knee.rotation.x) * limp * 0.2;
       v.legR.knee.rotation.x += (c.legBend * 0.4 - v.legR.knee.rotation.x) * limp * 0.2;
-      v.torso.rotation.x *= 1 - limp * 0.2;
+      if (!c.crawler) v.torso.rotation.x *= 1 - limp * 0.2;
       v.neck.rotation.x += (c.dir * 0.5 - v.neck.rotation.x) * limp * 0.2;
       // sink and remove
       if (c.t > gcfg.corpseTime) {

@@ -27,6 +27,12 @@ const renderer = new GameRenderer(canvas, sim, CONFIG, settings);
 renderer.localId = LOCAL_ID;
 const input = new Input(canvas, CONFIG, settings);
 input.adsActive = () => player && player.loadout.adsAmount > 0.5;
+// scoped weapons slow the mouse by the zoom so aim feels the same
+input.zoomScale = () => {
+  if (!player || player.loadout.adsAmount < 0.5) return 1;
+  const def = CONFIG.weapons[player.loadout.slots[player.loadout.current].id];
+  return def.scope ? (def.adsFovMult ?? 1) : 1;
+};
 input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 const sound = new SoundDirector(audio, sim, CONFIG);

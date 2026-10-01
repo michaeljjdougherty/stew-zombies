@@ -1029,8 +1029,23 @@ export function chalkTexture(def, model) {
     doubleBarrel: [[40, 100], [470, 94], [470, 112], [240, 118], [180, 126], [120, 130], [60, 158], [40, 150]],
     smg: [[70, 100], [110, 100], [110, 108], [360, 108], [360, 100], [440, 100], [440, 116], [300, 122], [290, 200], [270, 200], [270, 124], [230, 124], [215, 170], [195, 170], [200, 124], [110, 116], [70, 116]],
   };
-  const pts = shapes[model] || shapes.rifle;
-  for (let pass = 0; pass < 3; pass++) {
+  const byClass = { pistol: 'pistol', smg: 'smg', shotgun: 'doubleBarrel', ar: 'rifle', lmg: 'rifle', sniper: 'rifle', launcher: 'rifle' };
+  if (model === 'frag') {
+    // two grenades side by side
+    for (const cx of [210, 300]) {
+      for (let pass = 0; pass < 3; pass++) {
+        g.lineWidth = pass === 0 ? 5 : 2; g.globalAlpha = pass === 0 ? 0.5 : 0.8;
+        g.beginPath(); g.ellipse(cx + rr(-2, 2), 150, 34, 42, 0, 0, 7); g.stroke();
+        g.strokeRect(cx - 10, 96, 20, 14);
+        g.beginPath(); g.moveTo(cx + 10, 100); g.lineTo(cx + 34, 128); g.stroke();
+        g.beginPath(); g.arc(cx - 16, 96, 9, 0, 7); g.stroke();
+      }
+      g.globalAlpha = 0.3; g.lineWidth = 2;
+      for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(cx - 30, 150 + k * 20); g.lineTo(cx + 30, 150 + k * 20); g.stroke(); }
+    }
+  }
+  const pts = model === 'frag' ? [] : shapes[model] || shapes[byClass[def.class]] || shapes.rifle;
+  for (let pass = 0; pass < 3 && pts.length; pass++) {
     g.lineWidth = pass === 0 ? 5 : 2;
     g.globalAlpha = pass === 0 ? 0.5 : 0.8;
     g.beginPath();
@@ -1039,7 +1054,7 @@ export function chalkTexture(def, model) {
   }
   // fill scribble
   g.globalAlpha = 0.18; g.lineWidth = 2;
-  for (let i = 0; i < 40; i++) { g.beginPath(); const x = rr(80, 440), y = rr(100, 125); g.moveTo(x, y); g.lineTo(x + rr(-30, 30), y + rr(-6, 6)); g.stroke(); }
+  if (pts.length) for (let i = 0; i < 40; i++) { g.beginPath(); const x = rr(80, 440), y = rr(100, 125); g.moveTo(x, y); g.lineTo(x + rr(-30, 30), y + rr(-6, 6)); g.stroke(); }
   g.globalAlpha = 0.85;
   g.fillStyle = 'rgba(235,232,220,0.85)';
   g.font = '700 30px "Trebuchet MS", sans-serif'; g.textAlign = 'center';

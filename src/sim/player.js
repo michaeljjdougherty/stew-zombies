@@ -13,7 +13,8 @@ export function emptyCommand() {
     yaw: 0, pitch: 0,         // radians, absolute
     sprint: false, crouch: false,
     fire: false, firePressed: false,
-    ads: false,
+    ads: false, adsPressed: false,   // right click (also the left gun when dual wielding)
+    grenade: false, grenadePressed: false,
     jumpPressed: false,
     reloadPressed: false,
     meleePressed: false,
@@ -53,6 +54,9 @@ export function createPlayer(sim, id, name, spawn) {
     prompt: null,             // { text, cost } shown on HUD
     useTarget: null,
     loadout: createLoadout(sim, sim.cfg.startingWeapon),
+    grenades: sim.cfg.equipment.frag.startWith,
+    grenadeMax: sim.cfg.equipment.frag.startWith,
+    throwing: null,           // grenade in hand: { phase: 'cook' | 'recover', t }
     melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
     moveSpeed: 0,             // horizontal speed, for camera bob / audio
     distanceWalked: 0,
@@ -75,14 +79,14 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (ml > 1) { mx /= ml; my /= ml; }
   const w = p.loadout;
   const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching;
-  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed;
+  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || !!p.throwing;
   if (p.sprinting) {
     if (!wantsSprint || p.stamina <= 0 || interrupt) {
       p.sprinting = false;
       p.sprintOutTimer = cfg.sprintToFireDelay;
       if (cmd.firePressed) p.fireBuffer = 0.3; // fire as soon as the gun comes up
     }
-  } else if (wantsSprint && !cmd.ads && !cmd.fire && p.stamina >= Math.min(cfg.sprintMinToStart, cfg.sprintDuration) && p.melee.timer <= 0) {
+  } else if (wantsSprint && !cmd.ads && !cmd.fire && !p.throwing && p.stamina >= Math.min(cfg.sprintMinToStart, cfg.sprintDuration) && p.melee.timer <= 0) {
     p.sprinting = true;
     if (w.reloading) sim.cancelReload(p);
   }

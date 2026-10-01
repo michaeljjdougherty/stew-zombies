@@ -56,6 +56,17 @@
   #hitmarker::before { transform: rotate(45deg); } #hitmarker::after { transform: rotate(-45deg); }
   #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 17px; font-weight: 700; letter-spacing: .5px; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 8px #000; white-space: nowrap; }
   #hint { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font-size: 15px; color: #e8b06a; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  #grenades { display: flex; gap: 5px; justify-content: flex-end; margin-top: 4px; min-height: 14px; }
+  #grenades i { width: 10px; height: 13px; border-radius: 45% 45% 40% 40%; background: #5d6a4a; box-shadow: 0 1px 0 #000, inset 0 -3px 0 rgba(0,0,0,.35); position: relative; }
+  #grenades i::before { content: ""; position: absolute; left: 3px; top: -3px; width: 4px; height: 3px; background: #8b8a84; }
+  #clipL:empty + .bar { display: none; }
+  #ammo .bar { margin: 0 5px; font-size: 22px; color: var(--muted); }
+  #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 min(36vh, 36vw), #000 calc(min(36vh, 36vw) + 2px)); }
+  #scope[hidden] { display: none; }
+  #scope::before, #scope::after { content: ""; position: absolute; background: rgba(0,0,0,.85); }
+  #scope::before { left: 50%; top: 14vh; bottom: 14vh; width: 2px; margin-left: -1px; }
+  #scope::after { top: 50%; left: calc(50% - 36vh); right: calc(50% - 36vh); height: 2px; margin-top: -1px; }
+  #scope .dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #c0201a; box-shadow: 0 0 4px #ff3020; }
   #fps { position: absolute; right: 12px; top: 10px; font: 12px var(--mono); color: var(--muted); }
 
   /* ---------------- Menus ---------------- */
@@ -112,6 +123,7 @@
 <body>
 <canvas id="game"></canvas>
 
+<div id="scope" hidden><span class="dot"></span></div>
 <div id="hud" hidden>
   <canvas id="tally" width="360" height="150"></canvas>
   <div id="right">
@@ -119,7 +131,8 @@
     <div id="points">500</div>
     <div id="weapon">
       <span id="wname">M1912</span>
-      <div id="ammo"><span id="clip">8</span><span class="sep">/</span><span id="reserve">80</span></div>
+      <div id="ammo"><span id="clipL"></span><span class="bar">|</span><span id="clip">8</span><span class="sep">/</span><span id="reserve">80</span></div>
+      <div id="grenades"></div>
     </div>
   </div>
   <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
@@ -131,7 +144,7 @@
 
 <section id="title" class="screen">
   <div class="stack">
-    <span class="eyebrow">Phase 2 · Court, hallway, cafeteria, front office</span>
+    <span class="eyebrow">Phase 3 · Every weapon, grenades and explosives</span>
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
@@ -139,11 +152,12 @@
     </nav>
     <dl class="keys">
       <dt>W A S D</dt><dd>Move</dd>
-      <dt>Mouse</dt><dd>Look · left click fires · right click aims</dd>
+      <dt>Mouse</dt><dd>Look · left click fires · right click aims (fires the left gun when dual wielding)</dd>
       <dt>Shift</dt><dd>Sprint (hold)</dd>
       <dt>Space · C</dt><dd>Jump · crouch</dd>
       <dt>R</dt><dd>Reload (sprint to cancel)</dd>
       <dt>V or E</dt><dd>Knife</dd>
+      <dt>G</dt><dd>Frag grenade (hold to cook, release to throw)</dd>
       <dt>F</dt><dd>Buy doors, weapons and the Mystery Box · hold to rebuild barriers</dd>
       <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
       <dt>Esc</dt><dd>Pause</dd>

@@ -533,8 +533,8 @@ export class MapView {
   // ---------------------------------------------------------------------------
   buildWallBuys() {
     for (const wb of this.world.wallBuys) {
-      const def = this.cfg.weapons[wb.weapon];
-      const tex = T.chalkTexture(def, def.view.model);
+      const def = this.cfg.weapons[wb.weapon] || this.cfg.equipment[wb.weapon];
+      const tex = T.chalkTexture(def, def.view ? def.view.model : 'frag');
       const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.12, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.8), mat);
       m.position.set(wb.pos.x + wb.normal.x * 0.012, wb.pos.y, wb.pos.z + wb.normal.z * 0.012);

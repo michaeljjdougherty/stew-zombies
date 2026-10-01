@@ -32,7 +32,7 @@ export class Effects {
     // --- puffs (smoke, dust, blood mist): sprite pool
     this.puffTex = T.softDotTexture('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
     this.puffs = [];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 140; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.puffTex, transparent: true, depthWrite: false, opacity: 0 }));
       s.visible = false;
       scene.add(s);
@@ -69,6 +69,21 @@ export class Effects {
 
     // --- emitters (e.g. neck spurts)
     this.emitters = [];
+
+    // --- explosions: fireball sprites, a flash light, scorch marks
+    this.fireTex = T.softDotTexture('rgba(255,240,200,1)', 'rgba(255,120,30,0)');
+    this.fires = [];
+    for (let i = 0; i < 24; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.fireTex, color: new THREE.Color(3, 1.6, 0.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0 }));
+      s.visible = false; scene.add(s);
+      this.fires.push({ s, life: 0, max: 1, size: 1, vel: new THREE.Vector3() });
+    }
+    this.fireIdx = 0;
+    this.blastLight = new THREE.PointLight(0xff9a40, 0, 14, 1.4);
+    scene.add(this.blastLight);
+    this.blastT = 0;
+    this.scorchMat = new THREE.MeshStandardMaterial({ map: T.softDotTexture('rgba(12,9,6,0.9)', 'rgba(12,9,6,0)'), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 1 });
+    this.scorches = [];
 
     this.buildDust();
   }
@@ -270,6 +285,41 @@ export class Effects {
     t.life = 0.05;
   }
 
+  explosion(pos, radius = 4) {
+    const p = new THREE.Vector3(pos.x, pos.y, pos.z);
+    const k = radius / 4.5;
+    this.blastLight.position.copy(p).y += 0.4;
+    this.blastLight.intensity = 260 * k;
+    this.blastT = 0.32;
+    for (let i = 0; i < 9; i++) {
+      const f = this.fires[this.fireIdx];
+      this.fireIdx = (this.fireIdx + 1) % this.fires.length;
+      f.s.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.6, Math.random() * 0.5, (Math.random() - 0.5) * 0.6).multiplyScalar(k));
+      f.vel.set((Math.random() - 0.5) * 3, 0.8 + Math.random() * 2, (Math.random() - 0.5) * 3).multiplyScalar(k);
+      f.size = (1.1 + Math.random() * 0.9) * k;
+      f.life = f.max = 0.25 + Math.random() * 0.25;
+      f.s.material.rotation = Math.random() * 6.28;
+      f.s.visible = true;
+    }
+    for (let i = 0; i < 10; i++) {
+      const v = new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.3 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6).multiplyScalar(k);
+      const c = 0x2a2622 + Math.floor(Math.random() * 3) * 0x080808;
+      this.puff(p.clone().add(v.clone().multiplyScalar(0.3)), { color: c, size: 1.0 * k, grow: 2.6, life: 2.2 + Math.random() * 1.5, alpha: 0.75, vel: v });
+    }
+    for (let i = 0; i < 26; i++) {
+      const v = new THREE.Vector3((Math.random() - 0.5) * 14, 2 + Math.random() * 8, (Math.random() - 0.5) * 14);
+      this.spawnParticle(p, v, { life: 0.3 + Math.random() * 0.5, size: 0.015, color: [5, 2.6, 0.8], gravity: 12, drag: 1.2 });
+    }
+    for (let i = 0; i < 18; i++) {
+      const v = new THREE.Vector3((Math.random() - 0.5) * 8, 2 + Math.random() * 6, (Math.random() - 0.5) * 8);
+      this.spawnParticle(p, v, { life: 0.9 + Math.random() * 0.6, size: 0.02 + Math.random() * 0.03, color: [0.12, 0.1, 0.08], gravity: 9.8, drag: 0.3 });
+    }
+    // scorch on the floor (or whatever is below)
+    const h = this.sim.raycastWorld({ x: p.x, y: p.y + 0.1, z: p.z }, { x: 0, y: -1, z: 0 }, 2.5);
+    const sp = h ? new THREE.Vector3(h.point.x, h.point.y, h.point.z) : new THREE.Vector3(p.x, 0, p.z);
+    if (sp.y < 0.05 || h) this.placeDecal(this.scorches, 12, this.scorchMat, sp, h ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : UP, 2.2 * k);
+  }
+
   // ---------------------------------------------------------------------------
   update(dt) {
     this.time += dt;
@@ -348,6 +398,19 @@ export class Effects {
       }
     }
 
+    // explosions
+    for (const f of this.fires) {
+      if (!f.s.visible) continue;
+      f.life -= dt;
+      if (f.life <= 0) { f.s.visible = false; continue; }
+      const k = 1 - f.life / f.max;
+      f.s.position.addScaledVector(f.vel, dt);
+      f.s.scale.setScalar(f.size * (0.6 + k * 1.2));
+      f.s.material.opacity = (1 - k) * (1 - k);
+      f.s.material.color.setRGB(3 - k * 1.5, 1.6 - k * 1.2, 0.6 - k * 0.5);
+    }
+    if (this.blastT > 0) { this.blastT -= dt; this.blastLight.intensity *= Math.exp(-dt * 9); if (this.blastT <= 0) this.blastLight.intensity = 0; }
+
     // muzzle light
     if (this.muzzleT > 0) { this.muzzleT -= dt; if (this.muzzleT <= 0) this.muzzleLight.intensity = 0; }
 
@@ -392,8 +455,10 @@ export class Effects {
 
   clear() {
     this.particles.length = 0;
-    for (const d of [...this.bloodDecals, ...this.holes]) this.scene.remove(d);
-    this.bloodDecals.length = 0; this.holes.length = 0;
+    for (const d of [...this.bloodDecals, ...this.holes, ...this.scorches]) this.scene.remove(d);
+    this.bloodDecals.length = 0; this.holes.length = 0; this.scorches.length = 0;
+    for (const f of this.fires) f.s.visible = false;
+    this.blastLight.intensity = 0;
     for (const g of this.gibList) this.scene.remove(g.m);
     this.gibList.length = 0;
     this.emitters.length = 0;

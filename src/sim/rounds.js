@@ -28,7 +28,10 @@ function startRound(sim, n) {
   R.killed = 0;
   R.spawnTimer = c.firstSpawnDelay;
   R.spawnInterval = Math.max(c.spawnIntervalMin, c.spawnIntervalStart * Math.pow(c.spawnIntervalDecay, n - 1));
-  for (const p of sim.players) p.boardPointsThisRound = 0;
+  for (const p of sim.players) {
+    p.boardPointsThisRound = 0;
+    if (sim.cfg.equipment.frag.refillEachRound && p.alive) p.grenades = Math.max(p.grenades, p.grenadeMax);
+  }
   sim.emit('roundStart', { round: n, zombies: R.total, health: zombieHealthForRound(n, sim.cfg.zombie) });
 }
 

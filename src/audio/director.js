@@ -82,6 +82,26 @@ export class SoundDirector {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
         A.play(S.gunshot, def.sound, local ? { reverb: 0.35, gain: 0.8 } : { pos: e.origin, reverb: 0.4 });
+        if (local && e.action) {
+          const delay = 0.08 + (e.action === 'bolt' ? 0.05 : 0);
+          if (e.clip > 0 || e.action === 'pump') A.play(e.action === 'bolt' ? S.boltCycle : S.pumpRack, {}, { gain: 0.85, delay, reverb: 0.08 });
+        }
+        break;
+      }
+      case 'reloadShell': if (local) A.play(S.shellIn, {}, { gain: 0.9, reverb: 0.08 }); break;
+      case 'reloadDone':
+        if (local && this.cfg.weapons[e.weapon].reloadStyle === 'shell' && e.empty && this.cfg.weapons[e.weapon].action === 'pump') A.play(S.pumpRack, {}, { gain: 0.85, reverb: 0.08 });
+        break;
+      case 'grenadePull': if (local) A.play(S.grenadePin, {}, { gain: 0.8, reverb: 0.05 }); break;
+      case 'grenadeThrow': if (local) A.play(S.grenadeThrow, {}, { gain: 0.8, reverb: 0.05 }); break;
+      case 'projectileBounce': A.play(S.grenadeBounce, { speed: e.speed }, { pos: e.pos, ref: 2 }); break;
+      case 'projectileStick': A.play(S.stickThunk, { flesh: e.zombieId != null }, { pos: e.pos, ref: 2 }); break;
+      case 'explosion': {
+        const p = sim.playerById(this.localId);
+        const d = p ? Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z) : 10;
+        // close blasts are played unpanned and loud so they hit like they should
+        if (d < 6) A.play(S.explosion, { big: e.radius / 4.5 }, { gain: 1.1, reverb: 0.5 });
+        else A.play(S.explosion, { big: e.radius / 4.5 }, { pos: e.pos, ref: 6, reverb: 0.6 });
         break;
       }
       case 'dryFire': if (local) A.play(S.dryFire, {}, { gain: 0.8, reverb: 0.05 }); break;
@@ -91,7 +111,9 @@ export class SoundDirector {
           const T = e.time;
           const style = this.cfg.weapons[e.weapon].reloadStyle;
           const at = (fn, frac, gain = 0.85) => A.play(fn, {}, { gain, delay: T * frac, reverb: 0.08 });
-          if (style === 'break') { at(S.breakOpen, 0.12); at(S.shellIn, 0.45); at(S.shellIn, 0.6); at(S.breakClose, 0.76, 1); }
+          if (style === 'shell') { /* each shell plays on reloadShell */ }
+          else if (style === 'belt') { at(S.beltOpen, 0.1); at(S.magOut, 0.22, 0.8); at(S.magIn, 0.55, 0.9); at(S.beltClose, 0.68, 1); at(S.slideRelease, 0.85, 0.9); }
+          else if (style === 'break') { at(S.breakOpen, 0.12); at(S.shellIn, 0.45); at(S.shellIn, 0.6); at(S.breakClose, 0.76, 1); }
           else if (style === 'cylinder') { at(S.cylinderOut, 0.12); at(S.shellsDrop, 0.2, 0.7); at(S.shellIn, 0.5, 0.6); at(S.shellIn, 0.6, 0.6); at(S.cylinderIn, 0.78, 1); }
           else {
             at(S.magOut, 0.13, 0.8);
@@ -195,6 +217,16 @@ export class SoundDirector {
     if (!A.ready) return;
     const sim = this.sim;
     const round = sim.rounds.round;
+
+    // stuck crossbow bolts beep faster and faster
+    if (!this.beepT) this.beepT = new Map();
+    for (const pr of sim.projectiles) {
+      if (pr.type !== 'bolt' || !pr.stuck || !isFinite(pr.fuse)) continue;
+      let t = (this.beepT.get(pr.id) ?? 0) - dt;
+      if (t <= 0) { A.play(S.boltBeep, {}, { pos: pr.pos, ref: 2 }); t = 0.06 + Math.max(0, pr.fuse) * 0.2; }
+      this.beepT.set(pr.id, t);
+    }
+    if (this.beepT.size > 20) this.beepT.clear();
 
     // zombie vocal chatter
     const [gMin, gMax] = this.cfg.audio.groanInterval;

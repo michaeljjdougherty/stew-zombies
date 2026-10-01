@@ -13,7 +13,7 @@ export class HUD {
     this.tally = new TallyCounter($('tally'), cfg);
     this.el = {
       points: $('points'), popups: $('popups'), wname: $('wname'), clip: $('clip'), reserve: $('reserve'),
-      ammo: $('ammo'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
+      ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
     };
     this.shownPoints = null;
     this.hitT = 0;
@@ -22,7 +22,7 @@ export class HUD {
     this.last = {};
   }
 
-  show(on) { this.root.hidden = !on; }
+  show(on) { this.root.hidden = !on; if (!on) { this.el.scope.hidden = true; this.last.scope = true; } }
 
   reset() {
     this.tally.round = 0; this.tally.anim = null; this.tally.blink = false;
@@ -87,12 +87,16 @@ export class HUD {
     const def = this.cfg.weapons[slot.id];
     this.set('wname', this.el.wname, def.name);
     this.set('clip', this.el.clip, String(slot.clip));
+    this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
+    this.set('grenades', this.el.grenades, '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
+    const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
+    this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('reserve', this.el.reserve, String(slot.reserve));
-    const low = slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
+    const low = slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
     this.set('lowclass', this.el.ammo, low ? 'low' : '', 'className');
 
     // crosshair gap from current spread
-    const hideCross = w.adsAmount > 0.5 || p.sprinting || !p.alive || p.melee.timer > 0;
+    const hideCross = (w.adsAmount > 0.5 && !def.dual) || !!p.throwing || p.sprinting || !p.alive || p.melee.timer > 0;
     this.set('crossHidden', this.el.cross, hideCross ? 'hidden' : '', 'className');
     if (!hideCross) {
       const spread = (w.spreadNow || 2) * Math.PI / 180;
@@ -110,7 +114,9 @@ export class HUD {
     if (p.rebuilding) prompt = 'Rebuilding barrier';
     this.set('prompt', this.el.prompt, prompt);
     let hint = '';
-    if (slot.clip === 0 && slot.reserve === 0) hint = 'No ammo';
+    if (p.throwing && p.throwing.phase === 'cook') hint = `Cooking ${Math.max(0, this.cfg.equipment.frag.fuse - p.throwing.t).toFixed(1)}`;
+    if (hint) { /* cooking */ }
+    else if (slot.clip === 0 && slot.reserve === 0) hint = 'No ammo';
     else if (w.reloading) hint = '';
     else if (low && slot.reserve > 0) hint = 'Press [R] to reload';
     else if (low) hint = 'Low ammo';

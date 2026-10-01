@@ -22,6 +22,7 @@ export class Input {
     this.enabled = false;
     this.onLockChange = null;
     this.adsActive = () => false;
+    this.zoomScale = () => 1;
     this.bind();
   }
 
@@ -48,7 +49,7 @@ export class Input {
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.enabled) return;
       if (e.button === 0) { this.mouse.left = true; this.edges.add('fire'); }
-      if (e.button === 2) this.mouse.right = true;
+      if (e.button === 2) { this.mouse.right = true; this.edges.add('ads'); }
       if (e.button === 3 || e.button === 4) this.edges.add('melee');
     });
     window.addEventListener('mouseup', (e) => {
@@ -64,7 +65,7 @@ export class Input {
       const dx = e.movementX || 0, dy = e.movementY || 0;
       if (Math.abs(dx) > 400 || Math.abs(dy) > 400) return; // ignore spikes some browsers send
       const ads = this.adsActive() ? this.settings.adsSensitivity : 1;
-      const k = this.cfg.input.radiansPerPixel * this.settings.sensitivity * ads;
+      const k = this.cfg.input.radiansPerPixel * this.settings.sensitivity * ads * this.zoomScale();
       this.yaw -= dx * k;
       this.pitch -= dy * k * (this.settings.invertY ? -1 : 1);
       const lim = this.cfg.camera.pitchLimit * Math.PI / 180;
@@ -112,6 +113,8 @@ export class Input {
     c.crouch = k.has('crouch');
     c.fire = this.mouse.left;
     c.ads = this.mouse.right;
+    c.adsPressed = this.edges.has('ads');
+    c.grenade = k.has('grenade');
     c.use = k.has('use');
     const e = this.edges;
     c.firePressed = e.has('fire');
@@ -119,6 +122,7 @@ export class Input {
     c.reloadPressed = e.has('reload');
     c.meleePressed = e.has('melee');
     c.usePressed = e.has('use');
+    c.grenadePressed = e.has('grenade');
     c.weaponSlot = e.has('weapon1') ? 0 : e.has('weapon2') ? 1 : -1;
     c.weaponCycle = this.wheel !== 0 ? 1 : 0;
     this.wheel = 0;

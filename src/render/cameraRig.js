@@ -34,6 +34,13 @@ export class CameraRig {
     if (e.type === 'playerHit') { this.shake = 1; }
   }
 
+  // explosions shake the camera by distance (anyone's blast)
+  explosion(e, pos) {
+    const d = Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y - 1.5, e.pos.z - pos.z);
+    const k = (e.shake || 1) * Math.max(0, 1 - d / (e.radius * 4));
+    this.shake = Math.min(1.6, Math.max(this.shake, k * 1.4));
+  }
+
   // pos: interpolated player position; p: sim player; look: {yaw,pitch}
   update(dt, pos, p, look, aspect, def) {
     const c = this.cfg.camera, pc = this.cfg.player;
@@ -81,8 +88,8 @@ export class CameraRig {
     const sh = this.shake * this.shake * c.damageShake * Math.PI / 180;
 
     const cam = this.camera;
-    const yaw = look.yaw + w.recoilYaw + Math.sin(this.shakeT * 1.3) * sh;
-    const pitch = look.pitch + w.recoilPitch + Math.sin(this.shakeT) * sh;
+    const yaw = look.yaw + w.recoilYaw + (w.swayYaw || 0) + Math.sin(this.shakeT * 1.3) * sh;
+    const pitch = look.pitch + w.recoilPitch + (w.swayPitch || 0) + Math.sin(this.shakeT) * sh;
     // side bob is along the camera's right vector
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     cam.position.set(pos.x + rx * bobX, this.smoothY + this.eyeY + bobY + dip, pos.z + rz * bobX);

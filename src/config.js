@@ -4,6 +4,71 @@
 // Units: meters, seconds, degrees (unless noted), points.
 // =============================================================================
 
+// -----------------------------------------------------------------------------
+// Weapon class defaults. Each weapon entry below starts from its class and then
+// overrides whatever makes it different. Every value can be set per weapon.
+// -----------------------------------------------------------------------------
+const CLASS_DEFAULTS = {
+  pistol: {
+    fireMode: 'semi', headMult: 2.6, limbMult: 0.75, pellets: 1, penetration: 1, range: 70, falloffStart: 18, falloffMinMult: 0.65,
+    reloadStyle: 'mag', reloadAddAt: 0.72, drawTime: 0.45, adsTime: 0.17, adsFovMult: 0.86, adsMoveMult: 0.6, moveSpeedMult: 1.0,
+    spread: { hipBase: 1.9, hipMax: 5.5, perShot: 1.3, recovery: 7.5, ads: 0.18, adsPerShot: 0.25, moving: 1.4, air: 4.0, crouchMult: 0.8 },
+    recoil: { pitch: 1.9, yaw: 0.55, recovery: 9, adsMult: 0.7, viewKick: 1 },
+  },
+  smg: {
+    fireMode: 'auto', headMult: 2.6, limbMult: 0.8, pellets: 1, penetration: 1, range: 55, falloffStart: 14, falloffMinMult: 0.6,
+    reloadStyle: 'mag', reloadAddAt: 0.66, drawTime: 0.5, adsTime: 0.2, adsFovMult: 0.84, adsMoveMult: 0.65, moveSpeedMult: 1.0,
+    spread: { hipBase: 2.3, hipMax: 6.5, perShot: 0.42, recovery: 9, ads: 0.35, adsPerShot: 0.12, moving: 1.2, air: 4, crouchMult: 0.8 },
+    recoil: { pitch: 0.9, yaw: 0.5, recovery: 10, adsMult: 0.6, viewKick: 0.6 },
+  },
+  ar: {
+    fireMode: 'auto', headMult: 3, limbMult: 0.8, pellets: 1, penetration: 2, range: 85, falloffStart: 30, falloffMinMult: 0.75,
+    reloadStyle: 'mag', reloadAddAt: 0.66, drawTime: 0.55, adsTime: 0.22, adsFovMult: 0.8, adsMoveMult: 0.6, moveSpeedMult: 0.95,
+    spread: { hipBase: 2.6, hipMax: 7, perShot: 0.38, recovery: 8.5, ads: 0.22, adsPerShot: 0.09, moving: 1.5, air: 5, crouchMult: 0.8 },
+    recoil: { pitch: 1.0, yaw: 0.45, recovery: 11, adsMult: 0.55, viewKick: 0.7 },
+  },
+  shotgun: {
+    fireMode: 'semi', headMult: 1.6, limbMult: 0.9, pellets: 8, penetration: 1, range: 28, falloffStart: 6, falloffMinMult: 0.25,
+    reloadStyle: 'shell', reloadAddAt: 0.7, drawTime: 0.6, adsTime: 0.22, adsFovMult: 0.88, adsMoveMult: 0.6, moveSpeedMult: 0.93,
+    reloadStartTime: 0.35, shellTime: 0.48, reloadEndTime: 0.4,
+    spread: { hipBase: 5.2, hipMax: 7, perShot: 0.8, recovery: 6, ads: 3.8, adsPerShot: 0.5, moving: 0.6, air: 2, crouchMult: 0.95 },
+    recoil: { pitch: 5, yaw: 1.3, recovery: 6.5, adsMult: 0.8, viewKick: 2.0 },
+  },
+  lmg: {
+    fireMode: 'auto', headMult: 2.5, limbMult: 0.85, pellets: 1, penetration: 3, range: 90, falloffStart: 40, falloffMinMult: 0.8,
+    reloadStyle: 'belt', reloadAddAt: 0.78, drawTime: 0.85, adsTime: 0.34, adsFovMult: 0.8, adsMoveMult: 0.5, moveSpeedMult: 0.85,
+    spread: { hipBase: 3.4, hipMax: 8.5, perShot: 0.45, recovery: 7, ads: 0.45, adsPerShot: 0.14, moving: 2.2, air: 6, crouchMult: 0.7 },
+    recoil: { pitch: 1.5, yaw: 0.9, recovery: 8, adsMult: 0.65, viewKick: 1.0 },
+  },
+  sniper: {
+    fireMode: 'semi', headMult: 2.5, limbMult: 0.9, pellets: 1, penetration: 4, range: 140, falloffStart: 120, falloffMinMult: 0.9,
+    reloadStyle: 'mag', reloadAddAt: 0.68, drawTime: 0.75, adsTime: 0.3, adsFovMult: 0.3, adsMoveMult: 0.45, moveSpeedMult: 0.9,
+    spread: { hipBase: 6.5, hipMax: 9, perShot: 2, recovery: 6, ads: 0.0, adsPerShot: 0.05, moving: 3, air: 8, crouchMult: 0.85 },
+    recoil: { pitch: 5, yaw: 1, recovery: 5.5, adsMult: 0.8, viewKick: 2.2 },
+    scope: { sway: 0.35 },   // degrees of scope sway
+  },
+  launcher: {
+    fireMode: 'semi', headMult: 1, limbMult: 1, pellets: 1, penetration: 1, range: 60, falloffStart: 60, falloffMinMult: 1,
+    reloadStyle: 'shell', reloadAddAt: 0.7, drawTime: 0.7, adsTime: 0.26, adsFovMult: 0.85, adsMoveMult: 0.55, moveSpeedMult: 0.9,
+    reloadStartTime: 0.45, shellTime: 0.75, reloadEndTime: 0.5,
+    spread: { hipBase: 1.5, hipMax: 4, perShot: 1, recovery: 5, ads: 0.4, adsPerShot: 0.3, moving: 1, air: 3, crouchMult: 0.9 },
+    recoil: { pitch: 4, yaw: 1, recovery: 6, adsMult: 0.8, viewKick: 1.6 },
+  },
+};
+
+function merge(a, b) {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b)) {
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) && a[k] && typeof a[k] === 'object' ? { ...a[k], ...v } : v;
+  }
+  return out;
+}
+
+// Build a weapon entry from its class defaults plus its own values.
+function gun(cls, stats) {
+  return merge(merge(CLASS_DEFAULTS[cls], { class: cls }), stats);
+}
+
 export const CONFIG = {
   // ---------------------------------------------------------------------------
   // Simulation
@@ -194,6 +259,10 @@ export const CONFIG = {
     armLossFraction: 0.33,   // arm falls off after taking this fraction of max hp
     hitStun: 0.12,
     screamChance: { walker: 0.15, runner: 0.7, sprinter: 1.0 },
+    // Explosions can blow a zombie's legs off without killing it: it becomes a crawler.
+    crawlerChance: 0.45,     // chance when an explosion takes off a big chunk of health
+    crawlerDamageFrac: 0.3,  // fraction of max health a single blast must deal
+    crawlSpeed: [0.65, 0.95],
     stuckTime: 0.6,          // seconds barely moving before a zombie sidesteps
     sidestepTime: 0.9,
     portalReach: 1.2,        // how close to a doorway before heading through
@@ -408,6 +477,195 @@ export const CONFIG = {
       view: { model: 'carbine', flash: 1.1 },
       upgrade: { name: 'Komandant', color: '#1f6fb2' },
     },
+    // ---- more wall weapons (their wall spots arrive with the Phase 4 rooms) --
+    Staykout: gun('shotgun', {
+      name: 'Staykout', cost: 1500, ammoCost: 750,
+      action: 'pump', rpm: 72, damage: 72, pellets: 8, magSize: 6, reserve: 60,
+      reloadStartTime: 0.4, shellTime: 0.52, reloadEndTime: 0.5,
+      recoil: { pitch: 6, yaw: 1.5, viewKick: 2.3 },
+      sound: { kind: 'shotgun', body: 1000, thump: 65, crack: 0.85, tail: 1.1, pitch: 0.78 },
+      view: { model: 'pump', flash: 2.0 },
+      upgrade: { name: 'Raid Night', color: '#a83232' },
+    }),
+    MP6K: gun('smg', {
+      name: 'MP6K', cost: 1000, ammoCost: 500,
+      rpm: 760, damage: 40, magSize: 30, reserve: 120, reloadTime: 2.3, reloadEmptyTime: 2.75,
+      recoil: { pitch: 0.75, yaw: 0.55 },
+      sound: { kind: 'smg', body: 2700, thump: 140, crack: 0.75, tail: 0.4, pitch: 1.12, mech: true },
+      view: { model: 'mp6k', flash: 0.8 },
+      upgrade: { name: 'Mini-Stew', color: '#3e7cb1' },
+    }),
+    MPK: gun('smg', {
+      name: 'MPK', cost: 1100, ammoCost: 550,
+      rpm: 960, damage: 38, magSize: 24, reserve: 168, reloadTime: 2.1, reloadEmptyTime: 2.55,
+      spread: { perShot: 0.5 }, recoil: { pitch: 0.7, yaw: 0.7 },
+      sound: { kind: 'smg', body: 3000, thump: 150, crack: 0.7, tail: 0.35, pitch: 1.25, mech: true },
+      view: { model: 'mpk', flash: 0.75 },
+      upgrade: { name: 'Hall Monitor', color: '#7b52ab' },
+    }),
+    PM64: gun('smg', {
+      name: 'PM64', cost: 1000, ammoCost: 500,
+      rpm: 1050, damage: 32, headMult: 2.4, magSize: 20, reserve: 160, reloadTime: 1.9, reloadEmptyTime: 2.3,
+      range: 40, falloffStart: 10, falloffMinMult: 0.5,
+      spread: { hipBase: 2.6, perShot: 0.55 }, recoil: { pitch: 0.65, yaw: 0.85 },
+      sound: { kind: 'smg', body: 3200, thump: 160, crack: 0.65, tail: 0.3, pitch: 1.35, mech: true },
+      view: { model: 'pm64', flash: 0.7 },
+      upgrade: { name: 'Tiny Terror', color: '#c06c1e' },
+    }),
+    'AK-75u': gun('smg', {
+      name: 'AK-75u', cost: 1200, ammoCost: 600,
+      rpm: 800, damage: 56, headMult: 2.8, magSize: 20, reserve: 160, reloadTime: 2.3, reloadEmptyTime: 2.85,
+      recoil: { pitch: 1.05, yaw: 0.6, viewKick: 0.75 },
+      sound: { kind: 'ar', body: 2300, thump: 115, crack: 1.0, tail: 0.6, pitch: 1.0, mech: true },
+      view: { model: 'ak75u', flash: 1.2 },
+      upgrade: { name: 'AK-Stew', color: '#9c2a2a' },
+    }),
+    M17: gun('ar', {
+      name: 'M17', cost: 1200, ammoCost: 600,
+      fireMode: 'burst', burstCount: 3, burstDelay: 0.3, rpm: 900, damage: 72, magSize: 30, reserve: 120,
+      reloadTime: 2.2, reloadEmptyTime: 2.7,
+      spread: { hipBase: 2.4, perShot: 0.3, ads: 0.12, adsPerShot: 0.06 }, recoil: { pitch: 0.85, yaw: 0.3 },
+      sound: { kind: 'ar', body: 2700, thump: 125, crack: 1.1, tail: 0.65, pitch: 1.05, mech: true },
+      view: { model: 'm17', flash: 1.0 },
+      upgrade: { name: 'Skull Burst', color: '#2f6f4f' },
+    }),
+
+    // ---- mystery box ----------------------------------------------------------
+    CZ76: gun('pistol', {
+      name: 'CZ76', boxOnly: true,
+      rpm: 520, damage: 62, magSize: 12, reserve: 72, reloadTime: 1.6, reloadEmptyTime: 1.9,
+      recoil: { pitch: 1.5 },
+      sound: { kind: 'pistol', body: 2400, thump: 160, crack: 0.95, tail: 0.5, pitch: 1.08 },
+      view: { model: 'cz76', flash: 0.9 },
+      upgrade: { name: 'CZ Pro', color: '#5d6d7e' },
+    }),
+    'CZ76 Dual': gun('pistol', {
+      name: 'CZ76 Dual Wield', boxOnly: true, dual: true,   // left click = right gun, right click = left gun
+      rpm: 520, damage: 62, magSize: 12, reserve: 144, reloadTime: 2.1, reloadEmptyTime: 2.4,
+      spread: { hipBase: 2.4 }, recoil: { pitch: 1.4 },
+      sound: { kind: 'pistol', body: 2400, thump: 160, crack: 0.95, tail: 0.5, pitch: 1.08 },
+      view: { model: 'cz76', flash: 0.9 },
+      upgrade: { name: 'Dual CZ Pro', color: '#5d6d7e' },
+    }),
+    Spectur: gun('smg', {
+      name: 'Spectur', boxOnly: true,
+      rpm: 1000, damage: 46, magSize: 30, reserve: 180, reloadTime: 2.3, reloadEmptyTime: 2.8,
+      recoil: { pitch: 0.8, yaw: 0.6 },
+      sound: { kind: 'smg', body: 2800, thump: 140, crack: 0.8, tail: 0.4, pitch: 1.15, mech: true },
+      view: { model: 'spectur', flash: 0.85 },
+      upgrade: { name: 'Spectral Stew', color: '#5aa9c9' },
+    }),
+    FAMOS: gun('ar', {
+      name: 'FAMOS', boxOnly: true,
+      rpm: 930, damage: 70, magSize: 30, reserve: 210, reloadTime: 2.6, reloadEmptyTime: 3.1,
+      recoil: { pitch: 1.05, yaw: 0.5 },
+      sound: { kind: 'ar', body: 2600, thump: 120, crack: 1.0, tail: 0.6, pitch: 1.1, mech: true },
+      view: { model: 'famos', flash: 1.0 },
+      upgrade: { name: 'G16-SL Stew', color: '#2c3e50' },
+    }),
+    AWG: gun('ar', {
+      name: 'AWG', boxOnly: true,
+      rpm: 660, damage: 82, headMult: 3.5, magSize: 30, reserve: 210, reloadTime: 2.5, reloadEmptyTime: 3.0,
+      adsFovMult: 0.5, adsTime: 0.26, scope: { sway: 0.08 },
+      spread: { ads: 0.08, adsPerShot: 0.05 }, recoil: { pitch: 0.85, yaw: 0.35 },
+      sound: { kind: 'ar', body: 2500, thump: 125, crack: 1.05, tail: 0.65, pitch: 1.0, mech: true },
+      view: { model: 'awg', flash: 1.0 },
+      upgrade: { name: 'AWG Overseer', color: '#3b5d3b' },
+    }),
+    Galill: gun('ar', {
+      name: 'Galill', boxOnly: true,
+      rpm: 700, damage: 92, headMult: 3, magSize: 35, reserve: 315, reloadTime: 2.7, reloadEmptyTime: 3.2,
+      recoil: { pitch: 1.1, yaw: 0.45 },
+      sound: { kind: 'ar', body: 2300, thump: 115, crack: 1.1, tail: 0.7, pitch: 0.95, mech: true },
+      view: { model: 'galill', flash: 1.2 },
+      upgrade: { name: 'Lamentation', color: '#8e2b2b' },
+    }),
+    G12: gun('ar', {
+      name: 'G12', boxOnly: true,
+      fireMode: 'burst', burstCount: 3, burstDelay: 0.24, rpm: 1500, damage: 84, magSize: 45, reserve: 270,
+      reloadTime: 2.8, reloadEmptyTime: 3.2,
+      spread: { perShot: 0.22, ads: 0.1, adsPerShot: 0.04 }, recoil: { pitch: 0.6, yaw: 0.25 },
+      sound: { kind: 'ar', body: 3000, thump: 130, crack: 0.9, tail: 0.55, pitch: 1.2, mech: true },
+      view: { model: 'g12', flash: 0.9 },
+      upgrade: { name: 'G12 Futurist', color: '#4a90a4' },
+    }),
+    'SPAZ-13': gun('shotgun', {
+      name: 'SPAZ-13', boxOnly: true,
+      rpm: 260, damage: 76, pellets: 8, magSize: 8, reserve: 64,
+      reloadStartTime: 0.35, shellTime: 0.42, reloadEndTime: 0.35,
+      sound: { kind: 'shotgun', body: 1150, thump: 70, crack: 0.9, tail: 1.0, pitch: 0.85 },
+      view: { model: 'spaz', flash: 1.9 },
+      upgrade: { name: 'SPAZ-26', color: '#4d4d4d' },
+    }),
+    HS11: gun('shotgun', {
+      name: 'HS11', boxOnly: true, dual: true,
+      rpm: 300, damage: 66, pellets: 7, magSize: 6, reserve: 72, reloadStyle: 'mag', reloadTime: 3.0, reloadEmptyTime: 3.0,
+      spread: { hipBase: 5.8 },
+      sound: { kind: 'shotgun', body: 1200, thump: 75, crack: 0.9, tail: 0.95, pitch: 0.9 },
+      view: { model: 'hs11', flash: 1.8 },
+      upgrade: { name: 'Typhoid & Mary', color: '#6b3a5a' },
+    }),
+    HK22: gun('lmg', {
+      name: 'HK22', boxOnly: true,
+      rpm: 620, damage: 112, magSize: 125, reserve: 500, reloadTime: 5.6, reloadEmptyTime: 5.6,
+      recoil: { pitch: 1.8, yaw: 1.1, viewKick: 1.2 },
+      sound: { kind: 'lmg', body: 2100, thump: 105, crack: 1.15, tail: 0.85, pitch: 0.9, mech: true },
+      view: { model: 'hk22', flash: 1.4 },
+      upgrade: { name: 'H115 Oscillator', color: '#5a5a2a' },
+    }),
+    RPKK: gun('lmg', {
+      name: 'RPKK', boxOnly: true,
+      rpm: 650, damage: 96, magSize: 100, reserve: 400, reloadStyle: 'mag', reloadTime: 4.4, reloadEmptyTime: 4.8,
+      recoil: { pitch: 1.3, yaw: 0.8 },
+      sound: { kind: 'lmg', body: 2200, thump: 110, crack: 1.1, tail: 0.8, pitch: 0.95, mech: true },
+      view: { model: 'rpkk', flash: 1.3 },
+      upgrade: { name: "R115 Resonator", color: '#7a4b1e' },
+    }),
+    Dragunoff: gun('sniper', {
+      name: 'Dragunoff', boxOnly: true,
+      rpm: 230, damage: 420, headMult: 3, magSize: 10, reserve: 40, penetration: 3,
+      reloadTime: 2.7, reloadEmptyTime: 3.2, adsFovMult: 0.36,
+      sound: { kind: 'sniper', body: 1800, thump: 90, crack: 1.4, tail: 1.3, pitch: 0.9 },
+      view: { model: 'dragunoff', flash: 1.5 },
+      upgrade: { name: 'D115 Disassembler', color: '#6e4b2a' },
+    }),
+    L97A1: gun('sniper', {
+      name: 'L97A1', boxOnly: true,
+      action: 'bolt', rpm: 52, damage: 1100, headMult: 2, magSize: 5, reserve: 50, penetration: 5,
+      reloadTime: 3.0, reloadEmptyTime: 3.6, adsFovMult: 0.28,
+      recoil: { pitch: 6.5, viewKick: 2.6 },
+      sound: { kind: 'sniper', body: 1600, thump: 80, crack: 1.5, tail: 1.5, pitch: 0.82 },
+      view: { model: 'l97', flash: 1.6 },
+      upgrade: { name: 'L115 Isolator', color: '#3d5c3d' },
+    }),
+    'China Pond': gun('launcher', {
+      name: 'China Pond', boxOnly: true,
+      action: 'pump', rpm: 60, damage: 0, magSize: 2, reserve: 20,
+      projectile: { type: 'launcher', speed: 34, gravity: 9.8, explode: 'launcher' },
+      sound: { kind: 'launcher', body: 600, thump: 60, crack: 0.3, tail: 0.6, pitch: 1 },
+      view: { model: 'chinapond', flash: 1.2 },
+      upgrade: { name: 'China Beach', color: '#2e5e8e' },
+    }),
+    'Kross-Bow': gun('launcher', {
+      name: 'Kross-Bow', boxOnly: true,
+      rpm: 70, damage: 0, magSize: 1, reserve: 10, reloadStyle: 'mag', reloadTime: 2.4, reloadEmptyTime: 2.4,
+      adsFovMult: 0.5, scope: { sway: 0.1 },
+      projectile: { type: 'bolt', speed: 55, gravity: 4, impactDamage: 120, fuse: 1.0, explode: 'bolt' },
+      spread: { hipBase: 1.2, ads: 0.05 },
+      sound: { kind: 'crossbow', body: 900, thump: 120, crack: 0.2, tail: 0.3, pitch: 1 },
+      view: { model: 'krossbow', flash: 0 },
+      upgrade: { name: 'Awful Lawton', color: '#8e6b2a' },
+    }),
+    'Ballistik Knife': gun('pistol', {
+      name: 'Ballistik Knife', boxOnly: true,
+      rpm: 60, damage: 0, magSize: 1, reserve: 5, reloadTime: 2.6, reloadEmptyTime: 2.6,
+      meleeMult: 2,          // knife hits twice as hard while you hold it
+      projectile: { type: 'blade', speed: 42, gravity: 3, impactDamage: 650, headMult: 2 },
+      spread: { hipBase: 0.8, ads: 0.1 },
+      sound: { kind: 'blade', body: 700, thump: 140, crack: 0.2, tail: 0.2, pitch: 1 },
+      view: { model: 'bknife', flash: 0 },
+      upgrade: { name: 'Krauss Refibrillator', color: '#7a1f1f' },
+    }),
   },
 
   startingWeapon: 'M1912',
@@ -428,7 +686,44 @@ export const CONFIG = {
     offerTime: 12,             // how long you have to take the weapon
     closeTime: 1.2,
     // Relative odds. Wall weapons can also come out of the box.
-    weights: { M15: 1, Olympus: 1, MP41: 1, Pyton: 1.3, Komando: 1.1 },
+    // Relative odds for each weapon. Wall weapons can come out of the box too.
+    weights: {
+      M15: 0.6, Olympus: 0.6, MP41: 0.6, Staykout: 0.6, MP6K: 0.6, MPK: 0.6, PM64: 0.6, 'AK-75u': 0.6, M17: 0.6,
+      Pyton: 1.2, CZ76: 0.9, 'CZ76 Dual': 0.8, Spectur: 1.1, Komando: 1.1, FAMOS: 1.1, AWG: 1, Galill: 0.9, G12: 1,
+      'SPAZ-13': 1, HS11: 0.9, HK22: 0.9, RPKK: 0.9, Dragunoff: 0.9, L97A1: 0.8, 'China Pond': 0.9,
+      'Kross-Bow': 0.9, 'Ballistik Knife': 0.6,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Grenades and explosions
+  // ---------------------------------------------------------------------------
+  equipment: {
+    frag: {
+      name: 'Frag Grenades',
+      cost: 250,             // wall buy: fills you to `perPurchase` and raises your refill to it
+      perPurchase: 4,
+      startWith: 2,          // everyone spawns with this many
+      refillEachRound: true, // topped back up at the start of every round
+      fuse: 3.0,             // seconds after pulling the pin (hold G to cook)
+      minCook: 0.15,
+      throwSpeed: 15,
+      throwUp: 3.2,          // extra upward speed
+      gravity: 16,
+      bounce: 0.35,          // energy kept on a bounce
+      friction: 0.6,
+      throwLock: 0.45,       // can't fire this long after a throw
+      explode: 'frag',
+    },
+  },
+
+  // Explosion types: radius (m), damage at the center to zombies, and
+  // selfDamage = damage to the player who caused it if they're at the center.
+  explosions: {
+    frag: { radius: 4.5, damage: 1100, selfDamage: 120, minFrac: 0.15, shake: 1.0 },
+    launcher: { radius: 3.6, damage: 1300, selfDamage: 80, minFrac: 0.2, shake: 0.9 },
+    bolt: { radius: 2.8, damage: 1000, selfDamage: 60, minFrac: 0.2, shake: 0.6 },
+    cookedOff: { radius: 4.5, damage: 1100, selfDamage: 160, minFrac: 0.15, shake: 1.2 },
   },
 
   interaction: {

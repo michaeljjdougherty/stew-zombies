@@ -9,6 +9,9 @@ const R = (a, b) => a + Math.random() * (b - a);
 // Guns
 // ---------------------------------------------------------------------------
 export function gunshot(A, out, t, p = {}) {
+  if (p.kind === 'launcher') return launcherFire(A, out, t, p);
+  if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);
+  if (p.kind === 'blade') return bladeFire(A, out, t, p);
   const pitch = (p.pitch || 1) * R(0.96, 1.04);
   const body = p.body || 2200, thumpF = p.thump || 140;
   const mix = A.gain(1);
@@ -48,8 +51,25 @@ export function gunshot(A, out, t, p = {}) {
     const gb = A.gain(0); A.env(gb, t, 0.002, p.kind === 'shotgun' ? 0.45 : 0.3, p.kind === 'shotgun' ? 1.3 : 0.8);
     nb.connect(lpb); lpb.connect(gb); gb.connect(mix);
   }
-  // machine guns get a mechanical rattle
-  if (p.kind === 'smg' || p.kind === 'ar') {
+  // snipers: a hard supersonic crack and a long rolling tail
+  if (p.kind === 'sniper') {
+    const nc = A.noiseSource('white', t, 0.05);
+    const hpc = A.filter('highpass', 3500, 0.7);
+    const gc = A.gain(0); A.env(gc, t, 0.0003, 0.02, 1.1);
+    nc.connect(hpc); hpc.connect(gc); gc.connect(mix);
+    const nt = A.noiseSource('brown', t + 0.03, 1.6);
+    const lpt = A.filter('lowpass', 500, 0.6);
+    const gt = A.gain(0); A.env(gt, t + 0.03, 0.03, 1.4, 0.7);
+    nt.connect(lpt); lpt.connect(gt); gt.connect(out);
+  }
+  // machine guns get a mechanical rattle (heavier on the LMGs)
+  if (p.kind === 'lmg') {
+    const nb = A.noiseSource('brown', t, 0.3);
+    const lpb = A.filter('lowpass', 420, 0.8);
+    const gb = A.gain(0); A.env(gb, t, 0.002, 0.2, 0.8);
+    nb.connect(lpb); lpb.connect(gb); gb.connect(mix);
+  }
+  if (p.kind === 'smg' || p.kind === 'ar' || p.kind === 'lmg') {
     const nr = A.noiseSource('white', t + 0.025, 0.05);
     const bpr = A.filter('bandpass', 2600, 3);
     const gr = A.gain(0); A.env(gr, t + 0.025, 0.0005, 0.02, 0.28);
@@ -684,4 +704,141 @@ export function boxShut(A, out, t) {
   const o = A.osc('sine', 90, t, 0.3); o.frequency.exponentialRampToValueAtTime(45, t + 0.2);
   const g = A.gain(0); A.env(g, t, 0.002, 0.2, 0.6); o.connect(g); g.connect(out);
   return 0.5;
+}
+
+// --- Phase 3: launchers, crossbow, ballistic knife, actions, grenades -------
+
+function launcherFire(A, out, t) {
+  // hollow "thoomp" plus a hiss
+  const o = A.osc('sine', 120, t, 0.35);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.25);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.3, 1.4);
+  o.connect(g); g.connect(out);
+  const n = A.noiseSource('brown', t, 0.4);
+  const lp = A.filter('lowpass', 700, 0.7);
+  const g2 = A.gain(0); A.env(g2, t, 0.002, 0.25, 0.9);
+  n.connect(lp); lp.connect(g2); g2.connect(out);
+  const h = A.noiseSource('white', t + 0.02, 0.5);
+  const bp = A.filter('bandpass', 2500, 1.2);
+  const g3 = A.gain(0); A.env(g3, t + 0.02, 0.02, 0.4, 0.2);
+  h.connect(bp); bp.connect(g3); g3.connect(out);
+  return 0.8;
+}
+
+function crossbowFire(A, out, t) {
+  // string twang + limb thunk
+  const o = A.osc('sawtooth', 190, t, 0.3);
+  o.frequency.exponentialRampToValueAtTime(110, t + 0.2);
+  const lp = A.filter('lowpass', 1400, 2);
+  const g = A.gain(0); A.env(g, t, 0.001, 0.22, 0.45);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  click(A, out, t, 900, 2, 0.05, 0.8, 140);
+  const n = A.noiseSource('white', t + 0.01, 0.2);
+  const bp = A.filter('bandpass', 4500, 1);
+  const g2 = A.gain(0); A.env(g2, t + 0.01, 0.005, 0.15, 0.15);
+  n.connect(bp); bp.connect(g2); g2.connect(out);
+  return 0.5;
+}
+
+function bladeFire(A, out, t) {
+  // spring release: sharp metallic pop then whistle
+  click(A, out, t, 3000, 3, 0.03, 0.9, 1900);
+  const o = A.osc('sine', 2400, t + 0.01, 0.25);
+  o.frequency.exponentialRampToValueAtTime(1100, t + 0.22);
+  const g = A.gain(0); A.env(g, t + 0.01, 0.01, 0.2, 0.08);
+  o.connect(g); g.connect(out);
+  return 0.4;
+}
+
+export function pumpRack(A, out, t) {
+  click(A, out, t, 1600, 2.5, 0.05, 0.7);
+  click(A, out, t + 0.03, 3400, 4, 0.02, 0.4);
+  click(A, out, t + 0.18, 1300, 2.5, 0.06, 0.85, 220);
+  return 0.4;
+}
+
+export function boltCycle(A, out, t) {
+  click(A, out, t, 2600, 4, 0.03, 0.5);           // lift
+  click(A, out, t + 0.12, 1900, 3, 0.05, 0.6);    // pull back
+  click(A, out, t + 0.14, 5200, 6, 0.02, 0.25);   // case eject tink
+  click(A, out, t + 0.32, 1700, 3, 0.05, 0.7);    // push forward
+  click(A, out, t + 0.42, 2400, 4, 0.03, 0.55);   // lock down
+  return 0.6;
+}
+
+export function beltOpen(A, out, t) {
+  click(A, out, t, 1200, 2, 0.08, 0.7, 180);
+  const n = A.noiseSource('white', t + 0.15, 0.35);
+  const bp = A.filter('bandpass', 2800, 2);
+  const g = A.gain(0); A.env(g, t + 0.15, 0.04, 0.3, 0.25);   // links rattle
+  n.connect(bp); bp.connect(g); g.connect(out);
+  return 0.6;
+}
+
+export function beltClose(A, out, t) {
+  click(A, out, t, 900, 1.6, 0.1, 1.0, 140);
+  return 0.4;
+}
+
+export function grenadePin(A, out, t) {
+  click(A, out, t, 4200, 6, 0.03, 0.5, 2900);
+  click(A, out, t + 0.12, 2600, 5, 0.04, 0.45, 1600); // spoon
+  return 0.3;
+}
+
+export function grenadeThrow(A, out, t) {
+  const n = A.noiseSource('pink', t, 0.3);
+  const bp = A.filter('bandpass', 700, 0.8);
+  bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(1400, t + 0.2);
+  const g = A.gain(0); A.env(g, t, 0.05, 0.2, 0.5);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  return 0.35;
+}
+
+export function grenadeBounce(A, out, t, p = {}) {
+  const k = Math.min(1, (p.speed || 4) / 10);
+  click(A, out, t, 1400, 3, 0.06, 0.35 + k * 0.5, 600);
+  return 0.25;
+}
+
+export function explosion(A, out, t, p = {}) {
+  const big = p.big ?? 1;
+  const mix = A.gain(1);
+  const drive = A.shaper(0.6);
+  mix.connect(drive); drive.connect(out);
+  // initial crack
+  const n1 = A.noiseSource('white', t, 0.12);
+  const g1 = A.gain(0); A.env(g1, t, 0.0005, 0.08, 1.2 * big);
+  n1.connect(g1); g1.connect(mix);
+  // body
+  const n2 = A.noiseSource('brown', t, 2.2);
+  const lp = A.filter('lowpass', 1800, 0.7);
+  lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(120, t + 1.4);
+  const g2 = A.gain(0); A.env(g2, t, 0.003, 1.6, 2.0 * big);
+  n2.connect(lp); lp.connect(g2); g2.connect(mix);
+  // sub thump
+  const o = A.osc('sine', 85, t, 1.0);
+  o.frequency.exponentialRampToValueAtTime(28, t + 0.8);
+  const g3 = A.gain(0); A.env(g3, t, 0.003, 0.8, 2.2 * big);
+  o.connect(g3); g3.connect(mix);
+  // debris patter
+  for (let i = 0; i < 7; i++) click(A, out, t + 0.25 + Math.random() * 0.9, 1500 + Math.random() * 2500, 3, 0.03, 0.08 + Math.random() * 0.1);
+  return 2.4;
+}
+
+export function boltBeep(A, out, t) {
+  const o = A.osc('square', 1850, t, 0.06);
+  const g = A.gain(0); A.env(g, t, 0.002, 0.05, 0.12);
+  o.connect(g); g.connect(out);
+  return 0.08;
+}
+
+export function stickThunk(A, out, t, p = {}) {
+  if (p.flesh) {
+    const n = A.noiseSource('brown', t, 0.15);
+    const lp = A.filter('lowpass', 600, 1);
+    const g = A.gain(0); A.env(g, t, 0.002, 0.1, 0.9);
+    n.connect(lp); lp.connect(g); g.connect(out);
+  } else click(A, out, t, 800, 2, 0.08, 0.9, 260);
+  return 0.3;
 }

@@ -17,6 +17,7 @@ import { createRoundState, updateRounds } from './rounds.js';
 import { createWindows, WindowInteractable } from './interactables/windows.js';
 import { DoorInteractable, WallBuyInteractable, BoxInteractable } from './interactables/buyables.js';
 import { Nav } from './nav.js';
+import { updateProjectiles } from './projectiles.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew' } = {}) {
@@ -31,6 +32,7 @@ export class GameSim {
     this.nextId = 1;
     this.players = [];
     this.zombies = [];
+    this.projectiles = [];
     this.inputs = new Map();
     this.events = [];
     this.power = false;
@@ -206,6 +208,7 @@ export class GameSim {
     }
     for (const it of this.interactables) if (it.update) it.update(this, dt);
     updateZombies(this, dt);
+    updateProjectiles(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');
     }

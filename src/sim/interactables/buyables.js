@@ -62,6 +62,11 @@ export class WallBuyInteractable {
   canUse(sim, p) { return p.alive; }
   owned(p) { return p.loadout.slots.find((s) => s.id === this.wb.weapon) || null; }
   prompt(sim, p) {
+    const eq = sim.cfg.equipment[this.wb.weapon];
+    if (eq) {
+      if (p.grenades >= eq.perPurchase) return { text: `${eq.name} are full`, cost: null };
+      return { text: `Press [F] to buy ${eq.name}`, cost: eq.cost };
+    }
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
     if (s) {
@@ -72,6 +77,16 @@ export class WallBuyInteractable {
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
+    const eq = sim.cfg.equipment[this.wb.weapon];
+    if (eq) {
+      if (p.grenades >= eq.perPurchase) return;
+      if (pay(sim, p, eq.cost)) {
+        p.grenades = eq.perPurchase;
+        p.grenadeMax = Math.max(p.grenadeMax, eq.perPurchase);
+        sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, equipment: true, id: this.wb.id });
+      }
+      return;
+    }
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
     if (s) {

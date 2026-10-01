@@ -175,6 +175,7 @@ export const SCHOOL = {
     { weapon: 'M15', room: 'court', side: 'e', at: -5, y: 1.5 },
     { weapon: 'Olympus', room: 'hall', side: 'e', at: 3, y: 1.45 },
     { weapon: 'MP41', room: 'cafe', side: 'w', at: -31.4, y: 1.5 },
+    { weapon: 'frag', room: 'court', side: 'w', at: 4, y: 1.4 },
   ],
 
   // Mystery box locations. `start` = where it is at the beginning.

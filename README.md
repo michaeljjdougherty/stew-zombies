@@ -4,10 +4,14 @@ An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
 
-**Current phase: 2 — Court, main hallway, cafeteria, front office.** Buyable
-doors and debris, zone-based spawning, zombies that path between rooms, two
-weapon slots, wall weapons (M15, Olympus, MP41) and the Mystery Box in the
-main hallway (it can also give the Pyton and Komando ahead of Phase 3).
+**Current phase: 3 — Every weapon, grenades and explosives.** All 28 guns
+from the spec, each with its own model, recoil, reload and sound: pump and
+bolt actions, shell-by-shell shotgun reloads, belt-fed LMGs, scoped snipers,
+dual-wield pistols and shotguns, burst fire, a grenade launcher, an explosive
+crossbow and a ballistic knife. Frag grenades (cook them, but not too long),
+explosions that blow zombies apart or leave them crawling. New guns come from
+the Mystery Box and the wall weapons already in the map (Phase 4 puts the
+rest of the wall weapons in their rooms).
 
 ## Run it
 
@@ -25,10 +29,11 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | Key | Action |
 | --- | --- |
 | W A S D | Move |
-| Mouse | Look · left click fires · right click aims down sights |
+| Mouse | Look · left click fires · right click aims down sights (or fires the left gun when dual wielding) |
 | Shift (hold) | Sprint (can't fire; short delay after you stop) |
 | Space · C | Jump · crouch |
-| R | Reload (sprinting cancels it) |
+| R | Reload (sprinting cancels it; firing cancels a shotgun's shell reload) |
+| G | Frag grenade: hold to cook, release to throw. You start with 2 and are topped back up every round; the wall buy (250) raises that to 4 |
 | V or E | Knife (lunges at nearby zombies) |
 | F | Buy doors, debris, wall weapons and the Mystery Box |
 | F (hold) | Rebuild a window barrier, one plank at a time |
@@ -53,7 +58,9 @@ src/main.js           wires everything together; fixed-step game loop
 src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   sim.js              GameSim: state, step(dt), events, hitscan, snapshot()
   player.js           movement, sprint/stamina, health, interaction
-  weapons.js          firing, spread, recoil, reloads, ADS, knife + lunge
+  weapons.js          firing, spread, recoil, every reload style, ADS, scope sway,
+                      dual wield, burst, grenades, knife + lunge
+  projectiles.js      thrown/fired projectiles (frags, launcher rounds, bolts, blades), explosions
   zombies.js          spawning, windows, climbing, chasing, attacks, damage
   rounds.js           round counts, spawn pacing, intermissions
   physics.js          character vs box collision, steps, gravity
@@ -66,7 +73,7 @@ src/audio/            Web Audio engine, synthesized sounds, event → sound dire
 src/input/            keyboard/mouse → per-tick input commands
 src/ui/               HUD (tally marks, points, ammo), menus, settings
 src/net/              notes for online co-op (Phase 9)
-tests/                headless tests: node tests/sim_headless.mjs, node tests/phase2_headless.mjs
+tests/                headless tests: node tests/sim_headless.mjs, phase2_headless.mjs, phase3_headless.mjs
 ```
 
 The simulation only takes **input commands** and produces **state + events**.
@@ -85,7 +92,7 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 
 1. ✅ Movement, camera, controls, M1912, knife, zombies, rounds, points, windows (basketball court)
 2. ✅ Main hallway, cafeteria, front office, doors, first wall weapons, mystery box
-3. Full weapon list, recoil/reload/sound per gun, grenades
+3. ✅ Full weapon list, recoil/reload/sound per gun, grenades
 4. Rest of the map, second path, boiler room, auditorium, **the Quad courtyard**, electric traps, power switch (see [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md))
 5. Perk machines, Mad Dog Machine, last stand and revive
 6. Power-ups and Cheddar Rounds

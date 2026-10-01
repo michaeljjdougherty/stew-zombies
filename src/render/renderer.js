@@ -11,6 +11,7 @@ import { Viewmodel } from './viewmodel.js';
 import { CameraRig } from './cameraRig.js';
 import { PostFX } from './postfx.js';
 import { BoxView } from './boxView.js';
+import { ProjectileViews } from './projectileView.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -34,6 +35,7 @@ export class GameRenderer {
     this.box = new BoxView(this.scene, sim, cfg, this.map);
     this.effects = new Effects(this.scene, sim, cfg);
     this.zombies = new ZombieViews(this.scene, this.effects, cfg);
+    this.projectiles = new ProjectileViews(this.scene, this.effects);
     this.viewmodel = new Viewmodel(cfg);
     this.viewmodel.initEnvironment(r);
     this.rig = new CameraRig(this.camera, cfg);
@@ -57,6 +59,7 @@ export class GameRenderer {
     this.effects.sim = sim;
     this.effects.clear();
     this.zombies.clear();
+    this.projectiles.clear();
     this.prevPlayer = null;
     this.damage = 0;
     this.deathT = 0;
@@ -84,6 +87,7 @@ export class GameRenderer {
   // Called before each simulation step, to interpolate between steps.
   beginStep(sim) {
     this.zombies.beginStep(sim);
+    this.projectiles.beginStep(sim);
     const p = sim.playerById(this.localId);
     if (p) {
       if (!this.prevPlayer) this.prevPlayer = { x: 0, y: 0, z: 0 };
@@ -99,11 +103,12 @@ export class GameRenderer {
       this.box.onEvent(e);
       this.rig.onEvent(e, id);
       this.viewmodel.onEvent(e, id);
+      this.projectiles.onEvent(e);
       switch (e.type) {
         case 'shot': {
           let from;
           if (e.playerId === id) {
-            from = this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone());
+            from = this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), e.side);
             this.effects.muzzle(from);
           } else from = e.origin;
           for (const h of e.impacts) {
@@ -111,9 +116,19 @@ export class GameRenderer {
             else this.effects.zombieHit(h.point, e.dir, h.part);
           }
           const end = e.impacts.length ? e.impacts[e.impacts.length - 1].point : { x: from.x + e.dir.x * 40, y: from.y + e.dir.y * 40, z: from.z + e.dir.z * 40 };
-          if (Math.random() < 0.5) this.effects.tracer(from, end);
+          if (!e.projectile && Math.random() < 0.5) this.effects.tracer(from, end);
           break;
         }
+        case 'explosion': {
+          this.effects.explosion(e.pos, e.radius);
+          const p = this.sim.playerById(id);
+          if (p) this.rig.explosion(e, p.pos);
+          break;
+        }
+        case 'projectileStick':
+          if (e.zombieId != null) this.effects.zombieHit(e.pos, e.dir, 'torso');
+          else this.effects.puff(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), { color: 0x8a8478, size: 0.12, grow: 2, life: 0.6, alpha: 0.4 });
+          break;
         case 'zombieHit':
           if (e.kind === 'knife') this.effects.zombieHit(e.point, e.dir, 'torso');
           break;
@@ -193,17 +208,19 @@ export class GameRenderer {
     this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: p ? p.kills : 0 });
     this.box.update(dt, time);
     this.zombies.update(sim, dt, alpha, time);
+    this.projectiles.update(sim, dt, alpha);
     this.effects.update(dt);
 
     if (p) {
       const lvl = this.envLevel(pos);
       this.viewmodel.envLevel = lvl;
       this.viewmodel.update(dt, p, def, { dx: look.dx, dy: look.dy }, bob);
-      this.viewmodel.root.visible = p.alive && mode === 'play';
+      this.viewmodel.root.visible = p.alive && mode === 'play' && !this.viewmodel.scoped;
     } else this.viewmodel.root.visible = false;
 
     this.damage = Math.max(0, this.damage - dt * 1.6);
     const lowHealth = p && p.alive ? Math.max(0, 1 - p.health / (p.maxHealth * 0.55)) : (p ? 1 : 0);
     this.post.render(dt, { damage: this.damage, lowHealth });
+    this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }
 }
