@@ -40,6 +40,23 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | 1 · 2 · mouse wheel | Switch between your two weapons |
 | Esc | Pause / settings (sensitivity, aiming sensitivity, FOV, volume…) |
 
+## Firing Range
+
+Pick **Firing Range** on the title screen to try every weapon without rounds.
+You're in the JROTC range under the school: target dummies stand at 5 to 50 m
+and get back up a moment after they die, and you can't die. Press **B** to open
+the weapons & options panel:
+
+- Click any of the 28 weapons to take it (fills your empty slot, or replaces the one in your hands).
+- Zombie strength sets the dummies' health to any round's (1–50).
+- Infinite ammo, moving targets, send a horde at that round's strength, clear zombies.
+
+The top-left readout shows the gun's stats, last hit, damage per second, time
+to kill, accuracy and kills, and damage numbers float off every hit (gold for
+headshots, orange for explosions, red for the killing blow). The Mystery Box
+and a frag wall buy are in the armory behind the firing line; you have 50,000
+points to spend there.
+
 ## Tweaking balance and feel
 
 Every number that affects feel or balance is in **`src/config.js`**: door and
@@ -63,15 +80,16 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
   projectiles.js      thrown/fired projectiles (frags, launcher rounds, bolts, blades), explosions
   zombies.js          spawning, windows, climbing, chasing, attacks, damage
   rounds.js           round counts, spawn pacing, intermissions
+  range.js            firing range mode: target dummies, hordes, infinite ammo
   physics.js          character vs box collision, steps, gravity
   nav.js              region/portal pathing between rooms (closed doors block)
   interactables/      windows, doors & debris, wall weapons, mystery box
 
-src/map/              map data (school.js: rooms, windows, doors, props, nav) + builder
+src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies, viewmodel, camera, effects, post
 src/audio/            Web Audio engine, synthesized sounds, event → sound director
 src/input/            keyboard/mouse → per-tick input commands
-src/ui/               HUD (tally marks, points, ammo), menus, settings
+src/ui/               HUD (tally marks, points, ammo), menus, settings, firing range panel
 src/net/              notes for online co-op (Phase 9)
 tests/                headless tests: node tests/sim_headless.mjs, phase2_headless.mjs, phase3_headless.mjs
 ```

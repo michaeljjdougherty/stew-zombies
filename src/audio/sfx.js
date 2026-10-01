@@ -307,7 +307,7 @@ export function footstep(A, out, t, p = {}) {
   const int = p.intensity || 1;
   const surface = p.surface || 'gym';
   const carpet = surface === 'carpet';
-  const tile = surface === 'tile' || surface === 'tile_big';
+  const tile = surface === 'tile' || surface === 'tile_big' || surface === 'concrete';
   // heel thud
   const n = A.noiseSource('brown', t, 0.12);
   const lp = A.filter('lowpass', surface === 'gym' ? 520 : carpet ? 300 : 900, 0.8);

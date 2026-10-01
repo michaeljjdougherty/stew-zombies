@@ -8,11 +8,12 @@ const $ = (id) => document.getElementById(id);
 export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
-    this.h = handlers; // { play, resume, restart, quit, settingsChanged }
+    this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
     this.screens = ['title', 'pause', 'settings', 'gameover'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
+    $('btn-range').addEventListener('click', () => this.h.range());
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
     $('btn-resume').addEventListener('click', () => this.h.resume());
     $('btn-pause-settings').addEventListener('click', () => this.openSettings('pause'));

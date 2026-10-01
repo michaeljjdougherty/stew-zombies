@@ -732,6 +732,17 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // Firing range mode (main menu)
+  // ---------------------------------------------------------------------------
+  range: {
+    startRound: 1,           // dummy and horde strength (zombie health for this round)
+    maxRound: 50,
+    respawnTime: 1.5,        // seconds before a dead target dummy stands back up
+    hordeSize: 10,
+    startPoints: 50000,      // for the box and wall buys; topped back up when low
+  },
+
+  // ---------------------------------------------------------------------------
   // Visuals
   // ---------------------------------------------------------------------------
   graphics: {

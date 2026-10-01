@@ -25,28 +25,30 @@ export class SoundDirector {
     if (!A.ready || this.ambientStarted) return;
     this.ambientStarted = true;
     const ctx = A.ctx;
+    this.ambNodes = [];
+    const keep = (n) => { this.ambNodes.push(n); return n; };
     // wind whistling in through each broken window
     for (const w of this.sim.windows) {
       const out = A.output({ pos: { x: w.exterior.x, y: 1.6, z: w.exterior.z }, bus: 'ambient', reverb: 0.25, ref: 3, rolloff: 1.1 });
-      const src = ctx.createBufferSource(); src.buffer = A.noise.brown; src.loop = true; src.start(0, Math.random() * 2);
+      const src = keep(ctx.createBufferSource()); src.buffer = A.noise.brown; src.loop = true; src.start(0, Math.random() * 2);
       const bp = A.filter('bandpass', 450, 0.6);
-      const lfo = ctx.createOscillator(); lfo.frequency.value = R(0.05, 0.1); lfo.start();
+      const lfo = keep(ctx.createOscillator()); lfo.frequency.value = R(0.05, 0.1); lfo.start();
       const lfoG = A.gain(260); lfo.connect(lfoG); lfoG.connect(bp.frequency);
       const g = A.gain(0.09);
-      const lfo2 = ctx.createOscillator(); lfo2.frequency.value = R(0.08, 0.15); lfo2.start();
+      const lfo2 = keep(ctx.createOscillator()); lfo2.frequency.value = R(0.08, 0.15); lfo2.start();
       const lfo2G = A.gain(0.06); lfo2.connect(lfo2G); lfo2G.connect(g.gain);
       src.connect(bp); bp.connect(g); g.connect(out.input);
       // occasional whistle
-      const wh = ctx.createBufferSource(); wh.buffer = A.noise.white; wh.loop = true; wh.start(0, Math.random() * 2);
+      const wh = keep(ctx.createBufferSource()); wh.buffer = A.noise.white; wh.loop = true; wh.start(0, Math.random() * 2);
       const whf = A.filter('bandpass', R(900, 1400), 18);
       const whg = A.gain(0.0);
-      const wlfo = ctx.createOscillator(); wlfo.frequency.value = R(0.03, 0.07); wlfo.start();
+      const wlfo = keep(ctx.createOscillator()); wlfo.frequency.value = R(0.03, 0.07); wlfo.start();
       const wlg = A.gain(0.05); wlfo.connect(wlg); wlg.connect(whg.gain);
       wh.connect(whf); whf.connect(whg); whg.connect(out.input);
     }
     // faint distant machinery rumble (it will grow once the power is on)
     const rumbleOut = A.output({ bus: 'ambient', reverb: 0.4 });
-    const r = ctx.createBufferSource(); r.buffer = A.noise.brown; r.loop = true; r.start();
+    const r = keep(ctx.createBufferSource()); r.buffer = A.noise.brown; r.loop = true; r.start();
     const rl = A.filter('lowpass', 110, 0.7);
     this.rumble = A.gain(0.12);
     r.connect(rl); rl.connect(this.rumble); this.rumble.connect(rumbleOut.input);
@@ -56,19 +58,28 @@ export class SoundDirector {
     const flickery = mapView.fixtures.filter((f) => f.data.lit && f.data.flicker > 0.3).slice(0, this.cfg.audio.maxBuzzers);
     for (const f of flickery) {
       const out = A.output({ pos: { x: f.data.x, y: f.data.y, z: f.data.z }, bus: 'ambient', reverb: 0.15, ref: 1.5, rolloff: 1.6 });
-      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 120; o1.start();
-      const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.value = 240.5; o2.start();
+      const o1 = keep(ctx.createOscillator()); o1.type = 'sawtooth'; o1.frequency.value = 120; o1.start();
+      const o2 = keep(ctx.createOscillator()); o2.type = 'square'; o2.frequency.value = 240.5; o2.start();
       const bp = A.filter('bandpass', 180, 1.5);
       const g = A.gain(0);
       const og2 = A.gain(0.3);
       o1.connect(bp); o2.connect(og2); og2.connect(bp); bp.connect(g); g.connect(out.input);
       // crackle for flicker
-      const cr = ctx.createBufferSource(); cr.buffer = A.noise.white; cr.loop = true; cr.start(0, Math.random() * 2);
+      const cr = keep(ctx.createBufferSource()); cr.buffer = A.noise.white; cr.loop = true; cr.start(0, Math.random() * 2);
       const crf = A.filter('highpass', 3000, 0.7);
       const crg = A.gain(0);
       cr.connect(crf); crf.connect(crg); crg.connect(out.input);
       this.buzzers.push({ f, g, crg, lastLevel: f.level });
     }
+  }
+
+  // Silence the current map's ambience (before switching maps).
+  stopAmbience() {
+    for (const n of this.ambNodes || []) { try { n.stop(); n.disconnect(); } catch (e) { /* already stopped */ } }
+    this.ambNodes = [];
+    this.buzzers = null;
+    this.rumble = null;
+    this.ambientStarted = false;
   }
 
   // --- event handling --------------------------------------------------------

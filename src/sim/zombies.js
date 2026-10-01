@@ -21,27 +21,44 @@ export function pickZombieType(sim, round) {
 export function spawnZombie(sim, win, round) {
   const c = sim.cfg.zombie;
   const type = pickZombieType(sim, round);
-  const range = type === 'sprinter' ? c.sprintSpeed : type === 'runner' ? c.runSpeed : c.walkSpeed;
   const n = win.normal;
   const out = sim.rng.range(c.outsideSpawnDist[0], c.outsideSpawnDist[1]);
   const lateral = sim.rng.range(-3.5, 3.5);
   // tangent along the wall
   const tx = -n.z, tz = n.x;
-  const hp = zombieHealthForRound(round, c);
-  const z = {
+  const z = makeZombie(sim, {
+    type,
+    pos: { x: win.exterior.x - n.x * out + tx * lateral, y: 0, z: win.exterior.z - n.z * out + tz * lateral },
+    yaw: Math.atan2(n.x, n.z),
+    health: zombieHealthForRound(round, c),
+    state: 'approach',
+    windowId: win.id,
+  });
+  win.queue.push(z.id);
+  sim.zombies.push(z);
+  sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: win.id });
+  return z;
+}
+
+// Build a zombie record. Used by window spawns and by the firing range
+// (standing target dummies and hordes that start inside).
+export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state = 'chase', windowId = null }) {
+  const c = sim.cfg.zombie;
+  const range = type === 'sprinter' ? c.sprintSpeed : type === 'runner' ? c.runSpeed : c.walkSpeed;
+  return {
     id: sim.nextId++,
     type,
     speed: sim.rng.range(range[0], range[1]),
-    pos: { x: win.exterior.x - n.x * out + tx * lateral, y: 0, z: win.exterior.z - n.z * out + tz * lateral },
+    pos: { x: pos.x, y: pos.y || 0, z: pos.z },
     vel: { x: 0, y: 0, z: 0 },
-    yaw: Math.atan2(n.x, n.z),
+    yaw,
     radius: c.radius,
     height: c.height,
     stepHeight: c.stepHeight,
     grounded: true,
-    health: hp, maxHealth: hp,
-    state: 'approach', stateTime: 0,
-    windowId: win.id,
+    health, maxHealth: health,
+    state, stateTime: 0,
+    windowId,
     attack: { phase: 'none', t: 0 },
     limbs: { armL: true, armR: true, head: true },
     limbDamage: { armL: 0, armR: 0 },
@@ -52,11 +69,24 @@ export function spawnZombie(sim, win, round) {
     scale: sim.rng.range(0.93, 1.07),
     seed: Math.floor(sim.rng.next() * 1e9),
     moveSpeed: 0,
+    region: sim.nav ? sim.nav.regionAt(pos) : null,
   };
-  win.queue.push(z.id);
-  sim.zombies.push(z);
-  sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: win.id });
-  return z;
+}
+
+// Firing range target: stands on its spot (or strafes) and faces the player.
+function updateDummy(sim, z, dt) {
+  const c = sim.cfg.zombie;
+  const home = z.home;
+  const moving = sim.range && sim.range.moving;
+  let tx = home.x;
+  if (moving) tx = home.x + Math.sin(sim.time * 0.8 + (z.seed % 100)) * (home.strafe || 1.6);
+  const dx = tx - z.pos.x;
+  const step = Math.max(-1.6 * dt, Math.min(1.6 * dt, dx));
+  z.pos.x += step;
+  z.pos.z = home.z;
+  z.moveSpeed = Math.abs(step) / Math.max(dt, 1e-6);
+  const p = nearestPlayer(sim, z.pos);
+  if (p) faceToward(z, p.pos.x - z.pos.x, p.pos.z - z.pos.z, c.turnRate * 0.5, dt);
 }
 
 // Hitboxes in world space. Model faces +Z at yaw 0; its left side is +X.
@@ -113,6 +143,7 @@ export function updateZombies(sim, dt) {
   for (const z of sim.zombies) {
     z.stateTime += dt;
     if (z.stun > 0) z.stun -= dt;
+    if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
     const win = sim.windowById(z.windowId);
     const bx = z.pos.x, bz = z.pos.z;
 
@@ -353,12 +384,12 @@ export function damageZombie(sim, z, amount, info) {
   const player = sim.playerById(info.playerId);
   z.health -= amount;
   z.stun = c.hitStun;
-  sim.emit('zombieHit', { id: z.id, part: info.part, kind: info.kind, point: info.point, dir: info.dir, damage: amount });
+  sim.emit('zombieHit', { id: z.id, playerId: info.playerId, part: info.part, kind: info.kind, point: info.point, dir: info.dir, damage: amount });
 
   // blasts tear limbs off; a big one that doesn't kill can take the legs (crawler)
   if (info.kind === 'explosive' && z.health > 0) {
     const big = amount >= z.maxHealth * c.crawlerDamageFrac;
-    if (big && !z.crawler && z.state === 'chase' && sim.rng.chance(c.crawlerChance)) {
+    if (big && !z.crawler && (z.state === 'chase' || z.state === 'dummy') && sim.rng.chance(c.crawlerChance)) {
       z.crawler = true;
       z.height = 0.7;
       z.speed = Math.min(z.speed, sim.rng.range(c.crawlSpeed[0], c.crawlSpeed[1]));

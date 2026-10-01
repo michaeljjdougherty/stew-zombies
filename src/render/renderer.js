@@ -24,18 +24,8 @@ export class GameRenderer {
     r.outputColorSpace = THREE.SRGBColorSpace;
     setAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
 
-    this.scene = new THREE.Scene();
-    const fog = new THREE.Color(cfg.graphics.fogColor);
-    this.scene.background = fog;
-    this.scene.fog = new THREE.FogExp2(fog, cfg.graphics.fogDensity);
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.05, 220);
-    this.scene.add(this.camera);
-
-    this.map = new MapView(this.scene, sim, cfg);
-    this.box = new BoxView(this.scene, sim, cfg, this.map);
-    this.effects = new Effects(this.scene, sim, cfg);
-    this.zombies = new ZombieViews(this.scene, this.effects, cfg);
-    this.projectiles = new ProjectileViews(this.scene, this.effects);
+    this.buildWorld(sim);
     this.viewmodel = new Viewmodel(cfg);
     this.viewmodel.initEnvironment(r);
     this.rig = new CameraRig(this.camera, cfg);
@@ -50,7 +40,41 @@ export class GameRenderer {
     window.addEventListener('resize', () => this.resize());
   }
 
-  setSim(sim) {
+  // Everything that depends on the map lives in its own scene. Each map's
+  // world is built once and kept, so switching between the school and the
+  // firing range is instant after the first visit.
+  buildWorld(sim) {
+    const cfg = this.cfg;
+    if (!this.worlds) this.worlds = new Map();
+    const footstep = this.zombies ? this.zombies.onFootstep : null;
+    let w = this.worlds.get(sim.mapData.id);
+    const fresh = !w;
+    if (fresh) {
+      const scene = new THREE.Scene();
+      const fog = new THREE.Color(cfg.graphics.fogColor);
+      scene.background = fog;
+      scene.fog = new THREE.FogExp2(fog, cfg.graphics.fogDensity);
+      const map = new MapView(scene, sim, cfg);
+      const effects = new Effects(scene, sim, cfg);
+      w = {
+        scene, map, effects,
+        box: new BoxView(scene, sim, cfg, map),
+        zombies: new ZombieViews(scene, effects, cfg),
+        projectiles: new ProjectileViews(scene, effects),
+      };
+      this.worlds.set(sim.mapData.id, w);
+    }
+    w.scene.add(this.camera);
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles });
+    this.zombies.onFootstep = footstep;
+    this.mapData = sim.mapData;
+    if (this.post) this.post.mainPass.scene = w.scene;
+    if (!fresh) this.resetWorld(sim);
+    this.sim = sim;
+  }
+
+  // Point the current world at a new game on the same map and clear leftovers.
+  resetWorld(sim) {
     this.sim = sim;
     this.map.sim = sim;
     for (const [id, v] of this.map.windowViews) v.win = sim.windowById(id);
@@ -60,6 +84,11 @@ export class GameRenderer {
     this.effects.clear();
     this.zombies.clear();
     this.projectiles.clear();
+  }
+
+  setSim(sim) {
+    if (sim.mapData !== this.mapData) this.buildWorld(sim);
+    else this.resetWorld(sim);
     this.prevPlayer = null;
     this.damage = 0;
     this.deathT = 0;
@@ -224,3 +253,4 @@ export class GameRenderer {
     this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }
 }
+

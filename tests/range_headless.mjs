@@ -1,0 +1,33 @@
+import { CONFIG } from '../src/config.js';
+import { RANGE } from '../src/map/range.js';
+import { GameSim } from '../src/sim/sim.js';
+import { spawnHorde, setRangeRound, clearZombies, rangeGive } from '../src/sim/range.js';
+const sim = new GameSim({ map: RANGE, cfg: CONFIG, mode: 'range', seed: 5 });
+const p = sim.addPlayer('p1', 'Stew');
+const step = (s, cmd = {}) => { for (let i = 0; i < Math.round(s * 60); i++) { sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: p.pitch, ...cmd }); sim.step(1 / 60); sim.drainEvents(); } };
+step(2);
+console.log('dummies', sim.zombies.length, sim.zombies.map(z => z.state).join(','), 'points', p.points);
+// aim at dummy at lane 1 (-3,-10)
+const z = sim.zombies.find(z => Math.abs(z.home.x + 3) < 0.1 && z.home.z === -10);
+const dx = z.pos.x - p.pos.x, dz = z.pos.z - p.pos.z;
+p.yaw = Math.atan2(-dx, -dz);
+const eye = 1.64, dist = Math.hypot(dx, dz);
+p.pitch = Math.atan2(1.2 - eye, dist);
+rangeGive(sim, p, 'Olympus');
+console.log('slots', p.loadout.slots.map(s => s.id), 'current', p.loadout.current);
+step(1);
+let evs = [];
+for (let i = 0; i < 30; i++) { sim.setInput('p1', { yaw: p.yaw, pitch: p.pitch, fire: i % 2 === 0, firePressed: i % 2 === 0 }); sim.step(1/60); evs.push(...sim.drainEvents()); }
+console.log('hits', evs.filter(e => e.type === 'zombieHit').map(e => Math.round(e.damage) + e.part + ':' + e.playerId).join(' '), 'killed', evs.filter(e => e.type === 'zombieKilled').length);
+step(3);
+console.log('after respawn', sim.zombies.length, 'reserve', p.loadout.slots[p.loadout.current].reserve);
+setRangeRound(sim, 15);
+console.log('hp r15', sim.zombies[0].maxHealth);
+spawnHorde(sim);
+step(8);
+console.log('horde zombies', sim.zombies.filter(z => z.state === 'chase').length, 'player health', p.health, 'alive', p.alive);
+clearZombies(sim); step(0.1);
+console.log('after clear', sim.zombies.length);
+step(2);
+console.log('respawned', sim.zombies.length);
+sim.range.moving = true; const x0 = sim.zombies[0].pos.x; step(1); console.log('moving dx', (sim.zombies[0].pos.x - x0).toFixed(2), 'moveSpeed', sim.zombies[0].moveSpeed.toFixed(2));

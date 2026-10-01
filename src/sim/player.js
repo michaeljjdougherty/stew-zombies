@@ -199,6 +199,11 @@ function updateInteraction(sim, p, cmd, dt) {
 
 export function damagePlayer(sim, p, amount, source) {
   if (!p.alive) return;
+  if (sim.godMode) {
+    // firing range: you still feel the hit, but take no damage
+    sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
+    return;
+  }
   p.health -= amount;
   p.lastDamageTime = sim.time;
   sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });

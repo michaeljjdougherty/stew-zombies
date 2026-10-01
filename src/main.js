@@ -7,6 +7,9 @@
 // =============================================================================
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
+import { RANGE } from './map/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive } from './sim/range.js';
+import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
@@ -20,7 +23,7 @@ const LOCAL_ID = 'p1';
 const canvas = document.getElementById('game');
 const settings = loadSettings();
 
-let sim = makeSim();
+let sim = makeSim('zombies');
 let player = sim.playerById(LOCAL_ID);
 
 const renderer = new GameRenderer(canvas, sim, CONFIG, settings);
@@ -41,14 +44,26 @@ const hud = new HUD(CONFIG);
 hud.localId = LOCAL_ID;
 
 renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
+
+// Firing range: weapons & options panel, stats, damage numbers
+const rangeUI = new RangeUI(CONFIG, {
+  give: (id) => rangeGive(sim, player, id),
+  setRound: (n) => setRangeRound(sim, n),
+  setAmmo: (on) => { sim.range.infiniteAmmo = on; },
+  setMoving: (on) => { sim.range.moving = on; },
+  horde: () => spawnHorde(sim),
+  clear: () => clearZombies(sim),
+  close: () => closeRangePanel(),
+});
+rangeUI.localId = LOCAL_ID;
 renderer.rig.onFootstep = (sprint, speed) => sound.playerFootstep(sprint, speed);
 
 // 'title' | 'play' | 'paused' | 'dying' | 'over'
 let mode = 'title';
 let dyingT = 0;
 
-function makeSim() {
-  const s = new GameSim({ map: SCHOOL, cfg: CONFIG, teamName: 'Stew' });
+function makeSim(gameMode) {
+  const s = new GameSim({ map: gameMode === 'range' ? RANGE : SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
   s.addPlayer(LOCAL_ID, 'Stew');
   return s;
 }
@@ -61,10 +76,11 @@ function applySettings(s) {
 }
 
 const menus = new Menus(settings, {
-  play: () => startPlaying(),
+  play: () => { if (sim.mode !== 'zombies') restart('zombies'); startPlaying(); },
+  range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
   resume: () => startPlaying(),
   restart: () => { restart(); startPlaying(); },
-  quit: () => { restart(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); },
+  quit: () => { restart('zombies'); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); },
   settingsChanged: (s) => applySettings(s),
 });
 applySettings(settings);
@@ -79,8 +95,24 @@ function startPlaying() {
   input.requestLock();
   menus.hideAll();
   hud.show(true);
+  rangeUI.setActive(sim.mode === 'range');
   mode = 'play';
   document.getElementById('lockhint').hidden = true;
+}
+
+function openRangePanel() {
+  if (mode !== 'play' || sim.mode !== 'range') return;
+  mode = 'panel';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  rangeUI.open(sim, player);
+}
+
+function closeRangePanel() {
+  if (mode !== 'panel') return;
+  rangeUI.close();
+  startPlaying();
 }
 
 function pause() {
@@ -91,10 +123,18 @@ function pause() {
   menus.show('pause');
 }
 
-function restart() {
-  sim = makeSim();
+function restart(gameMode = sim.mode) {
+  const mapChanged = gameMode !== sim.mode;
+  sim = makeSim(gameMode);
   player = sim.playerById(LOCAL_ID);
   renderer.setSim(sim);
+  if (mapChanged) {
+    renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
+    sound.stopAmbience();
+    if (audio.ready) sound.startAmbience(renderer.map);
+  }
+  rangeUI.reset();
+  rangeUI.setActive(false);
   sound.sim = sim;
   sound.groanTimers.clear();
   hud.reset();
@@ -111,6 +151,11 @@ input.onLockChange = (locked, failed) => {
   if (!locked && mode === 'play') pause();
 };
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyB' && !e.repeat) {
+    if (mode === 'play') openRangePanel();
+    else if (mode === 'panel') closeRangePanel();
+  }
+  if (e.code === 'Escape' && mode === 'panel') { closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
 });
@@ -135,6 +180,7 @@ function tick(cmd) {
   for (const e of events) {
     sound.onEvent(e);
     hud.onEvent(e);
+    rangeUI.onEvent(e);
     if (e.type === 'playerDown' && e.playerId === LOCAL_ID) { mode = 'dying'; dyingT = 0; }
   }
 }
@@ -145,7 +191,7 @@ function frame(now) {
   last = now;
   time += fdt;
 
-  if (mode === 'play' || mode === 'dying') {
+  if (mode === 'play' || mode === 'dying' || mode === 'panel') {
     acc += fdt;
     let steps = 0;
     while (acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
@@ -168,20 +214,21 @@ function frame(now) {
     }
   }
 
-  const alpha = mode === 'play' || mode === 'dying' ? acc / DT : 1;
+  const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = mode === 'paused' || mode === 'over' ? 0 : fdt;
   renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : 'play');
   audio.updateListener(renderer.camera);
-  if (mode === 'play' || mode === 'dying') sound.update(fdt, player);
+  if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
+  rangeUI.update(fdt, sim, player, renderer.camera);
   input.endFrame();
 }
 requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI,
   get mode() { return mode; },
   debug: {
     // Run the simulation forward without rendering (for testing).

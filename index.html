@@ -69,8 +69,48 @@
   #scope .dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #c0201a; box-shadow: 0 0 4px #ff3020; }
   #fps { position: absolute; right: 12px; top: 10px; font: 12px var(--mono); color: var(--muted); }
 
+
+  /* ---------------- Firing range ---------------- */
+  body.range-mode #tally { display: none; }
+  #rangehud { position: absolute; left: max(16px, 2.2vw); top: max(12px, 2vh); font-size: 13px; line-height: 1.6; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 6px #000; max-width: min(760px, 70vw); }
+  #rangehud b { font-family: var(--display); font-weight: 400; font-size: 16px; letter-spacing: .5px; color: var(--brass); font-variant-numeric: tabular-nums; }
+  #rangehud span { color: var(--muted); }
+  #rhint { margin-top: 4px; color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+  #rhint kbd { font: 11px var(--mono); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; }
+  #dmgnums { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .dmg { position: absolute; left: 0; top: 0; font-family: var(--display); font-size: 20px; color: #f2ecdc; text-shadow: 0 2px 0 #000, 0 0 6px rgba(0,0,0,.9); white-space: nowrap; will-change: transform; }
+  .dmg.head { color: #f0c84a; font-size: 24px; }
+  .dmg.blast { color: #ff9a40; }
+  .dmg.kill { color: var(--blood-hi); font-size: 26px; }
+  #rangepanel { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(6,5,4,.72); z-index: 5; }
+  #rangepanel[hidden] { display: none; }
+  .rp { width: min(1100px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); padding: 20px 22px; display: grid; gap: 16px; }
+  .rp-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+  .rp-head h2 { font-size: 34px; }
+  #rp-slots { font: 12px var(--mono); color: var(--muted); }
+  #rp-weapons { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 16px; align-items: start; }
+  .rp-group { display: grid; gap: 4px; }
+  .rp-group h3 { margin: 0 0 2px; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .rp-group button { all: unset; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 9px; border: 1px solid var(--line); background: rgba(255,255,255,.02); }
+  .rp-group button:hover, .rp-group button:focus-visible { border-color: var(--blood-hi); background: rgba(216,51,31,.08); }
+  .rp-group button.held { border-color: rgba(217,180,90,.5); }
+  .rp-group button.current { border-color: var(--brass); background: rgba(217,180,90,.1); }
+  .rp-group .n { font-family: var(--display); font-size: 18px; letter-spacing: .5px; color: var(--ink); }
+  .rp-group .w { font-size: 11px; color: var(--muted); align-self: center; text-transform: uppercase; letter-spacing: 1px; }
+  .rp-group .s { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+  .rp-opts { display: flex; flex-wrap: wrap; gap: 12px 26px; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; }
+  .rp-round { display: flex; align-items: center; gap: 6px; }
+  .rp-round b { font-family: var(--display); font-weight: 400; font-size: 24px; min-width: 2ch; text-align: center; color: var(--brass); }
+  #rp-hp { font-size: 12px; color: var(--muted); margin-left: 4px; }
+  .rp-opts label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  .rp-opts input { accent-color: var(--blood-hi); }
+  .rp button.sm { all: unset; cursor: pointer; font: 13px var(--body); font-weight: 700; padding: 6px 12px; border: 1px solid var(--line); color: var(--ink); text-transform: uppercase; letter-spacing: 1px; }
+  .rp button.sm:hover, .rp button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
+  .rp button.sm.primary { background: var(--blood); border-color: var(--blood); }
+  .rp-foot { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+
   /* ---------------- Menus ---------------- */
-  .screen { position: fixed; inset: 0; display: grid; align-content: center; padding-inline: max(16px, 7vw); padding-block: 32px;
+  .screen { position: fixed; inset: 0; display: grid; align-content: safe center; padding-inline: max(16px, 7vw); padding-block: 32px;
     background: linear-gradient(90deg, rgba(6,5,4,.94) 0%, rgba(6,5,4,.78) 38%, rgba(6,5,4,.25) 75%, rgba(6,5,4,.1) 100%); overflow-y: auto; }
   .screen[hidden] { display: none; }
   .stack { display: grid; gap: 22px; max-width: 460px; }
@@ -86,7 +126,7 @@
   .menu button:hover, .menu button:focus-visible { color: #fff; }
   .menu button:hover::after, .menu button:focus-visible::after { width: 100%; }
   .menu button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
-  body:not([data-ready="1"]) #btn-play { opacity: .4; pointer-events: none; }
+  body:not([data-ready="1"]) #btn-play, body:not([data-ready="1"]) #btn-range { opacity: .4; pointer-events: none; }
   body:not([data-ready="1"]) #btn-play::before { content: "Loading… "; }
   .keys { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; color: var(--muted); margin: 0; }
   .keys dt { font-family: var(--mono); color: var(--ink); font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px; justify-self: start; }
@@ -140,7 +180,40 @@
   <div id="hint"></div>
   <div id="prompt"></div>
   <div id="fps"></div>
+  <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><kbd>B</kbd> weapons &amp; options</div></div>
 </div>
+<div id="dmgnums"></div>
+
+<section id="rangepanel" hidden>
+  <div class="rp">
+    <div class="rp-head">
+      <h2>Firing Range</h2>
+      <span id="rp-slots"></span>
+    </div>
+    <div id="rp-weapons"></div>
+    <div class="rp-opts">
+      <div class="rp-round">Zombie strength: round
+        <button id="rp-round-dec5" class="sm" type="button" aria-label="Five rounds lower">−5</button>
+        <button id="rp-round-dec" class="sm" type="button" aria-label="One round lower">−</button>
+        <b id="rp-round">1</b>
+        <button id="rp-round-inc" class="sm" type="button" aria-label="One round higher">+</button>
+        <button id="rp-round-inc5" class="sm" type="button" aria-label="Five rounds higher">+5</button>
+        <span id="rp-hp"></span>
+      </div>
+      <label><input id="rp-ammo" type="checkbox"> Infinite ammo</label>
+      <label><input id="rp-moving" type="checkbox"> Moving targets</label>
+    </div>
+    <div class="rp-foot">
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <button id="rp-horde" class="sm primary" type="button">Send a horde</button>
+        <button id="rp-clear" class="sm" type="button">Clear zombies</button>
+        <button id="rp-reset" class="sm" type="button">Reset stats</button>
+      </div>
+      <span>Picking a weapon fills your empty slot, or replaces the one in your hands. You can't die here.</span>
+      <button id="rp-close" class="sm" type="button">Back to the range [B]</button>
+    </div>
+  </div>
+</section>
 
 <section id="title" class="screen">
   <div class="stack">
@@ -148,6 +221,7 @@
     <h1 class="logo">Stew Zombies<small>Last Bell High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
+      <button id="btn-range" type="button">Firing Range</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>
     <dl class="keys">

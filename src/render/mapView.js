@@ -48,6 +48,7 @@ export class MapView {
       gymFloor: std({ map: T.gymFloorTexture(), roughness: 0.38 }),
       tile: std({ map: T.linoleumTexture({ tile: 0.3 }), roughness: 0.45 }),
       tile_big: std({ map: T.linoleumTexture({ tile: 0.45, a: '#8e8c7a', b: '#6f5a48', seed: 9 }), roughness: 0.4 }),
+      concrete: std({ map: T.linoleumTexture({ tile: 1.5, a: '#6e6b62', b: '#67645b', seed: 21 }), roughness: 0.85 }),
       carpet: std({ map: T.carpetTexture(), roughness: 1 }),
       trussCeiling: std({ map: T.ceilingTexture(), roughness: 1 }),
       drop: std({ map: T.dropCeilingTexture(), roughness: 1 }),
@@ -72,12 +73,13 @@ export class MapView {
       principal: std({ map: T.roomWallTexture({ height: 3.2, upper: '#6f6452', lower: '#3e2a1c', lowerH: 1.0, blocks: false, panel: true, seed: 6 }), roughness: 0.9 }),
       cafe: std({ map: T.roomWallTexture({ height: 5, upper: '#8d8a78', lower: '#6f8a7c', lowerH: 1.5, tiles: true, seed: 7 }), roughness: 0.7 }),
       exterior: std({ map: T.brickTexture({ height: 9 }), roughness: 1 }),
+      range: std({ map: T.roomWallTexture({ height: 3.6, upper: '#6b6a5c', lower: '#3c4636', lowerH: 1.15, stripe: '#9a7a22', seed: 11 }), roughness: 0.92 }),
     };
     this.plankMats = [0, 1, 2, 3].map((i) => new THREE.MeshStandardMaterial({ map: T.plankTexture(i), roughness: 0.9 }));
   }
 
   floorMat(type) {
-    return { gym: this.mats.gymFloor, tile: this.mats.tile, tile_big: this.mats.tile_big, carpet: this.mats.carpet }[type] || this.mats.tile;
+    return { gym: this.mats.gymFloor, tile: this.mats.tile, tile_big: this.mats.tile_big, carpet: this.mats.carpet, concrete: this.mats.concrete }[type] || this.mats.tile;
   }
 
   roomAtPoint(x, z) {
@@ -100,7 +102,7 @@ export class MapView {
     this.group.add(floor);
 
     // floor grime / litter overlay for non-court rooms
-    if (room.id !== 'court') {
+    if (room.id !== 'court' && room.litter !== false) {
       const ov = new THREE.Mesh(
         new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2),
         new THREE.MeshStandardMaterial({ map: litterTexture(w, d, room.id.length * 17), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, roughness: 0.8 }),
@@ -343,10 +345,44 @@ export class MapView {
           this.group.add(can);
           break;
         }
+        case 'divider':
+          add(M.metal, b);
+          break;
+        case 'berm':
+          add(M.ground, b, { skip: new Set([3]) });
+          break;
         default: break;
       }
     }
     for (const [mat, batch] of batches) this.group.add(new THREE.Mesh(batch.build(), mat));
+    this.buildDistanceMarks();
+  }
+
+  // Firing range: painted floor lines and wall signs every so many metres.
+  buildDistanceMarks() {
+    const marks = this.map.distanceMarks;
+    if (!marks || !marks.length) return;
+    const room = this.map.rooms[0];
+    const [x0, , x1] = room.rect;
+    const lineMat = new THREE.MeshStandardMaterial({ color: '#b8962e', roughness: 0.8, transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 });
+    for (const m of [0, ...marks]) {
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, m === 0 ? 0.12 : 0.07).rotateX(-Math.PI / 2), lineMat);
+      line.position.set((x0 + x1) / 2, 0.006, -m);
+      this.group.add(line);
+      if (m === 0) continue;
+      const [c, g] = T.makeCanvas(256, 128);
+      g.fillStyle = '#1d1c18'; g.fillRect(0, 0, 256, 128);
+      g.strokeStyle = '#b8962e'; g.lineWidth = 6; g.strokeRect(6, 6, 244, 116);
+      g.fillStyle = '#e6dcc0'; g.font = '700 70px Impact, "Arial Narrow Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(`${m} M`, 128, 68);
+      const mat = new THREE.MeshStandardMaterial({ map: T.toTexture(c, { repeat: false }), roughness: 0.7, emissive: 0xffffff, emissiveMap: T.toTexture(c, { repeat: false }), emissiveIntensity: 0.08 });
+      for (const [x, ry] of [[x0 + 0.01, Math.PI / 2], [x1 - 0.01, -Math.PI / 2]]) {
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.5), mat);
+        sign.position.set(x, 2.5, -m);
+        sign.rotation.y = ry;
+        this.group.add(sign);
+      }
+    }
   }
 
   sneezeGuard(b) {
@@ -600,7 +636,7 @@ export class MapView {
       wh.position.set(x, 0.5, z); bus.add(wh);
     }
     bus.position.set(31, 0, -6); bus.rotation.set(0, 0.35, 0.05);
-    this.group.add(bus);
+    if (this.map.id === 'lastbell') this.group.add(bus);
   }
 
   nearBuilding(x, z, margin) {

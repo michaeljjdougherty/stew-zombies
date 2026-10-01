@@ -122,21 +122,21 @@ export class Effects {
     this.beamSources = [];
     for (let i = 0; i < m; i++) {
       let x, y, z;
-      if (i % 2 === 0 && lit.length) {
+      if ((i % 2 === 0 || !wins.length) && lit.length) {
         const f = lit[i % lit.length];
         const t = Math.random();
         const r = (0.3 + t * f.spread) * Math.sqrt(Math.random());
         const a = Math.random() * Math.PI * 2;
         x = f.x + Math.cos(a) * r; z = f.z + Math.sin(a) * r; y = f.y - 0.3 - t * f.drop;
         this.beamSources.push({ kind: 'f', f, cx: f.x, cz: f.z });
-      } else {
+      } else if (wins.length) {
         const w = wins[i % wins.length];
         const t = Math.random();
         x = w.center.x + w.normal.x * t * 4 + (Math.random() - 0.5) * (0.7 + t);
         z = w.center.z + w.normal.z * t * 4 + (Math.random() - 0.5) * (0.7 + t) * 0.6;
         y = 1.8 - t * 1.8 + (Math.random() - 0.5) * 0.8;
         this.beamSources.push({ kind: 'w' });
-      }
+      } else { x = 0; y = 1; z = 0; this.beamSources.push({ kind: 'w' }); }
       bp[i * 3] = x; bp[i * 3 + 1] = Math.max(0.05, y); bp[i * 3 + 2] = z;
     }
     this.beamHome = bp.slice();

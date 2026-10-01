@@ -18,10 +18,13 @@ import { createWindows, WindowInteractable } from './interactables/windows.js';
 import { DoorInteractable, WallBuyInteractable, BoxInteractable } from './interactables/buyables.js';
 import { Nav } from './nav.js';
 import { updateProjectiles } from './projectiles.js';
+import { setupRange, updateRange } from './range.js';
 
 export class GameSim {
-  constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew' } = {}) {
+  constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
     this.cfg = cfg;
+    this.mode = mode;          // 'zombies' | 'range'
+    this.godMode = false;
     this.mapData = map;
     this.world = buildMap(map, cfg);
     this.rng = new RNG(seed);
@@ -49,6 +52,7 @@ export class GameSim {
     ];
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);
+    if (mode === 'range') setupRange(this);
   }
 
   // --- players --------------------------------------------------------------
@@ -58,6 +62,7 @@ export class GameSim {
     p.region = this.nav.regionAt(p.pos);
     this.players.push(p);
     this.inputs.set(id, emptyCommand());
+    if (this.mode === 'range') p.points = this.cfg.range.startPoints;
     this.emit('playerJoin', { playerId: id, name });
     return p;
   }
@@ -212,7 +217,8 @@ export class GameSim {
     if (this.zombies.some((z) => z.state === 'dead')) {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');
     }
-    updateRounds(this, dt);
+    if (this.mode === 'range') updateRange(this, dt);
+    else updateRounds(this, dt);
 
     if (this.players.length && this.players.every((p) => !p.alive)) {
       this.gameOver = true;
