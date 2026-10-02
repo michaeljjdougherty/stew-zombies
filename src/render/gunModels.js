@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as T from './textures.js';
 import { limb, rng, taperedTube } from './human.js';
+import { buildHand } from './hands.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // --- gun surface textures ----------------------------------------------------
@@ -1093,34 +1094,78 @@ function forearm(m, from, dir) {
   return mesh;
 }
 
+// Poses for the first-person hands (the rigged hands from hands.js). Each one
+// places the hand in the gun's grip frame: `fwd` is where the fingers point
+// before they curl, `palm` the way the palm faces, `wrist` the wrist position,
+// `mirror` makes it a left hand. Curls wrap the fingers round the grip.
+export const FP_HANDS = {
+  // right hand round a pistol grip (grip axis = Y, barrel = -Z)
+  grip: { wrist: [0.036, -0.016, 0.07], fwd: [0, 0.32, -1], palm: [-1, 0, 0], roll: 0, mirror: false,
+    pose: { curl: [0.55, 1.2, 1.22, 1.25], spread: [0.05, 0, -0.02, -0.06], thumb: { flex: 0.35, curl: 0.15, out: -0.05 } } },
+  // left hand cupping the right one on a pistol
+  cup: { wrist: [-0.044, -0.03, 0.058], fwd: [0.1, 0.3, -1], palm: [1, 0, 0], roll: 0, mirror: true,
+    pose: { curl: [1.0, 1.05, 1.1, 1.15], spread: [0, 0, 0, -0.04], thumb: { flex: 0.1, curl: 0.1, out: 0.1 } } },
+  // left hand under a handguard, fingers up the right side, thumb up the left
+  under: { wrist: [-0.072, -0.002, 0.0], fwd: [1, 0.1, 0], palm: [0, 1, 0], roll: 0, mirror: true,
+    pose: { curl: [0.95, 1.0, 1.05, 1.1], spread: [0.04, 0, -0.03, -0.06], thumb: { flex: 0.45, curl: 0.35, out: -0.25 } } },
+};
+const HT = () => (typeof window !== 'undefined' && window.__HANDTUNE) || {};
+
+let nailMatShared = null;
+function fpHand(m, kind) {
+  const P = { ...FP_HANDS[kind], ...(HT()[kind] || {}) };
+  if (!nailMatShared) nailMatShared = new THREE.MeshStandardMaterial({ color: '#e2b9a4', roughness: 0.35 });
+  const hand = buildHand(m.skin, nailMatShared, { size: 0.96 });
+  hand.set(P.pose);
+  // hand space: fingers along -Y, palm +Z. Build the rotation from fwd/palm.
+  const y = new THREE.Vector3(...P.fwd).normalize().negate();
+  const z = new THREE.Vector3(...P.palm);
+  z.addScaledVector(y, -z.dot(y)).normalize();
+  const x = new THREE.Vector3().crossVectors(y, z).normalize();
+  const g = new THREE.Group();
+  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  if (P.roll) g.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), P.roll));
+  g.position.set(...P.wrist);
+  const inner = new THREE.Group();
+  if (P.mirror) inner.scale.x = -1;
+  inner.add(hand.group);
+  g.add(inner);
+  g.userData.hand = hand;
+  g.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+  return { group: g, wrist: new THREE.Vector3(...P.wrist), fwd: new THREE.Vector3(...P.fwd).normalize() };
+}
+
 function addHands(spec, m, rightOnly = false) {
   const g = spec.group;
-  const H = hands();
   // right hand round the grip
   const rh = new THREE.Group();
   rh.position.set(...spec.right.pos); rh.rotation.set(...spec.right.rot);
   g.add(rh);
-  rh.add(new THREE.Mesh(H.right, m.skin));
-  rh.add(forearm(m, [0.03, -0.022, 0.042], [0.32, -0.5, 1]));
+  const R = fpHand(m, 'grip');
+  rh.add(R.group);
+  rh.add(forearm(m, R.wrist.toArray(), [0.32, -0.5, 1]));
   if (rightOnly) return;
   // support hand
   const lh = new THREE.Group();
   lh.position.set(...spec.left.pos);
   g.add(lh);
   if (spec.left.kind === 'under') {
-    lh.add(new THREE.Mesh(H.under, m.skin));
-    const fa = forearm(m, [-0.004, -0.008, 0.03], [-0.6, -0.42, 1]);
+    const L = fpHand(m, 'under');
+    lh.add(L.group);
+    const fdir = [-0.6, -0.42, 1];
+    const fa = forearm(m, L.wrist.toArray(), fdir);
     lh.add(fa);
     // a cheap wristwatch on the left wrist
     const watch = new THREE.Group();
-    watch.position.copy(fa.position).addScaledVector(new THREE.Vector3(-0.6, -0.42, 1).normalize(), 0.035);
+    watch.position.copy(fa.position).addScaledVector(new THREE.Vector3(...fdir).normalize(), 0.03);
     watch.quaternion.copy(fa.quaternion);
-    watch.add(new THREE.Mesh(H.watch.band, watchMats().band));
-    const face = new THREE.Mesh(H.watch.face, watchMats().face); face.rotation.y = -0.6; watch.add(face);
+    watch.add(new THREE.Mesh(hands().watch.band, watchMats().band));
+    const face = new THREE.Mesh(hands().watch.face, watchMats().face); face.rotation.y = -0.6; watch.add(face);
     lh.add(watch);
   } else {
-    lh.add(new THREE.Mesh(H.cup, m.skin));
-    lh.add(forearm(m, [-0.018, -0.02, 0.03], [-0.5, -0.6, 1]));
+    const L = fpHand(m, 'cup');
+    lh.add(L.group);
+    lh.add(forearm(m, L.wrist.toArray(), [-0.5, -0.6, 1]));
   }
   spec.leftHand = lh;
   spec.leftHome = lh.position.clone();

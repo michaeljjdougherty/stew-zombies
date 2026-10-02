@@ -72,8 +72,16 @@ function palmGeometry(size) {
   hypo.scale(0.013 * s, 0.03 * s, 0.009 * s);
   hypo.translate(0.026 * s, -0.045 * s, 0.008 * s);
   hypo.deleteAttribute('uv');
-  const g = mergeGeometries([palm.index ? palm.toNonIndexed() : palm, thenar.toNonIndexed(), hypo.toNonIndexed()]);
-  g.computeVertexNormals();
+  // knuckles: the heads of the hand bones show as bumps along the back
+  const knuckles = [[-0.0285, -0.088, 0.0105], [-0.0093, -0.092, 0.011], [0.0098, -0.09, 0.0102], [0.0278, -0.083, 0.009]].map(([x, y, r]) => {
+    const k = new THREE.SphereGeometry(1, 10, 8);
+    k.scale(r * 0.85 * s, r * 0.8 * s, r * 0.7 * s);
+    k.translate(x * s, (y + 0.007) * s, -0.0055 * s);
+    k.deleteAttribute('uv');
+    return k.toNonIndexed();
+  });
+  // keep each part's smooth normals (recomputing on the merged, unindexed mesh would facet it)
+  const g = mergeGeometries([palm.index ? palm.toNonIndexed() : palm, thenar.toNonIndexed(), hypo.toNonIndexed(), ...knuckles]);
   palmCache.set(key, g);
   return g;
 }

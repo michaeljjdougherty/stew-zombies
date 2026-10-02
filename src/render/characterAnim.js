@@ -278,7 +278,7 @@ const GESTURES = {
     const arm = k.armR;
     const target = V(-0.1, arm.shoulderY - 0.16 + 0.015 * Math.sin(g * 3), 0.27);
     const sol = solveArm(arm, target, V(-0.9, -1, -0.3));
-    applyArm(arm, sol, orientHand(arm, sol.q, sol.bend, V(0.25, -0.05, 1), V(-1, 0, -0.1)), w);
+    applyArm(arm, sol, orientHand(arm, sol.q, sol.bend, V(0.25, -0.05, 1), V(1, 0, 0.1)), w);
     A.handR = mixPoses(HAND_POSES.relaxed, HAND_POSES.thumbsUp, sm(0.2, 0.7, w));
     k.head.rotation.z += 0.06 * w;
     A.lookAway = w;

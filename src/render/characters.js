@@ -641,7 +641,7 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1 } = {
     const wrist = new THREE.Group(); wrist.position.y = -0.26; elbow.add(wrist);
     const handGroup = new THREE.Group(); wrist.add(handGroup);
     handGroup.rotation.y = side * -Math.PI / 2 * 0.9;
-    handGroup.scale.set(side * Lk, Lk, Lk);
+    handGroup.scale.set(-side * Lk, Lk, Lk); // mirrored so each arm gets the right hand (thumb forward)
     const hand = buildHand(mats.skin, nailMat, { size: 1 });
     handGroup.add(hand.group);
     // jewellery on the wrist (just above the hand)
