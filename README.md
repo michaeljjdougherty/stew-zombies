@@ -24,6 +24,14 @@ hear (models, textures, sounds) is generated in code. The only library is
 - **ADS fixed:** aim, recoil and scope sway are interpolated between 60 Hz
   ticks, gun sway follows smoothed mouse speed, aim sensitivity blends
   smoothly, and the camera no longer rolls while aiming.
+- **The crew:** every member of Stew (Kearns, Ryan, Rocco, Pit, Chops, Brian,
+  Regs, Zach, P) and Erik Madsen as stylized models built in code from one
+  data table (`CHARACTERS` in `src/render/characters.js`): body proportions
+  and height, sculpted face, hairstyle, outfit layers (open jackets, suits,
+  prints) and accessories (chains, watches, bracelets, earrings), each with
+  an idle (P throws his sideways peace sign, Rocco bounces, Erik rubs his
+  hands together). Main menu → Characters → *See the whole crew* opens the
+  lineup: drag to turn them, pick a name to fly over, Face to zoom in.
 - **Characters:** a character select screen (main menu → Characters) with
   the model on a turntable under a spotlight (drag to spin). First playable
   character: **Kearns**, with four T-shirt colours. Built in

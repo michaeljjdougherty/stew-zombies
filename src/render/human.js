@@ -47,19 +47,49 @@ export const HEAD_DEFAULTS = {
   beard: 0,           // adds a little volume where the beard is
   gaunt: 0,           // zombies: hollow cheeks and temples
   mouthOpen: 0,       // zombies: sag the mouth
+  forehead: 0,        // makes the cranium taller (P's famous forehead)
+  smile: 0,           // lifts both mouth corners, puffs the cheeks
+  grin: 0,            // opens the smile to show teeth (painted)
+  browRaise: 0,       // raises one eyebrow (+ = his left)
+  browRaiseBoth: 0,   // raises both eyebrows
+  browThick: 1,
+  hairlineRaise: 0,   // pushes the front hairline up
+  hairSquare: 0,      // straight, squared-off hairline (buzz cuts)
+  recede: 0,          // recession at the temples
+  beardLine: 0,       // moves the beard's cheek line (negative = tighter)
 };
+
+// How far the mouth line lifts at angle th (smirk on one side, smile on both).
+export function mouthLift(th, p) {
+  let l = 0;
+  if (p.smirk) l += p.smirk * 0.06 * smooth(0, 0.24, th * Math.sign(p.smirk));
+  if (p.smile) l += p.smile * 0.05 * smooth(0.03, 0.24, Math.abs(th));
+  return l;
+}
+// Half-height of the open mouth (in h units) for a toothy grin.
+export function mouthOpening(th, p) {
+  if (!p.grin) return 0;
+  const w = 0.19 + p.smile * 0.04 + p.grin * 0.03;
+  const k = 1 - (th / w) ** 2;
+  return k > 0 ? p.grin * 0.055 * Math.sqrt(k) : 0;
+}
 
 // Where the scalp hair starts, by angle round the head (piecewise linear):
 // a widow's-peak-free front, slightly receding temples, down in front of the
 // ears to the sideburns, over the ears, and down the back to the nape.
 const HAIRLINE = [[0, 0.5], [0.3, 0.52], [0.6, 0.56], [0.95, 0.38], [1.2, 0.24], [1.36, 0.06], [1.5, 0.2], [1.75, 0.22], [2.0, -0.1], [2.5, -0.42], [Math.PI, -0.5]];
-export function hairline(th) {
+export function hairline(th, p = null) {
   const a = Math.abs(th);
+  let h = HAIRLINE[HAIRLINE.length - 1][1];
   for (let i = 1; i < HAIRLINE.length; i++) {
     const [a1, h1] = HAIRLINE[i];
-    if (a <= a1) { const [a0, h0] = HAIRLINE[i - 1]; return h0 + (h1 - h0) * ((a - a0) / (a1 - a0)); }
+    if (a <= a1) { const [a0, h0] = HAIRLINE[i - 1]; h = h0 + (h1 - h0) * ((a - a0) / (a1 - a0)); break; }
   }
-  return HAIRLINE[HAIRLINE.length - 1][1];
+  if (!p) return h;
+  if (p.hairSquare && a < 1.08) h = h * (1 - p.hairSquare) + 0.47 * p.hairSquare;
+  if (p.hairlineRaise) h += p.hairlineRaise * (1 - smooth(0.85, 1.3, a));
+  if (p.recede) h += p.recede * gauss(a, 0, 0.75, 0, 0.22, 1);
+  return h;
 }
 
 // Masks in (theta, h) space, shared by sculpt and paint.
@@ -67,7 +97,7 @@ export const masks = {
   beard(th, h, p) {
     const a = Math.abs(th);
     // upper edge climbs from the mouth up the cheek to a sideburn by the ear
-    const edge = -0.235 - 0.07 * smooth(0.22, 0.55, a) + 0.2 * smooth(0.6, 1.15, a) + 0.26 * smooth(1.12, 1.36, a);
+    const edge = -0.235 - 0.07 * smooth(0.22, 0.55, a) + (0.2 + (p.beardLine || 0)) * smooth(0.6, 1.15, a) + 0.26 * smooth(1.12, 1.36, a);
     const inside = smooth(edge + 0.03, edge - 0.05, h);
     const behind = 1 - smooth(1.4, 1.55, a);          // stops at the ear
     const neck = smooth(-1.25, -0.95, h);             // fades under the chin
@@ -81,12 +111,17 @@ export const masks = {
   },
   brows(th, h, p) {
     const a = Math.abs(th);
-    const y0 = p.browHeight - 0.035 + (a - 0.3) * 0.05;
-    return smooth(0.06, 0.12, a) * (1 - smooth(0.42, 0.5, a)) * gauss(0, h, 0, y0, 1, 0.035);
+    let y0 = p.browHeight - 0.035 + (a - 0.3) * 0.05;
+    // raised brow arches up in the middle
+    const raise = (p.browRaiseBoth || 0) + ((p.browRaise || 0) * Math.sign(th) > 0 ? Math.abs(p.browRaise) : 0);
+    if (raise) y0 += raise * (0.06 + 0.05 * Math.sin(smooth(0.06, 0.5, a) * Math.PI));
+    const t = p.browThick || 1;
+    return smooth(0.06, 0.12, a) * (1 - smooth(0.42 + 0.03 * (t - 1), 0.5 + 0.03 * (t - 1), a)) * gauss(0, h, 0, y0, 1, 0.035 * t);
   },
   lips(th, h, p) {
-    const lift = (p.smirk || 0) * 0.06 * smooth(0, 0.22, th * Math.sign(p.smirk || 1));
-    return (1 - smooth(0.17, 0.25, Math.abs(th))) * (gauss(0, h, 0, -0.35 + lift, 1, 0.03) + gauss(0, h, 0, -0.415 + lift * 0.6, 1, 0.035));
+    const lift = mouthLift(th, p), open = mouthOpening(th, p);
+    const w = 0.21 + (p.smile || 0) * 0.04 + (p.grin || 0) * 0.03;
+    return (1 - smooth(w - 0.04, w + 0.04, Math.abs(th))) * (gauss(0, h, 0, -0.35 + lift, 1, 0.03) + gauss(0, h, 0, -0.415 + lift * 0.6 - open * 1.6, 1, 0.035));
   },
 };
 
@@ -112,6 +147,18 @@ function sculpt(d, p) {
   Z += p.chin * gauss(th, h, 0, -0.8, 0.3, 0.14);
   // under the chin: pull the bottom back toward the neck
   Y += 0.012 * smooth(-0.7, -1, h) * front;
+  // a taller cranium, bulging forward a little at the brow
+  if (p.forehead) {
+    // stretch everything above the brow upward (keeps the dome round)
+    const yb = (p.browHeight + 0.02) * p.height;
+    if (Y > yb) {
+      const k = smooth(p.browHeight + 0.02, p.browHeight + 0.3, h);
+      Y = yb + (Y - yb) * (1 + p.forehead * k);
+      X *= 1 + p.forehead * 0.06 * k;
+      Z *= 1 + p.forehead * 0.05 * k;
+    }
+    Z += p.forehead * 0.01 * front * gauss(0, h, 0, 0.55, 1, 0.25);
+  }
 
   // --- features (pushed out along the face)
   let n = 0;
@@ -131,8 +178,10 @@ function sculpt(d, p) {
   n -= p.gaunt * 0.008 * gauss(Math.abs(th), h, 1.15, 0.35, 0.2, 0.2);     // sunken temples
   n -= p.gaunt * 0.006 * gauss(Math.abs(th), h, p.eyeSpread, p.eyeHeight, 0.2, 0.1);
   // mouth: lips, the line between them, corners; a smirk lifts one side
-  const lift = (p.smirk || 0) * 0.06 * smooth(0, 0.24, th * Math.sign(p.smirk || 1));
+  const lift = mouthLift(th, p);
   const my = -0.375 + lift - p.mouthOpen * 0.05;
+  if (p.smile) n += p.smile * 0.005 * gauss(Math.abs(th), h, 0.42, -0.2, 0.18, 0.12);      // apple cheeks
+  if (p.grin) n -= 0.007 * gauss(th, h, 0, my - mouthOpening(th, p) * 0.7, 0.2, 0.03 + p.grin * 0.03) * Math.min(1, p.grin);
   n += 0.007 * p.lips * gauss(th, h, 0, my + 0.035, 0.22, 0.035);
   n += 0.008 * p.lips * gauss(th, h, 0, my - 0.045, 0.2, 0.04);
   n -= 0.004 * gauss(th, h, 0, my, 0.25, 0.013 + p.mouthOpen * 0.03);
@@ -211,6 +260,13 @@ export const SKIN = {
   light: { base: [222, 182, 156], shade: [176, 120, 98], blush: [214, 120, 104] },
   tan: { base: [196, 150, 112], shade: [150, 100, 72], blush: [196, 108, 86] },
   dark: { base: [128, 88, 62], shade: [90, 58, 40], blush: [140, 70, 52] },
+  warm: { base: [226, 180, 150], shade: [178, 122, 96], blush: [220, 122, 104] },
+  rosy: { base: [232, 182, 160], shade: [182, 124, 104], blush: [226, 112, 104] },
+  olive: { base: [208, 168, 128], shade: [156, 116, 84], blush: [204, 124, 96] },
+  oliveLight: { base: [216, 176, 138], shade: [164, 122, 90], blush: [208, 128, 102] },
+  tanWarm: { base: [212, 164, 126], shade: [160, 112, 82], blush: [206, 116, 92] },
+  flushed: { base: [230, 178, 154], shade: [180, 120, 100], blush: [228, 108, 100] },
+  fairPink: { base: [240, 196, 180], shade: [192, 138, 124], blush: [236, 120, 118] },
   zombie: { base: [146, 150, 124], shade: [92, 96, 74], blush: [120, 74, 66] },
   zombieGrey: { base: [158, 152, 140], shade: [100, 94, 86], blush: [110, 70, 64] },
 };
@@ -250,7 +306,7 @@ export function headTexture(params = {}, look = {}) {
       const shadeK = 0.18 * smooth(0.4, 1.6, a) + 0.25 * gauss(a, h, p.eyeSpread, p.eyeHeight, 0.2, 0.1) + 0.12 * smooth(-0.6, -1, h);
       r += (L.skin.shade[0] - r) * shadeK; gg += (L.skin.shade[1] - gg) * shadeK; b += (L.skin.shade[2] - b) * shadeK;
       // warmth on the cheeks, nose and ears
-      const blush = 0.35 * gauss(a, h, 0.55, -0.1, 0.25, 0.15) + 0.4 * gauss(th, h, 0, -0.08, 0.1, 0.08) + 0.3 * gauss(a, h, 1.57, 0.05, 0.15, 0.15);
+      const blush = (0.35 * gauss(a, h, 0.55, -0.1, 0.25, 0.15) + 0.4 * gauss(th, h, 0, -0.08, 0.1, 0.08) + 0.3 * gauss(a, h, 1.57, 0.05, 0.15, 0.15)) * (L.blush ?? 1);
       r += (L.skin.blush[0] - r) * blush * 0.5; gg += (L.skin.blush[1] - gg) * blush * 0.5; b += (L.skin.blush[2] - b) * blush * 0.5;
       // pores and blotches
       const v = (nz - 0.5) * 18 + (fine - 0.5) * 8;
@@ -259,15 +315,36 @@ export function headTexture(params = {}, look = {}) {
       const lip = masks.lips(th, h, p);
       r += (L.lipColor[0] - r) * lip * 0.75; gg += (L.lipColor[1] - gg) * lip * 0.75; b += (L.lipColor[2] - b) * lip * 0.75;
       // the line where the lips meet
-      const lift = (p.smirk || 0) * 0.06 * smooth(0, 0.24, th * Math.sign(p.smirk || 1));
-      const mline = gauss(th, h, 0, -0.377 + lift - p.mouthOpen * 0.05, 0.21, 0.008 + p.mouthOpen * 0.03);
+      const lift = mouthLift(th, p);
+      const my = -0.377 + lift - p.mouthOpen * 0.05;
+      const mw = 0.21 + (p.smile || 0) * 0.04 + (p.grin || 0) * 0.03;
+      const mline = gauss(th, 0, 0, 0, mw, 1) * gauss(0, h, 0, my, 1, 0.008 + p.mouthOpen * 0.03);
       r *= 1 - mline * 0.6; gg *= 1 - mline * 0.65; b *= 1 - mline * 0.65;
+      // toothy grin: upper teeth, then the dark of the mouth
+      const op = mouthOpening(th, p);
+      if (op > 0 && h < my + 0.006 && h > my - op * 2) {
+        const depth = (my + 0.006 - h) / (op * 2 + 0.006);
+        if (depth < 0.55) {
+          const gap = Math.abs(((th + 0.5) * 34) % 1 - 0.5) < 0.06 ? 0.7 : 1;
+          const tk = (1 - smooth(0.35, 0.55, depth)) * gap;
+          r = 236 * tk + 70 * (1 - tk); gg = 230 * tk + 22 * (1 - tk); b = 214 * tk + 22 * (1 - tk);
+          const shade = smooth(0.12, 0.3, Math.abs(th)); r *= 1 - shade * 0.35; gg *= 1 - shade * 0.35; b *= 1 - shade * 0.3;
+        } else { r = 58; gg = 16; b = 18; }
+      }
       // stubble shadow + beard
       const bm = masks.beard(th, h, p);
-      const stub = L.stubble * smooth(0, 1, bm * 3);
-      if (stub > 0) { r *= 1 - stub * 0.35; gg *= 1 - stub * 0.3; b *= 1 - stub * 0.25; }
+      const stub = L.stubble * smooth(0, 1, bm * 1.6) * (0.85 + 0.3 * nz);
+      if (stub > 0) {
+        if (L.stubbleColor) { const sc = L.stubbleColor, k = stub * 0.45 * (fine > 0.4 ? 1 : 0.4); r += (sc[0] - r) * k; gg += (sc[1] - gg) * k; b += (sc[2] - b) * k; }
+        else {
+          // speckled shadow of short dark hairs
+          const hc = L.hair, k = stub * (fine > 0.45 ? 0.55 : 0.3);
+          r += (hc[0] * 1.6 + 20 - r) * k; gg += (hc[1] * 1.6 + 20 - gg) * k; b += (hc[2] * 1.6 + 24 - b) * k;
+        }
+      }
       if (L.beard > 0) {
-        const m = Math.min(1, (bm + masks.mustache(th, h) * 0.95) * L.beard);
+        const chin = (L.chinPatch || 0) * gauss(th, h, 0, -0.62, 0.12, 0.14);
+        const m = Math.min(1, (bm + masks.mustache(th, h) * 0.95) * L.beard + chin);
         const strand = (fine > 0.22 ? 1 : 0.7) * (0.85 + 0.3 * nz);
         const k = Math.min(1, m * strand * 1.3);
         r += (L.hair[0] - r) * k; gg += (L.hair[1] - gg) * k; b += (L.hair[2] - b) * k;
@@ -276,11 +353,12 @@ export function headTexture(params = {}, look = {}) {
       if (L.brows > 0) {
         const bw = masks.brows(th, h, p) * L.brows;
         const k = Math.min(1, bw * (fine > 0.25 ? 1.2 : 0.6));
-        r += (L.hair[0] - r) * k; gg += (L.hair[1] - gg) * k; b += (L.hair[2] - b) * k;
+        const bc = L.browColor || L.hair;
+        r += (bc[0] - r) * k; gg += (bc[1] - gg) * k; b += (bc[2] - b) * k;
       }
       // scalp hair (short sides and back; the top is geometry)
       if (L.sideHair > 0) {
-        const hl = hairline(th) + (nz - 0.5) * 0.03;
+        const hl = hairline(th, p) + (nz - 0.5) * 0.03;
         const k = smooth(hl - 0.015, hl + 0.035, h) * L.sideHair;
         const strand = 0.75 + 0.25 * (fine > 0.5 ? 1 : 0) + (nz - 0.5) * 0.3;
         if (k > 0) {
@@ -356,9 +434,8 @@ export function irisTexture(color = '#5a3e22', { zombie = false } = {}) {
 // HAIR: a cap (painted on the head) plus clumps for volume on top.
 // style: 'quiff' = short sides, longer textured top swept up and to one side
 // =============================================================================
-export function taperedTube(points, r0, r1, radial = 5) {
+export function taperedTube(points, r0, r1, radial = 5, segs = 7, round = false) {
   const curve = new THREE.CatmullRomCurve3(points);
-  const segs = 7;
   const frames = curve.computeFrenetFrames(segs, false);
   const pos = [], idx = [], uv = [];
   for (let i = 0; i <= segs; i++) {
@@ -369,7 +446,7 @@ export function taperedTube(points, r0, r1, radial = 5) {
     for (let j = 0; j <= radial; j++) {
       const a = (j / radial) * Math.PI * 2;
       // flattened ribbon-ish cross-section
-      const cx = Math.cos(a) * r * 1.5, cy = Math.sin(a) * r * 0.6;
+      const cx = Math.cos(a) * r * (round ? 1 : 1.5), cy = Math.sin(a) * r * (round ? 1 : 0.6);
       pos.push(P.x + N.x * cx + B.x * cy, P.y + N.y * cx + B.y * cy, P.z + N.z * cx + B.z * cy);
       uv.push(j / radial, t);
     }
@@ -386,24 +463,47 @@ export function taperedTube(points, r0, r1, radial = 5) {
   return g;
 }
 
-// Hair volume: a shell over the scalp, thick and lifted at the front/top,
-// tight on the sides; outside the hair region it tucks under the skin.
-function hairThickness(th, h, o) {
+// Hair volume: a shell over the scalp, thicker on top; outside the hair
+// region it tucks under the skin. o: { length, volume, flow, part }.
+function hairThickness(th, h, o, p) {
   const a = Math.abs(th);
-  const hl = hairline(th);
+  const hl = hairline(th, p);
   const earZone = smooth(1.28, 1.4, a) * (1 - smooth(1.78, 1.92, a));
   const region = smooth(hl - 0.01, hl + 0.09, h) * (1 - earZone * (1 - smooth(0.16, 0.28, h)));
   if (region < 0.01) return -0.006;
   const topK = smooth(0.15, 0.75, h) * (1 - smooth(1.0, 2.4, a));
   const front = Math.max(0, Math.cos(th)) * smooth(0.45, 0.78, h);
-  const sweep = 0.5 + 0.5 * Math.tanh(-th * 1.5 * o.sweep);          // fuller on the side it's swept to
-  const t = 0.0028 + topK * (0.011 + 0.011 * sweep) * o.length + front * 0.007 * o.length;
+  const lean = o.flow.x ? 0.5 + 0.5 * Math.tanh(th * 1.5 * Math.sign(o.flow.x) * -1) : 0.5; // fuller on the side it goes to
+  const t = 0.0028 + (topK * (0.011 + 0.011 * lean) * o.length + front * 0.007 * o.length) * o.volume + o.sides * 0.004 * (1 - topK);
   return t * region - 0.006 * (1 - region);
 }
 
-export function hairGeometry(head, { seed = 3, count = 340, length = 1, sweep = 1, messy = 1, detail = 1 } = {}) {
+// Hair styles. flow: the way the hair is brushed (head space: +x his left,
+// +y up, +z forward). curls: curly clumps. fringe: hair falling forward over
+// the forehead. volume: thickness of the top. sides: thickness of the sides.
+export const HAIR_STYLES = {
+  quiff: { flow: [-0.8, 0.6, 0.15], volume: 1, sides: 0, count: 380, length: 1.3, messy: 1 },
+  sweptBack: { flow: [0, 0.55, -1], volume: 1.1, sides: 0.3, count: 360, length: 1.4, messy: 1.2 },
+  wavyBack: { flow: [0.15, 0.5, -1], volume: 1.35, sides: 0.4, count: 380, length: 1.6, messy: 1.6, waves: 1 },
+  slicked: { flow: [0, 0.15, -1], volume: 0.45, sides: 0.15, count: 260, length: 1.6, messy: 0.15 },
+  sidePart: { flow: [-0.35, 0.2, -1], volume: 0.6, sides: 0, count: 300, length: 1.5, messy: 0.25, strays: 6 },
+  pushedUp: { flow: [0.1, 0.9, -0.8], volume: 1.3, sides: 0.2, count: 360, length: 1.5, messy: 1.3, strays: 10 },
+  cropped: { flow: [0, 0.35, -1], volume: 0.75, sides: 0.1, count: 260, length: 0.8, messy: 0.3 },
+  buzz: { flow: [0, 0.4, -1], volume: 0.05, sides: 0.0, count: 0, length: 0.3, messy: 0 },
+  curlyFringe: { flow: [0, -0.6, 1], volume: 1.4, sides: 0.3, count: 300, length: 1.3, messy: 1.4, curls: 1, fringe: 1 },
+  curlyTop: { flow: [0, 0.6, -0.3], volume: 1.25, sides: 0.05, count: 300, length: 1.0, messy: 1.1, curls: 1, forelock: 1 },
+  wildCurls: { flow: [0, 0.8, -0.7], volume: 1.7, sides: 0.5, count: 380, length: 1.5, messy: 1.6, curls: 1, strays: 8 },
+};
+
+export function hairGeometry(head, opt = {}) {
+  const st = { ...(HAIR_STYLES[opt.style] || HAIR_STYLES.quiff), ...opt };
+  const { seed = 3, detail = 1 } = st;
+  const length = st.length ?? 1, messy = st.messy ?? 1;
+  const flow = new THREE.Vector3(...st.flow);
+  if (st.sweep != null && !opt.style) flow.x = -0.8 * st.sweep;
+  const o = { length, volume: st.volume ?? 1, sides: st.sides ?? 0, flow };
+  const count = Math.round((st.count ?? 340) * (opt.countScale ?? 1));
   const R = rng(seed);
-  const o = { length, sweep, messy };
   const p = head.params;
   // --- shell
   const shell = new THREE.SphereGeometry(1, Math.round(80 * detail), Math.round(60 * detail), 0, Math.PI * 2, 0, Math.PI * 0.9);
@@ -413,37 +513,64 @@ export function hairGeometry(head, { seed = 3, count = 340, length = 1, sweep = 
     d.set(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize();
     const th = Math.atan2(d.x, d.z), h = d.y;
     const base = sculpt(d, p);
-    const t = hairThickness(th, h, o);
-    // the quiff lifts up and over rather than straight out
+    const t = hairThickness(th, h, o, p);
+    // the front lifts up and over in the direction it's brushed
     const lift = Math.max(0, t - 0.006) * 0.25 * Math.max(0, Math.cos(th)) * smooth(0.5, 0.85, h);
     const n = base.clone().normalize();
     base.addScaledVector(n, t);
-    base.y += lift;
-    base.x -= lift * 1.2 * sweep;
+    base.y += lift * Math.max(0, flow.y);
+    base.x += lift * 1.5 * flow.x;
+    if (st.waves) base.addScaledVector(n, Math.max(0, t - 0.004) * 0.25 * Math.sin(th * 9 + h * 14));
     pos.setXYZ(i, base.x, base.y, base.z);
     uv.setXY(i, uv.getX(i) * 6, (h + 1) * 2);
   }
   shell.computeVertexNormals();
   const parts = [shell.toNonIndexed()];
-  // --- clumps lying on the shell, swept up and over to his right (-x)
+  // --- clumps: each one walks over the scalp from its root, so strands lie
+  // on the head instead of sticking out (curls coil round the path)
+  const surfAt = (dd, extra = 0) => {
+    const th = Math.atan2(dd.x, dd.z);
+    const t = Math.max(0.002, hairThickness(th, dd.y, o, p));
+    return sculpt(dd, p).addScaledVector(dd, t * 0.85 + extra);
+  };
+  const addClump = (th, hr, lenK = 1, fringe = false) => {
+    const dir = new THREE.Vector3(Math.sin(th) * Math.sqrt(1 - hr * hr), hr, Math.cos(th) * Math.sqrt(1 - hr * hr)).normalize();
+    const t0 = hairThickness(th, hr, o, p);
+    if (t0 < 0.004 && !fringe) return;
+    const front = Math.max(0, Math.cos(th)) * smooth(0.5, 0.8, hr);
+    const len = (0.026 + R() * 0.03 + front * 0.02) * length * lenK;
+    let fl = flow.clone();
+    if ((st.fringe && front > 0.2) || fringe) fl = new THREE.Vector3((R() - 0.5) * 0.5, -1, 0.35);
+    const tang = new THREE.Vector3(fl.x + (R() - 0.5) * 0.8 * messy, fl.y + (R() - 0.5) * 0.3 * messy, fl.z + (R() - 0.5) * 0.4 * messy);
+    const d = dir.clone();
+    const steps = st.curls ? 12 : 5, seg = len / steps;
+    const lift = 0.002 + front * 0.006 * Math.max(0, flow.y) * (fringe ? 0 : 1);
+    const pts = [surfAt(d, -0.004)];
+    const curlR = 0.0045 + R() * 0.003, turns = 1.4 + R() * 0.8, ph = R() * 6.28;
+    for (let k = 1; k <= steps; k++) {
+      tang.addScaledVector(d, -tang.dot(d)).normalize();
+      d.addScaledVector(tang, seg / 0.1).normalize();
+      const f = k / steps;
+      const P = surfAt(d, lift * Math.sin(f * Math.PI) + (st.curls ? 0.004 : 0) + R() * 0.0015 * messy);
+      if (st.curls) {
+        const side = new THREE.Vector3().crossVectors(d, tang).normalize();
+        const a = ph + f * turns * Math.PI * 2;
+        P.addScaledVector(side, Math.sin(a) * curlR).addScaledVector(d, (Math.cos(a) + 1) * curlR * 0.7);
+      }
+      pts.push(P);
+    }
+    parts.push(taperedTube(pts, (st.curls ? 0.0046 : 0.0042) + R() * 0.0022, st.curls ? 0.0018 : 0.0007, 4, st.curls ? 16 : 8).toNonIndexed());
+  };
   for (let i = 0; i < count; i++) {
     const th = (R() - 0.5) * 2 * (R() < 0.7 ? 1.1 : 2.2);
-    const hr = 0.5 + R() * 0.45;
-    const dir = new THREE.Vector3(Math.sin(th) * Math.sqrt(1 - hr * hr), hr, Math.cos(th) * Math.sqrt(1 - hr * hr)).normalize();
-    const t = hairThickness(th, hr, o);
-    if (t < 0.004) continue;
-    const root = sculpt(dir, p).addScaledVector(dir, t * 0.7);
-    const nrm = dir.clone();
-    const front = Math.max(0, Math.cos(th)) * smooth(0.5, 0.8, hr);
-    const len = (0.022 + R() * 0.03 + front * 0.02) * length;
-    // tangent direction: up the head and toward the sweep side
-    const tang = new THREE.Vector3(-0.8 * sweep + (R() - 0.5) * 0.9 * messy, 0.6 + front, 0.15 + (R() - 0.5) * 0.5 * messy);
-    tang.addScaledVector(nrm, -tang.dot(nrm)).normalize();
-    const p1 = root.clone().addScaledVector(tang, len * 0.4).addScaledVector(nrm, 0.004 + front * 0.008);
-    const p2 = root.clone().addScaledVector(tang, len * 0.75).addScaledVector(nrm, 0.003 + front * 0.006 + R() * 0.004 * messy);
-    const p3 = root.clone().addScaledVector(tang, len).addScaledVector(nrm, -0.002 + R() * 0.006 * messy);
-    const tube = taperedTube([root.clone().addScaledVector(nrm, -0.004), p1, p2, p3], 0.0042 + R() * 0.0025, 0.0006, 4);
-    parts.push(tube.toNonIndexed());
+    addClump(th, 0.5 + R() * 0.45);
+  }
+  // a curl or two dropping onto the forehead
+  if (st.forelock) for (let i = 0; i < 4; i++) addClump(0.12 + (R() - 0.5) * 0.2, hairline(0.1, p) + 0.1 + R() * 0.05, 0.8, true);
+  // loose strands near the front edge
+  for (let i = 0; i < (st.strays || 0); i++) {
+    const th = (R() < 0.5 ? -1 : 1) * (0.3 + R() * 0.7);
+    addClump(th, hairline(th, p) + 0.1 + R() * 0.08, 0.6, R() < 0.35);
   }
   for (const g of parts) { for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k); }
   return mergeGeometries(parts);
@@ -548,9 +675,11 @@ export function buildHead(opts = {}) {
   const rimGeo = new THREE.TorusGeometry(0.02, 0.0034, 6, 18, Math.PI * 1.45); rimGeo.scale(1, 1.32, 1);
   const bowlGeo = new THREE.SphereGeometry(1, 10, 8); bowlGeo.scale(0.004, 0.012, 0.009);
   const bowlMat = new THREE.MeshStandardMaterial({ color: '#7a4434', roughness: 0.85 });
+  const ears = [];
   for (const s of [-1, 1]) {
     const ep = head.surface(s * 1.55, 0.0);
     const ear = new THREE.Group();
+    ears.push(ear);
     ear.position.set(ep.x - s * 0.002, ep.y - 0.004, ep.z - 0.012);
     ear.rotation.set(0.12, s * -0.28, s * 0.06);
     ear.add(new THREE.Mesh(earGeo, earMat));
@@ -570,14 +699,14 @@ export function buildHead(opts = {}) {
     hairMesh = new THREE.Mesh(hg, hm);
     group.add(hairMesh);
   }
-  return { group, jaw, eyes, skinMat, head, hairMesh };
+  return { group, jaw, eyes, skinMat, head, hairMesh, ears };
 }
 
 // =============================================================================
 // BODY: lofted limbs and torsos from elliptical cross-sections.
 // sections: [{ y, rx, rz, x?, z? }] bottom to top. UVs: u round, v along.
 // =============================================================================
-export function loft(sections, { radial = 16, capTop = true, capBottom = true } = {}) {
+export function loft(sections, { radial = 16, capTop = true, capBottom = true, skip = null } = {}) {
   const pos = [], uv = [], idx = [];
   const n = sections.length;
   for (let i = 0; i < n; i++) {
@@ -592,6 +721,7 @@ export function loft(sections, { radial = 16, capTop = true, capBottom = true } 
     }
   }
   for (let i = 0; i < n - 1; i++) for (let j = 0; j < radial; j++) {
+    if (skip && skip(i, j)) continue;
     const a = i * (radial + 1) + j, b = a + radial + 1;
     idx.push(a, b, a + 1, b, b + 1, a + 1);
   }
@@ -629,20 +759,24 @@ export function limb(len, r0, r1, { bulge = 0.12, bulgeAt = 0.3, flat = 0.85, ra
 }
 
 // Torso from pelvis (y=0) to the base of the neck. build: 0 slim .. 1 heavy.
-export function torsoGeometry({ height = 0.56, shoulders = 0.205, chest = 0.165, waist = 0.142, hips = 0.165, depth = 0.11, build = 0.3, gaunt = 0 } = {}) {
+// torsoSections() is shared with clothing layers (jackets) that sit over it.
+export function torsoSections({ height = 0.56, shoulders = 0.205, chest = 0.165, waist = 0.142, hips = 0.165, depth = 0.11, build = 0.3, gaunt = 0, belly = 0 } = {}) {
   const b = 1 + build * 0.15;
   const S = (t, rx, rz, z = 0) => ({ y: t * height, rx: rx * b, rz: rz * b, z });
-  return loft([
+  return [
     S(-0.18, hips * 0.92, depth * 0.95, 0.0),
     S(0.0, hips, depth, 0.0),
-    S(0.2, waist * 1.02, depth * 0.95, 0.004),
-    S(0.38, waist, depth * (0.93 - gaunt * 0.15), 0.008),
+    S(0.2, waist * 1.02, depth * (0.95 + belly * 0.2), 0.004 + belly * 0.012),
+    S(0.38, waist, depth * (0.93 - gaunt * 0.15 + belly * 0.18), 0.008 + belly * 0.012),
     S(0.58, chest, depth * 1.08, 0.012),
     S(0.74, chest * 1.06, depth * 1.12, 0.012),
     S(0.86, shoulders, depth * 1.0, 0.0),
     S(0.94, shoulders * 0.86, depth * 0.85, -0.006),
     S(1.0, 0.07, 0.06, -0.004),
-  ], { radial: 22 });
+  ];
+}
+export function torsoGeometry(opts = {}) {
+  return loft(torsoSections(opts), { radial: 22 });
 }
 
 export function neckGeometry(len = 0.11, r = 0.052) {
@@ -654,7 +788,7 @@ export function neckGeometry(len = 0.11, r = 0.052) {
 }
 
 // A hand: palm, four fingers and a thumb, relaxed curl. Hangs down from the wrist.
-export function handGeometry({ curl = 0.5, size = 1, claw = 0 } = {}) {
+export function handGeometry({ curl = 0.5, size = 1, claw = 0, curls = null, thumb = null, spread = null } = {}) {
   const parts = [];
   const palm = new THREE.SphereGeometry(1, 12, 8);
   palm.scale(0.042 * size, 0.05 * size, 0.017 * size);
@@ -664,18 +798,21 @@ export function handGeometry({ curl = 0.5, size = 1, claw = 0 } = {}) {
     const x = (f - 1.5) * 0.019 * size;
     const L = [0.042, 0.048, 0.045, 0.036][f] * size * (1 + claw * 0.15);
     let p = new THREE.Vector3(x, -0.088 * size, 0.003);
-    let a = 0.25 + curl * 0.45;
+    const c = curls ? curls[f] : curl;
+    let a = c < 0.05 ? 0.05 : 0.25 + c * 0.45;
     const pts = [p.clone()];
     for (let k = 0; k < 3; k++) {
       const seg = L / 3;
-      p = p.clone().add(new THREE.Vector3(0, -Math.cos(a) * seg, Math.sin(a) * seg));
+      p = p.clone().add(new THREE.Vector3(spread ? spread[f] * seg : 0, -Math.cos(a) * seg, Math.sin(a) * seg));
       pts.push(p);
-      a += 0.35 + curl * 0.5 + claw * 0.3;
+      a += c < 0.05 ? 0.04 : 0.35 + c * 0.5 + claw * 0.3;
     }
-    parts.push(taperedTube(pts, 0.0085 * size, 0.0065 * size, 6));
+    parts.push(taperedTube(pts, 0.0085 * size, 0.0068 * size, 7, 7, true));
   }
-  const tp = [new THREE.Vector3(0.03 * size, -0.03 * size, 0.008), new THREE.Vector3(0.046 * size, -0.055 * size, 0.022), new THREE.Vector3(0.048 * size, -0.075 * size, 0.034)];
-  parts.push(taperedTube(tp, 0.01 * size, 0.0075 * size, 6));
+  // thumb on the index-finger side (-x); thumb = 1 tucks it across the palm
+  const tk = thumb ?? 0;
+  const tp = [new THREE.Vector3(-0.03 * size, -0.03 * size, 0.008), new THREE.Vector3((-0.046 + tk * 0.03) * size, -0.055 * size, (0.022 + tk * 0.01) * size), new THREE.Vector3((-0.048 + tk * 0.05) * size, (-0.075 + tk * 0.01) * size, (0.034 + tk * 0.004) * size)];
+  parts.push(taperedTube(tp, 0.0102 * size, 0.0078 * size, 7, 7, true));
   // taperedTube flattens its cross-section; round the fingers back out
   return mergeGeometries(parts.map((g) => g.index ? g.toNonIndexed() : g).map((g) => { g.deleteAttribute('uv'); return g; }));
 }

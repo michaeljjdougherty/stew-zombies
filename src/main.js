@@ -21,6 +21,7 @@ import { loadSettings, saveSettings } from './ui/settings.js';
 import { loadProgress, saveProgress } from './ui/progress.js';
 import { Extras } from './ui/extras.js';
 import { CharSelect } from './ui/charselect.js';
+import { LineupUI } from './ui/lineupui.js';
 import { TitleMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
 
@@ -116,6 +117,11 @@ const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
   done: (s) => { saveSettings(s); renderer.showcase.hide(); renderer.setCharacter(s.character, s.shirt); mode = 'title'; menus.show('title'); },
   back: () => { renderer.showcase.hide(); mode = 'title'; menus.show('title'); },
+  lineup: () => { renderer.showcase.hide(); mode = 'lineup'; menus.show('lineup'); lineupUI.open(); },
+});
+const lineupUI = new LineupUI({
+  lineup: () => renderer.getLineup(),
+  back: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
 });
 const extras = new Extras(CONFIG, {
   progress: () => progress,
@@ -292,19 +298,20 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = mode === 'paused' || mode === 'over' ? 0 : fdt;
-  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : 'play');
+  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : 'play');
   audio.updateListener(renderer.camera);
   if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
   rangeUI.update(fdt, sim, player, renderer.camera);
   if (menus.current === 'extras') extras.update();
+  if (mode === 'lineup') lineupUI.update();
   input.endFrame();
 }
 requestAnimationFrame(frame);
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect, lineupUI,
   get mode() { return mode; },
   debug: {
     // Run the simulation forward without rendering (for testing).

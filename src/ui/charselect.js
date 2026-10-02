@@ -14,6 +14,7 @@ export class CharSelect {
     this.shirt = settings.shirt || 'sage';
     const list = $('cs-list');
     for (const [id, c] of Object.entries(CHARACTERS)) {
+      if (!c.playable) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'cs-card'; b.setAttribute('role', 'option'); b.dataset.id = id;
       b.innerHTML = '<b></b><span>Stew</span>';
@@ -40,6 +41,7 @@ export class CharSelect {
       this.h.done(this.settings);
     });
     $('btn-cs-back').addEventListener('click', () => this.h.back());
+    $('btn-cs-lineup').addEventListener('click', () => this.h.lineup());
   }
 
   open() {

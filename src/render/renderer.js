@@ -17,6 +17,7 @@ import { PowerupViews } from './powerupView.js';
 import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
 import { Showcase } from './showcase.js';
+import { Lineup } from './lineup.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -272,6 +273,11 @@ export class GameRenderer {
     return Math.min(1, lvl);
   }
 
+  getLineup() {
+    if (!this.lineup) this.lineup = new Lineup(this.renderer);
+    return this.lineup;
+  }
+
   getShowcase() {
     if (!this.showcase) this.showcase = new Showcase(this.renderer);
     return this.showcase;
@@ -286,6 +292,10 @@ export class GameRenderer {
   render(dt, alpha, look, p, time, mode = 'play') {
     if (mode === 'showcase') {
       this.getShowcase().render(dt, this.aspect);
+      return;
+    }
+    if (mode === 'lineup') {
+      this.getLineup().render(dt, this.aspect);
       return;
     }
     const sim = this.sim;

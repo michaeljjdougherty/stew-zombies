@@ -3,7 +3,7 @@
 // single hard spotlight, in a dark school hallway haze. Drag to spin him.
 // =============================================================================
 import * as THREE from 'three';
-import { buildKearns, idleKearns } from './characters.js';
+import { buildCharacter, idleCharacter } from './characters.js';
 
 export class Showcase {
   constructor(renderer) {
@@ -84,13 +84,12 @@ export class Showcase {
     const key = id + ':' + shirt;
     if (this.key !== key) {
       if (this.char) this.turntable.remove(this.char.root);
-      this.char = buildKearns({ shirt });
+      this.char = buildCharacter(id, { shirt });
       this.char.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       this.turntable.add(this.char.root);
       this.key = key;
     }
     this.active = true;
-    this.renderer.shadowMap.enabled = true;
   }
 
   hide() { this.active = false; }
@@ -102,7 +101,7 @@ export class Showcase {
       this.spin += this.spinVel * dt;
     }
     this.turntable.rotation.y = this.spin;
-    if (this.char) idleKearns(this.char, this.time);
+    if (this.char) idleCharacter(this.char, this.time);
     this.dust.rotation.y += dt * 0.02;
     // frame him to the right of the menu on wide screens, centred on narrow ones
     const cam = this.camera;
@@ -115,8 +114,11 @@ export class Showcase {
     const r = this.renderer;
     const tm = r.toneMappingExposure;
     r.toneMappingExposure = 0.95;
+    const sm = r.shadowMap.enabled;
+    r.shadowMap.enabled = true;
     r.setRenderTarget(null);
     r.render(this.scene, cam);
+    r.shadowMap.enabled = sm;
     r.toneMappingExposure = tm;
   }
 }

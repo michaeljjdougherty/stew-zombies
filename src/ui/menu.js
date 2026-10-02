@@ -9,7 +9,7 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras', 'charselect'].map((id) => $(id));
+    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras', 'charselect', 'lineup'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
