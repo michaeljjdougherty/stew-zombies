@@ -400,7 +400,7 @@ function padFrame(fdt) {
 
 function frame(now) {
   requestAnimationFrame(frame);
-  const fdt = Math.min(0.1, (now - last) / 1000);
+  const fdt = Math.min(0.1, Math.max(0, (now - last) / 1000)); // rAF time can start before the clock we read at load
   last = now;
   time += fdt;
   padFrame(fdt);

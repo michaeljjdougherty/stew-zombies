@@ -84,7 +84,10 @@ export function updateWeapons(sim, p, cmd, dt) {
   const canAds = !def.dual && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing && !p.drinking && !slot.away;
   const adsTarget = cmd.ads && canAds ? 1 : 0;
   const adsStep = dt / Math.max(0.01, def.adsTime);
-  w.adsAmount = adsTarget > w.adsAmount ? Math.min(1, w.adsAmount + adsStep) : Math.max(0, w.adsAmount - adsStep);
+  // (hold still once there: the old form stepped back down from 1 every other
+  // tick, which made the sights pulse in and out)
+  if (adsTarget > w.adsAmount) w.adsAmount = Math.min(adsTarget, w.adsAmount + adsStep);
+  else if (adsTarget < w.adsAmount) w.adsAmount = Math.max(adsTarget, w.adsAmount - adsStep);
 
   // --- spread, recoil settle, scope sway
   w.bloom = Math.max(0, w.bloom - def.spread.recovery * dt);

@@ -178,7 +178,10 @@ export class MapView {
     } else if (room.ceiling === 'trusses') {
       this.buildTrussCeiling(room);
     } else {
-      const c = new BoxBatch().add({ minX: x0 - Tt, maxX: x1 + Tt, minY: H, maxY: H + 0.25, minZ: z0 - Tt, maxZ: z1 + Tt });
+      // stop halfway into the walls: a slab reaching the far face of a wall
+      // shows through (z-fights) on a taller room next door
+      const e = Tt * 0.5;
+      const c = new BoxBatch().add({ minX: x0 - e, maxX: x1 + e, minY: H, maxY: H + 0.25, minZ: z0 - e, maxZ: z1 + e });
       this.group.add(new THREE.Mesh(c.build(), this.mats.drop));
     }
   }
@@ -186,7 +189,8 @@ export class MapView {
   buildTrussCeiling(room) {
     const [minX, minZ, maxX, maxZ] = room.rect;
     const H = room.height, Tt = this.T;
-    const ceil = new BoxBatch().add({ minX: minX - Tt, maxX: maxX + Tt, minY: H, maxY: H + 0.3, minZ: minZ - Tt, maxZ: maxZ + Tt });
+    const e = Tt * 0.5;
+    const ceil = new BoxBatch().add({ minX: minX - e, maxX: maxX + e, minY: H, maxY: H + 0.3, minZ: minZ - e, maxZ: maxZ + e });
     this.group.add(new THREE.Mesh(ceil.build(), this.mats.trussCeiling));
     const tr = new BoxBatch();
     for (let x = minX + 3.4; x < maxX - 1; x += 5.6) {
