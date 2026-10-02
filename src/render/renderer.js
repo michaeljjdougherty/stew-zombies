@@ -4,6 +4,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { setAnisotropy } from './textures.js';
+import { setSurfaceAnisotropy } from './surfaces.js';
 import { MapView } from './mapView.js';
 import { ZombieViews } from './zombieView.js';
 import { Effects } from './effects.js';
@@ -29,6 +30,7 @@ export class GameRenderer {
     r.toneMappingExposure = cfg.graphics.exposure;
     r.outputColorSpace = THREE.SRGBColorSpace;
     setAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
+    setSurfaceAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
 
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.05, 220);
     this.buildWorld(sim);

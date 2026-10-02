@@ -19,6 +19,13 @@ hear (models, textures, sounds) is generated in code. The only library is
 - **Real gun sounds:** recordings of 17 real firearms plus reloads, bolts and
   pumps from *The Free Firearm Sound Library* (Still North Media, CC0), cut
   into `assets/sfx/guns/` and mapped per weapon in `src/audio/gunSamples.js`.
+- **Photo surfaces:** real photo-scanned materials (ambientCG, CC0) on the
+  school: painted cinder block, red brick, glazed tile, speckled vinyl tile,
+  maple gym floor, stage planks, carpet, concrete, ceiling tiles, grass. The
+  painted textures still set the colours, stripes, stains and grime; a shader
+  (`src/render/surfaces.js`) multiplies in the photo's detail at real-world
+  scale and lights it with the photo's normal map. Images live in
+  `assets/tex/`, built by `tools/make_textures.py`.
 - **Explore mode** (main menu): the school with endless points; buying is
   free, you can't die, and **Z** switches the zombies on and off.
 - **ADS fixed:** aim, recoil and scope sway are interpolated between 60 Hz

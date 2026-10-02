@@ -100,11 +100,22 @@ function speckle(g, w, h, count, colors, size = [0.5, 2]) {
 // ---------------------------------------------------------------------------
 // Gym floor: worn maple planks. 1024px = 4m.
 // ---------------------------------------------------------------------------
-export function gymFloorTexture() {
+export function gymFloorTexture({ photo = false } = {}) {
   const S = 1024;
   const [c, g] = makeCanvas(S, S);
   const plankW = 26; // ~10cm
-  for (let y = 0; y < S; y += plankW) {
+  if (photo) {
+    // the photo supplies the strips; paint the varnish colour and its wear
+    g.fillStyle = 'hsl(33,34%,50%)'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 60; i++) {
+      const x = rr(0, S), y = rr(0, S), r = rr(40, 160);
+      const grd = g.createRadialGradient(x, y, 0, x, y, r);
+      const lite = rnd() < 0.5;
+      grd.addColorStop(0, lite ? 'rgba(255,225,170,0.10)' : 'rgba(60,35,12,0.12)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  }
+  for (let y = 0; y < S && !photo; y += plankW) {
     let x = -rr(0, 400);
     while (x < S) {
       const len = rr(220, 520);
@@ -234,7 +245,7 @@ export function courtOverlayTexture(map) {
 // ---------------------------------------------------------------------------
 // Painted cinderblock wall. u: 4m per repeat, v: 0..1 = full wall height (9m).
 // ---------------------------------------------------------------------------
-export function wallTexture({ height = 9, lower = '#5b2c27', upper = '#8a8574', stripe = '#a78a3a' } = {}) {
+export function wallTexture({ height = 9, lower = '#5b2c27', upper = '#8a8574', stripe = '#a78a3a', photo = false } = {}) {
   const W = 512, H = Math.round(512 * height / 4);
   const [c, g] = makeCanvas(W, H);
   const px = W / 4; // pixels per meter
@@ -242,9 +253,9 @@ export function wallTexture({ height = 9, lower = '#5b2c27', upper = '#8a8574', 
   g.fillStyle = upper; g.fillRect(0, 0, W, H);
   g.fillStyle = lower; g.fillRect(0, H - band * px, W, band * px);
   g.fillStyle = stripe; g.fillRect(0, H - band * px - 0.12 * px, W, 0.12 * px);
-  // blocks
+  // blocks (the photo surface draws them when there is one)
   const bw = 0.4 * px, bh = 0.2 * px;
-  for (let row = 0; row * bh < H; row++) {
+  for (let row = 0; row * bh < H && !photo; row++) {
     const off = (row % 2) * bw / 2;
     for (let x = -off; x < W; x += bw) {
       g.fillStyle = `rgba(${rnd() < 0.5 ? '0,0,0' : '255,255,255'},${rr(0.01, 0.06)})`;
@@ -318,10 +329,20 @@ export function ceilingTexture() {
   return t;
 }
 
-export function woodTexture({ base = [34, 28, 38], plank = 64, dark = false } = {}) {
+export function woodTexture({ base = [34, 28, 38], plank = 64, dark = false, photo = false } = {}) {
   const S = 512;
   const [c, g] = makeCanvas(S, S);
-  for (let y = 0; y < S; y += plank) {
+  if (photo) {
+    // grain and seams come from the photo; paint the stain colour unevenly
+    g.fillStyle = `hsl(${base[0]},${base[1]}%,${base[2] - (dark ? 12 : 0)}%)`; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 40; i++) {
+      const x = rr(0, S), y = rr(0, S), r = rr(30, 120);
+      const grd = g.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, rnd() < 0.5 ? 'rgba(255,230,190,0.08)' : 'rgba(20,10,4,0.14)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  }
+  for (let y = 0; y < S && !photo; y += plank) {
     const l = rr(base[2] - 6, base[2] + 4) - (dark ? 12 : 0);
     g.fillStyle = `hsl(${base[0] + rr(-3, 3)},${base[1]}%,${l}%)`;
     g.fillRect(0, y, S, plank);
@@ -806,7 +827,7 @@ function grimeRect(g, x, y, s) {
   for (let k = 0; k < 20; k++) g.fillRect(x + rr(0, s), y + rr(0, s), rr(2, 6), rr(2, 6));
 }
 
-export function carpetTexture({ base = '#3e4653', seed = 8 } = {}) {
+export function carpetTexture({ base = '#3e4653', seed = 8, photo = false } = {}) {
   seedTextures(seed);
   const S = 512;
   const [c, g] = makeCanvas(S, S);
@@ -819,7 +840,7 @@ export function carpetTexture({ base = '#3e4653', seed = 8 } = {}) {
   g.putImageData(img, 0, 0);
   // subtle pattern
   g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 3;
-  for (let x = 0; x < S; x += 64) for (let y = 0; y < S; y += 64) { g.strokeRect(x + 16, y + 16, 32, 32); }
+  if (!photo) for (let x = 0; x < S; x += 64) for (let y = 0; y < S; y += 64) { g.strokeRect(x + 16, y + 16, 32, 32); }
   // stains
   for (let i = 0; i < 12; i++) {
     const x = rr(0, S), y = rr(0, S), r = rr(15, 60);
@@ -836,7 +857,7 @@ export function carpetTexture({ base = '#3e4653', seed = 8 } = {}) {
 
 // Generic interior wall. u: 4m per repeat, v: 0..1 = full wall height.
 // lower: wainscot color & height, blocks: cinderblock joints, tiles: glossy tile wainscot
-export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445a4f', lowerH = 1.2, blocks = true, tiles = false, panel = false, stripe = null, seed = 3 } = {}) {
+export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445a4f', lowerH = 1.2, blocks = true, tiles = false, panel = false, stripe = null, seed = 3, photo = false } = {}) {
   seedTextures(seed);
   const W = 512, H = Math.max(256, Math.round(512 * height / 4));
   const [c, g] = makeCanvas(W, H);
@@ -845,7 +866,7 @@ export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445
   const ly = H - lowerH * px;
   g.fillStyle = lower; g.fillRect(0, ly, W, lowerH * px);
   if (stripe) { g.fillStyle = stripe; g.fillRect(0, ly - 0.08 * px, W, 0.08 * px); }
-  if (blocks) {
+  if (blocks && !photo) {
     const bw = 0.4 * px, bh = 0.2 * px;
     for (let row = 0; row * bh < H; row++) {
       const off = (row % 2) * bw / 2;
@@ -854,7 +875,7 @@ export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445
       for (let x = -off; x < W; x += bw) g.fillRect(x, H - (row + 1) * bh, 1.5, bh);
     }
   }
-  if (tiles) {
+  if (tiles && !photo) {
     const t = 0.15 * px;
     for (let y = ly; y < H; y += t) for (let x = 0; x < W; x += t) {
       g.fillStyle = `rgba(255,255,255,${rr(0.02, 0.1)})`; g.fillRect(x + 1, y + 1, t - 2, t - 2);
@@ -863,10 +884,10 @@ export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445
     }
   }
   if (panel) {
-    // vertical wood paneling on the lower part
-    for (let x = 0; x < W; x += 0.3 * px) {
+    // vertical wood paneling on the lower part (0.6m boards to match the photo's grain)
+    for (let x = 0; x < W; x += (photo ? 0.6 : 0.3) * px) {
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x, ly, 2, H - ly);
-      g.fillStyle = 'rgba(255,220,180,0.06)'; g.fillRect(x + 2, ly, 0.3 * px - 4, H - ly);
+      g.fillStyle = 'rgba(255,220,180,0.06)'; g.fillRect(x + 2, ly, (photo ? 0.6 : 0.3) * px - 4, H - ly);
     }
     g.fillStyle = '#3a2618'; g.fillRect(0, ly - 6, W, 8);
   }
@@ -895,13 +916,25 @@ export function roomWallTexture({ height = 3.4, upper = '#8a8570', lower = '#445
   return t;
 }
 
-export function brickTexture({ height = 9 } = {}) {
+export function brickTexture({ height = 9, photo = false } = {}) {
   seedTextures(21);
   const W = 512, H = Math.round(512 * height / 4);
   const [c, g] = makeCanvas(W, H);
   const px = W / 4, bw = 0.22 * px, bh = 0.075 * px;
-  g.fillStyle = '#3a3129'; g.fillRect(0, 0, W, H);
-  for (let row = 0; row * bh < H; row++) {
+  g.fillStyle = photo ? '#5a3e30' : '#3a3129'; g.fillRect(0, 0, W, H);
+  if (photo) {
+    // soot and rain streaks down the brick; the photo supplies the bricks
+    for (let i = 0; i < 30; i++) {
+      const x = rr(0, W), len = rr(H * 0.15, H * 0.8);
+      const grd = g.createLinearGradient(0, 0, 0, len);
+      grd.addColorStop(0, 'rgba(10,8,6,0.5)'); grd.addColorStop(1, 'rgba(10,8,6,0)');
+      g.fillStyle = grd; g.fillRect(x, 0, rr(4, 18), len);
+    }
+    const f = g.createLinearGradient(0, H - px * 1.0, 0, H);
+    f.addColorStop(0, 'rgba(12,10,6,0)'); f.addColorStop(1, 'rgba(12,10,6,0.6)');
+    g.fillStyle = f; g.fillRect(0, H - px, W, px);
+  }
+  for (let row = 0; row * bh < H && !photo; row++) {
     const off = (row % 2) * bw / 2;
     for (let x = -off; x < W; x += bw) {
       g.fillStyle = `hsl(${rr(8, 20)},${rr(25, 40)}%,${rr(18, 28)}%)`;
@@ -914,17 +947,18 @@ export function brickTexture({ height = 9 } = {}) {
   return t;
 }
 
-export function dropCeilingTexture({ seed = 12 } = {}) {
+export function dropCeilingTexture({ seed = 12, photo = false } = {}) {
   seedTextures(seed);
-  const S = 512; // 4m x 4m, tiles 0.6 x 1.2
+  const S = 512; // 4m x 4m, tiles 0.6 x 1.2 (photo: 3.6m, 0.6m square tiles to match it)
   const [c, g] = makeCanvas(S, S);
-  const px = S / 4;
+  const span = photo ? 3.6 : 4;
+  const px = S / span;
   g.fillStyle = '#9e9886'; g.fillRect(0, 0, S, S);
   const img = g.getImageData(0, 0, S, S);
   for (let i = 0; i < img.data.length; i += 4) { const v = (rnd() - 0.5) * 18; img.data[i] += v; img.data[i + 1] += v; img.data[i + 2] += v; }
   g.putImageData(img, 0, 0);
-  const tw = 0.6 * px, th = 1.2 * px;
-  for (let x = 0; x < S; x += tw) for (let y = 0; y < S; y += th) {
+  const tw = 0.6 * px, th = (photo ? 0.6 : 1.2) * px;
+  for (let x = 0; x < S - 1; x += tw) for (let y = 0; y < S - 1; y += th) {
     // water stains, a few tiles missing (dark void)
     const r = rnd();
     if (r < 0.08) { g.fillStyle = '#0d0b09'; g.fillRect(x + 2, y + 2, tw - 4, th - 4); }
@@ -941,7 +975,7 @@ export function dropCeilingTexture({ seed = 12 } = {}) {
   for (let y = 0; y < S; y += th) g.fillRect(0, y - 1.5, S, 3);
   grime(g, S, S, { alpha: 0.35 });
   const t = toTexture(c);
-  t.repeat.set(1 / 4, 1 / 4);
+  t.repeat.set(1 / span, 1 / span);
   return t;
 }
 

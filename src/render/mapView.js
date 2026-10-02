@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { BoxBatch, bx } from './geometry.js';
 import * as T from './textures.js';
+import { applySurface } from './surfaces.js';
 import { campusBounds } from '../map/school.js';
 
 const SIDE_FACES = { n: [4, 5], s: [5, 4], w: [0, 1], e: [1, 0] }; // [inward face, outward face]
@@ -44,14 +45,15 @@ export class MapView {
   buildMaterials() {
     T.seedTextures(1);
     const std = (o) => new THREE.MeshStandardMaterial(o);
+    const P = { photo: true };
     this.mats = {
-      gymFloor: std({ map: T.gymFloorTexture(), roughness: 0.38 }),
+      gymFloor: std({ map: T.gymFloorTexture(P), roughness: 0.38 }),
       tile: std({ map: T.linoleumTexture({ tile: 0.3 }), roughness: 0.45 }),
-      tile_big: std({ map: T.linoleumTexture({ tile: 0.45, a: '#8e8c7a', b: '#6f5a48', seed: 9 }), roughness: 0.4 }),
+      tile_big: std({ map: T.linoleumTexture({ tile: 0.3, a: '#8e8c7a', b: '#6f5a48', seed: 9 }), roughness: 0.4 }),
       concrete: std({ map: T.linoleumTexture({ tile: 1.5, a: '#6e6b62', b: '#67645b', seed: 21 }), roughness: 0.85 }),
       grass: std({ map: T.groundTexture(), color: '#b8bca8', roughness: 1 }),
       asphalt: std({ map: T.linoleumTexture({ tile: 2.5, a: '#34332f', b: '#31302c', seed: 23 }), roughness: 0.95 }),
-      woodFloor: std({ map: T.woodTexture({ base: [26, 34, 30], plank: 32 }), roughness: 0.6 }),
+      woodFloor: std({ map: T.woodTexture({ base: [26, 34, 30], plank: 32, photo: true }), roughness: 0.6 }),
       fence: std({ map: fenceTexture(), alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.6 }),
       felt: std({ color: '#5c1414', roughness: 1 }),
       seat: std({ color: '#4a1d1a', roughness: 0.9 }),
@@ -63,11 +65,11 @@ export class MapView {
       tank: std({ map: T.metalTexture({ color: '#4a4236', rust: 1 }), roughness: 0.75, metalness: 0.35 }),
       piano: std({ color: '#0e0d0c', roughness: 0.25, metalness: 0.1 }),
       canvas: std({ color: '#d8d0bc', roughness: 1 }),
-      carpet: std({ map: T.carpetTexture(), roughness: 1 }),
+      carpet: std({ map: T.carpetTexture(P), roughness: 1 }),
       trussCeiling: std({ map: T.ceilingTexture(), roughness: 1 }),
-      drop: std({ map: T.dropCeilingTexture(), roughness: 1 }),
-      wood: std({ map: T.woodTexture(), roughness: 0.75 }),
-      darkWood: std({ map: T.woodTexture({ dark: true }), roughness: 0.85 }),
+      drop: std({ map: T.dropCeilingTexture(P), roughness: 1 }),
+      wood: std({ map: T.woodTexture(P), roughness: 0.75 }),
+      darkWood: std({ map: T.woodTexture({ dark: true, photo: true }), roughness: 0.85 }),
       metal: std({ map: T.metalTexture(), roughness: 0.7, metalness: 0.2 }),
       rustMetal: std({ map: T.metalTexture({ color: '#4a4538', rust: 1 }), roughness: 0.8, metalness: 0.15 }),
       ground: std({ map: T.groundTexture(), roughness: 1 }),
@@ -80,35 +82,57 @@ export class MapView {
       tableTop: std({ map: T.tableTopTexture(), roughness: 0.5 }),
       steel: std({ map: T.steelTexture(), roughness: 0.35, metalness: 0.5 }),
     };
-    this.wallMats = {
-      gym: std({ map: T.wallTexture({ height: 9, upper: '#6e695b' }), roughness: 0.92 }),
-      hall: std({ map: T.roomWallTexture({ height: 5, upper: '#8a846e', lower: '#3f5a50', lowerH: 1.25, stripe: '#6d2a24', seed: 3 }), roughness: 0.9 }),
-      office: std({ map: T.roomWallTexture({ height: 3.2, upper: '#7d7560', lower: '#4a3322', lowerH: 1.0, blocks: false, panel: true, seed: 5 }), roughness: 0.9 }),
-      principal: std({ map: T.roomWallTexture({ height: 3.2, upper: '#6f6452', lower: '#3e2a1c', lowerH: 1.0, blocks: false, panel: true, seed: 6 }), roughness: 0.9 }),
-      cafe: std({ map: T.roomWallTexture({ height: 5, upper: '#8d8a78', lower: '#6f8a7c', lowerH: 1.5, tiles: true, seed: 7 }), roughness: 0.7 }),
-      exterior: std({ map: T.brickTexture({ height: 9 }), roughness: 1 }),
-      range: std({ map: T.roomWallTexture({ height: 3.6, upper: '#6b6a5c', lower: '#3c4636', lowerH: 1.15, stripe: '#9a7a22', seed: 11 }), roughness: 0.92 }),
-      kitchen: std({ map: T.roomWallTexture({ height: 3.2, upper: '#9a9a8e', lower: '#b4b2a4', lowerH: 1.6, tiles: true, stripe: '#3c5a6a', seed: 13 }), roughness: 0.6 }),
-      auditorium: std({ map: T.roomWallTexture({ height: 8, upper: '#5a2a26', lower: '#2e1a14', lowerH: 1.3, blocks: false, panel: true, seed: 14 }), roughness: 0.9 }),
-      lockerroom: std({ map: T.roomWallTexture({ height: 3.4, upper: '#7e8a7c', lower: '#4f6b5c', lowerH: 1.4, tiles: true, seed: 15 }), roughness: 0.7 }),
-      boiler: std({ map: T.roomWallTexture({ height: 3.6, upper: '#4e4a42', lower: '#3a352c', lowerH: 1.0, stripe: '#8a6a1c', seed: 16 }), roughness: 1 }),
-      lab: std({ map: T.roomWallTexture({ height: 3.4, upper: '#8a9894', lower: '#3f5e66', lowerH: 1.2, stripe: '#d0d0c0', seed: 17 }), roughness: 0.85 }),
-      library: std({ map: T.roomWallTexture({ height: 4.5, upper: '#7a6a52', lower: '#3a2618', lowerH: 1.3, blocks: false, panel: true, seed: 18 }), roughness: 0.9 }),
-      band: std({ map: T.roomWallTexture({ height: 3.4, upper: '#6e6280', lower: '#3c3048', lowerH: 1.2, stripe: '#b89a3c', seed: 19 }), roughness: 0.9 }),
+    // Walls. lower/lowerH: the painted (or tiled / panelled) band at the bottom.
+    // surf: the photo surface above the band; below: a different one in the band.
+    const WALLS = {
+      gym: { tex: () => T.wallTexture({ height: 9, upper: '#6e695b', photo: true }), height: 9, surf: 'block', rough: 0.92 },
+      hall: { height: 5, upper: '#8a846e', lower: '#3f5a50', lowerH: 1.25, stripe: '#6d2a24', seed: 3, surf: 'block', rough: 0.9 },
+      office: { height: 3.2, upper: '#7d7560', lower: '#4a3322', lowerH: 1.0, blocks: false, panel: true, seed: 5, surf: 'plaster', below: 'panel', rough: 0.9 },
+      principal: { height: 3.2, upper: '#6f6452', lower: '#3e2a1c', lowerH: 1.0, blocks: false, panel: true, seed: 6, surf: 'plaster', below: 'panel', rough: 0.9 },
+      cafe: { height: 5, upper: '#8d8a78', lower: '#6f8a7c', lowerH: 1.5, tiles: true, seed: 7, surf: 'block', below: 'tileWall', rough: 0.7 },
+      exterior: { tex: () => T.brickTexture({ height: 9, photo: true }), height: 9, surf: 'brick', rough: 1 },
+      range: { height: 3.6, upper: '#6b6a5c', lower: '#3c4636', lowerH: 1.15, stripe: '#9a7a22', seed: 11, surf: 'blockRaw', rough: 0.92 },
+      kitchen: { height: 3.2, upper: '#9a9a8e', lower: '#b4b2a4', lowerH: 1.65, tiles: true, stripe: '#3c5a6a', seed: 13, surf: 'block', below: 'tileWall', rough: 0.6 },
+      auditorium: { height: 8, upper: '#5a2a26', lower: '#2e1a14', lowerH: 1.3, blocks: false, panel: true, seed: 14, surf: 'plaster', below: 'panel', rough: 0.9 },
+      lockerroom: { height: 3.4, upper: '#7e8a7c', lower: '#4f6b5c', lowerH: 1.35, tiles: true, seed: 15, surf: 'block', below: 'tileWall', rough: 0.7 },
+      boiler: { height: 3.6, upper: '#4e4a42', lower: '#3a352c', lowerH: 1.0, stripe: '#8a6a1c', seed: 16, surf: 'blockRaw', rough: 1 },
+      lab: { height: 3.4, upper: '#8a9894', lower: '#3f5e66', lowerH: 1.2, stripe: '#d0d0c0', seed: 17, surf: 'block', rough: 0.85 },
+      library: { height: 4.5, upper: '#7a6a52', lower: '#3a2618', lowerH: 1.3, blocks: false, panel: true, seed: 18, surf: 'plaster', below: 'panel', rough: 0.9 },
+      band: { height: 3.4, upper: '#6e6280', lower: '#3c3048', lowerH: 1.2, stripe: '#b89a3c', seed: 19, surf: 'block', rough: 0.9 },
     };
+    this.wallMats = {};
+    for (const [k, w] of Object.entries(WALLS)) {
+      const { tex, surf, below, rough, ...o } = w;
+      const m = std({ map: tex ? tex() : T.roomWallTexture({ ...o, photo: true }), roughness: rough });
+      applySurface(m, surf, { below, split: below ? w.lowerH / w.height : 0, bump: 0.9 });
+      this.wallMats[k] = m;
+    }
     this.plankMats = [0, 1, 2, 3].map((i) => new THREE.MeshStandardMaterial({ map: T.plankTexture(i), roughness: 0.9 }));
-    // Surface relief: use each texture's own light/dark as a bump map so mortar
-    // lines, tile grout, wood grain and grime catch the light.
-    const BUMP = {
-      gymFloor: 0.6, tile: 1.2, tile_big: 1.2, concrete: 2.2, grass: 3, asphalt: 3, woodFloor: 1.2, stone: 2.5, tank: 2, carpet: 2,
-      trussCeiling: 1.5, drop: 1.5, wood: 1.5, darkWood: 1.5, metal: 1.5, rustMetal: 2.5, ground: 3, lockers: 1, lockers2: 1, cabinets: 1,
-      shelf: 2, tableTop: 0.8, steel: 0.6,
-    };
+    // Photo surfaces on the floors, ceilings and props (see surfaces.js); the
+    // painted map still gives colour, grime and layout, and a light bump.
+    const M = this.mats;
+    applySurface(M.gymFloor, 'gymFloor', { bump: 0.25 });
+    applySurface(M.tile, 'vct', { bump: 0.8 });
+    applySurface(M.tile_big, 'tileFloor', { bump: 0.5 });
+    applySurface(M.concrete, 'concrete', { bump: 0.8 });
+    applySurface(M.stone, 'concrete', { bump: 1.2 });
+    applySurface(M.asphalt, 'asphalt', { bump: 1 });
+    applySurface(M.grass, 'grass', { bump: 1.5 });
+    applySurface(M.ground, 'ground', { bump: 1.5 });
+    applySurface(M.woodFloor, 'woodFloor', { bump: 0.3 });
+    applySurface(M.carpet, 'carpet', { bump: 0.6 });
+    applySurface(M.drop, 'ceiling', { bump: 1.2 });
+    applySurface(M.wood, 'wood', { strength: 0.8, bump: 0.5 });
+    applySurface(M.darkWood, 'wood', { strength: 0.8, bump: 0.5 });
+    for (const k of ['metal', 'rustMetal', 'tank']) applySurface(M[k], 'metal', { strength: 0.7, bump: 1.5 });
+    for (const k of ['lockers', 'lockers2', 'cabinets']) applySurface(M[k], 'metal', { strength: 0.5, bump: 1 });
+    // Everything else: use each texture's own light/dark as a bump map so
+    // mortar lines, grime and wood grain catch the light.
+    const BUMP = { trussCeiling: 1.5, shelf: 2, tableTop: 0.8, steel: 0.6 };
     for (const [k, amt] of Object.entries(BUMP)) {
       const m = this.mats[k];
       if (m && m.map) { m.bumpMap = m.map; m.bumpScale = amt; }
     }
-    for (const m of Object.values(this.wallMats)) { m.bumpMap = m.map; m.bumpScale = 2.2; }
     for (const m of this.plankMats) { m.bumpMap = m.map; m.bumpScale = 3; }
     // polished floors pick up a little more of the lights
     for (const k of ['tile', 'tile_big', 'gymFloor']) this.mats[k].roughness *= 0.8;
