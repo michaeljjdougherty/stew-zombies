@@ -125,6 +125,14 @@ export const masks = {
   },
 };
 
+// Distance-based falloff along the nasolabial fold (nose wing -> past the mouth corner).
+function foldLine(a, h) {
+  const ax = 0.2, ay = -0.15, bx = 0.31, by = -0.4;
+  const vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((a - ax) * vx + (h - ay) * vy) / (vx * vx + vy * vy)));
+  const dx = a - (ax + vx * t), dy = h - (ay + vy * t);
+  return Math.exp(-(dx * dx + dy * dy) / (0.022 * 0.022)) * (0.4 + 0.6 * Math.sin(t * Math.PI * 0.9 + 0.2));
+}
+
 function sculpt(d, p) {
   // d: unit direction. Returns a displaced point.
   const th = Math.atan2(d.x, d.z);
@@ -172,6 +180,11 @@ function sculpt(d, p) {
   const noseW = p.noseWidth + 0.06 * smooth(-0.02, -0.16, h);
   n += noseP * Math.exp(-((th / noseW) ** 2));
   n += 0.004 * gauss(Math.abs(th), h, 0.13, -0.16, 0.05, 0.04);           // nostril wings
+  n += p.nose * 0.07 * gauss(th, h, 0, -0.14, 0.06, 0.05);                 // rounded tip
+  n -= 0.0022 * gauss(Math.abs(th), h, 0.175, -0.13, 0.025, 0.06);          // crease round the wings
+  n -= 0.0008 * gauss(Math.abs(th), h, 0.05, -0.205, 0.02, 0.014);         // nostrils (from below)
+  // smile lines from the nose down to the mouth corners
+  if (p.smile > 0 && !p.gaunt) n -= 0.0018 * Math.min(1.2, p.smile) * foldLine(Math.abs(th), h);
   n -= 0.003 * gauss(th, h, 0, -0.23, 0.06, 0.03);                         // philtrum
   n += p.cheekbones * gauss(Math.abs(th), h, 0.6, 0.0, 0.22, 0.12);
   n -= p.gaunt * 0.012 * gauss(Math.abs(th), h, 0.75, -0.25, 0.25, 0.16);  // hollow cheeks
@@ -286,6 +299,12 @@ export function headTexture(params = {}, look = {}) {
   const img = g.createImageData(S, S);
   const D = img.data;
   const R = rng(L.seed);
+  // roughness + fine relief: oily T-zone and lips shine, beard and brows are matte
+  const rc = document.createElement('canvas');
+  rc.width = rc.height = S >> 1;
+  const rg = rc.getContext('2d');
+  const rimg = rg.createImageData(S >> 1, S >> 1);
+  const RD = rimg.data;
   // low-frequency blotch noise
   const blot = new Float32Array(64 * 64);
   for (let i = 0; i < blot.length; i++) blot[i] = R();
@@ -311,9 +330,18 @@ export function headTexture(params = {}, look = {}) {
       // pores and blotches
       const v = (nz - 0.5) * 18 + (fine - 0.5) * 8;
       r += v; gg += v * 0.9; b += v * 0.85;
-      // lips
+      // lips, a little lighter in the middle of the lower lip
       const lip = masks.lips(th, h, p);
       r += (L.lipColor[0] - r) * lip * 0.75; gg += (L.lipColor[1] - gg) * lip * 0.75; b += (L.lipColor[2] - b) * lip * 0.75;
+      const lipHi = lip * gauss(th, h, 0, -0.42 + mouthLift(th, p) * 0.6 - mouthOpening(th, p) * 1.6, 0.1, 0.02);
+      r += 18 * lipHi; gg += 12 * lipHi; b += 12 * lipHi;
+      // nostrils and the shadow under the nose
+      const nos = gauss(a, h, 0.05, -0.198, 0.018, 0.008) * (L.zombie ? 0.5 : 1);
+      r *= 1 - nos * 0.3; gg *= 1 - nos * 0.36; b *= 1 - nos * 0.34;
+      const underNose = gauss(th, h, 0, -0.23, 0.1, 0.02) * 0.05;
+      r *= 1 - underNose; gg *= 1 - underNose; b *= 1 - underNose;
+      // smile lines
+      if (p.smile > 0 && !L.zombie) { const f = foldLine(a, h) * Math.min(1, p.smile) * 0.09; r *= 1 - f; gg *= 1 - f * 1.1; b *= 1 - f * 1.1; }
       // the line where the lips meet
       const lift = mouthLift(th, p);
       const my = -0.377 + lift - p.mouthOpen * 0.05;
@@ -377,6 +405,16 @@ export function headTexture(params = {}, look = {}) {
       }
       const i = (y * S + x) * 4;
       D[i] = Math.max(0, Math.min(255, r)); D[i + 1] = Math.max(0, Math.min(255, gg)); D[i + 2] = Math.max(0, Math.min(255, b)); D[i + 3] = 255;
+      if (!(x & 1) && !(y & 1)) {
+        // roughness (green channel, as three.js reads it); fine pores in red for relief
+        const tz = gauss(th, h, 0, 0.3, 0.22, 0.35) + gauss(th, h, 0, -0.1, 0.09, 0.12);
+        const hairy = Math.min(1, (L.beard > 0 ? bm * L.beard : 0) + masks.brows(th, h, p) * 1.5 + (L.sideHair > 0 ? smooth(hairline(th, p) - 0.01, hairline(th, p) + 0.04, h) : 0));
+        let rough = 0.66 - 0.14 * Math.min(1, tz) - 0.22 * lip + 0.24 * hairy + (fine - 0.5) * 0.06;
+        if (L.zombie) rough = 0.78 + (fine - 0.5) * 0.1;
+        const j = ((y >> 1) * (S >> 1) + (x >> 1)) * 4;
+        const pore = 128 + (fine - 0.5) * 70 * (1 - hairy * 0.5) + (hairy > 0.3 ? (R() - 0.5) * 120 : 0);
+        RD[j] = Math.max(0, Math.min(255, pore)); RD[j + 1] = Math.max(0, Math.min(255, rough * 255)); RD[j + 2] = 0; RD[j + 3] = 255;
+      }
     }
   }
   g.putImageData(img, 0, 0);
@@ -400,9 +438,13 @@ export function headTexture(params = {}, look = {}) {
       g.restore();
     }
   }
+  rg.putImageData(rimg, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  const rt = new THREE.CanvasTexture(rc);
+  rt.anisotropy = 4;
+  t.userData.detailMap = rt;   // roughness in G, pore relief in R
   return t;
 }
 
@@ -412,19 +454,34 @@ export function irisTexture(color = '#5a3e22', { zombie = false } = {}) {
   c.width = c.height = 128;
   const g = c.getContext('2d');
   // sphere UV: u around, v pole-to-pole; the front of the eye is at u=0.75
-  g.fillStyle = zombie ? '#c8b880' : '#d6cdbf'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = zombie ? '#c8b880' : '#e2dbd0'; g.fillRect(0, 0, 128, 128);
   const cx = 32, cy = 64;
   if (!zombie) {
     g.strokeStyle = 'rgba(160,60,50,0.25)'; g.lineWidth = 0.6;
     for (let i = 0; i < 14; i++) { g.beginPath(); g.moveTo(cx + 40 * Math.cos(i), cy + 40 * Math.sin(i)); g.lineTo(cx + 18 * Math.cos(i + 0.2), cy + 18 * Math.sin(i + 0.2)); g.stroke(); }
   }
-  const grd = g.createRadialGradient(cx, cy, 2, cx, cy, 15);
+  const ir = zombie ? 1 : 0.8;
+  const grd = g.createRadialGradient(cx, cy, 2, cx, cy, 15 * ir);
   grd.addColorStop(0, zombie ? '#fff2a0' : '#1a120a');
   grd.addColorStop(0.32, zombie ? '#ffb020' : color);
   grd.addColorStop(0.85, zombie ? '#ff6a00' : color);
   grd.addColorStop(1, zombie ? '#7a2a00' : '#1c140c');
-  g.fillStyle = grd; g.beginPath(); g.ellipse(cx, cy, 14, 20, 0, 0, 7); g.fill();
-  if (!zombie) { g.fillStyle = '#060404'; g.beginPath(); g.ellipse(cx, cy, 5, 7, 0, 0, 7); g.fill(); }
+  g.fillStyle = grd; g.beginPath(); g.ellipse(cx, cy, 14 * ir, 20 * ir, 0, 0, 7); g.fill();
+  if (!zombie) {
+    // fibres radiating from the pupil, lighter round the pupil, a dark ring at the edge
+    const base = new THREE.Color(color);
+    for (let i = 0; i < 70; i++) {
+      const a = (i / 70) * Math.PI * 2 + Math.sin(i * 7.3) * 0.05, l = 0.5 + 0.5 * Math.abs(Math.sin(i * 12.9));
+      g.strokeStyle = `rgba(${Math.round(base.r * 255 * 1.6)},${Math.round(base.g * 255 * 1.5)},${Math.round(base.b * 255 * 1.4)},${0.25 * l})`;
+      g.lineWidth = 0.7;
+      g.beginPath(); g.moveTo(cx + Math.cos(a) * 4.5, cy + Math.sin(a) * 6.3); g.lineTo(cx + Math.cos(a) * 10, cy + Math.sin(a) * 14.4); g.stroke();
+    }
+    g.strokeStyle = 'rgba(20,14,10,0.75)'; g.lineWidth = 2;
+    g.beginPath(); g.ellipse(cx, cy, 10.8, 15.6, 0, 0, 7); g.stroke();
+    g.fillStyle = '#060404'; g.beginPath(); g.ellipse(cx, cy, 4.2, 6, 0, 0, 7); g.fill();
+    // catchlight
+    g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(cx - 3.4, cy - 5, 1.8, 2.6, 0, 0, 7); g.fill();
+  }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -608,7 +665,12 @@ export function buildHead(opts = {}) {
   const head = headGeometry(shape, { detail, split: zombie });
   const p = head.params;
   const group = new THREE.Group();
-  const skinMat = skinMaterial || new THREE.MeshStandardMaterial({ map: headTexture(shape, { hair: hairColor, ...look }), roughness: 0.62 });
+  let skinMat = skinMaterial;
+  if (!skinMat) {
+    const map = headTexture(shape, { hair: hairColor, ...look });
+    const dm = map.userData.detailMap;
+    skinMat = new THREE.MeshStandardMaterial({ map, roughness: 1, roughnessMap: dm, bumpMap: dm, bumpScale: 0.35 });
+  }
   skinMat.userData.skin = true;
   let jaw = null;
   if (zombie) {
@@ -639,33 +701,39 @@ export function buildHead(opts = {}) {
   }
   // plain skin for lids and ears (the head texture is laid out for the head)
   const sk = (look.skin || SKIN.light).base;
-  const lidMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${Math.round(sk[0] * 0.92)},${Math.round(sk[1] * 0.86)},${Math.round(sk[2] * 0.84)})`), roughness: 0.6 });
+  const lidMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${Math.round(sk[0] * 0.86)},${Math.round(sk[1] * 0.78)},${Math.round(sk[2] * 0.76)})`), roughness: 0.6 });
   if (zombie) lidMat.color.multiplyScalar(0.8);
   // eyes
-  const eyeMat = new THREE.MeshStandardMaterial({ map: irisTexture(eyeColor, { zombie }), roughness: 0.15, emissive: zombie ? new THREE.Color(1, 0.55, 0.1) : new THREE.Color(0, 0, 0), emissiveIntensity: zombie ? 2.5 : 0 });
+  const eyeMat = zombie
+    ? new THREE.MeshStandardMaterial({ map: irisTexture(eyeColor, { zombie }), roughness: 0.15, emissive: new THREE.Color(1, 0.55, 0.1), emissiveIntensity: 2.5 })
+    : new THREE.MeshPhysicalMaterial({ map: irisTexture(eyeColor), roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.04 });
   if (zombie) eyeMat.emissiveMap = eyeMat.map;
-  const eyeGeo = new THREE.SphereGeometry(0.0118, 18, 14);
-  const lidGeo = new THREE.SphereGeometry(0.0128, 18, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
-  const lashGeo = new THREE.TorusGeometry(0.0128, 0.0009, 4, 24);
+  const eyeR = zombie ? 0.0118 : 0.0125;
+  const eyeGeo = new THREE.SphereGeometry(eyeR, 24, 18);
+  const lidGeo = new THREE.SphereGeometry(eyeR + 0.001, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  const lashGeo = new THREE.TorusGeometry(eyeR + 0.001, 0.0009, 4, 28);
   const lashMat = new THREE.MeshStandardMaterial({ color: '#1a120c', roughness: 0.9 });
   const eyes = [];
   for (const s of [-1, 1]) {
     const th = s * p.eyeSpread * 0.92, hh = p.eyeHeight;
     const surfP = head.surface(th, hh);
     const e = new THREE.Group();
-    e.position.copy(surfP).add(new THREE.Vector3(-Math.sin(th) * 0.0072, 0, -Math.cos(th) * 0.0072));
+    const sink = zombie ? 0.0072 : 0.0068;
+    e.position.copy(surfP).add(new THREE.Vector3(-Math.sin(th) * sink, 0, -Math.cos(th) * sink));
     e.rotation.y = th * 0.35;
     const ball = new THREE.Mesh(eyeGeo, eyeMat);
     e.add(ball);
     // lids: the upper one drops for a squint, the lower one rises a little
     const upper = new THREE.Mesh(lidGeo, lidMat);
-    upper.rotation.x = -0.5 + squint * 0.42 + (zombie ? 0.12 : 0);
+    upper.rotation.x = zombie ? -0.5 + squint * 0.42 + 0.12 : -0.66 + squint * 0.3;
+    e.userData = { ball, upper, lower: null, upperRest: upper.rotation.x };
     const lash = new THREE.Mesh(lashGeo, lashMat); lash.rotation.x = Math.PI / 2;
     upper.add(lash);
     e.add(upper);
     const lower = new THREE.Mesh(lidGeo, lidMat);
-    lower.rotation.x = Math.PI + 0.78 - squint * 0.3;
+    lower.rotation.x = zombie ? Math.PI + 0.78 - squint * 0.3 : Math.PI + 0.86 - squint * 0.2;
     e.add(lower);
+    e.userData.lower = lower; e.userData.lowerRest = lower.rotation.x;
     group.add(e);
     eyes.push(e);
   }
@@ -713,9 +781,11 @@ export function loft(sections, { radial = 16, capTop = true, capBottom = true, s
     const s = sections[i];
     for (let j = 0; j <= radial; j++) {
       const a = (j / radial) * Math.PI * 2;
-      // front of the body (+Z) at u = 0.5
-      const x = Math.sin(a) * s.rx * (s.sx ? (Math.sin(a) > 0 ? s.sx[1] : s.sx[0]) : 1);
-      const z = -Math.cos(a) * s.rz * (s.sz ? (Math.cos(a) < 0 ? s.sz[1] : s.sz[0]) : 1);
+      // front of the body (+Z) at u = 0.5. sq > 2 squares the section off (superellipse).
+      let sa = Math.sin(a), ca = Math.cos(a);
+      if (s.sq) { const e = 2 / s.sq; sa = Math.sign(sa) * Math.abs(sa) ** e; ca = Math.sign(ca) * Math.abs(ca) ** e; }
+      const x = sa * s.rx * (s.sx ? (Math.sin(a) > 0 ? s.sx[1] : s.sx[0]) : 1);
+      const z = -ca * s.rz * (s.sz ? (Math.cos(a) < 0 ? s.sz[1] : s.sz[0]) : 1);
       pos.push(x + (s.x || 0), s.y, z + (s.z || 0));
       uv.push(j / radial, i / (n - 1));
     }

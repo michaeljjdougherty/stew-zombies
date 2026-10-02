@@ -43,6 +43,17 @@ hear (models, textures, sounds) is generated in code. The only library is
   the model on a turntable under a spotlight (drag to spin). First playable
   character: **Kearns**, with four T-shirt colours. Built in
   `src/render/characters.js`.
+- **Hands, faces, animation:** the crew's hands are rigged (`src/render/hands.js`):
+  a palm with thumb and pinky pads, three-bone fingers with knuckles and nails,
+  and a thumb, posed as relaxed, open, fist, point, peace, thumbs up, finger
+  guns... Faces got bigger, glossier eyes (iris fibres, limbal ring, catchlight,
+  clearcoat), a rounder nose with nostrils, smile lines, a lip highlight, and a
+  skin roughness map (shiny T-zone, matte beard and brows) with pore relief.
+  Animation (`src/render/characterAnim.js`) layers breathing, weight shifting,
+  blinking and glancing over each idle, and every character has a signature
+  gesture placed with two-bone IK: Kearns strokes his beard, Ryan punches his
+  palm, Chops and Regs give a thumbs up, Brian waves, Zach claps, Pit scratches
+  his head, Rocco dances with finger guns, Erik drums his fingers.
 
 Phase 8 (built): Erik's on the PA.
 

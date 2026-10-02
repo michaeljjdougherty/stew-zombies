@@ -7,7 +7,9 @@
 // drive them later.
 // =============================================================================
 import * as THREE from 'three';
-import { buildHead, torsoSections, loft, neckGeometry, limb, handGeometry, shoeGeometry, SKIN, rng } from './human.js';
+import { buildHead, torsoSections, loft, neckGeometry, limb, shoeGeometry, SKIN, rng } from './human.js';
+import { buildHand } from './hands.js';
+export { idleCharacter, idleKearns, setGesture } from './characterAnim.js';
 
 export const SHIRT_COLORS = {
   navy: { name: 'Navy', hex: '#26324c' },
@@ -32,7 +34,7 @@ export const CHARACTERS = {
     look: { beard: 1, stubble: 0.3 }, squint: 0.65, eyes: '#4a3520',
     hair: { style: 'quiff', color: [46, 31, 20] },
     top: { type: 'tee', color: 'shirt' }, pants: 'jeans', shoes: 'sneaker',
-    idle: 'relaxed',
+    idle: 'relaxed', gesture: 'beard',
   },
   ryan: {
     name: 'Ryan', blurb: 'Big, laid-back, and ready to throw down. Wandered in from a night out.',
@@ -46,7 +48,7 @@ export const CHARACTERS = {
     layer: { type: 'zip', color: '#18181b' },
     pants: 'darkJeans', shoes: 'sneaker',
     chain: { metal: 'gold', drop: 0.075 },
-    idle: 'big',
+    idle: 'big', gesture: 'fistPalm',
   },
   rocco: {
     name: 'Rocco', blurb: 'A pint-sized troublemaker dressed like a mob boss.',
@@ -61,7 +63,7 @@ export const CHARACTERS = {
     earrings: true,
     watch: { side: 'left', kind: 'silver' },
     bracelet: { side: 'left', colors: ['#c9ccd0', '#c9ccd0'], chunky: true },
-    idle: 'goofy',
+    idle: 'goofy', gesture: 'fingerGuns',
   },
   pit: {
     name: 'Pit', blurb: 'Laid-back and easygoing. Always looks like he just got to the party.',
@@ -75,7 +77,7 @@ export const CHARACTERS = {
     layer: { type: 'sherpa', color: '#c9ae88' },
     pants: 'jeans', shoes: 'sneaker',
     chain: { metal: 'silver', drop: 0.06 },
-    idle: 'lanky',
+    idle: 'lanky', gesture: 'headScratch',
   },
   chops: {
     name: 'Chops', blurb: 'Big, confident and friendly. Always at the best table on the patio.',
@@ -89,7 +91,7 @@ export const CHARACTERS = {
     layer: { type: 'camp', color: '#22304a', short: true },
     pants: 'chinos', shoes: 'sneaker',
     watch: { side: 'left', kind: 'smart' },
-    idle: 'big',
+    idle: 'big', gesture: 'thumbsUp',
   },
   brian: {
     name: 'Brian', blurb: 'Always the one smiling, even mid-zombie apocalypse.',
@@ -102,7 +104,7 @@ export const CHARACTERS = {
     top: { type: 'tee', color: '#ecebe6' },
     layer: { type: 'canvas', color: '#a8794a', collar: '#5a3a22', zipTo: 0.55 },
     pants: 'lightJeans', shoes: 'sneaker',
-    idle: 'cheerful',
+    idle: 'cheerful', gesture: 'wave',
   },
   regs: {
     name: 'Regs', blurb: 'A big, lovable teddy bear. Everyone\'s best buddy.',
@@ -115,7 +117,7 @@ export const CHARACTERS = {
     top: { type: 'tee', color: '#151517', print: 'varsity' },
     pants: 'darkJeans', shoes: 'sneaker',
     chain: { metal: 'gold', drop: 0.2, cross: true },
-    idle: 'big',
+    idle: 'big', gesture: 'thumbsUp',
   },
   zach: {
     name: 'Zach', blurb: 'Cheerful and friendly. Always genuinely happy to be there.',
@@ -128,7 +130,7 @@ export const CHARACTERS = {
     top: { type: 'tee', color: '#151517' },
     layer: { type: 'flannel', color: '#3e4044', check: '#24262a' },
     pants: 'darkJeans', shoes: 'whiteSneaker',
-    idle: 'cheerful',
+    idle: 'cheerful', gesture: 'clap',
   },
   p: {
     name: 'P', blurb: 'Too cool for school. His forehead enters the room before he does.',
@@ -608,7 +610,7 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1 } = {
   if (def.chain) torso.add(chainMesh(secs, neckY, { ...def.chain, outer: suit ? 0.004 : 0 }));
 
   // --- arms
-  const handPeace = def.idle === 'peace' ? handGeometry({ curls: [0, 0, 1.4, 1.4], thumb: 1, spread: [-0.45, 0.3, 0, 0], size: 1.05 }) : null;
+  const nailMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${skin.base.map((x) => Math.min(255, Math.round(x * 1.08 + 14))).join(',')})`), roughness: 0.32 });
   const arm = (side) => {
     const shoulder = new THREE.Group();
     const sx = secs[6].rx * 0.92;
@@ -640,15 +642,14 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1 } = {
     const handGroup = new THREE.Group(); wrist.add(handGroup);
     handGroup.rotation.y = side * -Math.PI / 2 * 0.9;
     handGroup.scale.set(side * Lk, Lk, Lk);
-    const hand = mesh(handGeometry({ curl: 0.55 }), mats.skin, handGroup);
-    let peace = null;
-    if (handPeace && side === -1) { peace = mesh(handPeace, mats.skin, handGroup); peace.visible = false; }
+    const hand = buildHand(mats.skin, nailMat, { size: 1 });
+    handGroup.add(hand.group);
     // jewellery on the wrist (just above the hand)
     const wr = 0.031 * Lk;
     const sideName = side === 1 ? 'left' : 'right';
     if (def.watch && def.watch.side === sideName) { const w = watchMesh(wr, side, def.watch.kind); w.position.y = 0.028; wrist.add(w); }
     if (def.bracelet && def.bracelet.side === sideName) { const b = braceletMesh(wr, def.bracelet); b.position.y = def.watch && def.watch.side === sideName ? 0.05 : 0.026; wrist.add(b); }
-    return { shoulder, elbow, wrist, handGroup, hand, peace };
+    return { side, shoulder, elbow, wrist, handGroup, hand, shoulderY: shoulder.position.y, upperLen: 0.29, lowerLen: 0.26 };
   };
   const armL = arm(1), armR = arm(-1);
 
@@ -673,105 +674,4 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1 } = {
 // Kept for older callers.
 export function buildKearns(opts = {}) { return buildCharacter('kearns', opts); }
 
-// =============================================================================
-// Idle animations for the menus (each character has a style).
-// =============================================================================
-const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-
-function baseIdle(k, t) {
-  const b = Math.sin(t * 1.6);
-  k.hips.position.set(0, 0.95, 0);
-  k.hips.rotation.set(0, 0, Math.sin(t * 0.5) * 0.02);
-  k.hips.position.x = Math.sin(t * 0.5) * 0.01;
-  k.torso.rotation.set(0.02 + b * 0.01, 0, 0);
-  k.torso.scale.set(1 + b * 0.006, 1, 1 + b * 0.01);
-  k.head.rotation.set(-0.04 + Math.sin(t * 0.5) * 0.03, Math.sin(t * 0.37) * 0.18 + Math.sin(t * 1.1) * 0.03, Math.sin(t * 0.29) * 0.04);
-  const out = k.def.armsOut ?? 0.1;
-  for (const [a, s, ph] of [[k.armL, 1, 0.4], [k.armR, -1, 0.9]]) {
-    a.shoulder.rotation.set(Math.sin(t * 1.6 + ph) * 0.025, 0, s * out);
-    a.elbow.rotation.set(-0.18, 0, 0);
-    a.wrist.rotation.set(0, 0, 0);
-  }
-  for (const l of [k.legL, k.legR]) { l.hip.rotation.x = 0; l.knee.rotation.x = 0; l.ankle.rotation.x = 0; }
-  if (k.armR.peace) { k.armR.peace.visible = false; k.armR.hand.visible = true; }
-}
-
-// P: every few seconds, the sideways peace sign under the chin.
-function peaceIdle(k, t) {
-  baseIdle(k, t);
-  const cyc = t % 7;
-  const up = sm(1.0, 1.6, cyc) * (1 - sm(5.0, 5.6, cyc));
-  if (up <= 0) return;
-  const a = k.armR;
-  const out = k.def.armsOut ?? 0.1;
-  // solved so the wrist sits just under the chin, fingers pointing across
-  a.shoulder.rotation.set(-1.163 * up, 0.786 * up, -out * (1 - up) + 0.282 * up);
-  a.elbow.rotation.x = -0.18 + (-2.254 + 0.18) * up;
-  a.wrist.rotation.set(-1.761 * up, -2.647 * up, -2.02 * up);
-  const show = up > 0.5;
-  a.peace.visible = show; a.hand.visible = !show;
-  // chin up, cool head tilt toward the hand
-  k.head.rotation.x = -0.04 - 0.1 * up;
-  k.head.rotation.z = -0.1 * up;
-  k.head.rotation.y *= 1 - up;
-}
-
-// Rocco: bouncy, goofy, never still.
-function goofyIdle(k, t) {
-  baseIdle(k, t);
-  const b = Math.abs(Math.sin(t * 4.2));
-  k.hips.position.y = 0.95 - 0.02 + b * 0.035;
-  k.hips.rotation.z = Math.sin(t * 4.2) * 0.07;
-  k.torso.rotation.z = -Math.sin(t * 4.2) * 0.05;
-  k.head.rotation.z = Math.sin(t * 4.2 + 0.6) * 0.12;
-  k.head.rotation.y = Math.sin(t * 1.3) * 0.35;
-  for (const l of [k.legL, k.legR]) { l.hip.rotation.x = -0.12 * (1 - b); l.knee.rotation.x = 0.25 * (1 - b); l.ankle.rotation.x = -0.12 * (1 - b); }
-  // a little arm-pump dance every few seconds
-  const dance = sm(3, 3.4, t % 8) * (1 - sm(6.2, 6.6, t % 8));
-  for (const [a, s, ph] of [[k.armL, 1, 0], [k.armR, -1, Math.PI]]) {
-    a.shoulder.rotation.x = -0.25 * dance + Math.sin(t * 8.4 + ph) * (0.08 + 0.45 * dance);
-    a.shoulder.rotation.z = s * (0.14 + 0.25 * dance);
-    a.elbow.rotation.x = -0.25 - 1.3 * dance;
-  }
-}
-
-// Erik: rubbing his hands together, bouncing with glee.
-function manicIdle(k, t) {
-  baseIdle(k, t);
-  const rub = Math.sin(t * 11);
-  k.hips.position.y = 0.95 + Math.abs(Math.sin(t * 2.6)) * 0.012;
-  k.torso.rotation.x = 0.1 + Math.sin(t * 2.6) * 0.02;
-  k.head.rotation.set(-0.05 + Math.sin(t * 2.6) * 0.04, Math.sin(t * 0.7) * 0.25, Math.sin(t * 0.9) * 0.14);
-  for (const [a, s] of [[k.armL, 1], [k.armR, -1]]) {
-    a.shoulder.rotation.set(-0.153, -s * 0.563, -s * 0.258);
-    a.elbow.rotation.x = -2.02 + rub * 0.05 * s;
-    a.wrist.rotation.set(-0.321 + rub * 0.1, -s * 0.719, -s * 0.21);
-  }
-}
-
-function bigIdle(k, t) {
-  baseIdle(k, t);
-  k.torso.rotation.x = 0.0 + Math.sin(t * 1.2) * 0.012;
-  k.head.rotation.x = -0.06;
-}
-
-function cheerfulIdle(k, t) {
-  baseIdle(k, t);
-  k.hips.position.y = 0.95 + Math.abs(Math.sin(t * 2.2)) * 0.006;
-  k.head.rotation.z = Math.sin(t * 1.1) * 0.08;
-}
-
-function lankyIdle(k, t) {
-  baseIdle(k, t);
-  // weight on one leg, slouched
-  k.hips.rotation.z = 0.06;
-  k.hips.position.x = 0.025;
-  k.torso.rotation.z = -0.05; k.torso.rotation.x = 0.06;
-  k.legR.hip.rotation.z = -0.06; k.legL.knee.rotation.x = 0.15; k.legL.hip.rotation.x = -0.08;
-  k.head.rotation.z = 0.06 + Math.sin(t * 0.4) * 0.04;
-}
-
-const IDLES = { relaxed: baseIdle, peace: peaceIdle, goofy: goofyIdle, manic: manicIdle, big: bigIdle, cheerful: cheerfulIdle, lanky: lankyIdle };
-export function idleCharacter(k, t) { (IDLES[k.def.idle] || baseIdle)(k, t + k.phase); }
-export function idleKearns(k, t) { idleCharacter(k, t); }
 void cache;

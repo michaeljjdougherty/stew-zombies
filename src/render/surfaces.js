@@ -67,7 +67,6 @@ function tex(img, size) {
 }
 
 function loadInto(t, url) {
-  if (typeof window !== 'undefined' && window.__noSurfaces) return;
   pending++;
   const img = new Image();
   img.decoding = 'async';
@@ -137,7 +136,6 @@ function patch(shader, uniforms) {
 //   strength: how much of the photo's light/dark comes through (0..1)
 //   bump: keep a little of the painted map as a bump map (grout, peeling paint)
 export function applySurface(mat, name, { below = null, split = 0, strength = 1, bump = 0 } = {}) {
-  if (typeof window !== 'undefined' && window.__noApply) return mat;
   const A = surface(name);
   mat.normalMap = A.n;
   mat.normalScale = new THREE.Vector2(A.def.normal, A.def.normal);
