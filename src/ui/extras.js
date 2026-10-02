@@ -13,6 +13,7 @@ export class Extras {
     this.h = handlers; // { progress(), playSong(), stopSong(), songLyric(), songPlaying() }
     this.panel = $('x-panel');
     this.tab = 'story';
+    this.glyph = () => '<b>F</b>';   // set by main: shows the right button for the device
     for (const b of $('x-menu').querySelectorAll('button[data-x]')) {
       b.addEventListener('click', () => this.open(b.dataset.x));
     }
@@ -43,7 +44,7 @@ export class Extras {
       ? `<details><summary>${esc(n.title)}<span>${esc(n.where)}</span></summary><div class="body">${esc(n.text)}</div></details>`
       : `<details class="locked" onclick="return false"><summary>Not found yet<span>somewhere around the ${esc(n.where.toLowerCase())}</span></summary></details>`).join('');
     return `<h3>Notes found · ${found.size} of ${NOTES.length}</h3>
-      <p>Notes are lying around the school. Walk up to one and press <b>F</b> to read it.</p>
+      <p>Notes are lying around the school. Walk up to one and press ${this.glyph('use')} to read it.</p>
       <div class="notes">${items}</div>`;
   }
 
@@ -53,7 +54,7 @@ export class Extras {
     const pus = Object.values(c.powerups.list).map((d) => `<li><b style="color:${d.color}">${esc(d.name)}</b> — ${esc(d.desc)}</li>`).join('');
     return `<h3>How to play</h3>
       <h4>Survive</h4>
-      <p>Zombies come in rounds, each tougher than the last. They break in through the boarded windows; hold <b>F</b> at a window to nail the boards back up (it pays a little). Every hit earns points and kills earn more. Headshots and knife kills pay best.</p>
+      <p>Zombies come in rounds, each tougher than the last. They break in through the boarded windows; hold ${this.glyph('use')} at a window to nail the boards back up (it pays a little). Every hit earns points and kills earn more. Headshots and knife kills pay best.</p>
       <h4>Spend</h4>
       <ul>
         <li><b>Doors and debris</b> open new parts of the school. The <b>Mystery Box</b> (${c.box.cost}) gives a random weapon. Erik's bobblehead means it's about to move.</li>

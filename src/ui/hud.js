@@ -3,6 +3,7 @@
 // Reads sim state; never changes it.
 // =============================================================================
 import { TallyCounter } from './tally.js';
+import { glyphify } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 
@@ -284,7 +285,7 @@ export class HUD {
     // prompt & hints
     let prompt = p.prompt ? p.prompt.text + (p.prompt.cost != null ? ` [Cost: ${p.prompt.cost}]` : '') : '';
     if (p.rebuilding) prompt = 'Rebuilding barrier';
-    this.set('prompt', this.el.prompt, prompt);
+    this.set('prompt', this.el.prompt, prompt && glyphify(prompt), 'innerHTML');
     this.set('promptsub', this.el.promptsub, p.prompt && p.prompt.sub ? p.prompt.sub : '');
 
     // timed power-ups
@@ -340,7 +341,7 @@ export class HUD {
     else if (w.reloading) hint = '';
     else if (low && slot.reserve > 0) hint = 'Press [R] to reload';
     else if (low) hint = 'Low ammo';
-    this.set('hint', this.el.hint, hint);
+    this.set('hint', this.el.hint, hint && glyphify(hint), 'innerHTML');
 
     if (showFps) {
       this.fpsAcc += dt; this.fpsN++;

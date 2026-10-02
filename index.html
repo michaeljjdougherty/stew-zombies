@@ -283,6 +283,36 @@
   #err { position: fixed; left: 16px; right: 16px; bottom: 16px; font: 12px var(--mono); color: #ffb3a6; background: rgba(40,0,0,.85); padding: 10px; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
   @media (max-width: 640px) { .row { grid-template-columns: 1fr 48px; } .row span { grid-column: 1 / -1; } .stats { grid-template-columns: repeat(2, max-content); } }
   @media (prefers-reduced-motion: reduce) { .popup { animation-duration: .01s; } }
+  /* --- controller button prompts --- */
+  .glyph { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.15em; line-height: 1; }
+  kbd.glyph.key { font: 700 0.78em var(--mono); color: var(--ink); border: 1px solid currentColor; border-color: rgba(255,255,255,.45); border-radius: 3px; padding: 2px 6px; min-width: 1.1em; background: rgba(0,0,0,.35); }
+  .glyph.pad { font: 700 0.72em var(--body); color: #f2efe8; background: rgba(20,20,22,.85); border: 1px solid rgba(255,255,255,.35); border-radius: 0.9em; padding: 0.22em 0.6em; letter-spacing: .5px; text-transform: none; }
+  .glyph.pad.face { width: 1.55em; height: 1.55em; padding: 0; border-radius: 50%; font-size: 0.8em; border-width: 2px; background: #141416; }
+  .glyph.pad.xbox.f-a { color: #7ed957; border-color: #4fa82e; }
+  .glyph.pad.xbox.f-b { color: #ff6a5a; border-color: #d63a2b; }
+  .glyph.pad.xbox.f-x { color: #6ab4ff; border-color: #2d7ad6; }
+  .glyph.pad.xbox.f-y { color: #ffd84a; border-color: #d6aa12; }
+  .glyph.pad.ps { font-size: 0.78em; }
+  .glyph.pad.ps.f-cross { color: #8fb6ff; border-color: #5b86d9; }
+  .glyph.pad.ps.f-circle { color: #ff7b7b; border-color: #d94b4b; }
+  .glyph.pad.ps.f-square { color: #ff9fe0; border-color: #d46bb3; }
+  .glyph.pad.ps.f-triangle { color: #69e0bf; border-color: #36b08e; }
+  .keys dt:has(.glyph) { border: 0; padding: 0; font-size: 15px; }
+  #prompt .glyph, #hint .glyph { font-size: 0.95em; margin: 0 2px; }
+  #explorehud .glyph, #rhint .glyph { font-size: 12px; }
+  .icons-row .cycle { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 5px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; min-width: 110px; text-align: center; }
+  .row.icons-row { grid-template-columns: 170px max-content 1fr; }
+  .icons-row output { font: 12px var(--body); color: var(--muted); text-align: left; }
+  #padbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; white-space: nowrap; z-index: 40; display: flex; align-items: center; gap: 8px; font: 13px var(--body); color: var(--ink); letter-spacing: .5px; text-transform: uppercase; pointer-events: none; }
+  #padbar.on-lineup { bottom: 66px; }
+  #padbar span { margin-right: 14px; color: #d8d2c4; }
+  #padbar .glyph { font-size: 14px; }
+  /* controller focus: a clear highlight on whatever the stick is on */
+  body[data-input="xbox"] :focus, body[data-input="ps"] :focus { outline: 2px solid var(--blood-hi); outline-offset: 4px; }
+  body[data-input="xbox"] .menu button:focus, body[data-input="ps"] .menu button:focus { color: #fff; outline: none; }
+  body[data-input="xbox"] .menu button:focus::after, body[data-input="ps"] .menu button:focus::after { width: 100%; }
+  body[data-input="xbox"] input[type=checkbox]:focus, body[data-input="ps"] input[type=checkbox]:focus { outline-offset: 2px; }
+  body[data-input="xbox"] #game, body[data-input="ps"] #game { cursor: none; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -322,8 +352,8 @@
   <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
   <div id="subs" aria-live="polite"></div>
   <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>
-  <div id="explorehud" hidden>Explore · endless points · <kbd>Z</kbd> zombies <b id="ex-z">off</b></div>
-  <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><kbd>B</kbd> weapons &amp; options</div></div>
+  <div id="explorehud" hidden>Explore · endless points · <span data-glyph="zombies"><kbd>Z</kbd></span> zombies <b id="ex-z">off</b></div>
+  <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><span data-glyph="panel"><kbd>B</kbd></span> weapons &amp; options</div></div>
 </div>
 <div id="dmgnums"></div>
 
@@ -358,7 +388,7 @@
         <button id="rp-reset" class="sm" type="button">Reset stats</button>
       </div>
       <span>Picking a weapon fills your empty slot, or replaces the one in your hands. You can't die here.</span>
-      <button id="rp-close" class="sm" type="button">Back to the range [B]</button>
+      <button id="rp-close" class="sm" type="button" data-glyph-text="Back to the range [B]">Back to the range [B]</button>
     </div>
   </div>
 </section>
@@ -376,7 +406,7 @@
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>
     <p class="note">Ten years after the Great Stew Incident, class president Erik Madsen threw a reunion. He made the stew. Everyone ate it. Stew showed up late.</p>
-    <dl class="keys">
+    <dl class="keys" id="keys-list">
       <dt>W A S D</dt><dd>Move</dd>
       <dt>Mouse</dt><dd>Look · left click fires · right click aims (fires the left gun when dual wielding)</dd>
       <dt>Shift</dt><dd>Sprint (hold)</dd>
@@ -409,21 +439,25 @@
   <div class="stack">
     <h2>Settings</h2>
     <div class="settings">
-      <label class="row"><span>Mouse sensitivity</span><input id="set-sens" type="range" min="0.1" max="3" step="0.05"><output id="set-sens-val"></output></label>
+      <label class="row"><span>Mouse sensitivity</span><input data-nav-first id="set-sens" type="range" min="0.1" max="3" step="0.05"><output id="set-sens-val"></output></label>
       <label class="row"><span>Aiming sensitivity</span><input id="set-ads" type="range" min="0.2" max="1.5" step="0.05"><output id="set-ads-val"></output></label>
+      <label class="row"><span>Controller look speed</span><input id="set-padsens" type="range" min="0.3" max="2.5" step="0.05"><output id="set-padsens-val"></output></label>
       <label class="row"><span>Field of view</span><input id="set-fov" type="range" min="65" max="110" step="1"><output id="set-fov-val"></output></label>
       <label class="row"><span>Master volume</span><input id="set-vol" type="range" min="0" max="1" step="0.01"><output id="set-vol-val"></output></label>
       <label class="row"><span>Music</span><input id="set-music" type="range" min="0" max="1" step="0.01"><output id="set-music-val"></output></label>
       <label class="row"><span>Erik &amp; voices</span><input id="set-voice" type="range" min="0" max="1" step="0.01"><output id="set-voice-val"></output></label>
       <label class="row"><span>Render scale</span><input id="set-scale" type="range" min="0.5" max="1" step="0.05"><output id="set-scale-val"></output></label>
       <div class="checks">
-        <label><input id="set-invert" type="checkbox"> Invert mouse Y</label>
+        <label><input id="set-invert" type="checkbox"> Invert look Y</label>
         <label><input id="set-grain" type="checkbox"> Film grain</label>
         <label><input id="set-bloom" type="checkbox"> Bloom</label>
         <label><input id="set-ao" type="checkbox"> Ambient occlusion</label>
         <label><input id="set-fps" type="checkbox"> Show FPS</label>
         <label><input id="set-subs" type="checkbox"> Subtitles</label>
+        <label><input id="set-assist" type="checkbox"> Aim assist (controller)</label>
+        <label><input id="set-rumble" type="checkbox"> Vibration</label>
       </div>
+      <div class="row icons-row"><span>Button prompts</span><button id="set-icons" class="cycle" type="button">Auto</button><output>Auto: whatever you used last</output></div>
     </div>
     <nav class="menu"><button id="btn-settings-back" type="button">Back</button></nav>
   </div>
@@ -441,7 +475,7 @@
       <span class="eyebrow">T-shirt</span>
       <div id="cs-swatches" role="radiogroup" aria-label="T-shirt colour"></div>
     </div>
-    <p class="note cs-hint">Drag to turn him around. More of Stew to come.</p>
+    <p class="note cs-hint" id="cs-hint">Drag to turn him around. More of Stew to come.</p>
     <nav class="menu">
       <button id="btn-cs-select" type="button">Play as Kearns</button>
       <button id="btn-cs-lineup" type="button">See the whole crew</button>
@@ -502,6 +536,7 @@
   </div>
 </section>
 
+<div id="padbar" hidden aria-hidden="true"></div>
 <div id="lockhint" hidden>Mouse capture is unavailable here, so move the mouse to look. For the best feel, open the game in its own browser tab.</div>
 
 <script>

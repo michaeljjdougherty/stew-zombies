@@ -152,6 +152,19 @@ export const CONFIG = {
     defaultSensitivity: 1.0,
     radiansPerPixel: 0.0021, // at sensitivity 1.0
     defaultAdsSensitivity: 0.7,
+    // controller look: radians/second at full tilt (sensitivity 1)
+    pad: {
+      yawSpeed: 2.6,
+      pitchSpeed: 2.1,
+      curve: 1.9,            // stick response (higher = finer near the centre)
+      boost: 1.6,            // extra turn speed after holding full tilt...
+      boostTime: 0.35,       // ...for this long
+      assistSlow: 0.55,      // aim assist: look speed over a target (hip)
+      assistSlowAds: 0.42,   // ...and aiming down sights
+      snapAngle: 7,          // ADS snaps to a target within this many degrees
+      snapTime: 0.16,
+      snapStrength: 0.75,
+    },
     keys: {
       forward: ['KeyW', 'ArrowUp'],
       back: ['KeyS', 'ArrowDown'],

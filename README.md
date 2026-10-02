@@ -197,6 +197,30 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | 1 · 2 · mouse wheel | Switch between your two weapons |
 | Esc | Pause / settings (sensitivity, aiming sensitivity, FOV, volume…) |
 
+### Controller
+
+Plug in (or pair) an Xbox or PlayStation controller and press any button. Every
+button prompt in the game switches to that controller (Xbox letters or
+PlayStation shapes), and back to keys as soon as you touch the keyboard or
+mouse. Settings → Button prompts can force Xbox or PlayStation icons.
+
+| Xbox | PlayStation | Action |
+| --- | --- | --- |
+| Left stick · L-click | Left stick · L3 | Move · sprint (toggle) |
+| Right stick · R-click | Right stick · R3 | Look · knife |
+| RT · LT | R2 · L2 | Fire · aim down sights |
+| A · B | ✕ · ○ | Jump · crouch (toggle) |
+| X | □ | Buy / use (hold to rebuild or revive); reload when there's nothing to buy |
+| Y | △ | Switch weapons |
+| RB · LB | R1 · L1 | Frag grenade (hold to cook) · Stew Bomb |
+| Menu | Options | Pause |
+| View | Create | Firing Range: weapons panel · Explore: zombies on/off |
+
+Menus: D-pad or left stick to move, A/✕ to select, B/○ to go back, D-pad
+left/right for sliders, LB/RB (L1/R1) to flip tabs, shirt colours or lineup
+characters, right stick to turn characters or scroll. Settings has controller
+look speed, aim assist and vibration.
+
 ## Firing Range
 
 Pick **Firing Range** on the title screen to try every weapon without rounds.
@@ -257,9 +281,11 @@ src/render/           three.js views: map, zombies (zombieKit.js), viewmodel, ca
                       post, characters (human.js sculpts heads/bodies; showcase.js = select screen)
 src/audio/            Web Audio engine, synthesized sounds, event → sound director,
                       music.js (title theme and the Stew song sequencer)
-src/input/            keyboard/mouse → per-tick input commands
+src/input/            keyboard/mouse/controller → per-tick input commands
+  gamepad.js          controller polling, Xbox/PlayStation detection, dead zones, rumble
+  glyphs.js           button prompts for keyboard, Xbox and PlayStation
 src/ui/               HUD (tally marks, points, ammo, subtitles, notes), menus, extras,
-                      settings, firing range panel
+                      settings, firing range panel, controller menu navigation (menunav.js)
 src/net/              notes for online co-op (Phase 9)
 tests/                headless tests: node tests/<name>_headless.mjs (one per phase)
 ```

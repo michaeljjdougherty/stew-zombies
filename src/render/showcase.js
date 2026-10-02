@@ -94,9 +94,13 @@ export class Showcase {
 
   hide() { this.active = false; }
 
+  // controller: right stick turns him (a = stick x * dt)
+  turn(a) { this.spin += a * 3.2; this.spinVel = 0; this.heldT = 0.5; }
+
   render(dt, aspect) {
     this.time += dt;
-    if (!this.dragging) {
+    if (this.heldT > 0) this.heldT -= dt;
+    else if (!this.dragging) {
       this.spinVel += (0.35 - this.spinVel) * Math.min(1, dt * 1.5);
       this.spin += this.spinVel * dt;
     }

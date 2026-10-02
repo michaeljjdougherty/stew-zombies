@@ -60,6 +60,7 @@ export class Menus {
     $('set-fov').max = CONFIG.camera.maxFov;
     range('set-sens', 'sensitivity', (v) => v.toFixed(2));
     range('set-ads', 'adsSensitivity', (v) => v.toFixed(2));
+    range('set-padsens', 'padSensitivity', (v) => v.toFixed(2));
     range('set-fov', 'fov', (v) => `${Math.round(v)}°`);
     range('set-vol', 'master', (v) => `${Math.round(v * 100)}%`);
     range('set-music', 'music', (v) => `${Math.round(v * 100)}%`);
@@ -71,6 +72,19 @@ export class Menus {
     check('set-ao', 'ao');
     check('set-fps', 'showFps');
     check('set-subs', 'subtitles');
+    check('set-assist', 'aimAssist');
+    check('set-rumble', 'rumble');
+    // button prompts: Auto / Xbox / PlayStation
+    const ICONS = [['auto', 'Auto'], ['xbox', 'Xbox'], ['ps', 'PlayStation']];
+    const iconBtn = $('set-icons');
+    const showIcons = () => { iconBtn.textContent = (ICONS.find(([k]) => k === s.padIcons) || ICONS[0])[1]; };
+    showIcons();
+    iconBtn.addEventListener('click', () => {
+      const i = ICONS.findIndex(([k]) => k === s.padIcons);
+      s.padIcons = ICONS[(i + 1) % ICONS.length][0];
+      showIcons();
+      this.h.settingsChanged(s);
+    });
   }
 
   showGameOver(team, round, p, erikLine = '') {

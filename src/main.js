@@ -24,6 +24,11 @@ import { CharSelect } from './ui/charselect.js';
 import { LineupUI } from './ui/lineupui.js';
 import { TitleMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
+import { Pads, BTN } from './input/gamepad.js';
+import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
+import { MenuNav } from './ui/menunav.js';
+import { LINEUP } from './render/characters.js';
+import { SHIRT_COLORS } from './render/characters.js';
 
 const LOCAL_ID = 'p1';
 const canvas = document.getElementById('game');
@@ -108,7 +113,7 @@ const menus = new Menus(settings, {
   resume: () => startPlaying(),
   restart: () => { restart(); startPlaying(); },
   quit: () => { restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
-  settingsChanged: (s) => applySettings(s),
+  settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
@@ -156,7 +161,7 @@ function startPlaying() {
   sound.startAmbience(renderer.map);
   input.enabled = true;
   input.reset();
-  input.requestLock();
+  if (device === 'kbm') input.requestLock();
   menus.hideAll();
   hud.show(true);
   rangeUI.setActive(sim.mode === 'range');
@@ -222,7 +227,7 @@ function restart(gameMode = sim.mode) {
 input.onLockChange = (locked, failed) => {
   if (failed) {
     // pointer lock unavailable: keep playing with free mouse-look
-    document.getElementById('lockhint').hidden = false;
+    document.getElementById('lockhint').hidden = device !== 'kbm';
     return;
   }
   if (!locked && mode === 'play') pause();
@@ -262,6 +267,134 @@ function tick(cmd) {
     if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
     if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
     if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
+    if (device !== 'kbm' && settings.rumble !== false) rumbleFor(e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// controller: which device is in use, button prompts, rumble, menu navigation
+// ---------------------------------------------------------------------------
+const pads = new Pads();
+let device = 'kbm';
+const $id = (id) => document.getElementById(id);
+
+function setInputDevice(d) {
+  if (d !== 'kbm' && settings.padIcons && settings.padIcons !== 'auto') d = settings.padIcons;
+  if (d === device) return;
+  device = d;
+  setDevice(d);
+  refreshGlyphs();
+}
+input.onDevice = (d) => setInputDevice(d);
+
+function refreshGlyphs() {
+  document.body.dataset.input = device;
+  applyGlyphs(document);
+  $id('keys-list').innerHTML = controlsList(device);
+  const pad = device !== 'kbm';
+  $id('cs-hint').innerHTML = pad
+    ? `${glyph('rotate')} turns him around · ${glyph('prev')}${glyph('next')} T-shirt colour. More of Stew to come.`
+    : 'Drag to turn him around. More of Stew to come.';
+  lineupUI.hint = pad
+    ? `${glyph('rotate')} turns them · ${glyph('prev')}${glyph('next')} picks someone to look at closer`
+    : 'Drag to turn them around. Pick someone to take a closer look.';
+  lineupUI.showHint();
+  extras.glyph = glyph;
+  if (menus.current === 'extras' && (extras.tab === 'notes' || extras.tab === 'howto')) {
+    const top = extras.panel.scrollTop; extras.open(extras.tab); extras.panel.scrollTop = top;
+  }
+  hud.last.prompt = hud.last.hint = undefined; // redraw prompts with the new buttons
+  showLegend(nav.lastRoot ? nav.lastRoot.id : null);
+  if (pad) $id('lockhint').hidden = true;
+}
+
+function rumbleFor(e) {
+  const local = e.playerId === LOCAL_ID;
+  switch (e.type) {
+    case 'shot': if (local) {
+      const def = CONFIG.weapons[e.weapon] || {};
+      const k = Math.min(1, 0.15 + (def.damage || 60) / 500);
+      pads.rumble(k * 0.6, k, 50 + k * 60);
+    } break;
+    case 'meleeHit': if (local) pads.rumble(0.3, 0.5, 70); break;
+    case 'playerHit': if (e.playerId === LOCAL_ID) pads.rumble(0.7, 0.4, 160); break;
+    case 'playerDown': if (local) pads.rumble(1, 0.8, 450); break;
+    case 'explosion': if (player && e.pos) {
+      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
+      if (d < 16) pads.rumble(1 - d / 16, 0.8 * (1 - d / 16), 280);
+    } break;
+    case 'powerupGrab': pads.rumble(0.2, 0.4, 120); break;
+    case 'playerLand': if (local && e.impact > 4) pads.rumble(0.25, 0.1, 60); break;
+  }
+}
+
+// aim assist: the zombie closest to the crosshair, if it's in sight
+input.hasPrompt = () => !!(player && (player.prompt || player.rebuilding));
+input.assist = () => {
+  if (!player || !sim.zombies.length) return null;
+  const eye = sim.eyePosition(player);
+  let best = null;
+  for (const z of sim.zombies) {
+    if (z.state === 'dead' || z.state === 'waiting') continue;
+    const ty = z.pos.y + (z.crawler ? 0.35 : 1.35);
+    const dx = z.pos.x - eye.x, dy = ty - eye.y, dz = z.pos.z - eye.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 30 || dist < 0.4) continue;
+    const yaw = Math.atan2(-dx, -dz), pitch = Math.atan2(dy, dist);
+    let dyaw = yaw - input.yaw; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+    const angle = Math.hypot(dyaw, pitch - input.pitch);
+    if (angle > 0.35) continue;
+    const radius = Math.atan2(0.45, dist);
+    const l = Math.hypot(dx, dy, dz);
+    if (sim.raycastWorld(eye, { x: dx / l, y: dy / l, z: dz / l }, l - 0.3, true)) continue;
+    if (!best || angle / radius < best.angle / best.radius) best = { yaw, pitch, angle, radius };
+  }
+  return best;
+};
+
+const BACK_BUTTON = { settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
+const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'credits'];
+const nav = new MenuNav({
+  root: () => (mode === 'panel' ? $id('rangepanel') : menus.current ? $id(menus.current) : null),
+  back: (id) => { const b = BACK_BUTTON[id]; if (b) $id(b).click(); },
+  start: (id) => { if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
+  view: (id) => { if (id === 'rangepanel') closeRangePanel(); },
+  bumper: (id, dir) => {
+    if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
+    else if (id === 'charselect') { const ids = Object.keys(SHIRT_COLORS); charSelect.shirt = ids[(ids.indexOf(charSelect.shirt) + dir + ids.length) % ids.length]; charSelect.refresh(); }
+    else if (id === 'lineup') { const L = renderer.getLineup(); const n = LINEUP.length + 1; L.setFocus(((L.focus + 1 + dir + n) % n) - 1); lineupUI.refresh(); }
+  },
+  rotate: (id, a) => {
+    if (id === 'charselect') renderer.showcase.turn(a);
+    else if (id === 'lineup') renderer.getLineup().drag(a * 420);
+  },
+});
+
+function showLegend(id) {
+  const html = legend(id, device);
+  const bar = $id('padbar');
+  bar.innerHTML = html;
+  bar.hidden = !html;
+  bar.className = id ? 'on-' + id : '';
+}
+nav.onRoot = (id) => showLegend(id);
+
+let padWoke = false;
+function padFrame(fdt) {
+  const st = pads.poll();
+  if (st && pads.active) {
+    setInputDevice(pads.type);
+    if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
+  }
+  const playing = mode === 'play';
+  // menus first (no menu is up while playing, so this only tracks the screen)
+  nav.frame(st, fdt);
+  if (!st || !playing) { input.padFrame(null, fdt); return; }
+  input.padFrame(st, fdt);
+  if (st.pressed(BTN.MENU)) { input.releaseLock(); pause(); }
+  else if (st.pressed(BTN.VIEW)) {
+    if (sim.mode === 'range') openRangePanel();
+    else if (sim.mode === 'explore') { sim.setExploreZombies(!sim.explore.zombies); updateExploreHud(); }
   }
 }
 
@@ -270,6 +403,7 @@ function frame(now) {
   const fdt = Math.min(0.1, (now - last) / 1000);
   last = now;
   time += fdt;
+  padFrame(fdt);
 
   if (mode === 'play' || mode === 'dying' || mode === 'panel') {
     acc += fdt;
@@ -312,7 +446,7 @@ requestAnimationFrame(frame);
 // Expose for debugging in the console.
 window.STEW = {
   get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect, lineupUI,
-  get mode() { return mode; },
+  get mode() { return mode; }, pads, nav, get device() { return device; }, setInputDevice,
   debug: {
     // Run the simulation forward without rendering (for testing).
     run(seconds, patch = {}) {
@@ -324,6 +458,7 @@ window.STEW = {
 
   },
 };
+refreshGlyphs();
 document.body.dataset.ready = '1';
 // paint the zombie heads and outfits while the player is still on the title screen
 setTimeout(() => renderer.zombies.kit.build(), 400);

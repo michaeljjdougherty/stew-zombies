@@ -10,6 +10,7 @@ export class LineupUI {
   constructor(handlers) {
     this.h = handlers; // { lineup(), back() }
     this.tagEls = [];
+    this.hint = 'Drag to turn them around. Pick someone to take a closer look.';
     const chips = $('lu-chips');
     const all = document.createElement('button');
     all.type = 'button'; all.textContent = 'Everyone'; all.setAttribute('role', 'tab'); all.dataset.i = '-1';
@@ -54,9 +55,14 @@ export class LineupUI {
     if (!L.built) {
       $('lu-status').textContent = 'Getting everyone in line…';
       // let the message paint before the (blocking) build
-      setTimeout(() => { L.build(); $('lu-status').textContent = 'Drag to turn them around. Pick someone to take a closer look.'; }, 60);
-    }
+      setTimeout(() => { L.build(); this.showHint(); }, 60);
+    } else this.showHint();
     this.refresh();
+  }
+
+  showHint() {
+    if ($('lineup').hidden) return;
+    if (this.h.lineup().built) $('lu-status').innerHTML = this.hint;
   }
 
   refresh() {
