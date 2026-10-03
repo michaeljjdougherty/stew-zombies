@@ -15,6 +15,7 @@
 // neutral, so nothing waits on them and nothing breaks without them.
 // =============================================================================
 import * as THREE from 'three';
+import { addShaderPatch } from './shaderPatch.js';
 
 export const TEX_BASE = 'assets/tex/';
 
@@ -121,6 +122,9 @@ normal = normalize( tbn * mapN );
 #ifdef USE_BUMPMAP
   normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd(), faceDirection );
 #endif
+// faces seen exactly edge-on have no slope to work with: keep the plain normal
+// (otherwise a few pixels come out NaN, which smears through the reflections)
+if ( any( isnan( normal ) ) || dot( normal, normal ) < 0.5 ) normal = nonPerturbedNormal;
 `;
 
 function patch(shader, uniforms) {
@@ -151,9 +155,7 @@ export function applySurface(mat, name, { below = null, split = 0, strength = 1,
     uniforms.detailSplit = { value: split };
   }
   mat.userData.surface = { name, below, uniforms };
-  mat.onBeforeCompile = (shader) => patch(shader, uniforms);
-  mat.customProgramCacheKey = () => 'surface' + (below ? '2' : '1');
-  mat.needsUpdate = true;
+  addShaderPatch(mat, 'surface' + (below ? '2' : '1'), (shader) => patch(shader, uniforms));
   return mat;
 }
 

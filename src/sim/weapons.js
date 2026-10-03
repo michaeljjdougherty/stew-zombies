@@ -219,6 +219,7 @@ function fire(sim, p, slot, def, side) {
     clip: side === 'L' ? slot.clipL : slot.clip,
     action: def.action || null,
     projectile: def.projectile ? def.projectile.type : null,
+    pellets: def.pellets || 1,
   });
 }
 

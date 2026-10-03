@@ -26,6 +26,21 @@ hear (models, textures, sounds) is generated in code. The only library is
   (`src/render/surfaces.js`) multiplies in the photo's detail at real-world
   scale and lights it with the photo's normal map. Images live in
   `assets/tex/`, built by `tools/make_textures.py`.
+- **Baked lighting:** when a map loads, the light from every fixture, lamp
+  and the moon is worked out for the floors, walls and ceilings
+  (`src/render/bake.js`), with soft shadows (light no longer shines through
+  walls; tables, lockers and bleachers cast soft shadows) and darkened
+  corners. The two lights that matter most at each spot follow their live
+  brightness, so tubes still flicker and the power still comes on in a wave;
+  muzzle flashes, explosions and the mystery box are added on top live. It
+  appears straight away unshadowed and the shadows fill in over a second or
+  two, a few milliseconds a frame.
+- **Effects:** muzzle smoke that builds into wisps curling off a hot barrel;
+  blood that pools under the dead, drips from the badly hurt and streaks
+  along walls the way it flew; dust shaken from the ceiling by explosions;
+  dust motes in the beam of every light that's on; wet floors, with puddles
+  (some under a dripping leak that rings the water) and blood pools that
+  mirror the room (`src/render/puddles.js`; Settings → Reflections).
 - **Explore mode** (main menu): the school with endless points; buying is
   free, you can't die, and **Z** switches the zombies on and off.
 - **ADS fixed:** aim, recoil and scope sway are interpolated between 60 Hz
@@ -297,6 +312,7 @@ src/lore/erik.js      every line of story text: PA lines, intercom, notes, lyric
 src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies (zombieKit.js), viewmodel, camera, effects,
                       post, characters (human.js sculpts heads/bodies; showcase.js = select screen)
+                      bake.js (baked light and shadows), puddles.js (wet floors, reflections)
 src/audio/            Web Audio engine, synthesized sounds, event → sound director,
                       music.js (title theme and the Stew song sequencer)
 src/input/            keyboard/mouse/controller → per-tick input commands

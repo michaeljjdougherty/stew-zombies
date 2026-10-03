@@ -11,6 +11,8 @@ const _v = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 
+export const FX_LAYER = 1;
+
 export class Effects {
   constructor(scene, sim, cfg) {
     this.scene = scene;
@@ -32,13 +34,19 @@ export class Effects {
     // --- puffs (smoke, dust, blood mist): sprite pool
     this.puffTex = T.softDotTexture('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
     this.puffs = [];
-    for (let i = 0; i < 140; i++) {
+    this.smokeTex = [1, 2, 3].map((i) => T.smokeTexture(i));
+    for (let i = 0; i < 220; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.puffTex, transparent: true, depthWrite: false, opacity: 0 }));
       s.visible = false;
       scene.add(s);
       this.puffs.push({ s, life: 0, max: 1, grow: 1, vel: new THREE.Vector3(), alpha: 0.5 });
     }
     this.puffIdx = 0;
+    this.lightAt = null;   // (pos) => 0..1, how lit a spot is (set by the renderer) so smoke isn't glowing in the dark
+    this.puddles = null;   // set by the renderer: drops landing in water ripple it
+    this.heat = 0;         // barrel heat: smoke curls off the muzzle after a burst
+    this.sinceShot = 9;
+    this.wispAcc = 0;
 
     // --- decals
     this.bloodTex = [1, 2, 3, 4].map((i) => T.bloodSplatTexture(i));
@@ -47,6 +55,13 @@ export class Effects {
     this.decalGeo = new THREE.PlaneGeometry(1, 1);
     this.bloodDecals = [];
     this.holes = [];
+    // pools that spread out under the dead: glossy, they pick up the reflections
+    this.poolTex = [1, 2, 3].map((i) => T.blobTexture(40 + i, { rgb: [255, 255, 255], lobes: 12 }));
+    this.poolMats = this.poolTex.map((t) => new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0.045, 0.0015, 0.0015), alphaMap: t, transparent: true, depthWrite: false, opacity: 0.96,
+      roughness: 0.1, metalness: 0, envMapIntensity: 0.7, polygonOffset: true, polygonOffsetFactor: -5,
+    }));
+    this.pools = [];
 
     // --- gibs & limbs
     this.gibList = [];
@@ -67,8 +82,9 @@ export class Effects {
     }
     this.tracerIdx = 0;
 
-    // --- emitters (e.g. neck spurts)
+    // --- emitters (e.g. neck spurts) and grit falling from the ceiling
     this.emitters = [];
+    this.streams = [];
 
     // --- explosions: fireball sprites, a flash light, scorch marks
     this.fireTex = T.softDotTexture('rgba(255,240,200,1)', 'rgba(255,120,30,0)');
@@ -86,6 +102,9 @@ export class Effects {
     this.scorches = [];
 
     this.buildDust();
+    // particles, smoke and dust stay out of the puddles' reflection captures
+    // (tiny points right next to a cube camera come out as NaNs)
+    for (const o of [this.dust, this.beamDust, this.pmesh, ...this.puffs.map((p) => p.s), ...this.fires.map((f) => f.s)]) o.layers.set(FX_LAYER);
   }
 
   buildDust() {
@@ -114,45 +133,55 @@ export class Effects {
     this.dust.frustumCulled = false;
     this.scene.add(this.dust);
 
-    // denser, brighter motes inside the light cones
-    const lit = this.sim.mapData.rooms.flatMap((r) => (r.fixtures || []).filter((f) => f.lit).map((f) => ({ ...f, drop: Math.min(6.2, f.y - 0.4), spread: f.y > 6 ? 2.1 : 1.0 })));
+    // denser, brighter motes inside the light cones: every fixture gets some,
+    // and they show only while it's on (see update); plus shafts at the windows
+    const fixtures = this.sim.mapData.rooms.flatMap((r) => (r.fixtures || []).map((f) => ({ ...f, drop: Math.min(6.2, f.y - 0.4), spread: f.y > 6 ? 2.1 : f.kind === 'lamp' ? 1.4 : 1.0 })));
     const wins = this.sim.windows;
-    const m = 360;
-    const bp = new Float32Array(m * 3);
-    this.beamSources = [];
-    for (let i = 0; i < m; i++) {
-      let x, y, z;
-      if ((i % 2 === 0 || !wins.length) && lit.length) {
-        const f = lit[i % lit.length];
+    const pts = [];
+    fixtures.forEach((f, fi) => {
+      const n = f.y > 6 ? 16 : 7;
+      for (let i = 0; i < n; i++) {
         const t = Math.random();
         const r = (0.3 + t * f.spread) * Math.sqrt(Math.random());
         const a = Math.random() * Math.PI * 2;
-        x = f.x + Math.cos(a) * r; z = f.z + Math.sin(a) * r; y = f.y - 0.3 - t * f.drop;
-        this.beamSources.push({ kind: 'f', f, cx: f.x, cz: f.z });
-      } else if (wins.length) {
-        const w = wins[i % wins.length];
-        const t = Math.random();
-        x = w.center.x + w.normal.x * t * 4 + (Math.random() - 0.5) * (0.7 + t);
-        z = w.center.z + w.normal.z * t * 4 + (Math.random() - 0.5) * (0.7 + t) * 0.6;
-        y = 1.8 - t * 1.8 + (Math.random() - 0.5) * 0.8;
-        this.beamSources.push({ kind: 'w' });
-      } else { x = 0; y = 1; z = 0; this.beamSources.push({ kind: 'w' }); }
-      bp[i * 3] = x; bp[i * 3 + 1] = Math.max(0.05, y); bp[i * 3 + 2] = z;
+        pts.push([f.x + Math.cos(a) * r, f.y - 0.3 - t * f.drop, f.z + Math.sin(a) * r, fi]);
+      }
+    });
+    for (let i = 0; i < 150 && wins.length; i++) {
+      const w = wins[i % wins.length];
+      const t = Math.random();
+      pts.push([
+        w.center.x + w.normal.x * t * 4 + (Math.random() - 0.5) * (0.7 + t),
+        1.8 - t * 1.8 + (Math.random() - 0.5) * 0.8,
+        w.center.z + w.normal.z * t * 4 + (Math.random() - 0.5) * (0.7 + t) * 0.6, -1]);
     }
+    const m = pts.length;
+    const bp = new Float32Array(m * 3);
+    this.beamCol = new Float32Array(m * 3);
+    this.beamFix = new Int16Array(m);
+    pts.forEach(([x, y, z, fi], i) => {
+      bp[i * 3] = x; bp[i * 3 + 1] = Math.max(0.05, y); bp[i * 3 + 2] = z;
+      this.beamFix[i] = fi;
+      const k = fi < 0 ? 0.55 : 1;   // window shafts are moonlight: dimmer and bluer
+      this.beamCol[i * 3] = fi < 0 ? 0.75 * k : 1; this.beamCol[i * 3 + 1] = fi < 0 ? 0.85 * k : 0.94; this.beamCol[i * 3 + 2] = fi < 0 ? 1 * k : 0.82;
+    });
+    this.beamBase = this.beamCol.slice();
     this.beamHome = bp.slice();
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.BufferAttribute(bp, 3));
+    bg.setAttribute('color', new THREE.BufferAttribute(this.beamCol, 3));
     this.beamDust = new THREE.Points(bg, new THREE.PointsMaterial({
-      size: 0.022, map: this.puffTex, color: 0xfff0d0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false,
+      size: 0.022, map: this.puffTex, vertexColors: true, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false,
     }));
+    this.fixtures = null; // the map's live fixtures (set by the renderer): motes follow their brightness
     this.beamDust.frustumCulled = false;
     this.scene.add(this.beamDust);
   }
 
   // ---------------------------------------------------------------------------
-  spawnParticle(pos, vel, { life = 1, size = 0.02, color = [0.25, 0.01, 0.01], gravity = 9.8, drag = 0.5, floorDecal = false } = {}) {
+  spawnParticle(pos, vel, { life = 1, size = 0.02, color = [0.25, 0.01, 0.01], gravity = 9.8, drag = 0.5, floorDecal = false, decalSize = 0 } = {}) {
     if (this.particles.length >= this.maxP) this.particles.shift();
-    this.particles.push({ p: pos.clone(), v: vel.clone(), life, max: life, size, color, gravity, drag, floorDecal });
+    this.particles.push({ p: pos.clone(), v: vel.clone(), life, max: life, size, color, gravity, drag, floorDecal, decalSize });
   }
 
   bloodBurst(pos, dir, count = 16, power = 1) {
@@ -164,7 +193,7 @@ export class Effects {
         d.z * 2.5 + (Math.random() - 0.5) * 3,
       ).multiplyScalar(power * (0.4 + Math.random()));
       const dark = 0.12 + Math.random() * 0.2;
-      this.spawnParticle(pos, v, { life: 0.6 + Math.random() * 0.8, size: 0.012 + Math.random() * 0.03, color: [dark, 0.005, 0.004], floorDecal: Math.random() < 0.08 });
+      this.spawnParticle(pos, v, { life: 0.6 + Math.random() * 0.8, size: 0.012 + Math.random() * 0.03, color: [dark, 0.005, 0.004], floorDecal: Math.random() < 0.18, decalSize: 0.06 + Math.random() * 0.16 });
     }
     this.puff(pos, { color: 0x5a0a08, size: 0.35 * power, grow: 1.2, life: 0.4, alpha: 0.55, vel: d.clone().multiplyScalar(0.8) });
   }
@@ -173,11 +202,19 @@ export class Effects {
     this.emitters.push({ obj: object3d, t: 0, duration, acc: 0 });
   }
 
-  puff(pos, { color = 0x8a8070, size = 0.3, grow = 1.5, life = 0.8, alpha = 0.4, vel = null } = {}) {
+  puff(pos, { color = 0x8a8070, size = 0.3, grow = 1.5, life = 0.8, alpha = 0.4, vel = null, smoke = false, shade = true, rise = 0 } = {}) {
     const p = this.puffs[this.puffIdx];
     this.puffIdx = (this.puffIdx + 1) % this.puffs.length;
     p.s.position.copy(pos);
     p.s.material.color.set(color);
+    // smoke and dust are lit by the room, not glowing
+    if (shade && this.lightAt) p.s.material.color.multiplyScalar(0.3 + 0.95 * this.lightAt(pos));
+    const tex = smoke ? this.smokeTex[Math.floor(Math.random() * this.smokeTex.length)] : this.puffTex;
+    if (p.s.material.map !== tex) { p.s.material.map = tex; p.s.material.needsUpdate = true; }
+    p.s.material.rotation = smoke ? Math.random() * 6.28 : 0;
+    p.spin = smoke ? (Math.random() - 0.5) * 0.8 : 0;
+    p.rise = rise;
+    p.smoke = smoke;
     p.s.material.opacity = alpha;
     p.s.scale.setScalar(size);
     p.s.visible = true;
@@ -185,22 +222,94 @@ export class Effects {
     p.vel.copy(vel || new THREE.Vector3(0, 0.25, 0));
   }
 
-  placeDecal(list, max, mat, pos, normal, size) {
+  // dir (optional): the way the splash was travelling; it streaks along it
+  placeDecal(list, max, mat, pos, normal, size, dir = null) {
     let m;
     if (list.length >= max) { m = list.shift(); } else { m = new THREE.Mesh(this.decalGeo, mat); this.scene.add(m); }
     m.material = mat;
     m.position.copy(pos).addScaledVector(normal, 0.006 + list.length * 0.00002);
     _q.setFromUnitVectors(Z, normal);
     m.quaternion.copy(_q);
-    m.rotateZ(Math.random() * Math.PI * 2);
     m.scale.setScalar(size);
+    if (dir) {
+      const dn = dir.dot(normal);
+      const along = dir.clone().addScaledVector(normal, -dn);
+      if (along.lengthSq() > 1e-4) {
+        along.normalize();
+        const xw = new THREE.Vector3(1, 0, 0).applyQuaternion(_q);
+        const ang = Math.atan2(new THREE.Vector3().crossVectors(xw, along).dot(normal), xw.dot(along));
+        m.rotateZ(ang);
+        const stretch = Math.min(2.6, 1 / Math.max(0.35, Math.abs(dn)));
+        m.scale.set(size * stretch, size / Math.sqrt(stretch), 1);
+        m.position.addScaledVector(along, size * (stretch - 1) * 0.3);
+      } else m.rotateZ(Math.random() * Math.PI * 2);
+    } else m.rotateZ(Math.random() * Math.PI * 2);
     list.push(m);
     return m;
   }
 
-  bloodDecal(pos, normal, size = 0.8) {
+  bloodDecal(pos, normal, size = 0.8, dir = null) {
     const mat = this.bloodMats[Math.floor(Math.random() * this.bloodMats.length)];
-    this.placeDecal(this.bloodDecals, this.cfg.graphics.maxBloodDecals, mat, pos, normal, size);
+    this.placeDecal(this.bloodDecals, this.cfg.graphics.maxBloodDecals, mat, pos, normal, size, dir);
+  }
+
+  // A pool of blood spreading out from under a body.
+  bloodPool(pos, size = 1) {
+    const max = this.cfg.graphics.maxBloodPools ?? 16;
+    const h = this.sim.raycastWorld({ x: pos.x, y: 0.6, z: pos.z }, { x: 0, y: -1, z: 0 }, 0.65);
+    const y = h ? h.point.y : 0;
+    if (y > 0.5) return;
+    const mat = this.poolMats[Math.floor(Math.random() * this.poolMats.length)];
+    if (this.puddles && mat.envMap !== this.puddles.envMap) { for (const pm of this.poolMats) { pm.envMap = this.puddles.envMap; pm.needsUpdate = true; } }
+    const m = this.placeDecal(this.pools, max, mat, new THREE.Vector3(pos.x, y, pos.z), UP, 0.01);
+    m.position.y = y + 0.007;
+    m.userData.pool = { t: 0, size: size * (0.9 + Math.random() * 0.6), delay: 0.5 + Math.random() * 0.4 };
+  }
+
+  // A drop of blood falling from a wounded zombie, leaving a spot where it lands.
+  bloodDrip(pos) {
+    this.spawnParticle(pos, new THREE.Vector3((Math.random() - 0.5) * 0.3, -0.5, (Math.random() - 0.5) * 0.3), { life: 2, size: 0.014, color: [0.16, 0.004, 0.004], floorDecal: true, decalSize: 0.07 + Math.random() * 0.09 });
+  }
+
+  // Smoke from the muzzle on each shot; it builds up into curling wisps after a burst.
+  muzzleSmoke(pos, dir, k = 1, local = true) {
+    if (local) { this.heat = Math.min(1.5, this.heat + 0.09 * k); this.sinceShot = 0; }
+    const d = dir ? new THREE.Vector3(dir.x, dir.y, dir.z) : new THREE.Vector3(0, 0, -1);
+    this.puff(new THREE.Vector3(pos.x, pos.y, pos.z).addScaledVector(d, 0.12), { color: 0xb8b4ac, size: 0.13 * k, grow: 5, life: 1.1 + Math.random() * 0.6, alpha: 0.5, vel: d.multiplyScalar(0.9).add(new THREE.Vector3(0, 0.15, 0)), smoke: true, rise: 0.25 });
+  }
+
+  // Called every frame with the muzzle's position: wisps rise off a hot barrel.
+  barrelSmoke(pos, dt) {
+    this.sinceShot += dt;
+    this.heat = Math.max(0, this.heat - dt * 0.28);
+    if (this.heat < 0.2 || this.sinceShot < 0.12 || !pos) return;
+    this.wispAcc += dt * 14 * Math.min(1, this.heat);
+    while (this.wispAcc > 1) {
+      this.wispAcc -= 1;
+      this.puff(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 0.01, pos.y + 0.01, pos.z + (Math.random() - 0.5) * 0.01), {
+        color: 0xc8c4bc, size: 0.03, grow: 6, life: 1.4 + Math.random() * 0.6, alpha: 0.38 * Math.min(1, this.heat), smoke: true, rise: 0.12,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.06, 0.18 + Math.random() * 0.1, (Math.random() - 0.5) * 0.06),
+      });
+    }
+  }
+
+  // Dust and grit shaken down from the ceiling (explosions nearby).
+  ceilingDust(pos, radius = 3, amount = 1) {
+    const room = this.roomAt(pos.x, pos.z);
+    if (!room || room.outdoor) return;
+    const H = room.height - 0.08;
+    const n = Math.round(14 * amount);
+    for (let i = 0; i < n; i++) {
+      const x = pos.x + (Math.random() - 0.5) * radius * 2, z = pos.z + (Math.random() - 0.5) * radius * 2;
+      // a short stream of grit from each spot, and a little cloud that sinks
+      this.streams.push({ x, z, y: H, t: Math.random() * 0.4, life: 0.6 + Math.random() * 1.2, acc: 0 });
+      if (i % 2 === 0) this.puff(new THREE.Vector3(x, H - 0.15, z), { color: 0x9a9082, size: 0.8, grow: 2.4, life: 2.5 + Math.random() * 1.5, alpha: 0.34, vel: new THREE.Vector3((Math.random() - 0.5) * 0.2, -0.35 - Math.random() * 0.3, (Math.random() - 0.5) * 0.2), smoke: true });
+    }
+  }
+
+  roomAt(x, z) {
+    for (const r of this.sim.mapData.rooms) { const [x0, z0, x1, z1] = r.rect; if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return r; }
+    return null;
   }
 
   bulletHole(pos, normal) {
@@ -233,7 +342,7 @@ export class Effects {
     // spatter on whatever is behind
     if (Math.random() < 0.6) {
       const h = this.sim.raycastWorld(point, dir, 3.5);
-      if (h) this.bloodDecal(new THREE.Vector3(h.point.x, h.point.y, h.point.z), new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z), 0.35 + Math.random() * 0.5);
+      if (h) this.bloodDecal(new THREE.Vector3(h.point.x, h.point.y, h.point.z), new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z), 0.3 + Math.random() * 0.45, d.clone().normalize());
     }
   }
 
@@ -410,6 +519,7 @@ export class Effects {
       const v = new THREE.Vector3((Math.random() - 0.5) * 8, 2 + Math.random() * 6, (Math.random() - 0.5) * 8);
       this.spawnParticle(p, v, { life: 0.9 + Math.random() * 0.6, size: 0.02 + Math.random() * 0.03, color: [0.12, 0.1, 0.08], gravity: 9.8, drag: 0.3 });
     }
+    this.ceilingDust(p, radius * 1.2, 1.2 * k);
     // scorch on the floor (or whatever is below)
     const h = this.sim.raycastWorld({ x: p.x, y: p.y + 0.1, z: p.z }, { x: 0, y: -1, z: 0 }, 2.5);
     const sp = h ? new THREE.Vector3(h.point.x, h.point.y, h.point.z) : new THREE.Vector3(p.x, 0, p.z);
@@ -428,7 +538,13 @@ export class Effects {
       p.v.multiplyScalar(Math.max(0, 1 - p.drag * dt));
       p.p.addScaledVector(p.v, dt);
       if (p.p.y < 0.01) {
-        if (p.floorDecal) { this.bloodDecal(new THREE.Vector3(p.p.x, 0, p.p.z), UP, 0.15 + Math.random() * 0.25); p.floorDecal = false; }
+        if (p.floorDecal) {
+          // drops hitting the floor leave spots, streaked the way they were flying
+          const hv = _v.set(p.v.x, p.v.y, p.v.z);
+          this.bloodDecal(new THREE.Vector3(p.p.x, 0, p.p.z), UP, p.decalSize || 0.12 + Math.random() * 0.2, hv.lengthSq() > 4 ? hv.clone().normalize() : null);
+          p.floorDecal = false;
+        }
+        if (this.puddles && p.v.y < -2 && Math.random() < 0.5) this.puddles.splash(p.p.x, p.p.z);
         p.p.y = 0.01; p.v.set(0, 0, 0);
         p.life = Math.min(p.life, 0.2);
       }
@@ -454,9 +570,12 @@ export class Effects {
       p.life -= dt;
       if (p.life <= 0) { p.s.visible = false; continue; }
       const k = 1 - p.life / p.max;
+      if (p.rise) p.vel.y += p.rise * dt;
       p.s.position.addScaledVector(p.vel, dt);
+      if (p.spin) p.s.material.rotation += p.spin * dt;
       p.s.scale.setScalar(p.size * (1 + k * p.grow));
-      p.s.material.opacity = p.alpha * (1 - k) * (1 - k);
+      // smoke swells in then thins out slowly; other puffs just fade
+      p.s.material.opacity = p.smoke ? p.alpha * Math.min(1, k * 8) * Math.pow(1 - k, 1.3) : p.alpha * (1 - k) * (1 - k);
     }
 
     // neck/limb spurts
@@ -470,6 +589,28 @@ export class Effects {
         const up = new THREE.Vector3(0, 1, 0).applyQuaternion(e.obj.getWorldQuaternion(new THREE.Quaternion()));
         const pulse = 0.6 + Math.sin(e.t * 25) * 0.4;
         this.spawnParticle(_v, up.multiplyScalar(2.2 * pulse).add(new THREE.Vector3((Math.random() - 0.5), Math.random() * 0.5, (Math.random() - 0.5))), { life: 0.8, size: 0.02, color: [0.2, 0.005, 0.005], floorDecal: Math.random() < 0.05 });
+      }
+    }
+
+    // blood pools spreading
+    for (const m of this.pools) {
+      const pl = m.userData.pool;
+      if (!pl || pl.t > 6) continue;
+      pl.t += dt;
+      const k = Math.max(0, pl.t - pl.delay) / 5;
+      const s = pl.size * Math.max(0.01, 1 - Math.pow(1 - Math.min(1, k), 3));
+      m.scale.set(s, s, 1);
+    }
+
+    // grit trickling from the ceiling
+    for (let i = this.streams.length - 1; i >= 0; i--) {
+      const st = this.streams[i];
+      st.t += dt;
+      if (st.t > st.life) { this.streams.splice(i, 1); continue; }
+      st.acc += dt * 30 * (1 - st.t / st.life);
+      while (st.acc > 1) {
+        st.acc -= 1;
+        this.spawnParticle(new THREE.Vector3(st.x + (Math.random() - 0.5) * 0.08, st.y, st.z + (Math.random() - 0.5) * 0.08), new THREE.Vector3((Math.random() - 0.5) * 0.2, -0.3, (Math.random() - 0.5) * 0.2), { life: 2.5, size: 0.012 + Math.random() * 0.016, color: [0.32, 0.3, 0.26], gravity: 7, drag: 0.6 });
       }
     }
 
@@ -555,16 +696,24 @@ export class Effects {
       ba[i + 1] = home[i + 1] + Math.sin(t * 0.13 + k * 1.7) * 0.3;
       ba[i + 2] = home[i + 2] + Math.cos(t * 0.17 + k * 0.9) * 0.25;
     }
+    if (this.fixtures) {
+      const col = this.beamCol, base = this.beamBase, fx = this.fixtures, fix = this.beamFix;
+      for (let i = 0; i < fix.length; i++) {
+        const fi = fix[i];
+        if (fi < 0) continue;
+        const l = fx[fi] ? fx[fi].level : 0;
+        col[i * 3] = base[i * 3] * l; col[i * 3 + 1] = base[i * 3 + 1] * l; col[i * 3 + 2] = base[i * 3 + 2] * l;
+      }
+      this.beamDust.geometry.attributes.color.needsUpdate = true;
+    }
     this.beamDust.geometry.attributes.position.needsUpdate = true;
   }
 
-  // brightness of the beam dust follows the fixtures
-  setBeamLevel(level) { this.beamDust.material.opacity = 0.35 + 0.4 * level; }
-
   clear() {
     this.particles.length = 0;
-    for (const d of [...this.bloodDecals, ...this.holes, ...this.scorches]) this.scene.remove(d);
-    this.bloodDecals.length = 0; this.holes.length = 0; this.scorches.length = 0;
+    for (const d of [...this.bloodDecals, ...this.holes, ...this.scorches, ...this.pools]) this.scene.remove(d);
+    this.bloodDecals.length = 0; this.holes.length = 0; this.scorches.length = 0; this.pools.length = 0;
+    this.streams.length = 0; this.heat = 0;
     for (const f of this.fires) f.s.visible = false;
     this.blastLight.intensity = 0;
     for (const g of this.gibList) this.scene.remove(g.m);

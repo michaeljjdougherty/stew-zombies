@@ -1165,3 +1165,48 @@ export function steelTexture() {
   t.repeat.set(1 / 1.5, 1 / 1.5);
   return t;
 }
+
+// A soft-edged irregular blob (pools, puddles). rgb is the fill; the edge fades.
+// Built from overlapping radial gradients so the outline wobbles.
+export function blobTexture(seed = 1, { rgb = [255, 255, 255], size = 256, lobes = 9, core = 1 } = {}) {
+  seedTextures(seed * 97 + 11);
+  const S = size;
+  const [c, g] = makeCanvas(S, S);
+  g.clearRect(0, 0, S, S);
+  const [r, gg, b] = rgb;
+  const blob = (x, y, rad, a) => {
+    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+    grd.addColorStop(0, `rgba(${r},${gg},${b},${a})`);
+    grd.addColorStop(0.62, `rgba(${r},${gg},${b},${a})`);
+    grd.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+  };
+  blob(S / 2, S / 2, S * 0.3, core);
+  for (let i = 0; i < lobes; i++) {
+    const a = rr(0, 6.28), d = rr(0.05, 0.2) * S;
+    blob(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, rr(0.12, 0.22) * S, rr(0.7, 1));
+  }
+  return toTexture(c, { repeat: false, srgb: false });
+}
+
+// A wispy smoke puff: a handful of soft dots with some holes in it.
+export function smokeTexture(seed = 1) {
+  seedTextures(seed * 31 + 5);
+  const S = 128;
+  const [c, g] = makeCanvas(S, S);
+  g.clearRect(0, 0, S, S);
+  for (let i = 0; i < 22; i++) {
+    const a = rr(0, 6.28), d = rr(0, 0.28) * S, x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d, rad = rr(0.1, 0.24) * S;
+    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+    grd.addColorStop(0, `rgba(255,255,255,${rr(0.25, 0.5)})`); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  }
+  // fade the square's corners right out
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createRadialGradient(S / 2, S / 2, S * 0.2, S / 2, S / 2, S / 2);
+  m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, S, S);
+  g.globalCompositeOperation = 'source-over';
+  return toTexture(c, { repeat: false, srgb: false });
+}

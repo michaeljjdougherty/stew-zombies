@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   grain: true,
   bloom: true,
   ao: CONFIG.graphics.ao,
+  reflections: CONFIG.graphics.reflections,
   showFps: false,
 };
 

@@ -51,6 +51,7 @@ export class BoxView {
     this.group.add(this.beam);
     this.mapView = mapView;
     this.light = mapView.addVirtualLight({ x: 0, y: 1.2, z: 0 }, 0x7fcfff, 7, 6, 1.8);
+    this.light.live = true; // it moves with the box: drawn live, not baked
 
     // floating weapon display
     this.display = new THREE.Group();

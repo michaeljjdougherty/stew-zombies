@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { BoxBatch, bx } from './geometry.js';
 import * as T from './textures.js';
 import { applySurface } from './surfaces.js';
+import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS } from './bake.js';
 import { campusBounds } from '../map/school.js';
 
 const SIDE_FACES = { n: [4, 5], s: [5, 4], w: [0, 1], e: [1, 0] }; // [inward face, outward face]
@@ -26,6 +27,7 @@ export class MapView {
     this.vspots = [];
     this.windowViews = new Map();
     this.doorViews = new Map();
+    this.bakeReceivers = [];
     this.time = 0;
     this.T = this.map.wallThickness;
 
@@ -34,11 +36,73 @@ export class MapView {
     this.buildWalls();
     this.buildCourt();
     this.buildProps();
+    // windows, doors and wall weapons move or come and go: they don't cast baked shadows
+    const n0 = this.group.children.length;
     this.buildWindows();
     this.buildDoors();
     this.buildWallBuys();
+    for (const c of this.group.children.slice(n0)) c.userData.noBake = true;
     this.buildExterior();
+    const occ = this.collectOccluders();
     this.buildLights();
+    // the bake starts on the first update, once the machines and the box have
+    // added their lights too
+    this.occ = occ;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Baked lighting (see bake.js): solid boxes in, a background baker out.
+  collectOccluders() {
+    const occ = new Occluders(2);
+    // floors as thin slabs
+    for (const r of this.map.rooms) { const [x0, z0, x1, z1] = r.rect; occ.add(x0, -0.1, z0, x1, 0, z1); }
+    const box = new THREE.Box3();
+    this.group.updateMatrixWorld(true);
+    const skip = (o) => { for (let q = o; q && q !== this.group; q = q.parent) if (q.userData.noBake) return true; return false; };
+    this.group.traverse((o) => {
+      if (!o.isMesh || skip(o)) return;
+      const m = o.material;
+      if (!m || Array.isArray(m) || m.transparent || m.alphaTest > 0 || m.isMeshBasicMaterial || m.blending !== THREE.NormalBlending) return;
+      const g = o.geometry;
+      if (g.userData.boxes) {
+        // BoxBatch: every box, moved into world space
+        for (const b of g.userData.boxes) {
+          box.min.set(b.minX, b.minY, b.minZ); box.max.set(b.maxX, b.maxY, b.maxZ);
+          box.applyMatrix4(o.matrixWorld);
+          occ.add(box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z);
+        }
+        return;
+      }
+      if (!g.boundingBox) g.computeBoundingBox();
+      box.copy(g.boundingBox).applyMatrix4(o.matrixWorld);
+      const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y, sz = box.max.z - box.min.z;
+      // flat things (posters, overlays) and big merged clutter don't block light
+      if (Math.min(sx, sy, sz) < 0.02 || Math.max(sx, sy, sz) > 4.5) return;
+      // shrink a little: round things fill less of their box
+      const k = g.type === 'BoxGeometry' || g.type === 'RoundedBoxGeometry' ? 0 : 0.12;
+      occ.add(box.min.x + sx * k, box.min.y, box.min.z + sz * k, box.max.x - sx * k, box.max.y - sy * k, box.max.z - sz * k);
+    });
+    occ.finalize();
+    return occ;
+  }
+
+  startBake() {
+    if (this.baker || !this.occ) return;
+    const lights = [];
+    this.vlights.forEach((v, i) => {
+      if (v.live) return;   // lights that move are drawn live instead (see renderer)
+      v.channel = i < MAX_CHANNELS ? i : -1;
+      lights.push({
+        pos: v.pos, color: v.color, intensity: v.intensity, distance: v.distance, decay: v.decay, channel: v.channel,
+        // on before the power: emergency fixtures, moonlight, glows already lit
+        early: v.fixture ? !!v.fixture.orig.lit : v.level > 0,
+        size: v.fixture ? (v.fixture.lamp ? 0.25 : 0.6) : 0.3,
+      });
+    });
+    const moon = new THREE.Color(0x8fa6c8);
+    for (const sp of this.vspots) lights.push({ pos: sp.pos, color: moon, intensity: 90, distance: 22, decay: 1.25, channel: -1, early: true, size: 0.5 });
+    this.baker = new Baker(this.occ, this.bakeReceivers, lights);
+    this.occ = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -136,6 +200,9 @@ export class MapView {
     for (const m of this.plankMats) { m.bumpMap = m.map; m.bumpScale = 3; }
     // polished floors pick up a little more of the lights
     for (const k of ['tile', 'tile_big', 'gymFloor']) this.mats[k].roughness *= 0.8;
+    // floors, walls and ceilings get baked shadows and corner shading
+    for (const k of ['gymFloor', 'tile', 'tile_big', 'concrete', 'grass', 'asphalt', 'woodFloor', 'carpet', 'drop', 'trussCeiling']) applyBake(this.mats[k]);
+    for (const m of Object.values(this.wallMats)) applyBake(m);
   }
 
   floorMat(type) {
@@ -155,12 +222,13 @@ export class MapView {
   buildRoom(room) {
     const [x0, z0, x1, z1] = room.rect;
     const w = x1 - x0, d = z1 - z0;
-    const geo = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2);
+    const geo = new THREE.PlaneGeometry(w, d, Math.ceil(w / 0.5), Math.ceil(d / 0.5)).rotateX(-Math.PI / 2);
     const uv = geo.attributes.uv, pos = geo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) + (x0 + x1) / 2, -(pos.getZ(i) + (z0 + z1) / 2));
     const floor = new THREE.Mesh(geo, this.floorMat(room.floor));
     floor.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
     this.group.add(floor);
+    this.bakeReceivers.push(floor);
 
     // floor grime / litter overlay for non-court rooms
     if (room.id !== 'court' && room.litter !== false && !room.outdoor) {
@@ -181,8 +249,10 @@ export class MapView {
       // stop halfway into the walls: a slab reaching the far face of a wall
       // shows through (z-fights) on a taller room next door
       const e = Tt * 0.5;
-      const c = new BoxBatch().add({ minX: x0 - e, maxX: x1 + e, minY: H, maxY: H + 0.25, minZ: z0 - e, maxZ: z1 + e });
-      this.group.add(new THREE.Mesh(c.build(), this.mats.drop));
+      const c = new BoxBatch().add({ minX: x0 - e, maxX: x1 + e, minY: H, maxY: H + 0.25, minZ: z0 - e, maxZ: z1 + e }, { cell: 0.8, skip: new Set([2]) });
+      const cm = new THREE.Mesh(c.build(), this.mats.drop);
+      this.group.add(cm);
+      this.bakeReceivers.push(cm);
     }
   }
 
@@ -190,8 +260,10 @@ export class MapView {
     const [minX, minZ, maxX, maxZ] = room.rect;
     const H = room.height, Tt = this.T;
     const e = Tt * 0.5;
-    const ceil = new BoxBatch().add({ minX: minX - e, maxX: maxX + e, minY: H, maxY: H + 0.3, minZ: minZ - e, maxZ: maxZ + e });
-    this.group.add(new THREE.Mesh(ceil.build(), this.mats.trussCeiling));
+    const ceil = new BoxBatch().add({ minX: minX - e, maxX: maxX + e, minY: H, maxY: H + 0.3, minZ: minZ - e, maxZ: maxZ + e }, { cell: 1.0, skip: new Set([2]) });
+    const cm = new THREE.Mesh(ceil.build(), this.mats.trussCeiling);
+    this.group.add(cm);
+    this.bakeReceivers.push(cm);
     const tr = new BoxBatch();
     for (let x = minX + 3.4; x < maxX - 1; x += 5.6) {
       tr.add(bx(x, H - 0.1, 0, 0.18, 0.2, maxZ - minZ));
@@ -224,11 +296,13 @@ export class MapView {
       const other = this.roomAtPoint(cx + si[0] * (this.T / 2 + 0.2), cz + si[1] * (this.T / 2 + 0.2));
       const outStyle = other ? other.style : 'exterior';
       const all = [0, 1, 2, 3, 4, 5];
-      get(b.style || room.style).add(b, { skip: new Set([outF]) });
-      get(outStyle).add(b, { skip: new Set(all.filter((f) => f !== outF)) });
+      get(b.style || room.style).add(b, { skip: new Set([outF]), cell: 0.6 });
+      get(outStyle).add(b, { skip: new Set(all.filter((f) => f !== outF)), cell: 0.6 });
     }
     for (const [style, batch] of batches) {
-      this.group.add(new THREE.Mesh(batch.build(), this.wallMats[style] || this.wallMats.exterior));
+      const wm = new THREE.Mesh(batch.build(), this.wallMats[style] || this.wallMats.exterior);
+      this.group.add(wm);
+      this.bakeReceivers.push(wm);
     }
     for (const f of fences.values()) this.buildFence(f);
   }
@@ -1179,6 +1253,10 @@ export class MapView {
 
   update(dt, eye, roundInfo) {
     this.time += dt;
+    if (!this.baker) this.startBake();
+    if (this.baker && !this.baker.done) this.baker.step(this.cfg.graphics.bakeBudgetMs ?? 5);
+    const bp = bakeUniforms.bakePower;
+    bp.value += ((this.powered ? 1 : 0) - bp.value) * Math.min(1, dt * 1.2);
     if (this.sim.power && !this.powered) this.powerOn(true);
     if (this.boilerGlow) this.boilerGlow.material.color.setRGB(2.0 + Math.sin(this.time * 7) * 0.3 + (this.powered ? 1 : 0), 0.6, 0.15);
     if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
@@ -1204,6 +1282,11 @@ export class MapView {
       f.level += (f.target - f.level) * Math.min(1, dt * 40);
       f.tubeMat.color.setRGB(2.6 * f.level + 0.06, 2.45 * f.level + 0.06, 2.1 * f.level + 0.05);
       if (f.beam) { f.beam.material.opacity = 0.045 * f.level; f.beam.visible = f.level > 0.02; }
+    }
+    // baked surfaces follow each light's live brightness
+    for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {
+      const v = this.vlights[i];
+      setLightLevel(i, v.fixture ? v.fixture.level : v.level);
     }
     if (eye) this.streamLights(eye);
     if (this.paLed) this.paLed.visible = Math.sin(this.time * 3) > -0.2;

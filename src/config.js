@@ -994,6 +994,11 @@ export const CONFIG = {
     viewmodelFov: 54,
     maxPointLights: 10,      // nearest lights are streamed into this many real lights
     maxSpotLights: 4,
+    bakeBudgetMs: 6,         // time per frame spent baking the lighting after a map loads
+    reflections: true,       // puddles and blood pools mirror the room (a small cube map round the camera)
+    reflectionSize: 128,     // cube map face size
+    reflectionInterval: 0.2, // seconds between refreshes (one face is drawn per frame)
+    maxBloodPools: 16,
     lightRange: 32,
   },
 

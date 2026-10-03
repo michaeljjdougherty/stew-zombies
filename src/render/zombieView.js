@@ -3,6 +3,7 @@
 // corpses. Reads zombie state from the sim; never changes it.
 // =============================================================================
 import * as THREE from 'three';
+const _drip = new THREE.Vector3();
 import * as T from './textures.js';
 import { zombieKit } from './zombieKit.js';
 
@@ -161,7 +162,8 @@ export class ZombieViews {
     for (const eye of v.eyes) eye.visible = false;
     // pool of blood beneath
     const p = v.root.position;
-    setTimeout(() => this.effects.bloodDecal(new THREE.Vector3(p.x + d.x * 0.8, 0, p.z + d.z * 0.8), new THREE.Vector3(0, 1, 0), 0.9 + Math.random() * 0.6), 500);
+    const off = (fromFront ? 1 : -1) * 0.7;
+    if (e.kind !== 'electric') this.effects.bloodPool(new THREE.Vector3(p.x - fwdX * off + d.x * 0.3, 0, p.z - fwdZ * off + d.z * 0.3), (0.9 + Math.random() * 0.7) * v.root.scale.x);
   }
 
   update(sim, dt, alpha, time) {
@@ -181,6 +183,17 @@ export class ZombieViews {
       if (p) { let dy = z.yaw - p.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; yaw = p.yaw + dy * alpha; }
       v.root.rotation.y = yaw;
       this.animate(v, z, dt, time);
+      // the badly hurt leave a trail of drips
+      const lost = !v.limbs.head || !v.limbs.armL || !v.limbs.armR || v.crawler;
+      if (z.maxHealth && (z.health < z.maxHealth * 0.55 || lost)) {
+        v.dripT = (v.dripT ?? Math.random()) - dt * (lost ? 2.5 : 1);
+        if (v.dripT <= 0) {
+          v.dripT = 0.35 + Math.random() * 0.6;
+          const src = !v.limbs.armL ? v.armL.stump : !v.limbs.armR ? v.armR.stump : v.torso;
+          src.getWorldPosition(_drip);
+          this.effects.bloodDrip(_drip);
+        }
+      }
     }
     for (const [id, v] of this.views) {
       if (!seen.has(id)) { this.scene.remove(v.root); this.views.delete(id); }

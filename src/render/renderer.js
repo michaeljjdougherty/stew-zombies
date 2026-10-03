@@ -6,8 +6,10 @@ import * as THREE from 'three';
 import { setAnisotropy } from './textures.js';
 import { setSurfaceAnisotropy } from './surfaces.js';
 import { MapView } from './mapView.js';
+import { bakeUniforms, DYN_LIGHTS } from './bake.js';
 import { ZombieViews } from './zombieView.js';
-import { Effects } from './effects.js';
+import { Effects, FX_LAYER } from './effects.js';
+import { Puddles } from './puddles.js';
 import { Viewmodel } from './viewmodel.js';
 import { CameraRig } from './cameraRig.js';
 import { PostFX } from './postfx.js';
@@ -33,6 +35,7 @@ export class GameRenderer {
     setSurfaceAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
 
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.05, 220);
+    this.camera.layers.enable(FX_LAYER); // particles and smoke (kept out of reflection captures)
     this.buildWorld(sim);
     this.viewmodel = new Viewmodel(cfg);
     this.viewmodel.initEnvironment(r);
@@ -64,8 +67,12 @@ export class GameRenderer {
       scene.fog = new THREE.FogExp2(fog, cfg.graphics.fogDensity);
       const map = new MapView(scene, sim, cfg);
       const effects = new Effects(scene, sim, cfg);
+      const puddles = new Puddles(scene, sim, cfg, effects);
+      effects.puddles = puddles;
+      effects.fixtures = map.fixtures;
+      effects.lightAt = (pos) => this.envLevel(pos);
       w = {
-        scene, map, effects,
+        scene, map, effects, puddles,
         box: new BoxView(scene, sim, cfg, map),
         zombies: new ZombieViews(scene, effects, cfg),
         projectiles: new ProjectileViews(scene, effects, cfg),
@@ -85,7 +92,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(cfg.graphics.fogColor);
     this.hazeColor = new THREE.Color('#5a4410');
@@ -107,6 +114,8 @@ export class GameRenderer {
     this.box.setSim(sim);
     this.effects.sim = sim;
     this.effects.clear();
+    this.puddles.sim = sim;
+    this.puddles.clear();
     this.zombies.clear();
     this.projectiles.clear();
     this.powerups.clear();
@@ -139,6 +148,7 @@ export class GameRenderer {
     this.post.setGrain(s.grain);
     this.post.setBloom(s.bloom);
     this.post.setAO(s.ao);
+    this.cfg.graphics.reflections = s.reflections !== false;
     this.resize();
   }
 
@@ -177,6 +187,7 @@ export class GameRenderer {
             from = this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), e.side);
             this.effects.muzzle(from);
           } else from = e.origin;
+          this.effects.muzzleSmoke(from, e.dir, e.pellets > 1 ? 1.8 : 1, e.playerId === id);
           for (const h of e.impacts) {
             if (h.kind === 'world') this.effects.impact(h.point, h.normal, h.surface);
             else this.effects.zombieHit(h.point, e.dir, h.part);
@@ -291,6 +302,33 @@ export class GameRenderer {
     if (this.viewmodel.setCharacter) this.viewmodel.setCharacter(id, shirt);
   }
 
+  // Baked surfaces don't use the real-time lights; the lights that come and go
+  // (muzzle flash, explosions) or move (the mystery box) are handed to them here.
+  updateBakedLive() {
+    const U = bakeUniforms, cam = this.camera, fx = this.effects;
+    cam.updateMatrixWorld();
+    const slots = [fx.muzzleLight, fx.blastLight];
+    let si = 0;
+    for (const l of slots) {
+      if (si >= DYN_LIGHTS) break;
+      U.dynPos.value[si].copy(l.position).applyMatrix4(cam.matrixWorldInverse);
+      U.dynColor.value[si].copy(l.color).multiplyScalar(l.intensity);
+      U.dynRange.value[si].set(l.distance, l.decay);
+      si++;
+    }
+    // nearest moving map lights
+    const eye = cam.position;
+    const live = this.map.vlights.filter((v) => v.live && v.level > 0.01).sort((a, b) => a.pos.distanceToSquared(eye) - b.pos.distanceToSquared(eye));
+    for (const v of live) {
+      if (si >= DYN_LIGHTS) break;
+      U.dynPos.value[si].copy(v.pos).applyMatrix4(cam.matrixWorldInverse);
+      U.dynColor.value[si].copy(v.color).multiplyScalar(v.intensity * v.level);
+      U.dynRange.value[si].set(v.distance, v.decay);
+      si++;
+    }
+    for (; si < DYN_LIGHTS; si++) U.dynColor.value[si].setRGB(0, 0, 0);
+  }
+
   render(dt, alpha, look, p, time, mode = 'play') {
     if (mode === 'showcase') {
       this.getShowcase().render(dt, this.aspect);
@@ -359,6 +397,10 @@ export class GameRenderer {
     if (sim.rounds.cheddar && Math.random() < dt * 0.25) this.flash = Math.max(this.flash || 0, 0.18 + Math.random() * 0.2);
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
     this.effects.update(dt);
+    // smoke curling off a hot barrel
+    const hot = p && p.alive && mode === 'play' && this.effects.heat > 0.2 && !this.viewmodel.scoped;
+    this.effects.barrelSmoke(hot ? this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), 'R') : null, dt);
+    this.puddles.update(dt, this.renderer, this.camera);
 
     if (p) {
       const lvl = this.envLevel(pos);
@@ -369,6 +411,7 @@ export class GameRenderer {
 
     this.damage = Math.max(0, this.damage - dt * 1.6);
     const lowHealth = p && p.alive ? Math.max(0, 1 - p.health / (p.maxHealth * 0.55)) : (p ? 1 : 0);
+    this.updateBakedLive();
     this.post.render(dt, { damage: this.damage, lowHealth, flash: this.flash || 0, tint: (this.haze || 0) * this.cfg.cheddar.haze });
     this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }

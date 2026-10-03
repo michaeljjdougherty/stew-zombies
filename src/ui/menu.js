@@ -70,6 +70,7 @@ export class Menus {
     check('set-grain', 'grain');
     check('set-bloom', 'bloom');
     check('set-ao', 'ao');
+    check('set-refl', 'reflections');
     check('set-fps', 'showFps');
     check('set-subs', 'subtitles');
     check('set-assist', 'aimAssist');
