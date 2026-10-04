@@ -1213,12 +1213,13 @@ export class MapView {
   onEvent(e) {
     if (e.type === 'boardTorn') {
       const v = this.windowViews.get(e.windowId);
-      if (!v) return;
-      v.planks[v.order[e.board]].anim = { kind: 'tear', t: 0, vx: (Math.random() - 0.5) * 2, vy: 2.5, vz: -3.5, spin: (Math.random() - 0.5) * 12 };
+      const pl = v && v.planks[v.order[e.board]];
+      if (!pl) return;
+      pl.anim = { kind: 'tear', t: 0, vx: (Math.random() - 0.5) * 2, vy: 2.5, vz: -3.5, spin: (Math.random() - 0.5) * 12 };
     } else if (e.type === 'boardRepaired') {
       const v = this.windowViews.get(e.windowId);
-      if (!v) return;
-      const plank = v.planks[v.order[e.board]];
+      const plank = v && v.planks[v.order[e.board]];
+      if (!plank) return;
       plank.mesh.visible = true;
       plank.anim = { kind: 'repair', t: 0 };
     } else if (e.type === 'doorOpened') {
@@ -1286,14 +1287,15 @@ export class MapView {
         if (f.target === 0 && Math.random() < 0.6) f.target = 1;
       }
       f.level += (f.target - f.level) * Math.min(1, dt * 40);
-      f.tubeMat.color.setRGB(2.6 * f.level + 0.06, 2.45 * f.level + 0.06, 2.1 * f.level + 0.05);
-      if (f.beam) { f.beam.material.opacity = 0.045 * f.level; f.beam.visible = f.level > 0.02; }
+      const tg = this.cfg.graphics.tubeGlow ?? 2.6;
+      f.tubeMat.color.setRGB(tg * f.level + 0.06, tg * 0.94 * f.level + 0.06, tg * 0.81 * f.level + 0.05);
+      if (f.beam) { f.beam.material.opacity = (this.cfg.graphics.beamOpacity ?? 0.045) * f.level; f.beam.visible = f.level > 0.02; }
     }
     // the ending: every light in the building dies at once
     if (this.blackout) {
       for (const f of this.fixtures) { f.level = 0; f.tubeMat.color.setRGB(0.04, 0.04, 0.035); if (f.beam) f.beam.visible = false; }
     }
-    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : 1);
+    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : 1.35 - 0.35 * bp.value);
     bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : 1) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
     // baked surfaces follow each light's live brightness
     for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {

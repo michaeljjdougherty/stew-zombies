@@ -262,6 +262,7 @@ export class GameRenderer {
           break;
         case 'boardTorn': {
           const w = this.sim.windowById(e.windowId);
+          if (!w) break;
           const pos = new THREE.Vector3(w.center.x + w.normal.x * 0.1, 1.2 + Math.random() * 0.8, w.center.z + w.normal.z * 0.1);
           this.effects.puff(pos, { color: 0x5a4a36, size: 0.3, grow: 2, life: 0.7, alpha: 0.4 });
           for (let i = 0; i < 8; i++) {
@@ -280,12 +281,36 @@ export class GameRenderer {
         }
         case 'boardRepaired': {
           const w = this.sim.windowById(e.windowId);
+          if (!w) break;
           const pos = new THREE.Vector3(w.center.x + w.normal.x * 0.15, 1.4, w.center.z + w.normal.z * 0.15);
           this.effects.puff(pos, { color: 0x6a5a46, size: 0.25, grow: 1.5, life: 0.5, alpha: 0.3 });
           break;
         }
       }
     }
+  }
+
+  // Over-the-shoulder camera on a teammate (spectating), pulled in if a wall's in the way.
+  spectateCam(v, dt) {
+    const sp = this.sim.playerById(v.id);
+    if (!sp) return;
+    const pos = v.root.position;
+    // smooth their look so 30 Hz network updates don't jitter the view
+    if (!this.specLook || this.specLook.id !== v.id) this.specLook = { id: v.id, yaw: sp.yaw, pitch: sp.pitch || 0 };
+    const sl = this.specLook, kk = 1 - Math.exp(-dt * 12);
+    sl.yaw += Math.atan2(Math.sin(sp.yaw - sl.yaw), Math.cos(sp.yaw - sl.yaw)) * kk;
+    sl.pitch += ((sp.pitch || 0) - sl.pitch) * kk;
+    const yaw = sl.yaw, pitch = Math.max(-1.2, Math.min(1.2, sl.pitch));
+    const head = new THREE.Vector3(pos.x, pos.y + (sp.downed ? 0.7 : sp.crouching ? 1.2 : 1.62), pos.z);
+    const fwd = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const want = head.clone().addScaledVector(fwd, -2.4).addScaledVector(right, 0.55).add(new THREE.Vector3(0, 0.35, 0));
+    const d = want.clone().sub(head); const len = d.length(); d.normalize();
+    const hit = this.sim.raycastWorld(head, d, len + 0.3);
+    if (hit) want.copy(head).addScaledVector(d, Math.max(0.3, hit.t - 0.3));
+    if (!this.specCam) this.specCam = want.clone(); else this.specCam.lerp(want, 1 - Math.exp(-dt * 10));
+    this.camera.position.copy(this.specCam);
+    this.camera.lookAt(head.clone().addScaledVector(fwd, 6));
   }
 
   // Light level near the player (0..1), so the viewmodel isn't glowing in the dark.
@@ -411,15 +436,20 @@ export class GameRenderer {
     let bob = { phase: 0, amp: 0 };
     if (p) bob = this.rig.update(dt, pos, p, look, this.aspect, def, aim);
 
-    // death: drop the camera to the floor
-    if (p && !p.alive) {
+    // dead online: watch a teammate over their shoulder
+    const watch = p && !p.alive && this.spectate ? this.teammates.views.get(this.spectate) : null;
+    if (watch && watch.root.visible) {
+      this.spectateCam(watch, dt);
+    } else if (p && !p.alive) {
+      // death: drop the camera to the floor
       this.deathT += dt;
       const k = Math.min(1, this.deathT / 0.9);
       const e = 1 - Math.pow(1 - k, 3);
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, pos.y + 0.25, e);
       this.camera.rotation.z = e * 0.9;
       this.camera.rotation.x = look.pitch * (1 - e) + 0.2 * e;
-    } else this.deathT = 0;   // (online you come back next round)
+    } else this.deathT = 0;
+    if (!watch) { this.specCam = null; this.specLook = null; }   // (online you come back next round)
 
     // title screen: slow drift
     if (mode === 'title') {
@@ -428,6 +458,12 @@ export class GameRenderer {
     }
 
     this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: p ? p.kills : 0 });
+    // eye adaptation: open up in the dark, stop down once the lights are on
+    const g = this.cfg.graphics;
+    const lit = bakeUniforms.bakePower.value;
+    const targetExp = (g.exposureDark ?? g.exposure) + ((g.exposureLit ?? g.exposure) - (g.exposureDark ?? g.exposure)) * lit;
+    this.exposure = this.exposure == null ? targetExp : this.exposure + (targetExp - this.exposure) * Math.min(1, dt * 1.5);
+    this.renderer.toneMappingExposure = mode === 'title' ? g.exposure : this.exposure;
     this.box.update(dt, time);
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);
@@ -437,6 +473,7 @@ export class GameRenderer {
     this.lore.update(dt);
     this.quest.update(dt, this.camera);
     this.teammates.update(sim, this.localId, dt, alpha, time, this.camera);
+    if (watch && watch.tag) watch.tag.visible = false;   // no name tag in your face while spectating
 
     // Cheddar Round haze: yellow tint, thicker yellow-brown fog, distant lightning
     const hazeTarget = sim.rounds.cheddar ? 1 : 0;

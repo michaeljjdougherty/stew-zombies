@@ -142,7 +142,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
+  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {

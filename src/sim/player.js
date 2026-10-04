@@ -55,7 +55,7 @@ export function createPlayer(sim, id, name, spawn) {
     drinking: null,           // { perk, t } while chugging a perk
     reviving: null,           // { targetId, frac } while picking up a teammate
     points: cfg.startPoints,
-    kills: 0, headshots: 0, knifeKills: 0,
+    kills: 0, headshots: 0, knifeKills: 0, downs: 0, revives: 0,
     boardPointsThisRound: 0,
     prompt: null,             // { text, cost } shown on HUD
     useTarget: null,

@@ -1021,6 +1021,11 @@ export const CONFIG = {
     fogColor: '#121419',     // cold blue-grey murk
     fogDensity: 0.036,
     exposure: 1.25,
+    // the eye adjusts: brighter exposure in the dark, lower once the power's on
+    exposureDark: 1.7,
+    exposureLit: 0.9,
+    beamOpacity: 0.016,      // the haze under each ceiling light
+    tubeGlow: 1.7,           // how hot the light panels themselves look
     bloomStrength: 0.75,     // soft halos round every light
     bloomRadius: 0.7,
     bloomThreshold: 0.72,

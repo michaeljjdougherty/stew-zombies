@@ -273,6 +273,7 @@ Click **Play**. The game captures your mouse; press **Esc** to pause.
 | F | Buy doors, debris, wall weapons and the Mystery Box |
 | F (hold) | Rebuild a window barrier, one plank at a time |
 | 1 · 2 · mouse wheel | Switch between your two weapons |
+| Tab (hold) | Scoreboard: points, kills, headshots, downs and revives for everyone |
 | Esc | Pause / settings (sensitivity, aiming sensitivity, FOV, volume…) |
 
 ### Controller
@@ -292,7 +293,7 @@ mouse. Settings → Button prompts can force Xbox or PlayStation icons.
 | Y | △ | Switch weapons |
 | RB · LB | R1 · L1 | Frag grenade (hold to cook) · Stew Bomb |
 | Menu | Options | Pause |
-| View | Create | Firing Range: weapons panel · Explore: zombies on/off |
+| View (hold) | Create (hold) | Zombies: scoreboard · Firing Range: weapons panel · Explore: zombies on/off |
 
 Menus: D-pad or left stick to move, A/✕ to select, B/○ to go back, D-pad
 left/right for sliders, LB/RB (L1/R1) to flip tabs, shirt colours or lineup
@@ -338,6 +339,9 @@ presses **Start the game**. Up to four players.
   over their head (red when they're down) and their points over yours.
 - Go down and a teammate can hold **F** on you to pick you up. Bleed out and
   you're back at the start of the next round, with the starting pistol.
+  Until then you watch a teammate who's still up, over their shoulder; click
+  (or RT / R2) to switch to the next one.
+- Hold **Tab** (or **View / Create** on a controller) for the scoreboard.
 - The pause menu doesn't pause an online game. Game over or the ending takes
   everyone back to the lobby when the host says so. If the host leaves, the
   game ends.

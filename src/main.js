@@ -303,6 +303,9 @@ const firstGesture = () => {
 };
 window.addEventListener('pointerdown', firstGesture);
 window.addEventListener('keydown', firstGesture);
+// any click or key also wakes the audio back up if the browser paused it
+window.addEventListener('pointerdown', () => audio.ensureRunning && audio.ensureRunning());
+window.addEventListener('keydown', () => audio.ensureRunning && audio.ensureRunning());
 applySettings(settings);
 renderer.setCharacter(playableCharacter(), settings.shirt);
 menus.show('title');
@@ -400,6 +403,7 @@ function closeRangePanel() {
 function pause() {
   if (mode !== 'play') return;
   mode = 'paused';
+  keyBoard = padBoard = false; hud.showScoreboard(false);
   input.enabled = false;
   input.reset();
   $id('btn-restart').hidden = !!online;
@@ -443,6 +447,10 @@ input.onLockChange = (locked, failed) => {
   }
   if (!locked && mode === 'play') pause();
 };
+// hold Tab for the scoreboard
+window.addEventListener('keydown', (e) => { if (e.code === 'Tab' && (mode === 'play' || mode === 'dying')) { e.preventDefault(); if (!keyBoard) { keyBoard = true; hud.showScoreboard(true); } } });
+window.addEventListener('keyup', (e) => { if (e.code === 'Tab' && keyBoard) { keyBoard = false; hud.showScoreboard(padBoard); } });
+window.addEventListener('blur', () => { keyBoard = false; padBoard = false; hud.showScoreboard(false); });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !e.repeat) {
     if (mode === 'play') openRangePanel();
@@ -466,30 +474,56 @@ let time = 0;
 
 // One simulation tick with the local player's command, then fan out events.
 const debugHold = {};
+// One bad event or frame shouldn't stop the game: log it (once per kind) and carry on.
+const reported = new Set();
+function safely(label, fn) {
+  try { return fn(); } catch (err) {
+    const key = label + ':' + (err && err.message);
+    if (!reported.has(key)) { reported.add(key); console.error(`[${label}]`, err); }
+    return undefined;
+  }
+}
+
+// Dead in an online game: watch a teammate who's still up. Fire / Jump cycles.
+let specFire = false;
+function updateSpectate(cmd) {
+  const me = sim.playerById(localId);
+  const live = online && online.inGame && me && !me.alive && sim.mode === 'zombies';
+  if (!live) { if (renderer.spectate) { renderer.spectate = null; hud.showSpectate(null); } specFire = !!cmd.fire; return; }
+  const alive = sim.players.filter((q) => q.id !== localId && q.alive);
+  const fireEdge = cmd.fire && !specFire; specFire = !!cmd.fire;
+  let i = alive.findIndex((q) => q.id === renderer.spectate);
+  if (i < 0) i = 0; else if (fireEdge || cmd.jumpPressed || cmd.adsPressed) i = (i + 1) % alive.length;
+  const t = alive[i] || null;
+  renderer.spectate = t ? t.id : null;
+  hud.showSpectate(t, alive.length > 1);
+}
+
 function tick(cmd) {
-  renderer.beginStep(sim);
-  let events;
+  safely('beginStep', () => renderer.beginStep(sim));
+  safely('spectate', () => updateSpectate(cmd));
+  let events = [];
   if (net.client) {
     // a friend's copy: move and shoot locally, mirror the host
-    events = net.client.tick({ ...cmd, ...debugHold }, DT);
+    events = safely('client', () => net.client.tick({ ...cmd, ...debugHold }, DT)) || [];
     if (sim.netTeleport) { input.setLook(sim.netTeleport.yaw ?? input.yaw, 0); sim.netTeleport = null; }
   } else {
-    if (net.host) net.host.preStep();
+    if (net.host) safely('host', () => net.host.preStep());
     sim.setInput(localId, { ...cmd, ...debugHold });
-    sim.step(DT);
+    safely('sim', () => sim.step(DT));
     events = sim.drainEvents();
-    if (net.host) net.host.postStep(events);
+    if (net.host) safely('host', () => net.host.postStep(events));
   }
-  renderer.onEvents(events);
+  for (const e of events) safely('render:' + e.type, () => renderer.onEvents([e]));
   for (const e of events) {
-    sound.onEvent(e);
-    hud.onEvent(e);
-    rangeUI.onEvent(e);
+    safely('sound:' + e.type, () => sound.onEvent(e));
+    safely('hud:' + e.type, () => hud.onEvent(e));
+    safely('range:' + e.type, () => rangeUI.onEvent(e));
     if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
     if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
     if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
     if (e.type === 'bossEnd') endingAt = time + 2.4;
-    if (device !== 'kbm' && settings.rumble !== false) rumbleFor(e);
+    if (device !== 'kbm' && settings.rumble !== false) safely('rumble', () => rumbleFor(e));
   }
 }
 
@@ -602,6 +636,7 @@ function showLegend(id) {
 nav.onRoot = (id) => showLegend(id);
 
 let padWoke = false;
+let padBoard = false, keyBoard = false;   // scoreboard held on the pad / keyboard
 function padFrame(fdt) {
   const st = pads.poll();
   if (st && pads.active) {
@@ -614,8 +649,10 @@ function padFrame(fdt) {
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
   input.padFrame(st, fdt);
+  // hold Back/View for the scoreboard (in the range and Explore it does their thing)
+  if (sim.mode === 'zombies') { const sb = st.down(BTN.VIEW); if (sb !== padBoard) { padBoard = sb; hud.showScoreboard(sb || keyBoard); } }
   if (st.pressed(BTN.MENU)) { input.releaseLock(); pause(); }
-  else if (st.pressed(BTN.VIEW)) {
+  else if (st.pressed(BTN.VIEW) && sim.mode !== 'zombies') {
     if (sim.mode === 'range') openRangePanel();
     else if (sim.mode === 'explore') { sim.setExploreZombies(!sim.explore.zombies); updateExploreHud(); }
   }
@@ -662,10 +699,10 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
-  renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play');
-  audio.updateListener(renderer.camera);
-  if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
-  hud.update(fdt, sim, player, renderer.camera, settings.showFps);
+  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play'));
+  safely('listener', () => audio.updateListener(renderer.camera));
+  if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
+  safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
   rangeUI.update(fdt, sim, player, renderer.camera);
   if (menus.current === 'extras') extras.update();
   if (mode === 'lineup') lineupUI.update();

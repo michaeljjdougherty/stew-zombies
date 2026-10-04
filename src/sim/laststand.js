@@ -13,6 +13,7 @@ export function goDown(sim, p) {
   const ls = sim.cfg.lastStand;
   const solo = sim.players.length === 1;
   const selfRevive = solo && hasPerk(p, 'secondHelping');
+  p.downs = (p.downs || 0) + 1;
   p.sprinting = false;
   p.drinking = null;
   p.throwing = null;
@@ -80,6 +81,7 @@ export function revive(sim, p, byId = null) {
   w.adsAmount = 0;
   p.health = p.maxHealth * sim.cfg.lastStand.reviveHealthFrac;
   p.lastDamageTime = sim.time;
+  if (byId && byId !== p.id) { const r = sim.playerById(byId); if (r) r.revives = (r.revives || 0) + 1; }
   sim.emit('playerRevived', { playerId: p.id, by: byId, self: byId === p.id });
   sim.emit('weaponSwitch', { playerId: p.id, weapon: w.slots[w.current].id });
 }

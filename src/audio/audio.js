@@ -14,10 +14,48 @@ export class AudioEngine {
 
   // Must be called from a user gesture (click).
   init() {
-    if (this.ctx) { this.ctx.resume(); return; }
+    if (this.ctx) { this.ensureRunning(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    const ctx = this.ctx = new AC();
+    this.ctx = new AC();
+    this.active = 0;
+    this.buildGraph();
+    // shared noise buffers
+    this.noise = { white: this.makeNoise('white'), pink: this.makeNoise('pink'), brown: this.makeNoise('brown') };
+    // distortion curves
+    this.curves = {};
+    this.applyVolumes();
+    this.ready = true;
+    this.decodePending();
+    // browsers pause audio when the tab or the device sleeps; pick it back up
+    const wake = () => this.ensureRunning();
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    this.ctx.addEventListener && this.ctx.addEventListener('statechange', () => { if (this.ctx.state !== 'running' && !document.hidden) setTimeout(wake, 200); });
+    this.watch = setInterval(() => this.checkHealth(), 2000);
+  }
+
+  // Keep the context running (after a tab switch, sleep, headphones change...).
+  ensureRunning() {
+    if (!this.ctx) return;
+    if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume().catch(() => {});
+  }
+
+  // If a bad value ever poisons the mix (NaN in a filter), every sound after it
+  // is silent. Spot that and rebuild the output chain.
+  checkHealth() {
+    if (!this.ctx || !this.probe) return;
+    this.ensureRunning();
+    const buf = this.probeBuf || (this.probeBuf = new Float32Array(this.probe.fftSize));
+    this.probe.getFloatTimeDomainData(buf);
+    for (let i = 0; i < buf.length; i += 8) {
+      if (!Number.isFinite(buf[i])) { console.warn('audio: the mix went bad, rebuilding it'); this.buildGraph(); this.applyVolumes(); return; }
+    }
+  }
+
+  buildGraph() {
+    const ctx = this.ctx;
+    for (const n of [this.comp, this.master, this.reverb, this.reverbOut, this.probe, ...Object.values(this.buses || {})]) { try { n && n.disconnect(); } catch { /* gone */ } }
     this.comp = ctx.createDynamicsCompressor();
     this.comp.threshold.value = -14; this.comp.knee.value = 12; this.comp.ratio.value = 5;
     this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
@@ -39,14 +77,9 @@ export class AudioEngine {
     this.reverbOut.gain.value = 0.9;
     this.reverb.connect(this.reverbOut);
     this.reverbOut.connect(this.master);
-
-    // shared noise buffers
-    this.noise = { white: this.makeNoise('white'), pink: this.makeNoise('pink'), brown: this.makeNoise('brown') };
-    // distortion curves
-    this.curves = {};
-    this.applyVolumes();
-    this.ready = true;
-    this.decodePending();
+    this.probe = ctx.createAnalyser();
+    this.probe.fftSize = 256;
+    this.comp.connect(this.probe);
   }
 
   applyVolumes() {
@@ -156,6 +189,7 @@ export class AudioEngine {
     const q = cam.quaternion;
     const fw = rotate(f, q), up = rotate(u, q);
     const t = this.ctx.currentTime;
+    if (![p.x, p.y, p.z, fw.x, fw.y, fw.z, up.x, up.y, up.z].every(Number.isFinite)) return;
     if (l.positionX) {
       l.positionX.setTargetAtTime(p.x, t, 0.01); l.positionY.setTargetAtTime(p.y, t, 0.01); l.positionZ.setTargetAtTime(p.z, t, 0.01);
       l.forwardX.setTargetAtTime(fw.x, t, 0.01); l.forwardY.setTargetAtTime(fw.y, t, 0.01); l.forwardZ.setTargetAtTime(fw.z, t, 0.01);
@@ -179,12 +213,15 @@ export class AudioEngine {
   output({ pos = null, bus = 'sfx', reverb = this.cfg.audio.reverbSend, gain = 1, ref = this.cfg.audio.refDistance, rolloff = this.cfg.audio.rolloff } = {}) {
     const ctx = this.ctx;
     const input = ctx.createGain();
-    input.gain.value = gain;
+    input.gain.value = Number.isFinite(gain) ? gain : 1;
     let panner = null;
-    let send = reverb;
+    let send = Number.isFinite(reverb) ? reverb : 0;
+    if (pos && !(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) pos = null;
     if (pos) {
       panner = ctx.createPanner();
-      panner.panningModel = 'HRTF';
+      // (HRTF sounds nicer but costs a lot per sound; with a horde and a few
+      // guns going it overloads the audio thread and the sound breaks up)
+      panner.panningModel = 'equalpower';
       panner.distanceModel = 'inverse';
       panner.refDistance = ref;
       panner.rolloffFactor = rolloff;
@@ -213,11 +250,22 @@ export class AudioEngine {
   // Play a synthesized recipe. recipe(A, destNode, startTime, params) -> duration (s)
   play(recipe, params = {}, opts = {}) {
     if (!this.ready) return null;
-    const out = this.output(opts);
+    // too much going on: drop far-off sounds first, then anything but your own
+    const cap = this.cfg.audio.maxVoices ?? 64;
+    if (this.active >= cap) {
+      if (opts.pos || this.active >= cap * 1.5) return null;
+    } else if (this.active >= cap * 0.7 && opts.pos && this.listenerPos) {
+      const d = Math.hypot(opts.pos.x - this.listenerPos.x, opts.pos.z - this.listenerPos.z);
+      if (d > 14) return null;
+    }
+    let out;
+    try { out = this.output(opts); } catch (err) { console.warn('audio output', err); return null; }
+    this.active++;
     const t = this.ctx.currentTime + (opts.delay || 0);
     let dur = 1;
     try { dur = recipe(this, out.input, t, params) || 1; } catch (err) { console.warn('sfx error', err); }
-    setTimeout(() => { try { out.input.disconnect(); out.panner && out.panner.disconnect(); } catch (e) { /* already gone */ } }, (dur + (opts.delay || 0) + 0.3) * 1000);
+    if (!Number.isFinite(dur) || dur <= 0) dur = 1;
+    setTimeout(() => { this.active = Math.max(0, this.active - 1); try { out.input.disconnect(); out.panner && out.panner.disconnect(); } catch (e) { /* already gone */ } }, (Math.min(dur, 60) + (opts.delay || 0) + 0.3) * 1000);
     if (opts.trackId != null && opts.getPos && out.panner) {
       this.tracked.set(opts.trackId, { panner: out.panner, getPos: opts.getPos, until: t + dur });
     }
@@ -246,11 +294,13 @@ export class AudioEngine {
 
   filter(type, freq, q = 1) {
     const f = this.ctx.createBiquadFilter();
-    f.type = type; f.frequency.value = freq; f.Q.value = q;
+    f.type = type;
+    f.frequency.value = Number.isFinite(freq) ? Math.min(Math.max(freq, 10), this.ctx.sampleRate * 0.45) : 1000;
+    f.Q.value = Number.isFinite(q) ? q : 1;
     return f;
   }
 
-  gain(v = 1) { const g = this.ctx.createGain(); g.gain.value = v; return g; }
+  gain(v = 1) { const g = this.ctx.createGain(); g.gain.value = Number.isFinite(v) ? v : 0; return g; }
 
   // Percussive envelope on a gain node.
   env(g, t, attack, decay, peak = 1, sustain = 0, hold = 0) {
@@ -285,6 +335,7 @@ function rotate(v, q) {
 }
 
 function setPannerPos(p, pos, t, immediate = false) {
+  if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
   if (p.positionX) {
     if (immediate) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else { p.positionX.setTargetAtTime(pos.x, t, 0.03); p.positionY.setTargetAtTime(pos.y, t, 0.03); p.positionZ.setTargetAtTime(pos.z, t, 0.03); }

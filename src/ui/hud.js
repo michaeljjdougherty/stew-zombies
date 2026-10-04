@@ -3,7 +3,7 @@
 // Reads sim state; never changes it.
 // =============================================================================
 import { TallyCounter } from './tally.js';
-import { glyphify } from '../input/glyphs.js';
+import { glyphify, glyph } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 import { questObjective } from '../sim/quest.js';
@@ -211,6 +211,46 @@ export class HUD {
     }
   }
 
+  // --- the scoreboard (hold Tab / Back) ---------------------------------------
+  // "Spectating X" while dead online (p = the teammate, or null to hide)
+  showSpectate(p, canCycle) {
+    const el = document.getElementById('spectate'); if (!el) return;
+    const g = glyph('fire');
+    const key = p ? p.id + ':' + canCycle + ':' + g : '';
+    if (key === this.last.spec) return; this.last.spec = key;
+    el.hidden = !p;
+    if (!p) return;
+    const name = (CREW[p.character] && CREW[p.character].name) || p.name || p.id;
+    el.querySelector('.who').textContent = name;
+    el.querySelector('.how').innerHTML = canCycle ? `${g} next player · back next round` : 'Back next round';
+  }
+
+  showScoreboard(on) { this.scoreboardOn = !!on; const el = document.getElementById('scoreboard'); if (el) el.hidden = !on; if (on) this.last.sb = null; }
+
+  updateScoreboard(sim, CH) {
+    if (!this.scoreboardOn) return;
+    const rows = [...sim.players].sort((a, b) => b.points - a.points);
+    const key = sim.rounds.round + '|' + rows.map((q) => [q.id, q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0, q.downed ? 'd' : q.alive ? 'a' : 'x'].join(',')).join(';');
+    if (key === this.last.sb) return;
+    this.last.sb = key;
+    document.getElementById('sb-round').textContent = `Round ${Math.max(1, sim.rounds.round)}`;
+    const tb = document.getElementById('sb-rows');
+    tb.textContent = '';
+    for (const q of rows) {
+      const tr = document.createElement('tr');
+      tr.className = [q.id === this.localId ? 'you' : '', q.downed ? 'down' : q.alive ? '' : 'out'].join(' ').trim();
+      const name = document.createElement('td');
+      name.textContent = q.name;
+      const sub = document.createElement('small');
+      sub.textContent = (CH && CH[q.character] ? CH[q.character].name : '') + (q.downed ? ' · down' : q.alive ? '' : ' · out');
+      name.appendChild(sub);
+      tr.appendChild(name);
+      for (const v of [q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0]) { const td = document.createElement('td'); td.textContent = String(v); tr.appendChild(td); }
+      tb.appendChild(tr);
+    }
+    document.getElementById('sb-foot').textContent = sim.players.length > 1 ? 'Bleed out and you\'re back next round' : (sim.teamName || 'Stew') + ' · solo';
+  }
+
   // --- teammates (online): names and points over yours ------------------------
   updateTeam(sim) {
     const others = sim.players.filter((q) => q.id !== this.localId);
@@ -344,6 +384,7 @@ export class HUD {
     if (this.noteOpen && !(p.useTarget && p.useTarget.noteId === this.noteOpen)) this.closeNote();
 
     this.updateTeam(sim);
+    this.updateScoreboard(sim, CREW);
     // points count up quickly instead of snapping
     if (this.shownPoints === null) this.shownPoints = p.points;
     const diff = p.points - this.shownPoints;

@@ -191,7 +191,7 @@ function life(k, A, t, dt) {
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _m = new THREE.Matrix4();
 
 // Point the arm's wrist at `target` (torso space). pole: where the elbow points.
-function solveArm(arm, target, pole) {
+export function solveArm(arm, target, pole) {
   const a = arm.upperLen, b = arm.lowerLen;
   const T = target.clone().sub(arm.shoulder.position);
   const d = clamp(T.length(), 0.06, a + b - 0.003);
@@ -217,7 +217,7 @@ function solveArm(arm, target, pole) {
 
 // Wrist rotation that gives the hand this orientation (torso space):
 // fingers along `fingers`, palm facing `palm`.
-function orientHand(arm, shoulderQ, bend, fingers, palm) {
+export function orientHand(arm, shoulderQ, bend, fingers, palm) {
   const y = fingers.clone().normalize().negate();
   const z = palm.clone().addScaledVector(y, -palm.dot(y)).normalize();
   const x = new THREE.Vector3().crossVectors(y, z).normalize();
@@ -234,7 +234,7 @@ function headPoint(k, x, y, z) {
 }
 
 // Apply an IK result to an arm, blended with whatever the idle set (w 0..1).
-function applyArm(arm, sol, wristQ, w) {
+export function applyArm(arm, sol, wristQ, w) {
   if (w <= 0) return;
   arm.shoulder.quaternion.slerp(sol.q, w);
   arm.elbow.rotation.x += (-sol.bend - arm.elbow.rotation.x) * w;

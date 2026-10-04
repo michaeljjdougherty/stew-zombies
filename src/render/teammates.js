@@ -8,7 +8,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { buildCharacter } from './characters.js';
-import { idleCharacter } from './characterAnim.js';
+import { idleCharacter, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
 import { HAND_POSES } from './hands.js';
 
@@ -68,11 +68,22 @@ class Teammate {
     const def = this.cfg.weapons[id];
     this.gun = buildGun(def && def.view ? def.view.model : 'pistol', { camo: def && def.view ? def.view.camo || null : null });
     const g = this.gun.group;
-    g.scale.setScalar(1.35);
-    g.position.set(0, -0.1, 0.02);
-    g.rotation.set(-Math.PI / 2, 0, 0);
+    // the gun hangs off the chest (in a holder that aims it); the hands reach
+    // for its grips. The models point down -Z with the grip under the hand
+    // position, so turn it round and put the grip at the holder's origin.
+    const S = 1.15;
+    g.scale.setScalar(S);
+    const R = this.gun.right ? this.gun.right.pos : [0, -0.07, 0.07];
+    const L = this.gun.left ? this.gun.left.pos : [-0.02, -0.08, 0.06];
+    g.rotation.set(0, Math.PI, 0);
+    g.position.set(R[0] * S, -R[1] * S, R[2] * S);
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    this.k.armR.wrist.add(g);
+    if (!this.holder) { this.holder = new THREE.Group(); this.k.torso.add(this.holder); }
+    this.holder.add(g);
+    this.leftGrip = new THREE.Object3D();
+    this.leftGrip.position.fromArray(L);
+    g.add(this.leftGrip);
+    this.pistol = def && def.class === 'pistol';
   }
 
   setTag(p) {
@@ -152,21 +163,31 @@ class Teammate {
       k.torso.rotation.x = lerp(k.torso.rotation.x, -0.25, dn);
     }
 
-    // --- arms: holding the gun up where they're looking
-    const pt = Math.max(-1.1, Math.min(1.1, pitch)) * (sprint ? 0.2 : 1);
-    const lean = k.torso.rotation.x + k.hips.rotation.x;   // (the arms hang off the torso: undo its lean)
-    for (const a of [k.armR, k.armL]) {
-      const left = a === k.armL;
-      a.shoulder.rotation.x = -this.raise - pt - lean + (left ? 0.08 : 0);
-      a.shoulder.rotation.z = a.side * (left ? -0.32 : -0.05);
-      a.shoulder.rotation.y = left ? -0.35 : 0.05;
-      a.elbow.rotation.set(left ? -0.55 : -0.2, 0, 0);
+    // --- the gun: held where they're looking, lowered to sprint or reload
+    const pt = Math.max(-1.1, Math.min(1.1, pitch));
+    const lean = k.torso.rotation.x + k.hips.rotation.x;   // the gun hangs off the torso: undo its lean
+    const sh = k.armR.shoulder.position, shY = k.armR.shoulderY;
+    const lower = 1.35 - this.raise;                         // 0 aiming .. ~0.65 sprinting
+    const H = this.holder;
+    if (this.pistol) H.position.set(sh.x * 0.25, shY - 0.1 - lower * 0.12, 0.4 - lower * 0.12);
+    else H.position.set(sh.x * 0.55, shY - 0.15 - lower * 0.1, 0.27 - lower * 0.06);
+    H.rotation.set(-(pt + lean) + lower * 0.9, lower * 0.4, w.reloading ? 0.5 : 0);
+    if (p.melee && p.melee.timer > 0) H.rotation.x += 0.5;
+    this.root.updateMatrixWorld(true);
+    // right hand on the grip, left hand under the barrel (or wrapped round a pistol)
+    const grip = H.position.clone();
+    const fore = k.torso.worldToLocal(this.leftGrip.getWorldPosition(new THREE.Vector3()));
+    const fwd = new THREE.Vector3(0, 0, 1).applyEuler(H.rotation);
+    const solR = solveArm(k.armR, grip, new THREE.Vector3(-0.9, -1, -0.3));
+    applyArm(k.armR, solR, orientHand(k.armR, solR.q, solR.bend, new THREE.Vector3(0.8, -0.7, 0.1).add(fwd.clone().multiplyScalar(0.2)), new THREE.Vector3(1, 0, 0)), 1);
+    if (!(p.melee && p.melee.timer > 0)) {
+      const solL = solveArm(k.armL, fore, new THREE.Vector3(0.6, -1, -0.2));
+      applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(-1, 0.1, 0).add(fwd.clone().multiplyScalar(0.4)), new THREE.Vector3(0, 1, 0)), 1);
+    } else {
+      // knife: a quick jab with the left arm
+      const m = Math.sin(Math.min(1, p.melee.timer / 0.5) * Math.PI);
+      k.armL.shoulder.rotation.set(-1.5 * m, 0, 0.1); k.armL.elbow.rotation.set(-0.1, 0, 0);
     }
-    // reloading: the gun dips and tilts
-    if (w.reloading) { k.armR.elbow.rotation.x -= 0.25 + Math.sin(time * 9) * 0.05; k.armR.wrist.rotation.z = 0.6; }
-    else k.armR.wrist.rotation.z = 0;
-    // knife: a quick jab with the left arm
-    if (p.melee && p.melee.timer > 0) { const m = Math.sin(Math.min(1, p.melee.timer / 0.5) * Math.PI); k.armL.shoulder.rotation.x = -1.5 * m; k.armL.elbow.rotation.x = -0.1; }
 
     // look up and down with the head too
     k.head.rotation.x = -pt * 0.45;

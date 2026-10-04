@@ -26,6 +26,24 @@
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
   #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  #spectate { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); text-align: center; pointer-events: none; text-shadow: 0 2px 6px #000; }
+  #spectate .lbl { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: #c9b27a; }
+  #spectate .who { font-size: 26px; font-weight: 700; color: #f2e6c9; }
+  #spectate .how { font-size: 12px; color: #a99f8a; margin-top: 2px; }
+  #scoreboard { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); min-width: min(640px, 92vw); background: rgba(8,7,6,.82); border: 1px solid rgba(217,180,90,.35); padding: 14px 18px 12px; backdrop-filter: blur(3px); }
+  #scoreboard .sb-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  #scoreboard .sb-title { font-family: var(--display); font-size: 26px; letter-spacing: 2px; text-transform: uppercase; color: var(--brass); }
+  #scoreboard .sb-round { font-family: var(--display); font-size: 20px; color: var(--blood-hi); letter-spacing: 1px; }
+  #scoreboard table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  #scoreboard th { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: right; padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.12); }
+  #scoreboard th:first-child, #scoreboard td:first-child { text-align: left; }
+  #scoreboard td { padding: 7px 8px; text-align: right; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  #scoreboard td:nth-child(2) { color: var(--brass); font-family: var(--display); font-size: 20px; }
+  #scoreboard tr.you td:first-child { color: var(--brass); }
+  #scoreboard tr.down td { color: var(--blood-hi); }
+  #scoreboard tr.out td { opacity: .45; }
+  #scoreboard td small { display: block; color: var(--muted); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+  #scoreboard .sb-foot { margin-top: 8px; font-size: 12px; color: var(--muted); letter-spacing: 1px; }
   #team { display: grid; gap: 2px; justify-items: end; margin-bottom: 6px; }
   #team div { display: flex; gap: 10px; align-items: baseline; font-size: 14px; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0,0,0,.9); }
   #team span { color: var(--muted); letter-spacing: .5px; }
@@ -381,6 +399,11 @@
 <div id="scope" hidden><span class="dot"></span></div>
 <div id="hud" hidden>
   <canvas id="tally" width="360" height="150"></canvas>
+  <div id="scoreboard" hidden aria-live="off">
+    <div class="sb-head"><span class="sb-title">Stew</span><span class="sb-round" id="sb-round">Round 1</span></div>
+    <table><thead><tr><th>Player</th><th>Points</th><th>Kills</th><th>Headshots</th><th>Downs</th><th>Revives</th></tr></thead><tbody id="sb-rows"></tbody></table>
+    <div class="sb-foot" id="sb-foot"></div>
+  </div>
   <div id="right">
     <div id="team" hidden></div>
     <div id="popups"></div>
@@ -393,6 +416,7 @@
   </div>
   <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
   <div id="hitmarker"></div>
+  <div id="spectate" hidden><div class="lbl">Spectating</div><div class="who"></div><div class="how"></div></div>
   <div id="hint"></div>
   <div id="prompt"></div>
   <div id="promptsub"></div>

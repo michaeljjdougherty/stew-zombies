@@ -368,11 +368,13 @@ export class SoundDirector {
       case 'playerLand': if (local && e.impact > 2) A.play(S.land, { impact: e.impact, surface: 'gym' }, { gain: 0.9, reverb: 0.1 }); break;
       case 'boardTorn': {
         const w = sim.windowById(e.windowId);
+        if (!w) break;
         A.play(S.boardTear, {}, { pos: { x: w.center.x, y: 1.4, z: w.center.z }, ref: 4, gain: 1.1 });
         break;
       }
       case 'boardRepaired': {
         const w = sim.windowById(e.windowId);
+        if (!w) break;
         A.play(S.boardRepair, {}, { pos: { x: w.center.x, y: 1.4, z: w.center.z }, ref: 4 });
         break;
       }
