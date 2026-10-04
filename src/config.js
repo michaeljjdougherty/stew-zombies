@@ -980,6 +980,21 @@ export const CONFIG = {
     ritualMaxAlive: 22,
     // the talent each ball gives back (multipliers)
     boosts: { speed: 1.12, jump: 1.45, power: 1.25, defense: 0.75 },
+    // the Intercom Showdown
+    boss: {
+      waves: 3,             // phase 1: waves of Zombie Defenders
+      waveSize: 9,          // per wave (solo; +3 per extra player)
+      spawnEvery: 0.8,
+      maxAlive: 24,
+      defenderHealth: 1.3,  // x the round's zombie health
+      eliteHealth: 7,       // phase 2 elites
+      playEvery: 5.5,       // s between Erik's playbook diagrams
+      zonesPerPlayer: 2,
+      zoneWarn: 1.6,        // s a play glows faintly before it burns
+      zoneLive: 2.2,
+      zoneDps: 55,
+      wireHits: 3,          // phase 3: hits on the soundboard wire
+    },
   },
 
   // ---------------------------------------------------------------------------

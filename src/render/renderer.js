@@ -83,6 +83,7 @@ export class GameRenderer {
         lore: new LoreView(scene, sim, cfg),
         quest: new QuestView(scene, sim, cfg, map),
       };
+      w.quest.effects = effects;
       w.box.onLand = (spot) => {
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2;

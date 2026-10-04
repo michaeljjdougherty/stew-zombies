@@ -29,11 +29,18 @@ export class ZombieViews {
 
   build(z) {
     const r = (k) => hash(z.seed + k * 7919);
-    const parts = this.kit.assemble(r, { scale: z.scale });
+    const parts = this.kit.assemble(r, { scale: z.scale, outfit: z.defender || z.elite ? 'jersey' : null });
     const glow = new THREE.Sprite(this.glowMat);
     glow.scale.set(0.2, 0.09, 1);
     glow.position.set(0, 0.118, 0.1);
     parts.head.add(glow);
+    if (z.elite) {
+      // Erik's elite defenders carry the Schnitz's glow
+      if (!this.eliteMat) this.eliteMat = new THREE.SpriteMaterial({ map: this.glowMat.map, color: new THREE.Color(0.3, 2.4, 0.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 });
+      const aura = new THREE.Sprite(this.eliteMat);
+      aura.scale.set(1.6, 2.4, 1); aura.position.set(0, 1.0, 0);
+      parts.root.add(aura);
+    }
     this.scene.add(parts.root);
     return {
       id: z.id, ...parts, glow,

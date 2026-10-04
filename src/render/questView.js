@@ -76,6 +76,40 @@ function statLabelTexture(text) {
   return T.toTexture(c, { repeat: false });
 }
 
+// One of Erik's playbook diagrams, painted on the floor in red.
+function playMesh(zn) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.08, 0.05), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  if (zn.shape === 'O') {
+    const m = new THREE.Mesh(new THREE.RingGeometry(zn.r - 0.35, zn.r, 48).rotateX(-Math.PI / 2), mat);
+    m.position.set(zn.x, 0.012, zn.z); g.add(m);
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(zn.r - 0.35, 48).rotateX(-Math.PI / 2), mat.clone());
+    fill.position.set(zn.x, 0.011, zn.z); fill.userData.fill = true; g.add(fill);
+  } else {
+    for (const s of zn.segs) {
+      const L = Math.hypot(s[2] - s[0], s[3] - s[1]);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(L + zn.w * 0.6, zn.w).rotateX(-Math.PI / 2), mat);
+      m.position.set((s[0] + s[2]) / 2, 0.012, (s[1] + s[3]) / 2);
+      m.rotation.y = -Math.atan2(s[3] - s[1], s[2] - s[0]);
+      g.add(m);
+    }
+  }
+  g.userData.mat = mat;
+  return g;
+}
+
+function speakerFaceTexture() {
+  const [c, g] = T.makeCanvas(256, 512);
+  g.fillStyle = '#141414'; g.fillRect(0, 0, 256, 512);
+  g.strokeStyle = '#2a2a2a'; g.lineWidth = 4; g.strokeRect(6, 6, 244, 500);
+  for (const [y, r] of [[120, 92], [330, 92], [460, 34]]) {
+    const grd = g.createRadialGradient(128, y, 4, 128, y, r);
+    grd.addColorStop(0, '#3a3a3a'); grd.addColorStop(0.25, '#0c0c0c'); grd.addColorStop(0.85, '#1e1e1e'); grd.addColorStop(1, '#4a4a4a');
+    g.fillStyle = grd; g.beginPath(); g.arc(128, y, r, 0, 7); g.fill();
+  }
+  return T.toTexture(c, { repeat: false });
+}
+
 // --- trophy pieces -------------------------------------------------------------
 function trophyPart(id, mat) {
   const g = new THREE.Group();
@@ -232,10 +266,55 @@ export class QuestView {
       const label = add(new THREE.PlaneGeometry(1.2, 0.3).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: statLabelTexture(b.stat), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }), 0, 0.01, R + 0.32, g);
       return { b, g, ball, ring, fill, fillR: R, pillar, label, drained, live, lastFrac: -1 };
     });
+
+    // --- the Intercom Showdown: speaker towers, the wire, amps, the playbook
+    const face = new THREE.MeshStandardMaterial({ map: speakerFaceTexture(), roughness: 0.8 });
+    const cab = new THREE.MeshStandardMaterial({ color: '#181818', roughness: 0.7 });
+    this.towers = (Q.towers || []).map((tw) => {
+      const g = new THREE.Group(); g.position.set(tw.x, 0, tw.z);
+      g.rotation.y = Math.atan2(-tw.x, -tw.z); // facing center court
+      this.group.add(g);
+      for (const [y, h] of [[0.55, 1.1], [1.65, 1.1], [2.5, 0.6]]) {
+        add(new THREE.BoxGeometry(1.0, h - 0.04, 0.9), [cab, cab, cab, cab, face, cab], 0, y, 0, g);
+      }
+      const ampSlot = add(new THREE.BoxGeometry(0.5, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: '#0a0a0a' }), 0, 2.95, 0.42, g);
+      void ampSlot;
+      const lightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.15, 0.02, 0.02) });
+      const lamp = add(new THREE.BoxGeometry(0.8, 0.06, 0.04), lightMat, 0, 2.86, 0.47, g);
+      void lamp;
+      const amp = this.ampModel(); amp.position.set(0, 3.12, 0.1); amp.visible = false; g.add(amp);
+      return { g, lightMat, amp };
+    });
+    // the main soundboard wire: a junction box under the booth, a fat cable up into it
+    const W = Q.wire;
+    if (W) {
+      this.wireBox = add(new THREE.BoxGeometry(0.5, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: '#2a2a28', metalness: 0.6, roughness: 0.4 }), W.x, W.y, W.z);
+      const cable = add(new THREE.CylinderGeometry(0.045, 0.045, PRESS_BOX.y0 - W.y + 0.1, 8), new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.6 }), W.x, (W.y + PRESS_BOX.y0) / 2, W.z);
+      void cable;
+      this.wireGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.2, 0.2, 0.2) });
+      add(new THREE.BoxGeometry(0.52, 0.06, 0.32), this.wireGlow, W.x, W.y - 0.12, W.z);
+    }
+    this.groundAmps = new Map();
+    this.plays = new Map();
+  }
+
+  ampModel() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.26, 0.24), new THREE.MeshStandardMaterial({ color: '#202020', roughness: 0.5 }));
+    g.add(body);
+    const cone = new THREE.Mesh(new THREE.CircleGeometry(0.09, 20), new THREE.MeshStandardMaterial({ color: '#0a0a0a', roughness: 0.3 }));
+    cone.position.z = 0.121; g.add(cone);
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.025, 0.02), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.4, 0.5) }));
+    led.position.set(0, 0.1, 0.122); g.add(led);
+    return g;
   }
 
   setSim(sim) {
     this.sim = sim;
+    for (const m of this.plays?.values() || []) this.group.remove(m);
+    this.plays?.clear();
+    for (const m of this.groundAmps?.values() || []) this.group.remove(m);
+    this.groundAmps?.clear();
     for (const w of this.wisps) this.group.remove(w.s);
     this.wisps = [];
     if (this.erik) { this.group.remove(this.erik.root); this.erik = null; if (this.erikLight) this.erikLight.level = 0; }
@@ -335,6 +414,54 @@ export class QuestView {
       }
       B.fill.material.opacity = active ? 0.85 : 0;
     }
+    // the showdown
+    const B = q.boss;
+    for (let i = 0; i < this.towers.length; i++) {
+      const tw = this.towers[i];
+      const on = !!(B && B.towers[i]);
+      tw.amp.visible = on;
+      const k = on ? (B.phase === 3 ? 2.5 + Math.sin(t * 30) * 1.2 : 1.6 + Math.sin(t * 4 + i) * 0.4) : (B && B.phase === 2 ? 0.4 + Math.sin(t * 3) * 0.2 : 0.12);
+      tw.lightMat.color.setRGB(on ? k * 0.15 : k, on ? k : k * 0.1, on ? k * 0.25 : k * 0.08);
+    }
+    if (this.wireGlow) {
+      const hot = B && B.phase === 3 && !B.over;
+      const k = hot ? 2 + Math.sin(t * 25) * 1.2 + (B.wireHits || 0) : 0.2;
+      this.wireGlow.color.setRGB(hot ? k * 0.4 : 0.2, hot ? k : 0.2, hot ? k * 0.3 : 0.2);
+      if (hot && this.effects && Math.random() < dt * 8) {
+        const W = this.Q.wire;
+        this.effects.spawnParticle(new THREE.Vector3(W.x + (Math.random() - 0.5) * 0.4, W.y - 0.15, W.z), new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2), { life: 0.4, size: 0.01, color: [2, 5, 2.4], gravity: 9, drag: 1 });
+      }
+    }
+    // amplifiers lying on the court
+    const seen = new Set();
+    if (B) for (const a of B.amps) {
+      if (a.state !== 'ground') continue;
+      seen.add(a.id);
+      let m = this.groundAmps.get(a.id);
+      if (!m) {
+        m = this.ampModel();
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.wispTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5 }));
+        halo.scale.setScalar(0.9); m.add(halo);
+        this.group.add(m); this.groundAmps.set(a.id, m);
+      }
+      m.position.set(a.x, 0.35 + Math.sin(t * 3 + a.id) * 0.06, a.z);
+      m.rotation.y = t * 1.2;
+    }
+    for (const [id, m] of this.groundAmps) if (!seen.has(id)) { this.group.remove(m); this.groundAmps.delete(id); }
+    // the playbook
+    const live = new Set();
+    if (B) for (const zn of B.zones) {
+      live.add(zn.id);
+      let m = this.plays.get(zn.id);
+      if (!m) { m = playMesh(zn); this.group.add(m); this.plays.set(zn.id, m); }
+      const age = sim.time - zn.born;
+      const burning = age >= zn.warn;
+      const o = burning ? 0.85 + Math.sin(t * 20) * 0.1 : 0.12 + 0.25 * Math.max(0, Math.sin(age * 14));
+      m.userData.mat.opacity = o;
+      m.traverse((c) => { if (c.isMesh && c.userData.fill) c.material.opacity = burning ? 0.25 : 0.04; });
+    }
+    for (const [id, m] of this.plays) if (!live.has(id)) { this.group.remove(m); this.plays.delete(id); }
+
     // the coin
     const C = this.Q.statue.coin, A = this.Q.altar;
     if (q.coin === 'dropped') {

@@ -123,6 +123,22 @@ export class HUD {
       case 'erikRevealed':
         this.toast('Erik Madsen', 'sealed in the Press Box', '#7fe08a', 4);
         break;
+      case 'bossStart':
+        this.toast('The Intercom Showdown', 'Erik is calling the plays', '#ff4030', 4);
+        break;
+      case 'bossWave':
+        if (e.wave > 1) this.toast(`Wave ${e.wave} of ${e.of}`, 'Zombie Defenders', '#ff4030', 2.4);
+        break;
+      case 'bossPhase':
+        if (e.phase === 2) this.toast('Overcharge the system', 'take the amplifiers off his elites', '#7fe08a', 3.5);
+        else this.toast('The speakers are howling', 'shoot the main soundboard wire!', '#7fe08a', 3.5);
+        break;
+      case 'ampTaken':
+        if (e.playerId === this.localId) this.toast('Sound Amplifier', 'plug it into a speaker tower', '#7fe08a', 2.4);
+        break;
+      case 'towerPowered':
+        this.toast(`Speaker tower ${e.count} of 4`, '', '#7fe08a', 2.2);
+        break;
       case 'ritualStart':
         this.toast('Hold the circle', `${this.cfg.quest.ritualTime} seconds · don't leave it`, '#7fe08a', 3);
         break;

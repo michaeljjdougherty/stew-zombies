@@ -71,6 +71,8 @@ const OUTFITS = [
   { id: 'lunch', top: 'uniform', color: '#d6d2c4', color2: '#e8e4d8', pants: '#d6d2c4', sleeve: 'short', shoes: '#cfc8b8' },
   { id: 'polo', top: 'polo', color: '#2e5a4a', pants: '#9a8a68', sleeve: 'short', shoes: '#3a2c20' },
   { id: 'tee', top: 'tee', color: '#5c6470', pants: '#2e3a52', sleeve: 'short', shoes: '#b8b4aa' },
+  // Erik's "Zombie Defenders" (the boss fight): Stew Leonards road jerseys
+  { id: 'jersey', top: 'jersey', color: '#1d5a2e', color2: '#d8b84a', pants: '#1d5a2e', sleeve: 'tank', shoes: '#e8e4dc', special: true },
 ];
 
 function knit(g, W, H, R, a = 0.06) {
@@ -106,6 +108,13 @@ function torsoTex(o, seed) {
   } else if (o.top === 'sweater') {
     g.fillStyle = shade(o.color, 0.8); g.fillRect(0, vy(0.2), W, 18);
     for (let x = 0; x < W; x += 4) { g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(x, vy(0.2), 2, 18); }
+  } else if (o.top === 'jersey') {
+    // gold trim at the neck and arms, a big number front and back
+    g.fillStyle = o.color2; g.fillRect(0, vy(0.97), W, 10); g.fillRect(0, vy(0.08), W, 8);
+    g.font = '900 150px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const num = String([3, 5, 11, 23, 33, 8][Math.floor(R() * 6)]);
+    for (const x of [cx, 0, W]) { g.fillStyle = '#f0ead8'; g.fillText(num, x, vy(0.55)); g.strokeStyle = o.color2; g.lineWidth = 5; g.strokeText(num, x, vy(0.55)); }
+    g.font = '900 34px Impact, sans-serif'; g.fillStyle = o.color2; g.fillText('STEW LEONARDS', cx, vy(0.82));
   } else if (o.top === 'letterman') {
     g.fillStyle = o.color2; g.font = '900 64px Georgia, serif'; g.textAlign = 'center';
     g.fillText('LB', cx + 64, vy(0.62));
@@ -359,10 +368,11 @@ export class ZombieKit {
   }
 
   // A complete zombie body on the same rig the animation code expects.
-  assemble(r, { scale = 1 } = {}) {
+  assemble(r, { scale = 1, outfit: forced = null } = {}) {
     this.build();
     const G = this.geo;
-    const outfit = this.outfits[Math.floor(r(2) * this.outfits.length)];
+    const pool = this.outfits.filter((o) => !o.special);
+    const outfit = (forced && this.outfits.find((o) => o.id === forced)) || pool[Math.floor(r(2) * pool.length)];
     const H = this.heads[Math.floor(r(1) * this.heads.length)];
     const skin = this.skinMats[H.skin];
     const M = outfit.mats;

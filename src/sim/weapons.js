@@ -4,6 +4,7 @@
 // (magazine, break-open, cylinder, belt, shell-by-shell), ADS and melee.
 // Weapon stats come from CONFIG.weapons; nothing here is weapon-specific.
 // =============================================================================
+import { questShot } from './quest.js';
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
@@ -193,6 +194,7 @@ function fire(sim, p, slot, def, side) {
         acc.parts[h.part] = (acc.parts[h.part] || 0) + dmg;
       }
     }
+    for (const h of impacts) if (h.targetId) questShot(sim, h.targetId, p);
     for (const [id, acc] of perZombie) {
       const z = sim.zombieById(id);
       if (!z) continue;

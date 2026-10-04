@@ -128,6 +128,66 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   void baseSpeed; void find;
 }
 
+// 6. the Intercom Showdown
+{
+  const { sim, me, log, step, use, find } = makeQuestGame(13);
+  const { killZombie } = await import('../src/sim/zombies.js');
+  const { inZone } = await import('../src/sim/quest.js');
+  const q = sim.quest;
+  q.step = 'boss'; sim.power = true;
+  const altar = find('altar');
+  me.pos.x = 0; me.pos.z = 1.3; me.yaw = 0; step({}, 2);
+  check(/call Erik out/.test(me.prompt?.text || ''), 'altar starts the showdown: ' + me.prompt?.text);
+  use();
+  check(q.boss && q.boss.phase === 1, 'phase 1');
+  const B = CONFIG.quest.boss;
+  // playbook zones hurt
+  let hurt = false;
+  me.health = me.maxHealth;
+  for (let i = 0; i < 60 * 12 && !hurt; i++) {
+    step({}, 1);
+    const live = q.boss.zones.find((z) => sim.time - z.born > z.warn);
+    if (live) { me.pos.x = live.shape === 'O' ? live.x : (live.segs[0][0] + live.segs[0][2]) / 2; me.pos.z = live.shape === 'O' ? live.z : (live.segs[0][1] + live.segs[0][3]) / 2; check(inZone(live, me.pos.x, me.pos.z), 'standing in a play'); step({}, 20); hurt = me.health < me.maxHealth; }
+  }
+  check(hurt, 'Erik\'s playbook burns');
+  sim.godMode = true;
+  // clear the waves
+  let guard = 0;
+  while (q.boss.phase === 1 && guard++ < 60 * 120) {
+    step({}, 1);
+    for (const z of [...sim.zombies]) if (z.state !== 'rising' && z.state !== 'dead') killZombie(sim, z, { kind: 'bullet', part: 'torso', dir: { x: 0, y: 0, z: 1 }, playerId: 'p1' });
+  }
+  check(q.boss.phase === 2, 'waves cleared: phase 2 (' + log.filter((e) => e.type === 'bossWave').length + ' waves)');
+  check(log.some((e) => e.type === 'zombieSpawn' && e.defender), 'defenders spawned');
+  // elites drop amps; plug them into the towers
+  guard = 0;
+  while (q.boss.phase === 2 && guard++ < 60 * 200) {
+    step({}, 1);
+    for (const z of [...sim.zombies]) if (z.state !== 'rising' && z.state !== 'dead') killZombie(sim, z, { kind: 'bullet', part: 'torso', dir: { x: 0, y: 0, z: 1 }, playerId: 'p1' });
+    const amp = q.boss.amps.find((a) => a.state === 'ground');
+    if (amp) {
+      me.pos.x = amp.x; me.pos.z = amp.z; step({}, 1); use();
+      const ti = q.boss.towers.findIndex((t) => !t);
+      const tw = SCHOOL.quest.towers[ti];
+      me.pos.x = tw.x + (tw.x > 0 ? -1.2 : 1.2); me.pos.z = tw.z; step({}, 2); use();
+    }
+  }
+  check(q.boss.phase === 3 && q.boss.towers.every(Boolean), 'four towers powered: phase 3');
+  check(log.filter((e) => e.type === 'ampDrop').length >= 4, 'elites dropped amplifiers');
+  // the wire: a bullet aimed at it reports it
+  const W = SCHOOL.quest.wire;
+  const o = { x: 0, y: 1.6, z: 7 };
+  const d = { x: W.x - o.x, y: W.y - o.y, z: W.z - o.z }; const l = Math.hypot(d.x, d.y, d.z); d.x /= l; d.y /= l; d.z /= l;
+  const hits = sim.hitscan(o, d, 60, 1);
+  check(hits.some((h) => h.targetId === 'wire'), 'bullets can hit the soundboard wire');
+  // fire the real gun at it
+  me.pos.x = 0; me.pos.z = 7; me.vel.x = me.vel.z = 0;
+  me.yaw = Math.atan2(-d.x, -d.z); me.pitch = Math.asin(d.y);
+  for (let i = 0; i < 8 && !q.boss.over; i++) { step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 25); }
+  check(q.boss.over && q.step === 'ending', 'the wire blows: Erik is done (' + q.boss.wireHits + ' hits)');
+  check(log.some((e) => e.type === 'bossEnd'), 'bossEnd event');
+}
+
 // no quest in the firing range
 {
   const { RANGE } = await import('../src/map/range.js');

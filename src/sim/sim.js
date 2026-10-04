@@ -24,7 +24,7 @@ import { updateLastStand, anyoneStanding } from './laststand.js';
 import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } from './powerups.js';
 import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
-import { createQuest, questInteractables, questOnEvent, updateQuest } from './quest.js';
+import { createQuest, questInteractables, questOnEvent, updateQuest, questTargets } from './quest.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -214,7 +214,17 @@ export class GameSim {
 
   // Bullet trace. Returns ordered impacts: zombies (up to `penetration`), then the wall.
   hitscan(o, d, range, penetration = 1) {
-    const wall = this.raycastWorld(o, d, range);
+    let wall = this.raycastWorld(o, d, range);
+    // quest targets (the soundboard wire) stop a bullet like a wall does
+    const targets = this.quest ? questTargets(this) : null;
+    if (targets) {
+      for (const tg of targets) {
+        const t = raySphere(o, d, tg.c, tg.r);
+        if (t >= 0 && t < (wall ? wall.t : range)) {
+          wall = { t, normal: v3(-d.x, -d.y, -d.z), box: { kind: 'wire' }, point: v3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t), targetId: tg.id };
+        }
+      }
+    }
     const maxT = wall ? wall.t : range;
     const zHits = [];
     for (const z of this.zombies) {
@@ -238,7 +248,7 @@ export class GameSim {
     const out = zHits.slice(0, penetration);
     out.forEach((h, i) => { h.penetrationMult = Math.pow(0.6, i); });
     if (wall && zHits.length < penetration) {
-      out.push({ kind: 'world', t: wall.t, point: wall.point, normal: wall.normal, surface: wall.box ? wall.box.kind : 'floor' });
+      out.push({ kind: 'world', t: wall.t, point: wall.point, normal: wall.normal, surface: wall.box ? wall.box.kind : 'floor', targetId: wall.targetId });
     }
     return out;
   }
@@ -273,6 +283,8 @@ export class GameSim {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');
     }
     if (this.mode === 'range') updateRange(this, dt);
+    // (no rounds during Erik's showdown or after it: that fight is its own thing)
+    else if (this.quest && this.quest.boss) { /* the quest spawns its own */ }
     else if (this.mode !== 'explore' || this.explore.zombies) updateRounds(this, dt);
 
     if (this.players.length && !anyoneStanding(this)) {

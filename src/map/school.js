@@ -453,6 +453,9 @@ export const SCHOOL = {
     trophyStand: { x: 0, z: -5.6, slideTo: { x: 2.4, z: -5.6 } },
     statue: { x: 31.5, z: -3.2, coin: { x: 27.25, y: 0.62, z: -3.2 } },
     altar: { x: 0, z: 0 },
+    // the Intercom Showdown: speaker towers in the gym's corners, the wire under the booth
+    towers: [{ x: -15.9, z: -11.6 }, { x: 15.9, z: -11.6 }, { x: -15.9, z: 11.6 }, { x: 15.9, z: 11.6 }],
+    wire: { x: 0, y: 4.7, z: 2.05, r: 0.5 },
     ritualBalls: [
       { id: 'speed', stat: 'speed', x: -4.6, z: -3 },
       { id: 'jump', stat: 'jump', x: 4.6, z: -3 },

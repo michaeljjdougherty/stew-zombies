@@ -237,6 +237,19 @@ export class SoundDirector {
         A.play(S.smallBoom, {}, { pos: e.pos, ref: 6, gain: 1.2, reverb: 0.8 });
         A.play(S.madDogGrind, { duration: this.cfg.quest.claddingTime }, { pos: { x: 0, y: 6.4, z: 0 }, ref: 9, gain: 1.4, reverb: 0.8, delay: 0.8 });
         break;
+      case 'bossStart':
+        A.play(S.roundStartSting, {}, { gain: 1.1, reverb: 0.8 });
+        A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 1.1, reverb: 0.8, bus: 'voice', delay: 0.4 });
+        break;
+      case 'playbook': A.play(S.trapBuzz, { duration: this.cfg.quest.boss.zoneWarn + this.cfg.quest.boss.zoneLive }, { gain: 0.35, reverb: 0.6 }); break;
+      case 'eliteSpawn': A.play(S.zombieScream, {}, { gain: 1, reverb: 0.7 }); break;
+      case 'ampDrop': A.play(S.stickThunk, {}, { pos: e.pos, ref: 4, gain: 1, reverb: 0.3 }); break;
+      case 'ampTaken': A.play(S.stewItemGet, { count: 1 }, { gain: 0.8, reverb: 0.3, bus: 'music' }); break;
+      case 'towerPowered':
+        A.play(S.powerOn, {}, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.9, reverb: 0.6 });
+        break;
+      case 'bossOverload': A.play(S.thunder, { near: 0.6 }, { gain: 1, reverb: 0.8 }); break;
+      case 'wireHit': A.play(S.electrocute, {}, { pos: { x: 0, y: 4.7, z: 2 }, ref: 8, gain: 1.2, reverb: 0.6 }); break;
       case 'ritualStart':
         A.play(S.thunder, { near: 0.3 }, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.8, reverb: 0.8 });
         A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.9, reverb: 0.8, bus: 'voice', delay: 0.5 });

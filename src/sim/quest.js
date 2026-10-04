@@ -19,7 +19,7 @@
 // the HUD and the sound director read it.
 // =============================================================================
 import { paSay } from './pa.js';
-import { makeZombie, pickZombieType } from './zombies.js';
+import { makeZombie, pickZombieType, killZombie } from './zombies.js';
 import { zombieHealthForRound } from '../config.js';
 
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -57,6 +57,8 @@ export function createQuest(sim) {
   // the altar under the Press Box
   const al = Q.altar;
   sim.world.solids.push(solid(al.x - 0.65, 0, al.z - 0.42, al.x + 0.65, 0.88, al.z + 0.42, 'altar'));
+  // the speaker towers in the gym's corners
+  for (const t of Q.towers || []) sim.world.solids.push(solid(t.x - 0.5, 0, t.z - 0.45, t.x + 0.5, 2.9, t.z + 0.45, 'tower'));
   st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls };
   // 4. the half-court ritual: four drained basketballs
   st.ritual = {
@@ -79,6 +81,8 @@ export function questInteractables(sim) {
     new CoinInteractable(Q.statue.coin),
     new AltarInteractable(Q.altar),
     ...Q.ritualBalls.map((b) => new RitualBallInteractable(b)),
+    new AmpPickupInteractable(),
+    ...Q.towers.map((t, i) => new TowerInteractable(t, i)),
   ];
 }
 
@@ -202,15 +206,17 @@ export class AltarInteractable {
   }
   get range() { return 1.6; }
   distanceTo(sim, p) { return flatDist(p.pos, this.pos); }
-  canUse(sim, p) { return up(p) && sim.quest.coin !== 'placed'; }
+  canUse(sim, p) { const q = sim.quest; return up(p) && (q.coin !== 'placed' || (q.step === 'boss' && !q.boss)); }
   prompt(sim) {
     const q = sim.quest;
+    if (q.step === 'boss' && !q.boss) return { text: 'Press [F] to call Erik out', cost: null, sub: 'the Intercom Showdown: get ready first' };
     if (q.coin === 'held') return { text: 'Press [F] to set the Dark Schnitz Coin in the altar', cost: null };
     return { text: 'An altar under the Press Box', cost: null, sub: 'there\'s a coin-shaped hollow in the top' };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     const q = sim.quest;
+    if (q.step === 'boss' && !q.boss) { startBoss(sim, p); return; }
     if (q.coin !== 'held') { sim.emit('useDenied', { playerId: p.id }); return; }
     q.coin = 'placed';
     q.coinHolder = null;
@@ -315,6 +321,233 @@ function updateRitual(sim, dt) {
 }
 
 // ---------------------------------------------------------------------------
+// 5. The Intercom Showdown
+//   Phase 1 (Intercom Lockdown): waves of Zombie Defenders while Erik projects
+//     Occult Playbook Diagrams on the floor: red zones that hurt.
+//   Phase 2 (Overcharging the System): elite defenders drop Sound Amplifiers;
+//     plug one into each of the four speaker towers in the gym's corners.
+//   Phase 3: shoot the main soundboard wire. The feedback shatters the glass.
+// ---------------------------------------------------------------------------
+function startBoss(sim, p) {
+  const q = sim.quest, c = sim.cfg.quest.boss;
+  q.boss = {
+    phase: 1, t: 0,
+    wave: 0, waveLeft: 0, spawnT: 2.5, defenders: new Set(),
+    zones: [], zoneT: 3, zoneId: 1,
+    elites: new Set(), elitesSpawned: 0, eliteT: 2,
+    amps: [], ampId: 1, towers: Q_TOWERS(sim).map(() => false),
+    wireHits: 0, over: false,
+  };
+  // the round in progress just stops: this is Erik's fight now
+  sim.emit('bossStart', { playerId: p.id });
+  paSay(sim, 'bossStart', { delay: 0.5, force: true });
+  void c;
+}
+const Q_TOWERS = (sim) => sim.world.quest.towers;
+
+function spawnFromCourt(sim, { type, health, defender = false, elite = false, near = null }) {
+  const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(6, 11);
+  const cx = near ? near.x * 0.3 : 0, cz = near ? near.z * 0.3 : 0;
+  const pos = { x: Math.max(-15.5, Math.min(15.5, cx + Math.cos(a) * d)), y: -sim.cfg.zombie.riseDepth, z: Math.max(-11.5, Math.min(11.5, cz + Math.sin(a) * d)) };
+  const z = makeZombie(sim, { type, pos, yaw: a + Math.PI, health, state: 'rising' });
+  z.riseFrom = z.pos.y;
+  if (defender) z.defender = true;
+  if (elite) { z.elite = true; z.scale *= 1.28; z.speed *= 0.85; }
+  sim.zombies.push(z);
+  sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true, defender, elite });
+  sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });
+  return z;
+}
+
+const segDist = (px, pz, ax, az, bx, bz) => {
+  const vx = bx - ax, vz = bz - az, l2 = vx * vx + vz * vz;
+  const k = l2 ? Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / l2)) : 0;
+  return Math.hypot(px - (ax + vx * k), pz - (az + vz * k));
+};
+// Is a point inside one of Erik's playbook diagrams?
+export function inZone(zn, x, z) {
+  if (zn.shape === 'O') { const d = Math.hypot(x - zn.x, z - zn.z); return d <= zn.r; }
+  for (const s of zn.segs) if (segDist(x, z, s[0], s[1], s[2], s[3]) <= zn.w / 2) return true;
+  return false;
+}
+
+// Draw up a play: an O on someone, an X on someone, an arrow through someone.
+function newPlay(sim) {
+  const b = sim.quest.boss, c = sim.cfg.quest.boss;
+  const targets = sim.players.filter(up);
+  for (const p of targets) {
+    for (let n = 0; n < c.zonesPerPlayer; n++) {
+      const kind = ['O', 'X', 'arrow'][Math.floor(sim.rng.next() * 3)];
+      const ox = p.pos.x + sim.rng.range(-1.2, 1.2), oz = p.pos.z + sim.rng.range(-1.2, 1.2);
+      const zn = { id: b.zoneId++, shape: kind, x: ox, z: oz, born: sim.time, warn: c.zoneWarn, live: c.zoneLive, w: 1.3, r: 2.0, segs: [] };
+      if (kind === 'X') {
+        const L = 2.4;
+        zn.segs = [[ox - L, oz - L, ox + L, oz + L], [ox - L, oz + L, ox + L, oz - L]];
+      } else if (kind === 'arrow') {
+        const a = sim.rng.range(0, Math.PI * 2), L = 6;
+        const ax = ox - Math.cos(a) * L, az = oz - Math.sin(a) * L, bx = ox + Math.cos(a) * L, bz = oz + Math.sin(a) * L;
+        const hx = Math.cos(a + 2.5) * 1.8, hz = Math.sin(a + 2.5) * 1.8, gx = Math.cos(a - 2.5) * 1.8, gz = Math.sin(a - 2.5) * 1.8;
+        zn.segs = [[ax, az, bx, bz], [bx, bz, bx + hx, bz + hz], [bx, bz, bx + gx, bz + gz]];
+      }
+      b.zones.push(zn);
+    }
+  }
+  sim.emit('playbook', { count: b.zones.length });
+}
+
+function updateBoss(sim, dt) {
+  const q = sim.quest, b = q.boss, c = sim.cfg.quest.boss;
+  if (!b || b.over) return;
+  b.t += dt;
+  const round = Math.max(1, sim.rounds.round);
+  const hp = zombieHealthForRound(round, sim.cfg.zombie);
+  // the playbook (phases 1 and 2)
+  if (b.phase < 3) {
+    b.zoneT -= dt;
+    if (b.zoneT <= 0) { newPlay(sim); b.zoneT = b.phase === 1 ? c.playEvery : c.playEvery * 1.5; }
+  }
+  for (let i = b.zones.length - 1; i >= 0; i--) {
+    const zn = b.zones[i];
+    const age = sim.time - zn.born;
+    if (age > zn.warn + zn.live) { b.zones.splice(i, 1); continue; }
+    if (age < zn.warn) continue;
+    for (const p of sim.players) if (up(p) && inZone(zn, p.pos.x, p.pos.z)) sim.damagePlayer(p, c.zoneDps * dt, { pos: { x: zn.x, z: zn.z } });
+  }
+
+  if (b.phase === 1) {
+    // waves of Zombie Defenders
+    const alive = [...b.defenders].filter((id) => sim.zombieById(id)).length;
+    if (b.waveLeft <= 0 && alive === 0) {
+      if (b.wave >= c.waves) { b.phase = 2; b.eliteT = 2; sim.emit('bossPhase', { phase: 2 }); paSay(sim, 'bossPhase2', { delay: 0.5, force: true }); return; }
+      b.wave++;
+      b.waveLeft = c.waveSize + (sim.players.length - 1) * 3;
+      b.spawnT = 2;
+      sim.emit('bossWave', { wave: b.wave, of: c.waves });
+    }
+    if (b.waveLeft > 0) {
+      b.spawnT -= dt;
+      if (b.spawnT <= 0 && sim.zombies.length < c.maxAlive) {
+        b.spawnT = c.spawnEvery * sim.rng.range(0.7, 1.3);
+        const z = spawnFromCourt(sim, { type: sim.rng.chance(0.5) ? 'sprinter' : 'runner', health: hp * c.defenderHealth, defender: true });
+        b.defenders.add(z.id);
+        b.waveLeft--;
+      }
+    }
+  } else if (b.phase === 2) {
+    // elites, one or two at a time, each carrying a Sound Amplifier
+    const elitesAlive = [...b.elites].filter((id) => sim.zombieById(id)).length;
+    const ampsOut = b.amps.filter((a) => a.state !== 'placed').length + elitesAlive;
+    const placed = b.towers.filter(Boolean).length;
+    if (b.elitesSpawned < 4 && elitesAlive < 2 && placed + ampsOut < 4) {
+      b.eliteT -= dt;
+      if (b.eliteT <= 0) {
+        const z = spawnFromCourt(sim, { type: 'runner', health: hp * c.eliteHealth, elite: true });
+        b.elites.add(z.id);
+        b.elitesSpawned++;
+        b.eliteT = 4;
+        sim.emit('eliteSpawn', { id: z.id });
+      }
+    }
+    // a lighter stream of defenders keeps them busy
+    b.spawnT -= dt;
+    if (b.spawnT <= 0 && sim.zombies.length < c.maxAlive * 0.6) {
+      b.spawnT = c.spawnEvery * 2.2;
+      b.defenders.add(spawnFromCourt(sim, { type: 'runner', health: hp * c.defenderHealth, defender: true }).id);
+    }
+    // an elite that somehow vanished without dying (cleared by a nuke...) still gives its amp
+    for (const id of [...b.elites]) if (!sim.zombieById(id) && !b.amps.some((a) => a.from === id)) dropAmp(sim, id, { x: 0, z: 3 });
+    if (placed >= 4) {
+      b.phase = 3;
+      b.zones.length = 0;
+      sim.emit('bossPhase', { phase: 3 });
+      sim.emit('bossOverload', {});
+    }
+  }
+  // whoever's carrying an amp and goes down drops it
+  for (const a of b.amps) {
+    if (a.state !== 'held') continue;
+    const h = sim.playerById(a.holder);
+    if (!h || !up(h)) { a.state = 'ground'; if (h) { a.x = h.pos.x; a.z = h.pos.z; } a.holder = null; sim.emit('ampDropped', { id: a.id }); }
+  }
+}
+
+function dropAmp(sim, fromId, pos) {
+  const b = sim.quest.boss;
+  const a = { id: b.ampId++, from: fromId, x: Math.max(-15.5, Math.min(15.5, pos.x)), z: Math.max(-11.5, Math.min(11.5, pos.z)), state: 'ground', holder: null };
+  b.amps.push(a);
+  sim.emit('ampDrop', { id: a.id, pos: { x: a.x, y: 0, z: a.z } });
+}
+
+export class AmpPickupInteractable {
+  constructor() { this.id = 'amp_pickup'; this.kind = 'amp'; this.requireLook = false; this.pos = { x: 0, y: 0, z: 0 }; }
+  get range() { return 1.4; }
+  nearest(sim, p) {
+    const b = sim.quest.boss;
+    let best = null, bd = Infinity;
+    if (!b) return { a: null, d: bd };
+    for (const a of b.amps) { if (a.state !== 'ground') continue; const d = Math.hypot(p.pos.x - a.x, p.pos.z - a.z); if (d < bd) { bd = d; best = a; } }
+    return { a: best, d: bd };
+  }
+  distanceTo(sim, p) { return this.nearest(sim, p).d; }
+  canUse(sim, p) { const b = sim.quest.boss; return up(p) && b && !b.amps.some((a) => a.holder === p.id); }
+  prompt() { return { text: 'Press [F] to pick up the Sound Amplifier', cost: null, sub: 'plug it into a speaker tower' }; }
+  use(sim, p, cmd) {
+    if (!cmd.usePressed) return;
+    const { a } = this.nearest(sim, p);
+    if (!a) return;
+    a.state = 'held'; a.holder = p.id;
+    sim.emit('ampTaken', { id: a.id, playerId: p.id });
+  }
+}
+
+export class TowerInteractable {
+  constructor(t, i) { this.t = t; this.i = i; this.id = 'tower_' + i; this.kind = 'tower'; this.requireLook = false; this.pos = { x: t.x, y: 1, z: t.z }; }
+  get range() { return 1.9; }
+  distanceTo(sim, p) { return Math.hypot(p.pos.x - this.t.x, p.pos.z - this.t.z); }
+  canUse(sim, p) { const b = sim.quest.boss; return up(p) && b && b.phase === 2 && !b.towers[this.i]; }
+  prompt(sim, p) {
+    const b = sim.quest.boss;
+    if (!b.amps.some((a) => a.holder === p.id)) return { text: 'A speaker tower with an empty amp slot', cost: null };
+    return { text: 'Press [F] to plug in the Sound Amplifier', cost: null };
+  }
+  use(sim, p, cmd) {
+    if (!cmd.usePressed) return;
+    const b = sim.quest.boss;
+    const a = b.amps.find((x) => x.holder === p.id);
+    if (!a) { sim.emit('useDenied', { playerId: p.id }); return; }
+    a.state = 'placed'; a.holder = null; a.tower = this.i;
+    b.towers[this.i] = true;
+    sim.emit('towerPowered', { tower: this.i, count: b.towers.filter(Boolean).length, pos: { x: this.t.x, y: 0, z: this.t.z } });
+  }
+}
+
+// A bullet hit the soundboard wire (sim.hitscan reports it; weapons.js calls this).
+export function questShot(sim, targetId, p) {
+  const q = sim.quest;
+  if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over || targetId !== 'wire') return;
+  const b = q.boss;
+  b.wireHits++;
+  sim.emit('wireHit', { hits: b.wireHits, of: sim.cfg.quest.boss.wireHits, playerId: p ? p.id : null });
+  if (b.wireHits >= sim.cfg.quest.boss.wireHits) {
+    b.over = true;
+    b.zones.length = 0;
+    // the feedback blows every eardrum in the building: the horde drops
+    for (const z of [...sim.zombies]) if (z.state !== 'dead') killZombie(sim, z, { kind: 'sonic', part: 'head', dir: { x: 0, y: 1, z: 0 }, playerId: null });
+    sim.emit('bossEnd', { playerId: p ? p.id : null });
+    paSay(sim, 'bossEnd', { force: true });
+    advance(sim, 'ending');
+  }
+}
+
+// The live shootable target, if any: the soundboard wire under the Press Box.
+export function questTargets(sim) {
+  const q = sim.quest;
+  if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over) return null;
+  const w = sim.world.quest.wire;
+  return [{ id: 'wire', c: { x: w.x, y: w.y, z: w.z }, r: w.r }];
+}
+
+// ---------------------------------------------------------------------------
 function advance(sim, step) {
   const q = sim.quest;
   if (QUEST_STEPS.indexOf(step) <= QUEST_STEPS.indexOf(q.step)) return;
@@ -326,6 +559,10 @@ function advance(sim, step) {
 export function questOnEvent(sim, e) {
   const q = sim.quest;
   if (!q) return;
+  if (e.type === 'zombieKilled' && q.boss && q.boss.elites.has(e.id) && e.pos) {
+    q.boss.elites.delete(e.id);
+    dropAmp(sim, e.id, e.pos);
+  }
   if (e.type === 'zombieKilled' && q.step === 'statue' && e.pos) {
     // a kill near the statue: its dark energy goes into the base
     const S = sim.world.quest.statue;
@@ -389,6 +626,7 @@ export function updateQuest(sim, dt) {
     }
   }
   if (q.step === 'ritual') updateRitual(sim, dt);
+  if (q.step === 'boss') updateBoss(sim, dt);
   // whoever's holding the coin and bleeds out drops it back where it came from
   if (q.coin === 'held') {
     const h = sim.playerById(q.coinHolder);
@@ -419,7 +657,14 @@ export function questObjective(sim) {
       }
       return `Take back your talent: the drained basketballs at center court (${done}/${r.balls.length})`;
     }
-    case 'boss': return 'Call Erik out at the altar';
+    case 'boss': {
+      const b = q.boss;
+      if (!b) return 'Call Erik out at the altar under the Press Box';
+      if (b.phase === 1) return `Intercom Lockdown: clear Erik's Zombie Defenders (wave ${b.wave} of ${sim.cfg.quest.boss.waves}) · stay out of the red plays`;
+      if (b.phase === 2) return `Overcharge the system: take the Sound Amplifiers off the elites and plug them into the speaker towers (${b.towers.filter(Boolean).length}/4)`;
+      return 'Shoot the main soundboard wire under the Press Box!';
+    }
+    case 'ending': return null;
     default: return null;
   }
 }
