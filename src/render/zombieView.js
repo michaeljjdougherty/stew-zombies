@@ -94,6 +94,7 @@ export class ZombieViews {
       aura.scale.set(1.6, 2.4, 1); aura.position.set(0, 1.0, 0);
       inst.root.add(aura);
     }
+    if (z.ritual) this.makeSpirit(inst.meshes, glow, inst.root, size);
     this.scene.add(inst.root);
     const mixer = new THREE.AnimationMixer(inst.model);
     const clips = this.models.clipsFor(t);
@@ -110,9 +111,42 @@ export class ZombieViews {
       skinMat: inst.meshes[0].material,
       offset: r(5),   // so they don't all move in step
       hitT: 0,
+      spirit: !!z.ritual, meshes: inst.meshes,
     };
     this.play(v, 'idle', 0);
     return v;
+  }
+
+  // The half-court ritual's zombies: tinted ghostly blue, eyes blazing blue.
+  makeSpirit(meshes, glows, root, eyeSize) {
+    if (!this.spiritGlow) {
+      this.spiritGlow = new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(190,230,255,1)', 'rgba(40,120,255,0)'), color: new THREE.Color(0.6, 1.6, 4.0), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true });
+      this.spiritAura = new THREE.SpriteMaterial({ map: this.spiritGlow.map, color: new THREE.Color(0.15, 0.45, 1.4), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.45 });
+    }
+    for (const m of meshes) {
+      const mat = m.material.clone();
+      mat.color = new THREE.Color(0.32, 0.52, 1.5);
+      mat.emissive = new THREE.Color(0.03, 0.09, 0.3);
+      if (mat.emissiveMap) mat.emissive = new THREE.Color(0.25, 0.6, 2.2);   // the eye map: blue now
+      m.material = mat;
+    }
+    for (const g of glows) { g.material = this.spiritGlow; g.scale.multiplyScalar(1.6); }
+    const aura = new THREE.Sprite(this.spiritAura);
+    aura.scale.set(1.5, 2.3, 1); aura.position.set(0, 1.0, 0);
+    root.add(aura);
+    void eyeSize;
+  }
+
+  // A spirit zombie dies: it goes limp and floats up into the air, fading out.
+  ascend(v) {
+    if (v.meshes) for (const m of v.meshes) { m.material.transparent = true; m.material.depthWrite = false; }
+    for (const g of v.glows || []) g.visible = true;
+    if (v.mixer) {
+      v.mixer.stopAllAction();
+      const a = v.actions.hit2 || v.actions.idle;
+      if (a) { a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.timeScale = 0.35; a.play(); }
+    }
+    this.corpses.push({ v, t: 0, spirit: true, spin: (Math.random() - 0.5) * 1.2, y0: v.root.position.y });
   }
 
   // crossfade to a looping clip
@@ -359,6 +393,7 @@ export class ZombieViews {
   }
 
   makeCorpse(v, e) {
+    if (v.spirit) { this.ascend(v); return; }
     if (v.rig) { this.corpseRigged(v, e); return; }
     if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
     const d = e.dir || { x: 0, y: 0, z: 0 };
@@ -556,6 +591,20 @@ export class ZombieViews {
       const c = this.corpses[i];
       const v = c.v;
       c.t += dt;
+      if (c.spirit) {
+        // up, up and away, slowly turning, fading out in a trail of blue sparks
+        if (v.mixer) v.mixer.update(dt);
+        const k = c.t / 3.2;
+        v.root.position.y = c.y0 + k * k * 5 + k * 1.2;
+        v.root.rotation.y += c.spin * dt;
+        if (v.meshes) for (const m of v.meshes) m.material.opacity = Math.max(0, 1 - k * 1.1);
+        if (Math.random() < dt * 20) {
+          const p = v.root.position.clone(); p.y += 0.6 + Math.random() * 1.2; p.x += (Math.random() - 0.5) * 0.5; p.z += (Math.random() - 0.5) * 0.5;
+          this.effects.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.6 + Math.random(), (Math.random() - 0.5) * 0.3), { life: 0.9, size: 0.014, color: [0.5, 1.4, 4], gravity: -1, drag: 0.4 });
+        }
+        if (k >= 1) { this.scene.remove(v.root); this.corpses.splice(i, 1); }
+        continue;
+      }
       if (c.rig) {
         // the death clip does the falling; slide back a touch, then sink and go
         v.mixer.update(dt);

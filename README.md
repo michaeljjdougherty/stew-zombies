@@ -342,8 +342,15 @@ Every few seconds the nearest one asks you if you wanna play 2K.
 ## Clearance Sale, the cauldron, and getting back up
 
 - **Clearance Sale** (the fire sale): while it lasts a Mystery Box drops in
-  at every box spot, all at 10 points. When it ends they finish any pull in
-  progress and vanish.
+  at every box spot, all at 10 points, and a cheesy game-show tune plays. When
+  it ends they finish any pull in progress and vanish.
+- **The jukebox** in the Teachers' Lounge, next to Erik's PA microphone:
+  press F for "We Go Stewie", again for "That's That Marmaduke", again to
+  stop (`assets/music/`). Everyone online hears the same song from it.
+- **The half-court ritual**: the circles are twice as big (3.2 m). While one
+  is lit, ordinary zombies leave whoever's in it alone; blue spirit zombies
+  with blazing blue eyes claw up out of the court instead, and when they die
+  they float up into the air and fade away.
 - **The boiler room cauldron**: a vat of stew bubbling over a fire, fed by
   pipes from the boiler. Shoot the three red valves open (one on the feed
   pipe, one on the pipe bank, one up in the corner by the door) and it boils

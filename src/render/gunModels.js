@@ -80,12 +80,41 @@ async function fetchGlb(file) {
   for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
   return u.buffer;
 }
+// The GLTF loader normally shows embedded textures through blob: URLs, which
+// the artifact page's security rules block (the guns came out plain white, and
+// emissive ones glowed). Decode them straight from the bytes instead.
+const WRAP = { 33071: THREE.ClampToEdgeWrapping, 33648: THREE.MirroredRepeatWrapping, 10497: THREE.RepeatWrapping };
+const FILT = { 9728: THREE.NearestFilter, 9729: THREE.LinearFilter, 9984: THREE.NearestMipmapNearestFilter, 9985: THREE.LinearMipmapNearestFilter, 9986: THREE.NearestMipmapLinearFilter, 9987: THREE.LinearMipmapLinearFilter };
+class BitmapTextures {
+  constructor(parser) { this.parser = parser; this.name = 'stew_bitmap_textures'; this.cache = new Map(); }
+  loadTexture(index) {
+    const json = this.parser.json, def = json.textures[index], img = json.images[def.source];
+    if (!img || img.bufferView === undefined || typeof createImageBitmap !== 'function') return null;
+    if (!this.cache.has(def.source)) {
+      this.cache.set(def.source, this.parser.getDependency('bufferView', img.bufferView)
+        .then((buf) => createImageBitmap(new Blob([buf], { type: img.mimeType || 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })));
+    }
+    return this.cache.get(def.source).then((bmp) => {
+      const t = new THREE.Texture(bmp);
+      t.flipY = false;
+      const sm = (json.samplers || [])[def.sampler] || {};
+      t.magFilter = FILT[sm.magFilter] || THREE.LinearFilter;
+      t.minFilter = FILT[sm.minFilter] || THREE.LinearMipmapLinearFilter;
+      t.wrapS = WRAP[sm.wrapS] || THREE.RepeatWrapping;
+      t.wrapT = WRAP[sm.wrapT] || THREE.RepeatWrapping;
+      t.anisotropy = 4;
+      t.needsUpdate = true;
+      return t;
+    }).catch(() => null);
+  }
+}
+
 // One normalized copy per file: pointing down -Z, centered, unwanted parts gone.
 function loadRealGun(model) {
   const R = REAL_GUNS[model];
   if (gunCache.has(model)) return gunCache.get(model);
   const job = (async () => {
-    gltf = gltf || new GLTFLoader();
+    if (!gltf) { gltf = new GLTFLoader(); gltf.register((parser) => new BitmapTextures(parser)); }
     const g = await gltf.parseAsync(await fetchGlb(R.file), '');
     const root = g.scene;
     if (R.hide) { const gone = []; root.traverse((o) => { if (R.hide.test(o.name)) gone.push(o); }); for (const o of gone) o.parent.remove(o); }
@@ -93,6 +122,8 @@ function loadRealGun(model) {
       if (!o.isMesh) return;
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
         if (R.tint && !m.map) m.color.multiply(new THREE.Color(R.tint));   // untextured white models
+        // a glow with nothing to shape it (its texture didn't load) lights up the whole gun
+        if (m.emissive && !m.emissiveMap) m.emissive.setRGB(0, 0, 0);
         realGunMaterials.add(m);
         if (m.transparent && m.opacity > 0.95) { m.transparent = false; m.depthWrite = true; }
       }

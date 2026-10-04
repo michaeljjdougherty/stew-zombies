@@ -315,7 +315,7 @@ export class QuestView {
     this.plays?.clear();
     for (const m of this.groundAmps?.values() || []) this.group.remove(m);
     this.groundAmps?.clear();
-    for (const w of this.wisps) this.group.remove(w.s);
+    for (const w of this.wisps || []) this.group.remove(w.s);
     this.wisps = [];
     if (this.erik) { this.group.remove(this.erik.root); this.erik = null; if (this.erikLight) this.erikLight.level = 0; }
     this.erikHeld = false;

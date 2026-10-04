@@ -26,6 +26,7 @@ import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
 import { createQuest, questInteractables, questOnEvent, updateQuest, questTargets } from './quest.js';
 import { createCauldron, cauldronTargets } from './cauldron.js';
+import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js';
 import { createCrew } from './crew.js';
 
 export class GameSim {
@@ -58,14 +59,16 @@ export class GameSim {
     this.saleBoxes = this.world.boxSpots.length > 1 ? this.world.boxSpots.map((s) => new SaleBox(this, s)) : [];
     this.traps = createTraps(this);
     this.madDog = this.world.madDog ? new MadDogInteractable(this, this.world.madDog) : null;
-    this.quest = createQuest(this);
-    this.cauldron = createCauldron(this);   // "The Final Whistle" (school only)
+    this.quest = createQuest(this);   // "The Final Whistle" (school only)
+    this.cauldron = createCauldron(this);
+    this.jukebox = createJukebox(this);
     this.interactables = [
       ...this.windows.filter((w) => w.kind !== 'fence').map((w) => new WindowInteractable(w)),
       ...this.world.doors.map((d) => new DoorInteractable(d)),
       ...this.world.wallBuys.map((wb) => new WallBuyInteractable(wb)),
       this.box,
       ...this.saleBoxes,
+      ...(map.jukebox ? [new JukeboxInteractable(map.jukebox)] : []),
       ...(this.world.powerSwitch ? [new PowerInteractable(this.world.powerSwitch)] : []),
       ...this.world.perkMachines.map((m) => new PerkInteractable(m)),
       ...(this.madDog ? [this.madDog] : []),
@@ -311,6 +314,7 @@ export class GameSim {
     updatePowerups(this, dt);
     updateZombies(this, dt);
     this.cheddarChatter(dt);
+    updateJukebox(this);
     updateProjectiles(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');

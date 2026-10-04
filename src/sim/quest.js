@@ -297,9 +297,11 @@ function updateRitual(sim, dt) {
     const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(7, 11);
     const round = Math.max(1, sim.rounds.round);
     const type = sim.rng.chance(0.6) ? 'sprinter' : pickZombieType(sim, round + 6);
+    // blue spirit zombies: only they come for whoever holds the circle
     const pos = { x: Math.max(-15.5, Math.min(15.5, ball.x * 0.3 + Math.cos(a) * d)), y: -sim.cfg.zombie.riseDepth, z: Math.max(-11.5, Math.min(11.5, ball.z * 0.3 + Math.sin(a) * d)) };
     const z = makeZombie(sim, { type, pos, yaw: a + Math.PI, health: zombieHealthForRound(round, sim.cfg.zombie), state: 'rising' });
     z.riseFrom = z.pos.y;
+    z.ritual = true;
     sim.zombies.push(z);
     sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true });
     sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });

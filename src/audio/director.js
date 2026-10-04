@@ -3,7 +3,8 @@
 // Also runs the ambience (wind at the windows, light buzz, drips, creaks).
 // =============================================================================
 import * as S from './sfx.js';
-import { StewSong } from './music.js';
+import { StewSong, FireSaleMusic } from './music.js';
+import { powerupActive } from '../sim/powerups.js';
 import { GUN_VOICES, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
 import { CREW } from '../lore/crew.js';
@@ -127,7 +128,48 @@ export class SoundDirector {
   }
 
   // Silence the current map's ambience (before switching maps).
+  // --- the jukebox and the Clearance Sale theme -------------------------------
+  // Both follow the game's state (so a friend online hears the same thing).
+  updateMusic() {
+    const A = this.A, sim = this.sim;
+    // game-show music for as long as the sale lasts
+    const sale = !!(sim.powerups && powerupActive(sim, 'clearanceSale')) && this.ambientStarted;
+    this.saleMusic = this.saleMusic || new FireSaleMusic(A);
+    if (sale && !this.saleMusic.playing) this.saleMusic.start('music', 0.75);
+    else if (!sale && this.saleMusic.playing) this.saleMusic.stop(1.5);
+    // the jukebox
+    const j = sim.jukebox, spot = sim.mapData.jukebox;
+    const want = j && j.song != null && this.ambientStarted ? j.song + '@' + j.startedAt : null;
+    if (want === this.jbKey) return;
+    if (this.jb) { const o = this.jb; try { o.out.input.gain.setTargetAtTime(0.0001, A.now(), 0.15); setTimeout(() => { try { o.src.stop(); o.out.input.disconnect(); } catch { /* gone */ } }, 800); } catch { /* gone */ } this.jb = null; }
+    this.jbKey = want;
+    if (!want) return;
+    const song = this.cfg.jukebox.songs[j.song];
+    const offset = Math.max(0, sim.time - j.startedAt);
+    this.loadSong(song.file).then((buf) => {
+      if (!buf || this.jbKey !== want) return;
+      const out = A.output({ pos: { x: spot.x, y: 1.2, z: spot.z + 0.3 }, bus: 'music', ref: 6, rolloff: 0.9, reverb: 0.25, gain: 1.6 });
+      const src = A.ctx.createBufferSource(); src.buffer = buf;
+      src.connect(out.input);
+      const at = Math.min(offset + (A.now() - this.jbAsked), buf.duration - 0.1);
+      src.start(A.now() + 0.05, Math.max(0, at));
+      this.jb = { src, out };
+    });
+    this.jbAsked = A.now();
+  }
+
+  loadSong(file) {
+    this.songs = this.songs || new Map();
+    if (!this.songs.has(file)) {
+      this.songs.set(file, fetch('assets/music/' + file + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : null)).then((ab) => (ab ? this.A.ctx.decodeAudioData(ab) : null)).catch(() => null));
+    }
+    return this.songs.get(file);
+  }
+
   stopAmbience() {
+    if (this.saleMusic && this.saleMusic.playing) this.saleMusic.stop(0.5);
+    if (this.jb) { try { this.jb.src.stop(); this.jb.out.input.disconnect(); } catch { /* gone */ } this.jb = null; }
+    this.jbKey = null;
     for (const n of this.ambNodes || []) { try { n.stop(); n.disconnect(); } catch (e) { /* already stopped */ } }
     this.ambNodes = [];
     this.buzzers = null;
@@ -342,6 +384,7 @@ export class SoundDirector {
         A.play(S.boxWhoosh, {}, { pos: b, ref: 5, reverb: 0.5, delay: this.cfg.box.leaveTime * 0.4 });
         break;
       }
+      case 'jukeboxPlay': case 'jukeboxStop': A.play(S.purchase, {}, { pos: { x: sim.mapData.jukebox.x, y: 1, z: sim.mapData.jukebox.z }, ref: 2, gain: 0.5 }); break;
       case 'valveTurned': A.play(S.steamHiss, { dur: 2.2 }, { pos: e.pos, ref: 3, reverb: 0.5, gain: 0.9 }); break;
       case 'cauldronBoil': A.play(S.cauldronBoil, {}, { pos: e.pos, ref: 5, reverb: 0.6, gain: 1.1 }); break;
       case 'cheddarTalk': A.play(S.cheddarVoice, { text: e.text, dur: e.dur }, { pos: e.pos, ref: 4, rolloff: 1.2, reverb: 0.35, bus: 'voice', gain: 1.1 }); break;
@@ -445,6 +488,8 @@ export class SoundDirector {
       A.duck = duck;
       A.buses.ambient.gain.setTargetAtTime(A.volumes.ambient * duck, A.now(), 0.15);
     }
+
+    this.updateMusic();
 
     // the cauldron bubbles away when you're near it
     const cd = sim.mapData.cauldron;

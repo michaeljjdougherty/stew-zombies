@@ -366,6 +366,8 @@ export const SCHOOL = {
     { kind: 'boiler', box: [-29.5, 0, 5, -24.5, 3.0, 9.5] },
     { kind: 'pipes', box: [-31, 0, 10.6, -26, 1.2, 12] },
     { kind: 'cauldron', box: [-21.25, 0, 6.45, -19.35, 1.08, 8.35] },
+    // the jukebox in the Teachers' Lounge, by Erik's PA microphone
+    { kind: 'jukebox', box: [26.0, 0, 16.5, 26.9, 1.55, 17.15] },
     // science lab
     { kind: 'labBench', box: [-28.5, 0, -24.4, -22.5, 0.92, -23.4] },
     { kind: 'labBench', box: [-28.5, 0, -19.6, -22.5, 0.92, -18.6] },
@@ -485,6 +487,7 @@ export const SCHOOL = {
   // --- story ---------------------------------------------------------------
   // The PA handset on the teachers' lounge table: talk back to Erik.
   intercom: { x: 28.0, y: 1.08, z: 18.8 },
+  jukebox: { x: 26.45, z: 16.83, yaw: 0 },
 
   // Notes to read (words in src/lore/erik.js). `wall` = pinned to a wall
   // facing `yaw`; otherwise lying flat on whatever is under it.

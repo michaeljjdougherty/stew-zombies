@@ -157,10 +157,20 @@ export function zombieHitboxes(z) {
   return hb;
 }
 
-function nearestPlayer(sim, pos) {
+// During a half-court ritual, whoever holds the circle belongs to the blue
+// spirit zombies: ordinary ones leave them alone.
+function inRitual(sim, p) {
+  const r = sim.quest && sim.quest.ritual;
+  if (!r || !r.active) return false;
+  const b = r.balls.find((q) => q.id === r.active);
+  return !!b && Math.hypot(p.pos.x - b.x, p.pos.z - b.z) <= sim.cfg.quest.ritualCircle + 1.0;
+}
+
+function nearestPlayer(sim, pos, z = null) {
   let best = null, bd = Infinity;
   for (const p of sim.players) {
     if (!p.alive || p.downed) continue;
+    if (z && !z.ritual && inRitual(sim, p)) continue;
     const d = dist2D(p.pos, pos);
     if (d < bd) { bd = d; best = p; }
   }
@@ -274,7 +284,7 @@ export function updateZombies(sim, dt) {
       case 'chase': {
         // a Stew Bomb nearby beats any player
         const lure = activeLure(sim, z.pos);
-        const target = lure ? null : nearestPlayer(sim, z.pos);
+        const target = lure ? null : nearestPlayer(sim, z.pos, z);
         const goTo = lure ? { pos: lure.pos, region: lure.region } : target;
         z.targetId = target ? target.id : null;
         z.lured = !!lure;

@@ -914,6 +914,14 @@ export const CONFIG = {
     },
   },
 
+  // The jukebox in the Teachers' Lounge (assets/music/).
+  jukebox: {
+    songs: [
+      { name: 'We Go Stewie', file: 'we_go_stewie', duration: 164.0 },
+      { name: "That's That Marmaduke", file: 'thats_that_marmaduke', duration: 103.7 },
+    ],
+  },
+
   // The boiler room cauldron Easter egg (see src/sim/cauldron.js).
   cauldron: {
     points: 1000,            // to everyone still alive when it boils over
@@ -999,7 +1007,7 @@ export const CONFIG = {
     madDogRiseTime: 3.5,  // s for the Mad Dog Machine to come up through the floor
     claddingTime: 9,      // s for the Press Box cladding to grind up
     ritualTime: 45,       // s to hold each half-court circle
-    ritualCircle: 1.6,    // m, the circle's radius
+    ritualCircle: 3.2,    // m, the circle's radius
     ritualLeaveTime: 4,   // s with nobody in the circle before it goes out
     ritualSpawnEvery: 1.3, // s between zombies clawing up during a ritual
     ritualMaxAlive: 22,

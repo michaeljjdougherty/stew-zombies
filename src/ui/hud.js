@@ -171,6 +171,9 @@ export class HUD {
       case 'stewSays':
         if (e.playerId === this.localId) this.say('stew', this.localName || 'You', e.text, 0, e.dur);
         break;
+      case 'jukeboxPlay':
+        this.toast('♪ ' + this.cfg.jukebox.songs[e.song].name, 'on the jukebox in the Teachers\' Lounge', '#ff9a40', 3);
+        break;
       case 'valveTurned':
         if (e.count < e.total) this.toast(`Valve ${e.count} of ${e.total}`, 'something in the boiler room is heating up', '#ff7a3a', 2.4);
         break;

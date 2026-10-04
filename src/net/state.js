@@ -63,6 +63,7 @@ export function worldState(sim) {
     windows: byId(sim.windows, (w) => { const o = {}; for (const k of WINDOW_KEYS) o[k] = clean(w[k]); return o; }),
     box: (() => { const b = sim.box; return clean({ spot: b.spot.id, phase: b.phase, timer: b.timer, weapon: b.weapon, buyerId: b.buyerId, uses: b.uses, totalUses: b.totalUses, paid: b.paid, moveAt: b.moveAt }); })(),
     cauldron: sim.cauldron ? clean(sim.cauldron) : null,
+    jukebox: sim.jukebox ? clean(sim.jukebox) : null,
     saleBoxes: Object.fromEntries((sim.saleBoxes || []).map((b) => [b.id, clean({ phase: b.phase, timer: b.timer, weapon: b.weapon, buyerId: b.buyerId, uses: b.uses, paid: b.paid })])),
     traps: byId(sim.traps, (t) => clean({ state: t.state, timer: t.timer, ownerId: t.ownerId })),
     madDog: sim.madDog ? clean({ state: sim.madDog.state, timer: sim.madDog.timer, ownerId: sim.madDog.ownerId, weapon: sim.madDog.weapon }) : null,
@@ -214,6 +215,7 @@ export function applyMirror(sim, M, localId) {
   }
   Object.assign(box, { phase: B.phase, timer: B.timer, weapon: B.weapon, buyerId: B.buyerId, uses: B.uses, totalUses: B.totalUses, paid: B.paid, moveAt: B.moveAt });
   if (sim.cauldron && M.cauldron) deepAssign(sim.cauldron, M.cauldron);
+  if (sim.jukebox && M.jukebox) Object.assign(sim.jukebox, M.jukebox);
   for (const b of sim.saleBoxes || []) {
     const S = M.saleBoxes && M.saleBoxes[b.id];
     if (!S) continue;

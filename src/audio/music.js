@@ -400,3 +400,61 @@ export class TitleMusic extends Sequencer {
     this.held = [];
   }
 }
+
+// =============================================================================
+// Clearance Sale: a cheesy game-show loop (think "come on down!"). 148 bpm,
+// F major: oom-pah bass, brass stabs on the off-beats, a xylophone tune, and a
+// rising horn fanfare at the top of every 8 bars. Loops until the sale ends.
+// =============================================================================
+const SALE_CHORDS = [[53, 57, 60], [53, 57, 60], [58, 62, 65], [58, 62, 65], [55, 60, 64], [55, 60, 64], [53, 57, 60], [48, 55, 64]];
+const SALE_BASS = [41, 48, 46, 53, 48, 55, 41, 36];
+// xylophone tune: 2 bars of 8ths per line, 4 lines (null = rest)
+const SALE_TUNE = [
+  [72, 74, 76, 77, 79, null, 77, 76, 74, null, 72, null, 69, 72, 77, null],
+  [74, 76, 77, 79, 81, null, 79, 77, 76, 74, 72, null, 67, null, 72, null],
+  [72, 74, 76, 77, 79, null, 81, 82, 84, null, 81, null, 77, 79, 81, null],
+  [79, 77, 76, 74, 72, null, 76, null, 79, null, 77, 76, 77, null, null, null],
+];
+function brass(A, out, t, midis, len, v = 1) {
+  for (const m of midis) {
+    const o = A.osc('sawtooth', mtof(m), t, len + 0.05);
+    o.detune.value = (Math.random() - 0.5) * 10;
+    const lp = A.filter('lowpass', 900, 1.2);
+    lp.frequency.setValueAtTime(700, t); lp.frequency.linearRampToValueAtTime(2600, t + 0.04); lp.frequency.exponentialRampToValueAtTime(1000, t + len);
+    const g = A.gain(0); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06 * v, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0005, t + len);
+    o.connect(lp); lp.connect(g); g.connect(out);
+  }
+}
+function xylo(A, out, t, midi, v = 1) {
+  const f = mtof(midi);
+  for (const [m, a, dcy] of [[1, 0.1, 0.35], [3.93, 0.035, 0.08], [9.2, 0.012, 0.03]]) {
+    const o = A.osc('sine', f * m, t, dcy + 0.05);
+    const g = A.gain(0); A.env(g, t, 0.001, dcy, a * v);
+    o.connect(g); g.connect(out);
+  }
+}
+export class FireSaleMusic extends Sequencer {
+  constructor(A) { super(A); this.stepDur = 60 / 148 / 2; }   // 8ths
+  start(bus = 'music', gain = 0.75) { if (this.playing) return; this.begin(bus, gain); }
+  schedule(s, t) {
+    const A = this.A, out = this.out, d = this.stepDur;
+    const bar = Math.floor(s / 8) % 8, beat8 = s % 8;
+    const chord = SALE_CHORDS[bar];
+    // drums: kick on 1 and 3, snare on 2 and 4, shuffling hats
+    if (beat8 === 0 || beat8 === 4) kick(A, out, t, 0.8);
+    if (beat8 === 2 || beat8 === 6) snare(A, out, t, 0.7);
+    hat(A, out, t + (s % 2 ? d * 0.18 : 0), s % 2 ? 0.5 : 0.8);
+    // oom-pah bass
+    if (beat8 % 2 === 0) bassNote(A, out, t, beat8 % 4 === 0 ? SALE_BASS[bar] : SALE_BASS[bar] + 7, d * 0.9, 0.9);
+    // brass stabs on the off-beats
+    if (beat8 % 2 === 1) brass(A, out, t, chord, d * 0.7, 0.8);
+    // xylophone tune
+    const line = SALE_TUNE[Math.floor(s / 16) % 4], n = line[s % 16];
+    if (n != null) xylo(A, out, t, n, 1);
+    // fanfare every 8 bars: a run up the chord and a crash
+    if (s % 64 === 0) {
+      crash(A, out, t, 0.7);
+      [65, 69, 72, 77].forEach((m, i) => brass(A, out, t + i * d * 0.5, [m, m - 12], d * (i === 3 ? 3 : 0.6), 1.2));
+    }
+  }
+}

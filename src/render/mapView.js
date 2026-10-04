@@ -583,6 +583,7 @@ export class MapView {
           break;
         case 'boiler': this.boiler(b); break;
         case 'cauldron': this.cauldron(b); break;
+        case 'jukebox': this.jukebox(b); break;
         case 'pipes':
           for (let i = 0; i < 4; i++) {
             const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, b.maxX - b.minX, 10).rotateZ(Math.PI / 2), M.rustMetal);
@@ -752,6 +753,49 @@ export class MapView {
     }
     // firelight (baked); CauldronView adds a flickering live one
     this.addVirtualLight({ x: C.x, y: 0.35, z: C.z - 1.0 }, 0xff5a18, 6, 5, 1.7);
+  }
+
+  // A 1950s jukebox: rounded top, chrome trim, bubble tubes that glow and
+  // cycle color while it's playing, and a record spinning behind the glass.
+  jukebox(b) {
+    const M = this.mats;
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+    const W = b.maxX - b.minX, D = b.maxZ - b.minZ, H = b.maxY;
+    const g = new THREE.Group(); g.position.set(cx, 0, cz); this.group.add(g);
+    const wood = new THREE.MeshStandardMaterial({ color: '#5a2a14', roughness: 0.45 });
+    const chrome = new THREE.MeshStandardMaterial({ color: '#d8d8d8', roughness: 0.18, metalness: 1 });
+    const tube = (c) => new THREE.MeshStandardMaterial({ color: '#222', emissive: new THREE.Color(c), emissiveIntensity: 0.6, roughness: 0.2 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(W, H * 0.68, D), wood); body.position.y = H * 0.34; g.add(body);
+    const arch = new THREE.Mesh(new THREE.CylinderGeometry(W / 2, W / 2, D, 28, 1, false, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2), wood);
+    arch.position.set(0, H * 0.68, 0); g.add(arch);
+    // glowing bubble tubes up both sides and round the arch
+    this.jukeboxTubes = [tube('#ff3a2a'), tube('#ffb020'), tube('#3ad0ff')];
+    for (const s of [-1, 1]) {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, H * 0.62, 12), this.jukeboxTubes[0]);
+      t.position.set(s * (W / 2 - 0.06), H * 0.34, D / 2 + 0.01); g.add(t);
+    }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(W / 2 - 0.06, 0.04, 10, 30, Math.PI), this.jukeboxTubes[1]);
+    ring.position.set(0, H * 0.68, D / 2 + 0.01); g.add(ring);
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(W / 2 - 0.16, 0.025, 8, 30, Math.PI), this.jukeboxTubes[2]);
+    ring2.position.set(0, H * 0.68, D / 2 + 0.015); g.add(ring2);
+    // record window with a spinning disc
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(W / 2 - 0.2, 28, 0, Math.PI), new THREE.MeshStandardMaterial({ color: '#0c0c10', roughness: 0.05, metalness: 0.3 }));
+    glass.position.set(0, H * 0.68, D / 2 + 0.006); g.add(glass);
+    this.jukeboxDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.01, 24).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.3, metalness: 0.2 }));
+    this.jukeboxDisc.position.set(0, H * 0.72, D / 2 + 0.008); g.add(this.jukeboxDisc);
+    const label = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), new THREE.MeshStandardMaterial({ color: '#c8a030', emissive: new THREE.Color(0.06, 0.04, 0.0) }));
+    label.position.z = 0.006; this.jukeboxDisc.add(label);
+    // song selector strip and the speaker grille
+    const sel = new THREE.Mesh(new THREE.BoxGeometry(W - 0.25, 0.14, 0.04), new THREE.MeshStandardMaterial({ color: '#f0e6c8', emissive: new THREE.Color(0.08, 0.07, 0.05), roughness: 0.6 }));
+    sel.position.set(0, H * 0.55, D / 2 + 0.02); g.add(sel);
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(W - 0.25, H * 0.32, 0.02), new THREE.MeshStandardMaterial({ color: '#2a2a2a', metalness: 0.6, roughness: 0.5 }));
+    grille.position.set(0, H * 0.24, D / 2 + 0.01); g.add(grille);
+    for (let i = 0; i < 7; i++) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.02, H * 0.3, 0.02), chrome);
+      bar.position.set(-0.24 + i * 0.08, H * 0.24, D / 2 + 0.025); g.add(bar);
+    }
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.04, D + 0.02), chrome); trim.position.y = 0.02; g.add(trim);
+    this.addVirtualLight({ x: cx, y: 1.2, z: cz + 0.6 }, 0xff8a40, 0.8, 2.5, 2);
   }
 
   labGear(b) {
@@ -1347,6 +1391,12 @@ export class MapView {
 
   update(dt, eye, roundInfo) {
     this.time += dt;
+    // the jukebox lights up and spins while a song is on
+    if (this.jukeboxTubes) {
+      const on = !!(this.sim.jukebox && this.sim.jukebox.song != null);
+      this.jukeboxTubes.forEach((m, i) => { m.emissiveIntensity = on ? 0.55 + Math.sin(this.time * 3 + i * 2.1) * 0.3 : 0.18; });
+      if (on) this.jukeboxDisc.rotation.z -= dt * 4.7;
+    }
     if (!this.baker) this.startBake();
     if (this.baker && !this.baker.done) this.baker.step(this.cfg.graphics.bakeBudgetMs ?? 5);
     const bp = bakeUniforms.bakePower;
