@@ -185,7 +185,7 @@ function buildPressBox(M) {
   const steel = M.rustMetal;
   const clad = new THREE.MeshStandardMaterial({ map: corrugatedTexture(), roughness: 0.55, metalness: 0.55 });
   clad.map.wrapS = clad.map.wrapT = THREE.RepeatWrapping;
-  const glass = new THREE.MeshStandardMaterial({ color: '#203028', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.35, depthWrite: false });
+  const glass = new THREE.MeshStandardMaterial({ color: '#90b8a0', roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.16, depthWrite: false });
   const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.2, 0.6) });
   const W = PB.x1 - PB.x0, D = PB.z1 - PB.z0, H = PB.y1 - PB.y0;
   const cy = (PB.y0 + PB.y1) / 2;
@@ -209,7 +209,7 @@ function buildPressBox(M) {
   void board;
   const mic = add(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 6), steel, 0.4, PB.y0 + 1.15, PB.z1 - 0.5, inside); mic.rotation.x = -0.5;
   add(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({ color: '#333' }), 0.4, PB.y0 + 1.33, PB.z1 - 0.38, inside);
-  const glowBack = add(new THREE.PlaneGeometry(W - 0.2, H - 0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.05, 0.35, 0.1) }), 0, cy, PB.z0 + 0.1, inside);
+  const glowBack = add(new THREE.PlaneGeometry(W - 0.2, H - 0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.12, 0.8, 0.22) }), 0, cy, PB.z0 + 0.1, inside);
   void glowBack;
 
   // cladding: one sheet per side, slides up into a housing on the roof
@@ -321,15 +321,17 @@ export function buildStoryProps(mapView) {
       const cow = buildCow({ seed: Math.round(b[0] * 13 + b[2] * 7) });
       const len = Math.max(b[3] - b[0], b[5] - b[2]);
       const k = len / 2.15;
-      const base = b[1] + (p.plinth ? 0.25 : 0);
+      const ph = p.plinth === true ? 0.25 : p.plinth || 0;
+      const base = b[1] + ph;
       cow.group.scale.setScalar(k);
       cow.group.position.set((b[0] + b[3]) / 2 + 0.12 * k * (p.yaw ? Math.cos(p.yaw) : 1), base, (b[2] + b[5]) / 2);
       cow.group.rotation.y = p.yaw || 0;
       root.add(cow.group);
       story.cows.push(cow);
+      if (p.mascot) story.mascot = cow;
       if (p.plinth) {
-        const pl = new THREE.Mesh(new THREE.BoxGeometry(b[3] - b[0] + 0.1, 0.25, b[5] - b[2] + 0.1), M.stone);
-        pl.position.set((b[0] + b[3]) / 2, b[1] + 0.125, (b[2] + b[5]) / 2);
+        const pl = new THREE.Mesh(new THREE.BoxGeometry(b[3] - b[0] + 0.1, ph, b[5] - b[2] + 0.1), M.stone);
+        pl.position.set((b[0] + b[3]) / 2, b[1] + ph / 2, (b[2] + b[5]) / 2);
         root.add(pl);
       }
     } else if (p.kind === 'animatronic') {

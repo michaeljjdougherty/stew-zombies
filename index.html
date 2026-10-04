@@ -113,6 +113,11 @@
   #pa.on { opacity: 1; }
   #pa i { width: 8px; height: 8px; border-radius: 50%; background: #ff4020; box-shadow: 0 0 8px #ff4020; animation: puBlink .5s steps(2) infinite; }
   body.range-mode #pa { display: none; }
+  #quest { position: absolute; left: max(16px, 2.2vw); top: calc(max(14px, 2vh) + 22px); max-width: min(420px, 60vw); display: grid; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 6px #000; transition: opacity .4s; }
+  #quest[hidden] { display: none; }
+  #quest b { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #7fe08a; font-weight: 700; }
+  #quest.new span { animation: questNew 1.2s ease-out; }
+  @keyframes questNew { 0% { color: #c8ffd0; text-shadow: 0 0 12px #3fdc5a, 0 1px 2px #000; } 100% { } }
   #notecard { position: absolute; right: max(20px, 4vw); top: 50%; transform: translateY(-50%) rotate(1.2deg); width: min(360px, 80vw); max-height: 70vh; overflow: hidden; padding: 22px 24px 18px; color: #2a2014;
     background: linear-gradient(#efe6cc, #e2d6b4); box-shadow: 0 10px 30px rgba(0,0,0,.75), inset 0 0 40px rgba(110,80,30,.3); font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; }
   #notecard[hidden] { display: none; }
@@ -349,6 +354,7 @@
   <div id="fps"></div>
   <div id="dmgdir"></div>
   <div id="pa"><i></i>PA · Erik Madsen</div>
+  <div id="quest" hidden><b>The Final Whistle</b><span></span></div>
   <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
   <div id="subs" aria-live="polite"></div>
   <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>

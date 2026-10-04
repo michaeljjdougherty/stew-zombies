@@ -964,6 +964,18 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // "The Final Whistle" (the main quest on the school)
+  // ---------------------------------------------------------------------------
+  quest: {
+    statueSouls: 16,      // kills near the mascot statue to wake it
+    statueRadius: 8,      // m from the statue a kill has to be
+    coinDropDelay: 2.4,   // s from the eyes lighting up to the coin falling out
+    trophySettle: 2.0,    // s from placing the trophy to the stand moving
+    madDogRiseTime: 3.5,  // s for the Mad Dog Machine to come up through the floor
+    claddingTime: 9,      // s for the Press Box cladding to grind up
+  },
+
+  // ---------------------------------------------------------------------------
   // Visuals
   // ---------------------------------------------------------------------------
   graphics: {

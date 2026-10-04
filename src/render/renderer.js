@@ -19,6 +19,7 @@ import { MachinesView } from './machinesView.js';
 import { PowerupViews } from './powerupView.js';
 import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
+import { QuestView } from './questView.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 
@@ -80,6 +81,7 @@ export class GameRenderer {
         powerups: new PowerupViews(scene, cfg),
         cheddars: new CheddarViews(scene, effects, cfg),
         lore: new LoreView(scene, sim, cfg),
+        quest: new QuestView(scene, sim, cfg, map),
       };
       w.box.onLand = (spot) => {
         for (let i = 0; i < 8; i++) {
@@ -92,7 +94,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(cfg.graphics.fogColor);
     this.hazeColor = new THREE.Color('#5a4410');
@@ -121,6 +123,7 @@ export class GameRenderer {
     this.powerups.clear();
     this.cheddars.clear();
     this.lore.reset(sim);
+    this.quest.setSim(sim);
   }
 
   setSim(sim) {
@@ -180,6 +183,7 @@ export class GameRenderer {
       this.powerups.onEvent(e, this.effects);
       this.cheddars.onEvent(e);
       this.lore.onEvent(e, this.effects);
+      this.quest.onEvent(e);
       switch (e.type) {
         case 'shot': {
           let from;
@@ -387,6 +391,7 @@ export class GameRenderer {
     this.powerups.update(dt, sim, this.camera);
     this.cheddars.update(sim, this.zombies.prev, dt, alpha, time);
     this.lore.update(dt);
+    this.quest.update(dt, this.camera);
 
     // Cheddar Round haze: yellow tint, thicker yellow-brown fog, distant lightning
     const hazeTarget = sim.rounds.cheddar ? 1 : 0;

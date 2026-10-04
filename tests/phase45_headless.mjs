@@ -83,11 +83,15 @@ function makeGame(seed = 7) {
   use();
   check(!me.perks.length, 'no perk without power');
 
-  const pw = sim.interactables.find((i) => i.kind === 'power');
-  at(pw);
-  check(/power/.test(me.prompt?.text || ''), 'power prompt: ' + me.prompt?.text);
-  use();
+  // the school's power comes from the quest's two main breakers
+  const brs = sim.interactables.filter((i) => i.kind === 'breaker');
+  check(brs.length === 2, 'two main breakers');
+  for (const br of brs) { at(br); check(/breaker/.test(me.prompt?.text || ''), 'breaker prompt: ' + me.prompt?.text); use(); }
   check(sim.power, 'power is on');
+  // the Mad Dog Machine is under the gym floor until the trophy goes back together
+  at(md);
+  check(!/Mad Dog/.test(me.prompt?.text || ''), 'Mad Dog hidden before the trophy: ' + me.prompt?.text);
+  sim.quest.madDogRevealed = true;
   check(log.some((e) => e.type === 'powerOn'), 'powerOn event');
 
   at(perk('beefcakeBroth'));

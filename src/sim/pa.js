@@ -14,6 +14,8 @@ const PRIORITY = {
   gameOver: 5, song: 5, songEnd: 4, intercom: 4, intro: 4, milestone: 3, cheddar: 3,
   power: 2, cheddarEnd: 2, down: 2, boxMoved: 1, madDog: 1, revived: 1, pressureCooker: 1,
   round: 0, roundEnd: 0, idle: 0,
+  breaker: 2, breakersDone: 3, trophyPiece: 1, trophyPlaced: 3, statueFed: 2, coin: 3, cladding: 4,
+  ritualStart: 3, ritualDone: 3, bossStart: 4, bossPhase2: 4, bossEnd: 5,
 };
 
 export function createPA(sim) {

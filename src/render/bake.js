@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { addShaderPatch } from './shaderPatch.js';
 
 export const MAX_CHANNELS = 256;  // one per map light: its live brightness
-export const DYN_LIGHTS = 3;      // live lights added on top: muzzle flash, explosion, the mystery box
+export const DYN_LIGHTS = 4;      // live lights added on top: muzzle flash, explosion, the box, the Mad Dog
 const levels = [];
 for (let i = 0; i < MAX_CHANNELS / 4; i++) levels.push(new THREE.Vector4(1, 1, 1, 1));
 export const bakeUniforms = {

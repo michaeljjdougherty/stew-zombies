@@ -49,10 +49,11 @@ const fire = (step) => { step({ firePressed: true, fire: true }); step({}, 8); }
 // --- 2. The Chopper: cuts through a line, ricochets
 {
   const { sim, me, log, step, place } = game(2);
-  place(0, 8, 0, -0.04);
+  // (off to the side of center court: the altar and trophy stand are in the middle now)
+  place(6, 8, 0, -0.04);
   giveWeapon(sim, me, 'The Chopper'); step({}, 60);
   const line = [];
-  for (let i = 0; i < 6; i++) line.push(addZ(sim, 0, 5 - i * 1.2, 2000));
+  for (let i = 0; i < 6; i++) line.push(addZ(sim, 6, 5 - i * 1.2, 2000));
   fire(step); step({}, 90);
   const dead = line.filter((z) => z.state === 'dead').length;
   check(dead === 6, `one blade cuts through a line of 6 (${dead})`);
@@ -65,10 +66,10 @@ const fire = (step) => { step({ firePressed: true, fire: true }); step({}, 8); }
 // --- 3. Stew Bomb: lures zombies, then blows them up
 {
   const { sim, me, log, step, place } = game(3);
-  place(0, 6, 0, -0.3);
+  place(8, 6, 0, -0.3);
   me.stewBombs = 3;
   const zs = [];
-  for (let i = 0; i < 6; i++) { const z = addZ(sim, -8 + i * 3, -8, 2500); z.speed = 2.6; zs.push(z); }
+  for (let i = 0; i < 6; i++) { const z = addZ(sim, 0 + i * 3, -8, 2500); z.speed = 2.6; zs.push(z); }
   step({ tacticalPressed: true, tactical: true }, 1);
   step({}, 30);
   check(me.stewBombs === 2 && log.some((e) => e.type === 'grenadeThrow' && e.kind === 'stew'), 'threw a Stew Bomb');

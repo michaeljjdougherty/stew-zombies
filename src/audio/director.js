@@ -212,6 +212,32 @@ export class SoundDirector {
         break;
       }
       case 'powerOn': A.play(S.powerOn, {}, { gain: 1, reverb: 0.8 }); break;
+      // --- The Final Whistle
+      case 'breakerThrown':
+        A.play(S.leverPull, {}, { pos: e.pos, ref: 3, gain: 1.2, reverb: 0.3 });
+        A.play(S.bang, {}, { pos: e.pos, ref: 4, gain: 0.7, reverb: 0.4, delay: 0.15 });
+        break;
+      case 'trophyPiece': A.play(S.stewItemGet, { count: e.count }, { gain: 0.8, reverb: 0.3, bus: 'music' }); break;
+      case 'trophyPlaced': A.play(S.boxThud, {}, { pos: e.pos, ref: 5, gain: 1, reverb: 0.6 }); break;
+      case 'madDogRising':
+        A.play(S.madDogGrind, { duration: this.cfg.quest.madDogRiseTime + 1 }, { pos: e.pos, ref: 6, gain: 1.2, reverb: 0.7 });
+        A.play(S.dogGrowl, {}, { pos: e.pos, ref: 6, gain: 1, reverb: 0.6, delay: 1.5 });
+        break;
+      case 'madDogRevealed':
+        for (let i = 0; i < 3; i++) A.play(S.dogBark, {}, { pos: { ...e.pos, y: 2.2 }, ref: 7, gain: 1.2, reverb: 0.7, delay: i * 0.35 });
+        break;
+      case 'statueSoul': A.play(S.boxWhoosh, {}, { pos: e.from, ref: 4, gain: 0.45, reverb: 0.5 }); break;
+      case 'statueAwake':
+        A.play(S.thunder, { near: 0.5 }, { pos: { ...e.pos, y: 3 }, ref: 10, gain: 1, reverb: 0.8 });
+        A.play(S.madDogGrind, { duration: 2.2 }, { pos: { ...e.pos, y: 3.5 }, ref: 6, gain: 1, reverb: 0.6, delay: 0.6 });
+        break;
+      case 'coinDrop': A.play(S.stickThunk, {}, { pos: e.pos, ref: 3, gain: 1, reverb: 0.4 }); break;
+      case 'coinTaken': A.play(S.stewItemGet, { count: 3 }, { gain: 0.8, reverb: 0.4, bus: 'music' }); break;
+      case 'coinPlaced':
+        A.play(S.smallBoom, {}, { pos: e.pos, ref: 6, gain: 1.2, reverb: 0.8 });
+        A.play(S.madDogGrind, { duration: this.cfg.quest.claddingTime }, { pos: { x: 0, y: 6.4, z: 0 }, ref: 9, gain: 1.4, reverb: 0.8, delay: 0.8 });
+        break;
+      case 'erikRevealed': A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 1.1, reverb: 0.8, bus: 'voice' }); break;
       case 'perkBought': {
         const m = sim.world.perkMachines.find((q) => q.id === e.machine);
         A.play(S.perkJingle, { notes: PERK_TUNES[e.perk] }, { pos: m ? { x: m.center.x, y: 1.6, z: m.center.z } : null, ref: 4, reverb: 0.4, bus: 'music' });

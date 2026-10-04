@@ -24,6 +24,7 @@ import { updateLastStand, anyoneStanding } from './laststand.js';
 import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } from './powerups.js';
 import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
+import { createQuest, questInteractables, questOnEvent, updateQuest } from './quest.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -52,6 +53,7 @@ export class GameSim {
     this.box = new BoxInteractable(this);
     this.traps = createTraps(this);
     this.madDog = this.world.madDog ? new MadDogInteractable(this, this.world.madDog) : null;
+    this.quest = createQuest(this);   // "The Final Whistle" (school only)
     this.interactables = [
       ...this.windows.filter((w) => w.kind !== 'fence').map((w) => new WindowInteractable(w)),
       ...this.world.doors.map((d) => new DoorInteractable(d)),
@@ -65,6 +67,7 @@ export class GameSim {
       ...(map.intercom ? [new IntercomInteractable(map.intercom)] : []),
       ...(map.notes || []).map((n) => new NoteInteractable(n)),
       ...(map.stewItems || []).map((s) => new StewItemInteractable(s)),
+      ...questInteractables(this),
     ];
     this.pa = createPA(this);
     this.stewEgg = createStewEgg();
@@ -245,6 +248,7 @@ export class GameSim {
     const e = { type, t: this.time, ...data };
     this.events.push(e);
     if (this.pa && this.pa.enabled && type !== 'erikSays') this.pa.inbox.push(e); // Erik listens to everything
+    if (this.quest) questOnEvent(this, e);
   }
   drainEvents() { const e = this.events; this.events = []; return e; }
 
@@ -276,6 +280,7 @@ export class GameSim {
       this.emit('gameOver', { round: this.rounds.round, team: this.teamName });
     }
     updateStewEgg(this);
+    updateQuest(this, dt);
     updatePA(this, dt);
   }
 
@@ -294,6 +299,7 @@ export class GameSim {
       doors: [...this.doorState].filter(([, s]) => s.open).map(([id]) => id),
       box: { phase: this.box.phase, weapon: this.box.weapon, spot: this.box.spot.id, timer: this.box.timer },
       stewEgg: { found: [...this.stewEgg.found], playing: this.stewEgg.playing },
+      quest: this.quest ? { step: this.quest.step, breakers: [...this.quest.breakers], pieces: [...this.quest.pieces], souls: this.quest.statueSouls, coin: this.quest.coin, cladding: this.quest.cladding } : null,
       pa: this.pa.speaking ? { ...this.pa.speaking } : null,
     };
   }

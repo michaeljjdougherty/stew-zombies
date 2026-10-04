@@ -47,10 +47,11 @@ export const SCHOOL = {
   wallThickness: T,
 
   playerSpawns: [
-    { x: 0, z: 2.5, yaw: 0 },
-    { x: -2, z: 3.5, yaw: 0 },
-    { x: 2, z: 3.5, yaw: 0 },
-    { x: 0, z: 5, yaw: 0 },
+    // just south of the altar, looking up at the Press Box
+    { x: 0, z: 5.5, yaw: 0 },
+    { x: -2, z: 6.5, yaw: 0 },
+    { x: 2, z: 6.5, yaw: 0 },
+    { x: 0, z: 8, yaw: 0 },
   ],
 
   // ---------------------------------------------------------------------------
@@ -332,6 +333,7 @@ export const SCHOOL = {
     // teachers' lounge (the old principal's office)
     { kind: 'desk', box: [27.2, 0, 18.3, 29.2, 0.78, 19.3], pa: true },
     { kind: 'shelf', box: [29.55, 0, 22.2, 30, 2.1, 25.5], face: 'w' },
+    { kind: 'table', box: [26.4, 0, 23.5, 28.0, 0.76, 24.6] },
     // cafeteria
     { kind: 'stage', box: [33.5, 0, -38, 38, 0.9, -25] },
     { kind: 'step', box: [32.6, 0, -32.4, 33.5, 0.45, -29.6] },
@@ -382,7 +384,9 @@ export const SCHOOL = {
     { kind: 'easel', box: [-17.6, 0, -55.4, -16.8, 1.7, -54.8] },
     { kind: 'table', box: [-22, 0, -53.4, -17, 0.76, -52.4] },
     // the Quad: dead fountain on a raised planter, benches at the edges
-    { kind: 'planter', box: [27, 0, -7, 35, 0.6, 1], fountain: true },
+    { kind: 'planter', box: [27, 0, -7, 35, 0.6, 1] },
+    // the towering mascot statue on the old fountain planter (it holds the coin)
+    { kind: 'cow', box: [29.3, 0.6, -4.3, 33.7, 4.7, -2.1], yaw: Math.PI, plinth: 1.0, mascot: true },
     { kind: 'bench', box: [22.6, 0, -16, 23.1, 0.45, -13] },
     { kind: 'bench', box: [22.6, 0, 1, 23.1, 0.45, 4] },
     { kind: 'bench', box: [33, 0, 15.3, 36, 0.45, 15.8] },
@@ -420,8 +424,7 @@ export const SCHOOL = {
     { id: 'box_auditorium', room: 'auditorium', x: 9, z: -52.3, yaw: Math.PI },
   ],
 
-  // Power switch (boiler room) and what needs it.
-  powerSwitch: { room: 'boiler', side: 'e', at: 8, y: 1.3 },
+  // No single power switch here: the quest's two main breakers turn it on.
 
   // Perk machines against a wall.
   perkMachines: [
@@ -432,8 +435,25 @@ export const SCHOOL = {
     { perk: 'marathonMinestrone', room: 'auditorium', side: 'w', at: -66 },
   ],
 
-  // The Mad Dog Machine, center stage in the auditorium, facing the seats.
-  madDog: { room: 'auditorium', x: 4, z: -77.1, y: 0.9, yaw: 0 },
+  // The Mad Dog Machine: moved under the gym floor for the pep rally. It comes
+  // up through a trapdoor at center court when the trophy is put back together.
+  madDog: { room: 'court', x: 0, z: -5.6, y: 0, yaw: 0, hidden: true },
+
+  // "The Final Whistle" (src/sim/quest.js)
+  quest: {
+    breakers: [
+      { id: 'cafe', label: 'cafeteria', room: 'cafe', side: 'w', at: -36.5, y: 1.3 },
+      { id: 'lab', label: 'science lab', room: 'lab', side: 'w', at: -25.6, y: 1.3 },
+    ],
+    trophyPieces: [
+      { id: 'cup', name: 'trophy cup', where: 'Library', x: -17.1, y: 0.77, z: -46.4, stand: { x: -17.1, z: -45.2 } },
+      { id: 'handles', name: 'trophy handles', where: 'Locker Room', x: -24.5, y: 0.46, z: -8.4, stand: { x: -24.5, z: -7.3 } },
+      { id: 'plinth', name: 'trophy plinth', where: "Teachers' Lounge", x: 27.2, y: 0.77, z: 24.0, stand: { x: 27.2, z: 22.9 } },
+    ],
+    trophyStand: { x: 0, z: -5.6, slideTo: { x: 2.4, z: -5.6 } },
+    statue: { x: 31.5, z: -3.2, coin: { x: 27.25, y: 0.62, z: -3.2 } },
+    altar: { x: 0, z: 0 },
+  },
 
   // Electric traps across doorways. Box = the deadly area [minX, minZ, maxX, maxZ].
   traps: [

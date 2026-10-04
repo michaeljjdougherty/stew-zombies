@@ -162,6 +162,11 @@ export function buildMap(map, cfg = CONFIG) {
 
   const powerSwitch = map.powerSwitch ? onWall(map.powerSwitch, 0.05) : null;
   const madDog = map.madDog ? { ...map.madDog, zone: roomById.get(map.madDog.room).zone } : null;
+  // the main quest (school only): wall-mounted breakers get real positions
+  const quest = map.quest ? {
+    ...map.quest,
+    breakers: map.quest.breakers.map((b) => ({ ...b, ...onWall(b, 0.05) })),
+  } : null;
   const traps = (map.traps || []).map((t) => ({ ...t, lever: onWall(t.lever, 0.05), zone: roomById.get(t.lever.room).zone }));
   const groundSpawns = (map.groundSpawns || []).map((g) => ({ ...g, zone: roomById.get(g.room).zone }));
 
@@ -180,6 +185,7 @@ export function buildMap(map, cfg = CONFIG) {
     perkMachines,
     powerSwitch,
     madDog,
+    quest,
     traps,
     groundSpawns,
     // mutable collision lists

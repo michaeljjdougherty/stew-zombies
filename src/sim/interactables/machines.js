@@ -95,6 +95,8 @@ export class MadDogInteractable {
   distanceTo(sim, p) { return flatDist(p, this.stand); }
   canUse(sim, p) {
     if (!up(p) || p.drinking) return false;
+    // on the school it's under the gym floor until the trophy is put back together
+    if (this.md.hidden && !(sim.quest && sim.quest.madDogRevealed)) return false;
     if (this.state === 'idle') return true;
     return true; // show "in use" / "take" prompts
   }

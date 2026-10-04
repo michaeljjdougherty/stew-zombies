@@ -275,6 +275,7 @@ export class MachinesView {
     plate.position.set(0, 1.6, 1.111); g.add(plate);
     const v = this.mapView.addVirtualLight({ x: md.x + Math.sin(md.yaw) * 1.8, y: md.y + 2.4, z: md.z + Math.cos(md.yaw) * 1.8 }, 0xff3018, 22, 9, 1.5);
     v.level = 0;
+    if (md.hidden) v.live = true; // it comes up out of the floor later: lit live, not baked
     this.md = { g, head, jaw, eyes, eyeMat, gears, rollers, slot, chimney, plate, v, display: null, displayId: null, chew: 0, puff: 0, t: 0 };
   }
 
@@ -381,7 +382,12 @@ export class MachinesView {
     // Mad Dog Machine
     const md = this.md;
     if (md) {
-      const powered = sim.power;
+      // on the school it waits under the gym floor until the trophy is rebuilt
+      const W = this.sim.world.madDog;
+      const rise = W.hidden ? (sim.quest ? sim.quest.madDogRise : 1) : 1;
+      md.g.visible = rise > 0;
+      md.g.position.y = W.y - (1 - rise) * 2.95 + (rise > 0 && rise < 1 ? Math.sin(t * 40) * 0.01 : 0);
+      const powered = sim.power && rise >= 1;
       const state = sim.madDog ? sim.madDog.state : 'idle';
       const working = state === 'working';
       const eyeGlow = powered ? (working ? 3 + Math.sin(t * 20) * 1.5 : 2.2 + Math.sin(t * 2) * 0.4) : 0.12;

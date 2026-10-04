@@ -6,6 +6,7 @@ import { TallyCounter } from './tally.js';
 import { glyphify } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
+import { questObjective } from '../sim/quest.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -33,7 +34,7 @@ export class HUD {
     this.hits = [];          // damage direction arcs { from, t, el }
     this.lyricSource = null; // () => current song line
     this.onNoteRead = null;
-    this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
+    this.el.quest = $('quest'); this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
   }
 
   // Big centered message (power on, new upgraded gun, perk).
@@ -102,7 +103,25 @@ export class HUD {
         break;
       }
       case 'powerOn':
-        this.toast('The power is on', 'perks, traps and the Mad Dog Machine are live', '#ffd23a', 3.5);
+        this.toast('The power is on', 'perks, traps and the lights are back', '#ffd23a', 3.5);
+        break;
+      case 'breakerThrown':
+        if (e.count < e.total) this.toast('Main breaker thrown', `${e.count} of ${e.total}`, '#ffd23a', 2.6);
+        break;
+      case 'trophyPiece':
+        this.toast(`Trophy piece ${e.count} of ${e.total}`, e.name, '#e8c060', 2.8);
+        break;
+      case 'madDogRevealed':
+        this.toast('The Mad Dog Machine', 'up from under the gym floor', '#ff5030', 3.5);
+        break;
+      case 'statueAwake':
+        this.toast('The statue is awake', 'its jaw is opening...', '#ff3020', 3);
+        break;
+      case 'coinTaken':
+        this.toast('The Dark Schnitz Coin', e.playerId === this.localId ? 'you have it' : 'a teammate has it', '#7fe08a', 3);
+        break;
+      case 'erikRevealed':
+        this.toast('Erik Madsen', 'sealed in the Press Box', '#7fe08a', 4);
         break;
       case 'perkGained':
         if (e.playerId === this.localId) { const d = this.cfg.perks.list[e.perk]; this.toast(d.name, d.desc, d.color, 3); }
@@ -240,6 +259,14 @@ export class HUD {
 
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
+    // the quest's current objective, top left
+    const obj = sim.quest ? questObjective(sim) : null;
+    if (obj !== this.last.objective) {
+      this.last.objective = obj;
+      this.el.quest.hidden = !obj;
+      this.el.quest.querySelector('span').textContent = obj || '';
+      this.el.quest.classList.remove('new'); void this.el.quest.offsetWidth; this.el.quest.classList.add('new');
+    }
     this.updateSubs(dt);
     this.updateHits(dt, p);
     if (!p) return;

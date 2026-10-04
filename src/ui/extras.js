@@ -61,13 +61,14 @@ export class Extras {
       <ul>
         <li><b>Doors and debris</b> open new parts of the school. The <b>Mystery Box</b> (${c.box.cost}) gives a random weapon. Erik's bobblehead means it's about to move.</li>
         <li><b>Weapons on the walls</b> are always the same. Buy one again for more ammo.</li>
-        <li>Turn on the <b>power</b> in the boiler room to wake up perks, electric traps and the Mad Dog Machine.</li>
-        <li>The <b>Mad Dog Machine</b> on the auditorium stage upgrades the gun in your hands for ${c.madDog.cost}: more damage, more ammo, a new name and a new look.</li>
+        <li>Throw the two main <b>breakers</b> (cafeteria and science lab) to turn the power back on: perks, electric traps and the gym lights.</li>
+        <li>The <b>Mad Dog Machine</b> is under the gym floor. Put the championship trophy back together at center court to bring it up. It upgrades the gun in your hands for ${c.madDog.cost}: more damage, more ammo, a new name and a new look.</li>
       </ul>
       <h4>Perks (hold up to ${c.perks.limit})</h4><ul>${perks}</ul>
       <h4>Power-ups</h4><p>Zombies sometimes drop one. Walk over it to grab it.</p><ul>${pus}</ul>
       <h4>Cheddar Rounds</h4><p>Every few rounds Erik lets his dogs out. The whole pack comes for you; the last one drops Full Pantry.</p>
       <h4>Last stand</h4><p>When you go down you can still shoot with your pistol. In solo, Second Helping gets you back up.</p>
+      <h4>The Final Whistle</h4><p>Erik is sealed in the Press Box above center court. Follow the objective in the top corner to take back what he stole and drag him out of there.</p>
       <h4>Secrets</h4><p>The night he was cut, Erik confiscated the team's ${STEW_ITEMS.length} good-luck charms and hid them around the school. Find them all.</p>`;
   }
 

@@ -1242,7 +1242,7 @@ export class MapView {
   powerOn(instant = false) {
     if (this.powered) return;
     this.powered = true;
-    const sw = this.world.powerSwitch;
+    const sw = this.world.powerSwitch || (this.world.quest && this.world.quest.breakers.at(-1));
     const o = sw ? sw.pos : { x: 0, z: 0 };
     for (const f of this.fixtures) {
       if (f.on) continue;
