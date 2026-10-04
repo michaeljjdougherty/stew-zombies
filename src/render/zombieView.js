@@ -6,6 +6,12 @@ import * as THREE from 'three';
 const _drip = new THREE.Vector3();
 import * as T from './textures.js';
 import { zombieKit } from './zombieKit.js';
+import { zombieModels } from './zombieModels.js';
+
+const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
+const RIG_SPHERE = new THREE.Sphere(new THREE.Vector3(0, 90, 0), 170);   // generous, in model units
+// green eye glow (both kinds of zombie)
+const GLOW = { inner: 'rgba(170,255,140,1)', outer: 'rgba(40,255,60,0)', tint: 0x7dff5a };
 
 
 function hash(n) { n = (n ^ 61) ^ (n >>> 16); n *= 9; n ^= n >>> 4; n *= 0x27d4eb2d; n ^= n >>> 15; return (n >>> 0) / 4294967296; }
@@ -23,11 +29,15 @@ export class ZombieViews {
     // shared resources: bodies and heads come from the kit (built on first use)
     this.kit = zombieKit;
     this.goreMat = new THREE.MeshStandardMaterial({ color: '#4a0808', roughness: 0.5 });
-    this.glowMat = new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,170,60,1)', 'rgba(255,90,0,0)'), color: 0xffb040, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.9 });
+    this.glowMat = new THREE.SpriteMaterial({ map: T.softDotTexture(GLOW.inner, GLOW.outer), color: GLOW.tint, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.9 });
+    // the rigged models (Mixamo characters) load in the background
+    this.models = zombieModels;
+    this.models.load();
 
   }
 
   build(z) {
+    if (this.models.ready) return this.buildRigged(z);
     const r = (k) => hash(z.seed + k * 7919);
     const parts = this.kit.assemble(r, { scale: z.scale, outfit: z.defender || z.elite ? 'jersey' : null });
     const glow = new THREE.Sprite(this.glowMat);
@@ -59,8 +69,201 @@ export class ZombieViews {
     };
   }
 
+
+  // --- rigged (Mixamo) zombies --------------------------------------------------
+  buildRigged(z) {
+    const r = (k) => hash(z.seed + k * 7919);
+    const t = this.models.pick(r(1));
+    const inst = t.instance();
+    inst.model.scale.setScalar(0.01 * z.scale);
+    for (const m of inst.meshes) m.boundingSphere = RIG_SPHERE;
+    // eye glow, hung off the head bone
+    const head = inst.bones.Head;
+    const glow = [];
+    const size = (t.meta.eyeSize || 3) * 2.2;
+    for (const e of t.meta.eyesLocal || []) {
+      const g = new THREE.Sprite(this.glowMat);
+      g.position.fromArray(e);
+      g.scale.set(size, size * 0.7, 1);
+      head.add(g);
+      glow.push(g);
+    }
+    if (z.elite) {
+      if (!this.eliteMat) this.eliteMat = new THREE.SpriteMaterial({ map: this.glowMat.map, color: new THREE.Color(0.3, 2.4, 0.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 });
+      const aura = new THREE.Sprite(this.eliteMat);
+      aura.scale.set(1.6, 2.4, 1); aura.position.set(0, 1.0, 0);
+      inst.root.add(aura);
+    }
+    this.scene.add(inst.root);
+    const mixer = new THREE.AnimationMixer(inst.model);
+    const clips = this.models.clipsFor(t);
+    const actions = {};
+    for (const [name, clip] of Object.entries(clips)) actions[name] = mixer.clipAction(clip);
+    for (const n of ['hit1Upper', 'hit2Upper']) if (actions[n]) { actions[n].setLoop(THREE.LoopOnce, 1); actions[n].clampWhenFinished = false; }
+    const v = {
+      id: z.id, rig: true, root: inst.root, inst, bones: inst.bones, mixer, actions, clips,
+      glow: { visible: true }, glows: glow, eyes: [],
+      cur: null, curName: null,
+      phase: r(4) * Math.PI * 2, lastStepPhase: 0,
+      limbs: { armL: true, armR: true, head: true, legs: true },
+      crawler: false, type: z.type, seedR: r,
+      skinMat: inst.meshes[0].material,
+      offset: r(5),   // so they don't all move in step
+      hitT: 0,
+    };
+    this.play(v, 'idle', 0);
+    return v;
+  }
+
+  // crossfade to a looping clip
+  play(v, name, fade = 0.25, speed = 1) {
+    const a = v.actions[name];
+    if (!a) return;
+    a.timeScale = speed;
+    if (v.curName === name) return;
+    a.reset();
+    a.time = (v.offset * a.getClip().duration) % a.getClip().duration;
+    a.setEffectiveWeight(1);
+    a.play();
+    if (v.cur && fade > 0) v.cur.crossFadeTo(a, fade, false);
+    else if (v.cur) v.cur.stop();
+    v.cur = a; v.curName = name;
+  }
+
+  animateRigged(v, z, dt, time) {
+    const speed = z.moveSpeed;
+    const scale = z.scale || 1;
+    // footsteps from distance covered (same rhythm as before)
+    const stride = z.type === 'sprinter' ? 1.5 : z.type === 'runner' ? 1.25 : 0.75;
+    v.phase += (speed / stride) * Math.PI * dt;
+    const stepIdx = Math.floor(v.phase / Math.PI);
+    if (stepIdx !== v.lastStepPhase && speed > 0.3 && this.onFootstep && !v.crawler) this.onFootstep(z, v);
+    v.lastStepPhase = stepIdx;
+
+    const clipSpeed = (n) => ((v.clips[n] && v.clips[n].meta && v.clips[n].meta.speed) || 100) * 0.01 * scale;
+    const attacking = z.attack && (z.attack.phase === 'windup' || z.attack.phase === 'recover');
+    if (z.attack && z.attack.phase === 'windup' && v.prevAtk !== 'windup' && v.curName === 'attack') v.cur.time = 0.15;   // each swing restarts the clip
+    v.prevAtk = z.attack && z.attack.phase;
+    if (v.crawler) {
+      const k = speed > 0.05 ? Math.min(2.4, Math.max(0.5, speed / clipSpeed('crawl'))) : 0.3;
+      this.play(v, 'crawl', 0.3, attacking ? 1.6 : k);
+    } else if (z.state === 'rising') {
+      this.play(v, 'attack', 0.2, 1.3);
+    } else if (z.state === 'tearing') {
+      this.play(v, 'punch', 0.25, 1.15);
+    } else if (attacking) {
+      this.play(v, 'attack', 0.15, 1.35);
+    } else if (z.state === 'climbing') {
+      this.play(v, 'walk', 0.2, 1.6);
+    } else if (speed > 0.15) {
+      if (z.type === 'sprinter') this.play(v, 'sprint', 0.3, Math.min(1.4, Math.max(0.75, speed / clipSpeed('sprint'))));
+      else if (z.type === 'runner') this.play(v, 'run', 0.3, Math.min(1.5, Math.max(0.6, speed / clipSpeed('run'))));
+      else this.play(v, 'walk', 0.35, Math.min(2.2, Math.max(0.6, speed / clipSpeed('walk'))));
+    } else {
+      this.play(v, 'idle', 0.4, 1);
+    }
+    v.mixer.update(dt);
+    // a lost limb stays lost whatever the animation does
+    this.applyLostLimbs(v);
+  }
+
+  applyLostLimbs(v) {
+    const B = v.bones, tiny = 0.001;
+    if (!v.limbs.armL && B.LeftForeArm) B.LeftForeArm.scale.setScalar(tiny);
+    if (!v.limbs.armR && B.RightForeArm) B.RightForeArm.scale.setScalar(tiny);
+    if (!v.limbs.head && B.Head) B.Head.scale.setScalar(tiny);
+    if (v.crawler) { if (B.LeftLeg) B.LeftLeg.scale.setScalar(tiny); if (B.RightLeg) B.RightLeg.scale.setScalar(tiny); }
+  }
+
+  hitRigged(v, part) {
+    const name = Math.random() < 0.5 ? 'hit1Upper' : 'hit2Upper';
+    const a = v.actions[name];
+    if (!a) return;
+    a.reset();
+    a.time = 0.05;
+    a.setEffectiveWeight(part === 'head' ? 0.9 : 0.6);
+    a.fadeOut(0.45);
+    a.play();
+  }
+
+  loseLimbRigged(v, limb, dir) {
+    if (!v.limbs[limb]) return;
+    v.limbs[limb] = false;
+    const d = dir || { x: 0, y: 0, z: 1 };
+    const B = v.bones;
+    v.root.updateMatrixWorld(true);
+    if (limb === 'legs') {
+      v.crawler = true;
+      for (const b of [B.LeftLeg, B.RightLeg]) {
+        if (!b) continue;
+        b.getWorldPosition(_v);
+        this.effects.bloodBurst(_v.clone(), d, 22, 1.1);
+        this.effects.gibs(_v.clone(), d, 3, this.goreMat, v.skinMat);
+      }
+    } else if (limb === 'head') {
+      if (!B.Head) return;
+      B.Head.getWorldPosition(_v); _v.y += 0.08;
+      for (const g of v.glows) g.visible = false;
+      this.effects.bloodBurst(_v.clone(), d, 40, 1.4);
+      this.effects.gibs(_v.clone(), d, 6, this.goreMat, v.skinMat);
+      if (B.Neck) this.effects.bloodSpurt(B.Neck, 1.2);
+    } else {
+      const b = limb === 'armL' ? B.LeftForeArm : B.RightForeArm;
+      if (!b) return;
+      b.getWorldPosition(_v);
+      this.effects.bloodBurst(_v.clone(), d, 24, 1.0);
+      this.effects.gibs(_v.clone(), d, 3, this.goreMat, v.skinMat);
+      this.effects.bloodSpurt(b.parent, 0.6);
+    }
+    this.applyLostLimbs(v);
+  }
+
+  explodeRigged(v, e) {
+    const d = e.dir || { x: 0, y: 1, z: 0 };
+    (v.bones.Spine1 || v.root).getWorldPosition(_v);
+    this.effects.bloodBurst(_v.clone(), d, 70, 1.8);
+    this.effects.gibs(_v.clone(), d, 16, this.goreMat, v.skinMat);
+    this.scene.remove(v.root);
+    const p = v.root.position;
+    for (let i = 0; i < 3; i++) this.effects.bloodDecal(new THREE.Vector3(p.x + (Math.random() - 0.5) * 2, 0, p.z + (Math.random() - 0.5) * 2), new THREE.Vector3(0, 1, 0), 0.8 + Math.random() * 0.8);
+  }
+
+  corpseRigged(v, e) {
+    if (e.kind === 'explosive' && e.force > 0.55) { this.explodeRigged(v, e); return; }
+    const d = e.dir || { x: 0, y: 0, z: 0 };
+    const yaw = v.root.rotation.y;
+    const fwdX = Math.sin(yaw), fwdZ = Math.cos(yaw);
+    const fromFront = d.x * fwdX + d.z * fwdZ < 0;   // the shot came at its face: it goes over backwards
+    if (e.headshot && v.limbs.head) this.loseLimbRigged(v, 'head', e.dir);
+    for (const g of v.glows) g.visible = false;
+    let name;
+    if (v.crawler) name = null;
+    else if (e.kind === 'explosive') name = 'deathFly';
+    else if (fromFront) name = ['death1', 'deathBack', 'death1'][Math.floor(Math.random() * 3)];
+    else name = Math.random() < 0.5 ? 'death2' : 'deathFront';
+    v.mixer.stopAllAction();
+    if (name && v.actions[name]) {
+      const a = v.actions[name];
+      a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
+      a.timeScale = e.kind === 'knife' ? 1.35 : 1.6;
+      a.play();
+      a.time = a.getClip().duration * 0.12;   // skip the wind-up: they drop
+    }
+    this.corpses.push({ v, t: 0, rig: true, kd: { x: d.x, z: d.z }, knockback: e.kind === 'knife' ? 0.15 : 0.25 });
+    const p = v.root.position;
+    const off = (fromFront ? 1 : -1) * 0.7;
+    if (e.kind !== 'electric') this.effects.bloodPool(new THREE.Vector3(p.x - fwdX * off + d.x * 0.3, 0, p.z - fwdZ * off + d.z * 0.3), (0.9 + Math.random() * 0.7) * (v.root.children[0].scale.x * 100));
+  }
+
   // match a fresh view to limbs already lost in the sim (no effects)
   syncLimbs(v, z) {
+    if (v.rig) {
+      if (z.crawler) { v.crawler = true; v.limbs.legs = false; }
+      for (const a of ['armL', 'armR', 'head']) if (z.limbs && z.limbs[a] === false) v.limbs[a] = false;
+      if (!v.limbs.head) for (const g of v.glows) g.visible = false;
+      this.applyLostLimbs(v);
+      return;
+    }
     if (z.crawler) {
       v.crawler = true; v.limbs.legs = false;
       for (const l of [v.legL, v.legR]) { l.knee.visible = false; l.stump.visible = true; }
@@ -82,9 +285,11 @@ export class ZombieViews {
   onEvent(e, sim) {
     const v = this.views.get(e.id);
     if (e.type === 'zombieHit' && v) {
-      v.flinchVel += e.part === 'head' ? 9 : 5;
+      if (v.rig) this.hitRigged(v, e.part);
+      else v.flinchVel += e.part === 'head' ? 9 : 5;
     } else if (e.type === 'zombieLimb' && v) {
-      this.loseLimb(v, e.limb, e.dir);
+      if (v.rig) this.loseLimbRigged(v, e.limb, e.dir);
+      else this.loseLimb(v, e.limb, e.dir);
     } else if (e.type === 'zombieSwing' && v) {
       v.swing = 0.0001;
     } else if (e.type === 'zombieKilled' && v) {
@@ -148,6 +353,7 @@ export class ZombieViews {
   }
 
   makeCorpse(v, e) {
+    if (v.rig) { this.corpseRigged(v, e); return; }
     if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
     const d = e.dir || { x: 0, y: 0, z: 0 };
     const fwdX = Math.sin(v.root.rotation.y), fwdZ = Math.cos(v.root.rotation.y);
@@ -189,14 +395,15 @@ export class ZombieViews {
       let yaw = z.yaw;
       if (p) { let dy = z.yaw - p.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; yaw = p.yaw + dy * alpha; }
       v.root.rotation.y = yaw;
-      this.animate(v, z, dt, time);
+      if (v.rig) this.animateRigged(v, z, dt, time);
+      else this.animate(v, z, dt, time);
       // the badly hurt leave a trail of drips
       const lost = !v.limbs.head || !v.limbs.armL || !v.limbs.armR || v.crawler;
       if (z.maxHealth && (z.health < z.maxHealth * 0.55 || lost)) {
         v.dripT = (v.dripT ?? Math.random()) - dt * (lost ? 2.5 : 1);
         if (v.dripT <= 0) {
           v.dripT = 0.35 + Math.random() * 0.6;
-          const src = !v.limbs.armL ? v.armL.stump : !v.limbs.armR ? v.armR.stump : v.torso;
+          const src = v.rig ? ((!v.limbs.armL ? v.bones.LeftArm : !v.limbs.armR ? v.bones.RightArm : !v.limbs.head ? v.bones.Neck : v.bones.Spine1) || v.root) : !v.limbs.armL ? v.armL.stump : !v.limbs.armR ? v.armR.stump : v.torso;
           src.getWorldPosition(_drip);
           this.effects.bloodDrip(_drip);
         }
@@ -343,6 +550,18 @@ export class ZombieViews {
       const c = this.corpses[i];
       const v = c.v;
       c.t += dt;
+      if (c.rig) {
+        // the death clip does the falling; slide back a touch, then sink and go
+        v.mixer.update(dt);
+        this.applyLostLimbs(v);
+        if (c.t < 0.3) { v.root.position.x += c.kd.x * c.knockback * dt * 3; v.root.position.z += c.kd.z * c.knockback * dt * 3; }
+        if (c.t > gcfg.corpseTime) {
+          const st = (c.t - gcfg.corpseTime) / gcfg.corpseSinkTime;
+          v.root.position.y = -st * 0.6;
+          if (st >= 1) { this.scene.remove(v.root); this.corpses.splice(i, 1); }
+        }
+        continue;
+      }
       const ft = Math.min(1, c.t / c.fallTime);
       const e = ft * ft; // accelerate like gravity
       if (c.crawler) {

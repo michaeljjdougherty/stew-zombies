@@ -231,7 +231,7 @@ export class Viewmodel {
     switch (e.type) {
       case 'shot': {
         const side = e.side === 'L' ? 'L' : 'R';
-        const k = (def && def.recoil.viewKick) || 1;
+        const k = ((def && def.recoil.viewKick) || 1) * ((this.cfg.recoil && this.cfg.recoil.gunKick) ?? 1);
         if (side === 'L') this.kickL.v += 5.5 * Math.sqrt(k);
         else { this.kickZ.v += 1.9 * k; this.kickRot.v += 5.5 * Math.sqrt(k); }
         this.kickSide.v += (Math.random() - 0.5) * 1.2 * k;
@@ -520,7 +520,7 @@ export class Viewmodel {
       let px = lerp(hip.x, 0, a), py = lerp(hip.y, aim.y, a), pz = lerp(hip.z, aim.z, a);
       let rx = lerp(hip.rx || 0, 0, a), ry = lerp(hip.ry, 0, a), rz = lerp(hip.rz, 0, a);
       px += o.x + r.x; py += o.y + r.y; pz += o.z + r.z; rx += o.rx + r.rx; ry += o.ry + r.ry; rz += o.rz + r.rz;
-      pz += kick.z * 0.02; rx += kick.r * 0.045; ry += ks * 0.02; py += kick.r * 0.003;
+      pz += kick.z * 0.024; rx += kick.r * 0.05; ry += ks * 0.025; py += kick.r * 0.004; rz += ks * 0.03;
       py -= gunDip * 0.2; rx -= gunDip * 0.6; px += gunDip * 0.05;
       if (mirror) { px = -px - 0.0; ry = -ry; rz = -rz; }
       if (dual) px += mirror ? -0.02 : 0.02;

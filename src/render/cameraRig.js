@@ -23,6 +23,8 @@ export class CameraRig {
     this.lastStep = 0;
     this.onFootstep = null;
     this.lastDist = null;
+    // recoil punch (visual only: where you aim doesn't move)
+    this.punch = { p: 0, pv: 0, r: 0, rv: 0, f: 0, fv: 0 };
     camera.rotation.order = 'YXZ';
   }
 
@@ -32,6 +34,28 @@ export class CameraRig {
     if (e.playerId !== localId) return;
     if (e.type === 'playerLand') this.dipVel -= Math.min(2.2, e.impact * 0.3);
     if (e.type === 'playerHit') { this.shake = 1; }
+    if (e.type === 'shot') {
+      const def = this.cfg.weapons[e.weapon];
+      if (!def) return;
+      const k = (def.recoil.viewKick ?? 1) * ((this.cfg.recoil && this.cfg.recoil.punch) ?? 1) * (this.adsNow > 0.5 ? 0.6 : 1);
+      const P = this.punch;
+      // (spring velocities in degrees a second: a pistol peaks around 1.2 degrees)
+      P.pv += (14 + def.recoil.pitch * 14) * k;
+      P.rv += (Math.random() - 0.5) * 30 * k;
+      P.fv += 40 * k * (e.pellets > 1 ? 1.6 : 1);
+    }
+  }
+
+  // springs back from each shot's punch
+  stepPunch(dt) {
+    const P = this.punch;
+    const n = Math.max(1, Math.ceil(dt / (1 / 240))), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      P.pv += (-P.p * 420 - P.pv * 30) * h; P.p += P.pv * h;
+      P.rv += (-P.r * 380 - P.rv * 26) * h; P.r += P.rv * h;
+      P.fv += (-P.f * 500 - P.fv * 34) * h; P.f += P.fv * h;
+    }
+    if (!Number.isFinite(P.p + P.r + P.f)) Object.assign(P, { p: 0, pv: 0, r: 0, rv: 0, f: 0, fv: 0 });
   }
 
   // explosions shake the camera by distance (anyone's blast)
@@ -89,19 +113,22 @@ export class CameraRig {
     const sh = this.shake * this.shake * c.damageShake * Math.PI / 180;
 
     const cam = this.camera;
+    this.adsNow = A.ads;
+    this.stepPunch(dt);
+    const punch = this.punch.p * Math.PI / 180, punchRoll = this.punch.r * Math.PI / 180;
     const yaw = look.yaw + A.recoilYaw + A.swayYaw + Math.sin(this.shakeT * 1.3) * sh;
-    const pitch = look.pitch + A.recoilPitch + A.swayPitch + Math.sin(this.shakeT) * sh;
+    const pitch = look.pitch + A.recoilPitch + A.swayPitch + Math.sin(this.shakeT) * sh + punch;
     // side bob is along the camera's right vector
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     cam.position.set(pos.x + rx * bobX, this.smoothY + this.eyeY + bobY + dip, pos.z + rz * bobX);
     // last stand: lying on your side
     this.downRoll = lerp(this.downRoll || 0, p.downed ? 0.32 : 0, 1 - Math.exp(-5 * dt));
-    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll * (1 - A.ads) + Math.sin(this.shakeT * 0.7) * sh * 0.5 + this.downRoll);
+    cam.rotation.set(pitch, yaw, Math.cos(this.bobPhase) * this.roll * (1 - A.ads) + Math.sin(this.shakeT * 0.7) * sh * 0.5 + this.downRoll + punchRoll);
 
     // FOV
     this.fovExtra = lerp(this.fovExtra, sprint ? c.sprintFovAdd : 0, 1 - Math.exp(-6 * dt));
     const adsMult = lerp(1, def.adsFovMult ?? 0.85, A.ads);
-    const h = (this.hFov + this.fovExtra) * adsMult;
+    const h = (this.hFov + this.fovExtra) * adsMult + this.punch.f * 0.6;
     const vFov = 2 * Math.atan(Math.tan((h * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
     if (Math.abs(cam.fov - vFov) > 0.01 || cam.aspect !== aspect) {
       cam.fov = vFov; cam.aspect = aspect; cam.updateProjectionMatrix();

@@ -54,6 +54,10 @@ hear (models, textures, sounds) is generated in code. The only library is
   an idle (P throws his sideways peace sign, Rocco bounces, Erik rubs his
   hands together). Main menu → Characters → *See the whole crew* opens the
   lineup: drag to turn them, pick a name to fly over, Face to zoom in.
+- **Recoil:** every shot punches the camera (it springs straight back, so
+  your aim isn't moved by it), kicks the gun back in your hands, and climbs
+  your aim while you hold the trigger; let go and it settles. Tunable in
+  `CONFIG.recoil`.
 - **Characters:** a character select screen (main menu → Characters) with
   the model on a turntable under a spotlight (drag to spin). Playable at
   launch: **Kearns**, **Ryan**, **Pit** and **Rocco** (Kearns keeps his four
@@ -294,6 +298,25 @@ Menus: D-pad or left stick to move, A/✕ to select, B/○ to go back, D-pad
 left/right for sliders, LB/RB (L1/R1) to flip tabs, shirt colours or lineup
 characters, right stick to turn characters or scroll. Settings has controller
 look speed, aim assist and vibration.
+
+## Zombies (models and animations)
+
+The zombies are eight Mixamo characters with Mixamo zombie animations,
+converted for the browser by `tools/zombies/` into `assets/zombies/` (about
+10 MB, loaded in the background on the title screen; until they arrive the
+older procedural zombies stand in).
+
+- Characters: the bloody walker, the cop, Zombiegirl, Yaku, and four ordinary
+  people (Remy and three Mixamo regulars) zombified for the game: grey-green
+  dead skin, bruises and veins, dirty clothes, blood, sunken eyes and a
+  bloody mouth. Every zombie's eyes glow green.
+- Animations: walk, run, sprint and crawl (played at the speed the zombie is
+  actually moving), idle, attacking, punching at the window boards, two hit
+  flinches (upper body only), and five deaths picked by where the shot came
+  from (shot in the face, they go over backwards; from behind, they pitch
+  forwards; explosions throw them).
+- Limbs still come off: arms at the elbow, heads, and legs (the zombie keeps
+  coming on its hands).
 
 ## Play online
 

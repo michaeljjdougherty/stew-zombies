@@ -254,7 +254,7 @@ export class ZombieKit {
     this.goreMat = new THREE.MeshStandardMaterial({ color: '#4a0808', roughness: 0.45 });
     this.cavityMat = new THREE.MeshBasicMaterial({ color: '#140303' });
     this.teethMat = new THREE.MeshStandardMaterial({ color: '#a89c78', roughness: 0.5 });
-    this.eyeMat = new THREE.MeshStandardMaterial({ map: irisTexture('#000', { zombie: true }), emissive: new THREE.Color(1, 0.55, 0.12), emissiveIntensity: 3, roughness: 0.2 });
+    this.eyeMat = new THREE.MeshStandardMaterial({ map: irisTexture('#000', { zombie: true }), emissive: new THREE.Color(0.35, 1, 0.22), emissiveIntensity: 3, roughness: 0.2 });
     this.eyeMat.emissiveMap = this.eyeMat.map;
     this.skinMats = {
       zombie: new THREE.MeshStandardMaterial({ map: zombieSkinTex(SKIN.zombie, 3), roughness: 0.6 }),

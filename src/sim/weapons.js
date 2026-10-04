@@ -99,7 +99,10 @@ export function updateWeapons(sim, p, cmd, dt) {
 
   // --- spread, recoil settle, scope sway
   w.bloom = Math.max(0, w.bloom - def.spread.recovery * dt);
-  const settle = Math.exp(-def.recoil.recovery * dt);
+  // still on the trigger: the recoil doesn't settle much, so the aim climbs
+  const RC = sim.cfg.recoil || {};
+  const holding = sim.time - (w.lastShotAt ?? -9) < (RC.holdTime ?? 0.16);
+  const settle = Math.exp(-def.recoil.recovery * (holding ? (RC.holdRecovery ?? 1) : 1) * dt);
   w.recoilPitch *= settle;
   w.recoilYaw *= settle;
   if (def.scope && w.adsAmount > 0.01) {
@@ -219,8 +222,11 @@ function fire(sim, p, slot, def, side) {
   w.bloom += lerp(s.perShot, s.adsPerShot, w.adsAmount);
   const r = def.recoil;
   const kick = lerp(1, r.adsMult, w.adsAmount);
-  w.recoilPitch += r.pitch * kick * DEG;
-  w.recoilYaw += sim.rng.range(-r.yaw, r.yaw) * kick * DEG + (side === 'L' ? -0.2 : side === 'R' && def.dual ? 0.2 : 0) * DEG;
+  const RC = sim.cfg.recoil || {};
+  const km = RC.kickMult ?? 1;
+  w.recoilPitch = Math.min((RC.maxPitch ?? 99) * DEG, w.recoilPitch + r.pitch * kick * km * DEG);
+  w.recoilYaw += sim.rng.range(-r.yaw, r.yaw) * kick * km * DEG + (side === 'L' ? -0.2 : side === 'R' && def.dual ? 0.2 : 0) * DEG;
+  w.lastShotAt = sim.time;
 
   sim.emit('shot', {
     playerId: p.id, weapon: slot.id, origin: eye, dir, side,

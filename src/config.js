@@ -121,6 +121,16 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   // Camera feel
   // ---------------------------------------------------------------------------
+  // gun recoil: the aim climbs while you hold the trigger, the camera punches
+  // with every shot, and the gun kicks back in your hands
+  recoil: {
+    kickMult: 1.35,        // x every weapon's recoil.pitch / yaw
+    holdRecovery: 0.3,     // recovery while still firing (so autos climb)
+    holdTime: 0.16,        // seconds after a shot that counts as still firing
+    maxPitch: 9,           // degrees the aim can climb
+    punch: 1.0,            // camera punch per shot (visual only)
+    gunKick: 1.7,          // viewmodel kick
+  },
   camera: {
     defaultFov: 90,          // horizontal FOV, user adjustable in settings
     minFov: 65,
