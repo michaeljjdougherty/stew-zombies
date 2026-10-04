@@ -65,6 +65,7 @@ export function applyGlyphs(root = document) {
 const LEGEND = {
   title: [['confirm', 'Select']],
   gameover: [['confirm', 'Select']],
+  victory: [['confirm', 'Select']],
   pause: [['confirm', 'Select'], ['back', 'Resume']],
   settings: [['confirm', 'Select'], ['adjust', 'Adjust'], ['back', 'Back']],
   extras: [['confirm', 'Select'], ['prev', ''], ['next', 'Tabs'], ['scroll', 'Scroll'], ['back', 'Back']],
