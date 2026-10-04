@@ -116,6 +116,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   }
   if (p.crouching) speed *= cfg.crouchSpeedMult;
   speed *= perkMult(sim, p, 'speedMult');
+  if (p.boosts && p.boosts.speed) speed *= p.boosts.speed;   // restored by the half-court ritual
   if (downed) speed = sim.cfg.lastStand.crawlSpeed;
   if (p.landSlowTimer > 0) { speed *= cfg.landSlowdownMult; p.landSlowTimer -= dt; }
 
@@ -140,7 +141,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   // --- jump
   if (p.jumpCooldown > 0) p.jumpCooldown -= dt;
   if (cmd.jumpPressed && p.grounded && p.jumpCooldown <= 0 && !p.crouching && !downed) {
-    p.vel.y = Math.sqrt(2 * cfg.gravity * cfg.jumpHeight);
+    p.vel.y = Math.sqrt(2 * cfg.gravity * cfg.jumpHeight * ((p.boosts && p.boosts.jump) || 1));
     p.grounded = false;
     p.jumpCooldown = cfg.jumpCooldown;
     sim.emit('playerJump', { playerId: p.id });
@@ -220,6 +221,7 @@ export function damagePlayer(sim, p, amount, source) {
     sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
     return;
   }
+  if (p.boosts && p.boosts.defense) amount *= p.boosts.defense;
   p.health -= amount;
   p.lastDamageTime = sim.time;
   sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });

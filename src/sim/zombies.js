@@ -447,6 +447,7 @@ export function damageZombie(sim, z, amount, info) {
   const c = sim.cfg.zombie;
   const pts = sim.cfg.points;
   const player = sim.playerById(info.playerId);
+  if (player && player.boosts && player.boosts.power) amount *= player.boosts.power;   // half-court ritual
   if (player && powerupActive(sim, 'oneBite') && z.state !== 'dummy') amount = Math.max(amount, z.health);
   z.health -= amount;
   z.stun = c.hitStun;

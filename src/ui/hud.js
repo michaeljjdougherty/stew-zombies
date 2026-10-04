@@ -123,6 +123,18 @@ export class HUD {
       case 'erikRevealed':
         this.toast('Erik Madsen', 'sealed in the Press Box', '#7fe08a', 4);
         break;
+      case 'ritualStart':
+        this.toast('Hold the circle', `${this.cfg.quest.ritualTime} seconds · don't leave it`, '#7fe08a', 3);
+        break;
+      case 'ritualFailed':
+        this.toast('The circle went out', 'the ball drained again', '#c04040', 2.6);
+        break;
+      case 'ritualDone': {
+        const what = { speed: 'faster on your feet', jump: 'higher off the ground', power: 'every hit hits harder', defense: 'hits hurt less' }[e.stat];
+        const mine = !e.players || e.players.includes(this.localId);
+        this.toast(e.stat.toUpperCase() + ' restored', mine ? what : 'a teammate got theirs back', '#ff9a30', 3.5);
+        break;
+      }
       case 'perkGained':
         if (e.playerId === this.localId) { const d = this.cfg.perks.list[e.perk]; this.toast(d.name, d.desc, d.color, 3); }
         break;

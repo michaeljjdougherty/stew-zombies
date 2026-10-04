@@ -237,6 +237,15 @@ export class SoundDirector {
         A.play(S.smallBoom, {}, { pos: e.pos, ref: 6, gain: 1.2, reverb: 0.8 });
         A.play(S.madDogGrind, { duration: this.cfg.quest.claddingTime }, { pos: { x: 0, y: 6.4, z: 0 }, ref: 9, gain: 1.4, reverb: 0.8, delay: 0.8 });
         break;
+      case 'ritualStart':
+        A.play(S.thunder, { near: 0.3 }, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.8, reverb: 0.8 });
+        A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.9, reverb: 0.8, bus: 'voice', delay: 0.5 });
+        break;
+      case 'ritualFailed': A.play(S.powerupFizzle, {}, { gain: 1, reverb: 0.5 }); break;
+      case 'ritualDone':
+        A.play(S.powerupGrab, {}, { gain: 1, reverb: 0.6 });
+        A.play(S.perkJingle, { notes: [392, 523, 659, 784, 1047] }, { gain: 0.8, reverb: 0.5, bus: 'music', delay: 0.3 });
+        break;
       case 'erikRevealed': A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 1.1, reverb: 0.8, bus: 'voice' }); break;
       case 'perkBought': {
         const m = sim.world.perkMachines.find((q) => q.id === e.machine);

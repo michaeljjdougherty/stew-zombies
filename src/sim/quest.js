@@ -19,6 +19,8 @@
 // the HUD and the sound director read it.
 // =============================================================================
 import { paSay } from './pa.js';
+import { makeZombie, pickZombieType } from './zombies.js';
+import { zombieHealthForRound } from '../config.js';
 
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const up = (p) => p.alive && !p.downed;
@@ -56,6 +58,14 @@ export function createQuest(sim) {
   const al = Q.altar;
   sim.world.solids.push(solid(al.x - 0.65, 0, al.z - 0.42, al.x + 0.65, 0.88, al.z + 0.42, 'altar'));
   st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls };
+  // 4. the half-court ritual: four drained basketballs
+  st.ritual = {
+    balls: Q.ritualBalls.map((b) => ({ ...b, progress: 0, done: false })),
+    active: null,          // id of the ball whose circle is lit
+    outside: 0,            // how long nobody has been in the circle
+    stood: new Set(),      // players who stood in the active circle
+    spawnT: 0,
+  };
   return st;
 }
 
@@ -68,6 +78,7 @@ export function questInteractables(sim) {
     new TrophyStandInteractable(Q.trophyStand),
     new CoinInteractable(Q.statue.coin),
     new AltarInteractable(Q.altar),
+    ...Q.ritualBalls.map((b) => new RitualBallInteractable(b)),
   ];
 }
 
@@ -211,6 +222,99 @@ export class AltarInteractable {
 }
 
 // ---------------------------------------------------------------------------
+// 4. The half-court sacrifice: stand in each ball's circle while the horde comes
+// ---------------------------------------------------------------------------
+export const STAT_NAMES = { speed: 'Speed', jump: 'Jump', power: 'Power', defense: 'Defense' };
+
+export class RitualBallInteractable {
+  constructor(b) {
+    this.b = b;
+    this.id = 'ritual_' + b.id;
+    this.kind = 'ritualBall';
+    this.requireLook = true;
+    this.pos = { x: b.x, y: 0.15, z: b.z };
+  }
+  get range() { return 1.8; }
+  distanceTo(sim, p) { return flatDist(p.pos, this.pos); }
+  ball(sim) { return sim.quest.ritual.balls.find((x) => x.id === this.b.id); }
+  canUse(sim, p) {
+    const q = sim.quest;
+    return up(p) && q.step === 'ritual' && !this.ball(sim).done;
+  }
+  prompt(sim) {
+    const r = sim.quest.ritual;
+    const name = STAT_NAMES[this.b.stat];
+    if (r.active === this.b.id) return { text: `Hold the circle: ${name}`, cost: null, sub: 'stay inside until the ball is full' };
+    if (r.active) return { text: 'Another circle is lit', cost: null };
+    return { text: `Press [F] to take back your ${name}`, cost: null, sub: `stand in the circle for ${sim.cfg.quest.ritualTime} seconds` };
+  }
+  use(sim, p, cmd) {
+    if (!cmd.usePressed) return;
+    const r = sim.quest.ritual;
+    if (r.active) return;
+    r.active = this.b.id;
+    r.outside = 0;
+    r.stood = new Set();
+    r.spawnT = 1.5;
+    this.ball(sim).progress = 0;
+    sim.emit('ritualStart', { playerId: p.id, id: this.b.id, stat: this.b.stat, pos: { x: this.b.x, y: 0, z: this.b.z } });
+    paSay(sim, 'ritualStart', { delay: 0.8 });
+  }
+}
+
+// A player's restored talent, as a multiplier (1 = none).
+export function boost(p, stat) { return (p.boosts && p.boosts[stat]) || 1; }
+
+function updateRitual(sim, dt) {
+  const q = sim.quest, r = q.ritual, c = sim.cfg.quest;
+  if (!r.active) return;
+  const ball = r.balls.find((b) => b.id === r.active);
+  const inside = sim.players.filter((p) => up(p) && Math.hypot(p.pos.x - ball.x, p.pos.z - ball.z) <= c.ritualCircle);
+  if (inside.length) {
+    r.outside = 0;
+    for (const p of inside) r.stood.add(p.id);
+    ball.progress = Math.min(c.ritualTime, ball.progress + dt);
+  } else {
+    r.outside += dt;
+    if (r.outside > c.ritualLeaveTime) {
+      // nobody held the circle: it goes out and the ball drains again
+      ball.progress = 0;
+      r.active = null;
+      sim.emit('ritualFailed', { id: ball.id, stat: ball.stat });
+      return;
+    }
+  }
+  // an aggressive horde the whole time: fast ones, clawing up out of the court
+  r.spawnT -= dt;
+  if (r.spawnT <= 0 && sim.zombies.length < c.ritualMaxAlive) {
+    r.spawnT = c.ritualSpawnEvery * sim.rng.range(0.7, 1.3);
+    const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(7, 11);
+    const round = Math.max(1, sim.rounds.round);
+    const type = sim.rng.chance(0.6) ? 'sprinter' : pickZombieType(sim, round + 6);
+    const pos = { x: Math.max(-15.5, Math.min(15.5, ball.x * 0.3 + Math.cos(a) * d)), y: -sim.cfg.zombie.riseDepth, z: Math.max(-11.5, Math.min(11.5, ball.z * 0.3 + Math.sin(a) * d)) };
+    const z = makeZombie(sim, { type, pos, yaw: a + Math.PI, health: zombieHealthForRound(round, sim.cfg.zombie), state: 'rising' });
+    z.riseFrom = z.pos.y;
+    sim.zombies.push(z);
+    sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true });
+    sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });
+  }
+  if (ball.progress >= c.ritualTime) {
+    ball.done = true;
+    r.active = null;
+    // whoever held the circle gets the talent back (solo: you hold every circle)
+    const k = c.boosts[ball.stat];
+    for (const id of r.stood) {
+      const p = sim.playerById(id);
+      if (!p) continue;
+      p.boosts = { ...(p.boosts || {}), [ball.stat]: k };
+    }
+    sim.emit('ritualDone', { id: ball.id, stat: ball.stat, players: [...r.stood], pos: { x: ball.x, y: 0, z: ball.z } });
+    paSay(sim, 'ritualDone', { delay: 1 });
+    if (r.balls.every((b) => b.done)) advance(sim, 'boss');
+  }
+}
+
+// ---------------------------------------------------------------------------
 function advance(sim, step) {
   const q = sim.quest;
   if (QUEST_STEPS.indexOf(step) <= QUEST_STEPS.indexOf(q.step)) return;
@@ -284,6 +388,7 @@ export function updateQuest(sim, dt) {
       advance(sim, 'ritual');
     }
   }
+  if (q.step === 'ritual') updateRitual(sim, dt);
   // whoever's holding the coin and bleeds out drops it back where it came from
   if (q.coin === 'held') {
     const h = sim.playerById(q.coinHolder);
@@ -305,7 +410,16 @@ export function questObjective(sim) {
     case 'coin': return 'Take the Dark Schnitz Coin from the statue';
     case 'altar': return 'Set the coin in the altar under the Press Box';
     case 'cladding': return 'The cladding is coming up...';
-    case 'ritual': return 'Erik is exposed. Take back what he stole';
+    case 'ritual': {
+      const r = q.ritual;
+      const done = r.balls.filter((b) => b.done).length;
+      if (r.active) {
+        const b = r.balls.find((x) => x.id === r.active);
+        return `Hold the circle: ${STAT_NAMES[b.stat]} (${Math.ceil(sim.cfg.quest.ritualTime - b.progress)}s)`;
+      }
+      return `Take back your talent: the drained basketballs at center court (${done}/${r.balls.length})`;
+    }
+    case 'boss': return 'Call Erik out at the altar';
     default: return null;
   }
 }

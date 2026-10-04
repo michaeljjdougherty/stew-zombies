@@ -100,6 +100,34 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   check(said.includes('cladding'), 'Erik reacts to the cladding: ' + [...new Set(said)].join(','));
 }
 
+// 5. the half-court ritual
+{
+  const { sim, me, log, step, use, find } = makeQuestGame(12);
+  const q = sim.quest;
+  q.step = 'ritual'; sim.power = true;
+  const balls = sim.interactables.filter((i) => i.kind === 'ritualBall');
+  check(balls.length === 4, 'four drained basketballs');
+  const go = (b) => { me.pos.x = b.pos.x; me.pos.z = b.pos.z + 1.2; me.yaw = 0; me.vel.x = me.vel.z = 0; step({}, 2); };
+  // leave the circle and it goes out
+  go(balls[0]); check(/Speed|Jump|Power|Defense/.test(me.prompt?.text || ''), 'ball prompt: ' + me.prompt?.text); use();
+  check(q.ritual.active === balls[0].b.id, 'circle lit');
+  me.pos.x += 6; step({}, Math.round((CONFIG.quest.ritualLeaveTime + 0.5) / dt));
+  check(!q.ritual.active && log.some((e) => e.type === 'ritualFailed'), 'leaving the circle puts it out');
+  // hold all four
+  sim.godMode = true;
+  const baseSpeed = 1;
+  for (const b of balls) {
+    go(b); use();
+    let n = 0;
+    while (q.ritual.active && n++ < 60 * 60) { me.pos.x = b.pos.x; me.pos.z = b.pos.z; me.vel.x = me.vel.z = 0; step({}, 1); }
+    check(q.ritual.balls.find((x) => x.id === b.b.id).done, `${b.b.stat} restored`);
+  }
+  check(me.boosts && me.boosts.speed > 1 && me.boosts.jump > 1 && me.boosts.power > 1 && me.boosts.defense < 1, 'solo: all four boosts ' + JSON.stringify(me.boosts));
+  check(q.step === 'boss', 'on to the boss');
+  check(log.filter((e) => e.type === 'zombieRise').length > 10, 'a horde clawed up during the rituals (' + log.filter((e) => e.type === 'zombieRise').length + ')');
+  void baseSpeed; void find;
+}
+
 // no quest in the firing range
 {
   const { RANGE } = await import('../src/map/range.js');

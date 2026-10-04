@@ -53,6 +53,29 @@ function coinTexture() {
   return T.toTexture(c, { repeat: false });
 }
 
+function basketballTexture(drained) {
+  const W = 512, H = 256;
+  const [c, g] = T.makeCanvas(W, H);
+  g.fillStyle = drained ? '#5a5650' : '#d2691e'; g.fillRect(0, 0, W, H);
+  // pebbled
+  let s = 5; const r = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  g.fillStyle = drained ? 'rgba(0,0,0,0.12)' : 'rgba(80,30,5,0.18)';
+  for (let i = 0; i < 2500; i++) g.fillRect(r() * W, r() * H, 2, 2);
+  g.strokeStyle = '#141210'; g.lineWidth = 7;
+  g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
+  for (const x of [W * 0.25, W * 0.75]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (const x of [0, W / 2, W]) { g.beginPath(); g.ellipse(x, H / 2, W * 0.12, H * 0.5, 0, -Math.PI / 2, Math.PI / 2); g.stroke(); g.beginPath(); g.ellipse(x, H / 2, W * 0.12, H * 0.5, 0, Math.PI / 2, Math.PI * 1.5); g.stroke(); }
+  return T.toTexture(c);
+}
+
+function statLabelTexture(text) {
+  const [c, g] = T.makeCanvas(512, 128);
+  g.clearRect(0, 0, 512, 128);
+  g.font = '900 86px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(140,255,150,0.9)'; g.fillText(text.toUpperCase(), 256, 66, 490);
+  return T.toTexture(c, { repeat: false });
+}
+
 // --- trophy pieces -------------------------------------------------------------
 function trophyPart(id, mat) {
   const g = new THREE.Group();
@@ -191,6 +214,24 @@ export class QuestView {
 
     this.pressBox = mapView.story && mapView.story.pressBox;
     this.erik = null;
+
+    // --- the four drained basketballs and their circles
+    const drained = new THREE.MeshStandardMaterial({ map: basketballTexture(true), roughness: 0.8 });
+    const live = new THREE.MeshStandardMaterial({ map: basketballTexture(false), roughness: 0.55, emissive: new THREE.Color(1, 0.45, 0.1), emissiveIntensity: 0.4 });
+    const ballGeo = new THREE.SphereGeometry(0.12, 24, 16);
+    this.balls = (Q.ritualBalls || []).map((b) => {
+      const g = new THREE.Group(); g.position.set(b.x, 0, b.z); this.group.add(g);
+      const ball = add(ballGeo, drained, 0, 0.12, 0, g);
+      const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.2, 0.45), transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const R = this.cfg.quest.ritualCircle;
+      const ring = add(new THREE.RingGeometry(R - 0.08, R, 64).rotateX(-Math.PI / 2), ringMat, 0, 0.008, 0, g);
+      const fillMat = ringMat.clone();
+      const fill = add(new THREE.RingGeometry(R - 0.35, R - 0.12, 64, 1, 0, 0.001).rotateX(-Math.PI / 2), fillMat, 0, 0.009, 0, g);
+      const pillar = add(new THREE.CylinderGeometry(R, R, 4, 40, 1, true), new THREE.MeshBasicMaterial({ map: T.beamTexture(), color: new THREE.Color(0.2, 1.4, 0.35), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), 0, 2, 0, g);
+      pillar.rotation.x = Math.PI;
+      const label = add(new THREE.PlaneGeometry(1.2, 0.3).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: statLabelTexture(b.stat), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }), 0, 0.01, R + 0.32, g);
+      return { b, g, ball, ring, fill, fillR: R, pillar, label, drained, live, lastFrac: -1 };
+    });
   }
 
   setSim(sim) {
@@ -273,6 +314,26 @@ export class QuestView {
         w.s.material.opacity = Math.min(1, (1 - k) * 4);
         if (k >= 1) { this.group.remove(w.s); w.s.material.dispose(); this.wisps.splice(i, 1); }
       }
+    }
+    // the half-court ritual
+    const r = q.ritual;
+    for (const B of this.balls) {
+      const st = r.balls.find((x) => x.id === B.b.id);
+      const active = r.active === B.b.id;
+      const avail = q.step === 'ritual' && !st.done;
+      B.ball.material = st.done ? B.live : B.drained;
+      B.ball.position.y = st.done ? 0.55 + Math.sin(t * 2 + B.g.position.x) * 0.06 : 0.12;
+      B.ball.rotation.y = st.done ? t * 1.5 : 0;
+      B.ring.material.opacity = active ? 0.9 : avail ? 0.18 + Math.sin(t * 2.5) * 0.08 : 0;
+      B.pillar.material.opacity = active ? 0.1 + Math.sin(t * 6) * 0.03 : 0;
+      B.label.material.opacity = avail || active ? 0.35 : st.done ? 0.15 : 0;
+      const frac = st.progress / this.cfg.quest.ritualTime;
+      if (Math.abs(frac - B.lastFrac) > 0.004) {
+        B.lastFrac = frac;
+        B.fill.geometry.dispose();
+        B.fill.geometry = new THREE.RingGeometry(B.fillR - 0.35, B.fillR - 0.12, 64, 1, Math.PI / 2, -Math.max(0.001, frac) * Math.PI * 2).rotateX(-Math.PI / 2);
+      }
+      B.fill.material.opacity = active ? 0.85 : 0;
     }
     // the coin
     const C = this.Q.statue.coin, A = this.Q.altar;

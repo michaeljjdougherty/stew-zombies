@@ -973,6 +973,13 @@ export const CONFIG = {
     trophySettle: 2.0,    // s from placing the trophy to the stand moving
     madDogRiseTime: 3.5,  // s for the Mad Dog Machine to come up through the floor
     claddingTime: 9,      // s for the Press Box cladding to grind up
+    ritualTime: 45,       // s to hold each half-court circle
+    ritualCircle: 1.6,    // m, the circle's radius
+    ritualLeaveTime: 4,   // s with nobody in the circle before it goes out
+    ritualSpawnEvery: 1.3, // s between zombies clawing up during a ritual
+    ritualMaxAlive: 22,
+    // the talent each ball gives back (multipliers)
+    boosts: { speed: 1.12, jump: 1.45, power: 1.25, defense: 0.75 },
   },
 
   // ---------------------------------------------------------------------------
