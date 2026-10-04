@@ -19,7 +19,7 @@ const walk = (d) => {
   for (const f of fs.readdirSync(path.join(root, d))) {
     const rel = path.join(d, f);
     if (fs.statSync(path.join(root, rel)).isDirectory()) walk(rel);
-    else if (/\.(js|mp3|jpg)$/.test(rel)) files[rel] = rel;
+    else if (/\.(js|mp3|jpg|webp|json|bin)$/.test(rel)) files[rel] = rel;
   }
 };
 walk('src');
