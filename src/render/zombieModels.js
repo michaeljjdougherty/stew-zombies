@@ -29,10 +29,24 @@ export const ZOMBIE_CAST = [
 // bones the hit reactions are allowed to move (so they don't slide the legs)
 const UPPER = /^(Spine|Spine1|Spine2|Neck|Head|LeftShoulder|RightShoulder|LeftArm|RightArm|LeftForeArm|RightForeArm|LeftHand|RightHand)$/;
 
+// the binary half; hosts that won't serve .bin files get a base64 copy (.bin.json)
+async function fetchBin(name) {
+  try {
+    const r = await fetch(BASE + name + '.bin');
+    if (r.ok) return await r.arrayBuffer();
+  } catch { /* try the other form */ }
+  const r = await fetch(BASE + name + '.bin.json');
+  if (!r.ok) throw new Error(name + '.bin ' + r.status);
+  const s = atob((await r.json()).b64);
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+}
+
 async function fetchPair(name) {
   const [j, b] = await Promise.all([
     fetch(BASE + name + '.json').then((r) => { if (!r.ok) throw new Error(name + '.json ' + r.status); return r.json(); }),
-    fetch(BASE + name + '.bin').then((r) => { if (!r.ok) throw new Error(name + '.bin ' + r.status); return r.arrayBuffer(); }),
+    fetchBin(name),
   ]);
   return [j, b];
 }
