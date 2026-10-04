@@ -143,8 +143,9 @@ export class Ending {
     qv.erikHeld = true;
     this.erikStart = this.erik.root.position.clone();
     // the squad: you and three of the crew
-    const pool = LINEUP.filter((id) => id !== 'erik' && id !== 'brian' && id !== character);
-    const ids = [character, ...pool.slice(0, 3)];
+    // the squad: the four who were trapped in there (Brian's on the other side of the portal)
+    const four = ['kearns', 'ryan', 'pit', 'rocco'];
+    const ids = four.includes(character) ? [character, ...four.filter((id) => id !== character)] : four;
     const guns = ['M1912', 'MP41', 'Olympus', 'M15'];
     this.squad = ids.map((id, i) => {
       const k = buildCharacter(id, { shirt, detail: 0.7 });

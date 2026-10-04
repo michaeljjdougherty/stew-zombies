@@ -7,7 +7,9 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { buildGun, gunMaterials, animateCamo } from './gunModels.js';
+import { buildGun, gunMaterials, animateCamo, setArmLook } from './gunModels.js';
+import { CHARACTERS } from './characters.js';
+import { SKIN } from './human.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
@@ -210,6 +212,18 @@ export class Viewmodel {
   }
 
   setAspect(a) { this.camera.aspect = a; this.camera.updateProjectionMatrix(); }
+
+  // Your arms are your character's arms: their skin, their sleeves.
+  setCharacter(id) {
+    const def = CHARACTERS[id] || CHARACTERS.kearns;
+    const sk = (SKIN[def.skin] || SKIN.light).base;
+    // the game's lighting is warmer than the showcase: deepen the tone a touch
+    const skin = sk.map((v) => Math.round(v * 0.8));
+    let sleeve = null;
+    if (def.layer && !def.layer.short) sleeve = { color: def.layer.color, kind: def.layer.type };
+    else if (def.top && def.top.type === 'suit') sleeve = { color: def.top.color, kind: 'suit' };
+    setArmLook({ skin, sleeve });
+  }
 
   onEvent(e, localId) {
     if (e.playerId !== localId) return;

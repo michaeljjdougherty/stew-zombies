@@ -90,7 +90,8 @@ export class Menus {
     });
   }
 
-  showVictory(round, p) {
+  showVictory(round, p, unlocked = false) {
+    $('win-unlock').hidden = !unlocked;
     $('win-rounds').textContent = String(round);
     $('win-kills').textContent = String(p.kills);
     $('win-heads').textContent = String(p.headshots);

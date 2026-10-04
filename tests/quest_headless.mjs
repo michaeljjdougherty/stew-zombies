@@ -95,7 +95,8 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   step({}, Math.round((CONFIG.quest.claddingTime + 0.5) / dt));
   check(q.erikRevealed && q.cladding === 1 && q.step === 'ritual', 'Erik revealed, ritual step');
   check(log.some((e) => e.type === 'erikRevealed'), 'erikRevealed event');
-  // Erik had things to say along the way
+  // Erik had things to say along the way (the crew's walkie chatter goes first)
+  step({}, 60 * 40);
   const said = log.filter((e) => e.type === 'erikSays').map((e) => e.cat);
   check(said.includes('cladding'), 'Erik reacts to the cladding: ' + [...new Set(said)].join(','));
 }

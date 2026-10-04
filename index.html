@@ -106,6 +106,8 @@
   #subs .sub b { font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: .8em; margin-right: 6px; }
   #subs .sub.erik b { color: #e8a040; }
   #subs .sub.stew b { color: #8fc7ff; }
+  #subs .sub.radio { font-style: italic; }
+  #subs .sub.radio b { color: #9fd8a8; }
   #subs .sub.song { font-family: var(--display); letter-spacing: 1px; font-size: clamp(18px, 2vw, 26px); color: #f0d070; background: rgba(8,7,5,.45); }
   #subs .sub.out { opacity: 0; transition: opacity .4s; }
   @keyframes subIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -499,7 +501,7 @@
       <span class="eyebrow">T-shirt</span>
       <div id="cs-swatches" role="radiogroup" aria-label="T-shirt colour"></div>
     </div>
-    <p class="note cs-hint" id="cs-hint">Drag to turn him around. More of Stew to come.</p>
+    <p class="note cs-hint" id="cs-hint">Drag to turn him around. Brian unlocks when you finish The Final Whistle.</p>
     <nav class="menu">
       <button id="btn-cs-select" type="button">Play as Kearns</button>
       <button id="btn-cs-lineup" type="button">See the whole crew</button>
@@ -578,6 +580,7 @@
       <div><dt>Headshots</dt><dd id="win-heads">0</dd></div>
       <div><dt>Points</dt><dd id="win-points">0</dd></div>
     </dl>
+    <p class="note" id="win-unlock" hidden><b style="color:#7fe08a">Brian Luke is now playable.</b> Pick him under Characters.</p>
     <p class="note">Story by James Amarante. To be continued on Map 2.</p>
     <nav class="menu">
       <button id="btn-win-again" type="button">Play again</button>

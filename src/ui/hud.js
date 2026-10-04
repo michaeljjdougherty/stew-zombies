@@ -7,6 +7,7 @@ import { glyphify } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 import { questObjective } from '../sim/quest.js';
+import { CREW } from '../lore/crew.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -168,8 +169,14 @@ export class HUD {
         this.paUntil = this.clock + (e.lead || 0) + e.dur;
         break;
       case 'stewSays':
-        if (e.playerId === this.localId) this.say('stew', 'You', e.text, 0, e.dur);
+        if (e.playerId === this.localId) this.say('stew', this.localName || 'You', e.text, 0, e.dur);
         break;
+      case 'crewSays': {
+        // whoever you're playing talks out loud; the rest are on the walkie
+        const name = CREW[e.who] ? CREW[e.who].name : e.who;
+        this.say(e.radio ? 'stew radio' : 'stew', e.radio ? `${name} · radio` : name, e.text, 0, e.dur);
+        break;
+      }
       case 'loreRead':
         if (e.playerId === this.localId) this.openNote(e.id);
         break;

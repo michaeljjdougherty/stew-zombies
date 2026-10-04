@@ -104,11 +104,46 @@ export function gunMaterials() {
   return shared;
 }
 
+// A jacket sleeve for the first-person forearms.
+function sleeveTex(color, kind) {
+  const R = rng(23), S = 256;
+  const [c, g] = cnv(S);
+  g.fillStyle = color; g.fillRect(0, 0, S, S);
+  if (kind === 'sherpa') {
+    for (let i = 0; i < 2600; i++) { g.fillStyle = R() < 0.5 ? 'rgba(255,250,235,0.18)' : 'rgba(90,70,40,0.16)'; g.beginPath(); g.arc(R() * S, R() * S, 1.5 + R() * 2.5, 0, 7); g.fill(); }
+  } else {
+    for (let i = 0; i < 6000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.06)'; g.fillRect(R() * S, R() * S, 1, 2); }
+    // a few creases
+    g.strokeStyle = kind === 'zip' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.15)'; g.lineWidth = 2;
+    for (let i = 0; i < 9; i++) { const y = R() * S; g.beginPath(); g.moveTo(0, y); g.quadraticCurveTo(S / 2, y + (R() - 0.5) * 30, S, y + (R() - 0.5) * 10); g.stroke(); }
+    if (kind === 'suit') { g.fillStyle = '#ecebe6'; g.fillRect(0, 0, S, 16); }   // shirt cuff at the wrist
+  }
+  return ctex(c);
+}
+
+const armLookCache = new Map();
+// The chosen character's first-person arms: their skin, and their sleeves if
+// they wear long ones. look = { skin: [r,g,b], sleeve: null | { color, kind } }
+export function setArmLook(look) {
+  const m = gunMaterials();
+  const key = look.skin.join(',') + '|' + (look.sleeve ? look.sleeve.color + look.sleeve.kind : 'bare');
+  let maps = armLookCache.get(key);
+  if (!maps) {
+    const skin = armSkin(look.skin);
+    maps = { skin, sleeve: look.sleeve ? sleeveTex(look.sleeve.color, look.sleeve.kind) : skin };
+    armLookCache.set(key, maps);
+  }
+  m.skin.map = maps.skin; m.glove.map = maps.skin; m.glove.bumpMap = maps.skin;
+  m.sleeve.map = maps.sleeve;
+  m.sleeve.roughness = look.sleeve ? (look.sleeve.kind === 'zip' ? 0.55 : 0.9) : 0.62;
+  for (const k of ['skin', 'glove', 'sleeve']) m[k].needsUpdate = true;
+}
+
 // Forearm skin with a little hair and veins.
-function armSkin() {
+function armSkin(rgb = [176, 128, 100]) {
   const R = rng(17), S = 256;
   const [c, g] = cnv(S);
-  g.fillStyle = 'rgb(176,128,100)'; g.fillRect(0, 0, S, S);
+  g.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`; g.fillRect(0, 0, S, S);
   for (let i = 0; i < 30; i++) {
     const x = R() * S, y = R() * S, r = 10 + R() * 30;
     const grd = g.createRadialGradient(x, y, 0, x, y, r);
@@ -1087,7 +1122,7 @@ function watchGeometry() {
 
 function forearm(m, from, dir) {
   const H = hands();
-  const mesh = new THREE.Mesh(H.forearm, m.skin);
+  const mesh = new THREE.Mesh(H.forearm, m.sleeve);
   const d = new THREE.Vector3(...dir).normalize();
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d);
   mesh.position.set(...from);

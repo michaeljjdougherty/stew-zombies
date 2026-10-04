@@ -29,11 +29,14 @@ import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/gly
 import { MenuNav } from './ui/menunav.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
-import { SHIRT_COLORS } from './render/characters.js';
+import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
 
 const LOCAL_ID = 'p1';
 const canvas = document.getElementById('game');
 const settings = loadSettings();
+
+// Notes found, the Stew song, the quest (and Brian), remembered in this browser.
+const progress = loadProgress();
 
 let sim = makeSim('zombies');
 let player = sim.playerById(LOCAL_ID);
@@ -56,9 +59,8 @@ sound.localId = LOCAL_ID;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
 hud.localId = LOCAL_ID;
+hud.localName = CHARACTERS[playableCharacter()].name;
 
-// Notes found and the Stew song unlock, remembered in this browser.
-const progress = loadProgress();
 hud.onNoteRead = (id) => {
   if (!progress.notes.includes(id)) { progress.notes.push(id); saveProgress(progress); }
 };
@@ -94,9 +96,16 @@ let dyingT = 0;
 let endingAt = null;          // when the ending cutscene starts (after Erik's booth goes)
 const cutsceneUI = new CutsceneUI();
 
+// Who you're playing (Brian only once The Final Whistle is done).
+function playableCharacter() {
+  const id = settings.character;
+  const ok = CHARACTERS[id] && (CHARACTERS[id].playable || (CHARACTERS[id].unlock === 'quest' && progress.questDone));
+  return ok ? id : 'kearns';
+}
+
 function makeSim(gameMode) {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(LOCAL_ID, 'Stew');
+  s.addPlayer(LOCAL_ID, 'Stew', { character: playableCharacter() });
   return s;
 }
 
@@ -123,7 +132,14 @@ const menus = new Menus(settings, {
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
-  done: (s) => { saveSettings(s); renderer.showcase.hide(); renderer.setCharacter(s.character, s.shirt); mode = 'title'; menus.show('title'); },
+  questDone: () => !!progress.questDone,
+  done: (s) => {
+    saveSettings(s); renderer.showcase.hide();
+    renderer.setCharacter(playableCharacter(), s.shirt);
+    hud.localName = CHARACTERS[playableCharacter()].name;
+    if (sim.mode === 'zombies') restart('zombies');   // the next game starts as them
+    mode = 'title'; menus.show('title');
+  },
   back: () => { renderer.showcase.hide(); mode = 'title'; menus.show('title'); },
   lineup: () => { renderer.showcase.hide(); mode = 'lineup'; menus.show('lineup'); lineupUI.open(); },
 });
@@ -154,7 +170,7 @@ const firstGesture = () => {
 window.addEventListener('pointerdown', firstGesture);
 window.addEventListener('keydown', firstGesture);
 applySettings(settings);
-renderer.setCharacter(settings.character, settings.shirt);
+renderer.setCharacter(playableCharacter(), settings.shirt);
 menus.show('title');
 
 function startPlaying() {
@@ -215,8 +231,9 @@ function finishEnding() {
   }
   mode = 'over';
   input.enabled = false;
-  if (!progress.questDone) { progress.questDone = true; saveProgress(progress); }
-  menus.showVictory(sim.rounds.round, player);
+  const firstTime = !progress.questDone;
+  if (firstTime) { progress.questDone = true; saveProgress(progress); }
+  menus.showVictory(sim.rounds.round, player, firstTime);
   startTitleMusic();
 }
 
@@ -347,8 +364,8 @@ function refreshGlyphs() {
   $id('keys-list').innerHTML = controlsList(device);
   const pad = device !== 'kbm';
   $id('cs-hint').innerHTML = pad
-    ? `${glyph('rotate')} turns him around · ${glyph('prev')}${glyph('next')} T-shirt colour. More of Stew to come.`
-    : 'Drag to turn him around. More of Stew to come.';
+    ? `${glyph('rotate')} turns him around · ${glyph('prev')}${glyph('next')} T-shirt colour. Brian unlocks when you finish The Final Whistle.`
+    : 'Drag to turn him around. Brian unlocks when you finish The Final Whistle.';
   lineupUI.hint = pad
     ? `${glyph('rotate')} turns them · ${glyph('prev')}${glyph('next')} picks someone to look at closer`
     : 'Drag to turn them around. Pick someone to take a closer look.';

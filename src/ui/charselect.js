@@ -13,20 +13,16 @@ export class CharSelect {
     this.pick = settings.character || 'kearns';
     this.shirt = settings.shirt || 'sage';
     const list = $('cs-list');
+    this.cards = [];
     for (const [id, c] of Object.entries(CHARACTERS)) {
-      if (!c.playable) continue;
+      if (!c.playable && !c.unlock) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'cs-card'; b.setAttribute('role', 'option'); b.dataset.id = id;
       b.innerHTML = '<b></b><span>Stew</span>';
       b.querySelector('b').textContent = c.name;
-      b.addEventListener('click', () => { this.pick = id; this.refresh(); });
+      b.addEventListener('click', () => { if (this.unlocked(id)) { this.pick = id; this.refresh(); } });
       list.appendChild(b);
-    }
-    // the rest of Stew are on their way
-    for (const n of ['???', '???', '???']) {
-      const b = document.createElement('div');
-      b.className = 'cs-card locked'; b.innerHTML = `<b>${n}</b><span>Coming soon</span>`;
-      list.appendChild(b);
+      this.cards.push(b);
     }
     const sw = $('cs-swatches');
     for (const [id, s] of Object.entries(SHIRT_COLORS)) {
@@ -44,8 +40,21 @@ export class CharSelect {
     $('btn-cs-lineup').addEventListener('click', () => this.h.lineup());
   }
 
+  unlocked(id) {
+    const c = CHARACTERS[id];
+    return !!(c && (c.playable || (c.unlock === 'quest' && this.h.questDone && this.h.questDone())));
+  }
+
   open() {
+    // Brian: locked until you've finished The Final Whistle
+    for (const b of this.cards) {
+      const id = b.dataset.id, ok = this.unlocked(id);
+      b.classList.toggle('locked', !ok);
+      b.querySelector('b').textContent = ok ? CHARACTERS[id].name : '???';
+      b.querySelector('span').textContent = ok ? 'Stew' : 'Finish The Final Whistle';
+    }
     this.pick = this.settings.character || 'kearns';
+    if (!this.unlocked(this.pick)) this.pick = 'kearns';
     this.shirt = this.settings.shirt || 'sage';
     this.refresh();
   }
@@ -55,6 +64,9 @@ export class CharSelect {
     $('cs-name').textContent = c.name;
     $('cs-blurb').textContent = c.blurb;
     $('btn-cs-select').textContent = `Play as ${c.name}`;
+    // only Kearns's T-shirt changes colour
+    const sh = $('cs-swatches').parentElement;
+    if (sh) sh.hidden = c.top.color !== 'shirt';
     for (const b of $('cs-list').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.id === this.pick));
     for (const b of $('cs-swatches').querySelectorAll('button')) b.setAttribute('aria-checked', String(b.dataset.id === this.shirt));
     this.h.preview(this.pick, this.shirt);

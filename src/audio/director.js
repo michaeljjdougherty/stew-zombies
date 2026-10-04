@@ -6,6 +6,7 @@ import * as S from './sfx.js';
 import { StewSong } from './music.js';
 import { GUN_VOICES, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
+import { CREW } from '../lore/crew.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -383,6 +384,12 @@ export class SoundDirector {
         this.talkUntil = A.now() + e.lead + e.dur;
         break;
       case 'stewSays': A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 }); this.talkUntil = A.now() + e.dur; break;
+      case 'crewSays': {
+        const v = (CREW[e.who] && CREW[e.who].voice) || {};
+        A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio: e.radio }, { bus: 'voice', reverb: e.radio ? 0.05 : 0.15, gain: e.radio ? 0.8 : 0.9 });
+        this.talkUntil = A.now() + e.dur;
+        break;
+      }
       case 'loreRead': if (local) A.play(S.paperRustle, {}, { gain: 0.8, reverb: 0.05 }); break;
       case 'stewItem': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.3, bus: 'music' }); break;
       case 'stewSong':

@@ -69,7 +69,7 @@ const said = (log, cat) => log.filter((e) => e.type === 'erikSays' && (!cat || e
 // --- 3. Power, milestones, game over
 {
   const { sim, log, step } = game(9);
-  step({}, 60 * 8); // let the intro play out
+  step({}, 60 * 75); // let the intro (Erik, then the crew on the walkies) play out
   sim.turnOnPower(sim.players[0]);
   step({}, 60 * 12);
   check(said(log, 'power').length === 1, 'Erik complains when the power comes on');

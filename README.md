@@ -55,9 +55,20 @@ hear (models, textures, sounds) is generated in code. The only library is
   hands together). Main menu → Characters → *See the whole crew* opens the
   lineup: drag to turn them, pick a name to fly over, Face to zoom in.
 - **Characters:** a character select screen (main menu → Characters) with
-  the model on a turntable under a spotlight (drag to spin). First playable
-  character: **Kearns**, with four T-shirt colours. Built in
+  the model on a turntable under a spotlight (drag to spin). Playable at
+  launch: **Kearns**, **Ryan**, **Pit** and **Rocco** (Kearns keeps his four
+  T-shirt colours). **Brian** unlocks once you finish The Final Whistle. Your
+  first-person arms take your character's skin and sleeves. Built in
   `src/render/characters.js`.
+- **The crew talks:** the four carry walkie-talkies. Whoever you play talks
+  out loud; the others answer on the radio (crackle, chirps, a tinny voice),
+  and Erik cuts in on the PA. They hold conversations at story moments (the
+  radio check and Pit showing up after his suspension, the power, the trophy
+  and his diss track, Ryan finding his machine was taken for the gun upgrades,
+  the ritual, the boss), react while you play (going down, revives, kills, box
+  pulls, perks, dry fire), banter between rounds (Kearns' iPad mini, Rocco's
+  2K, Maisy dog, Kearnita), and Erik roasts whoever you're playing. Lines live
+  in `src/lore/crew.js`; the director is `src/sim/crew.js`.
 - **Hands, faces, animation:** the crew's hands are rigged (`src/render/hands.js`):
   a palm with thumb and pinky pads, three-bone fingers with knuckles and nails,
   and a thumb, posed as relaxed, open, fist, point, peace, thumbs up, finger

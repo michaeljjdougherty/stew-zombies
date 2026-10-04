@@ -280,6 +280,7 @@ export const SKIN = {
   tanWarm: { base: [212, 164, 126], shade: [160, 112, 82], blush: [206, 116, 92] },
   flushed: { base: [230, 178, 154], shade: [180, 120, 100], blush: [228, 108, 100] },
   fairPink: { base: [240, 196, 180], shade: [192, 138, 124], blush: [236, 120, 118] },
+  ivory: { base: [230, 196, 162], shade: [180, 140, 108], blush: [214, 132, 110] },
   zombie: { base: [146, 150, 124], shade: [92, 96, 74], blush: [120, 74, 66] },
   zombieGrey: { base: [158, 152, 140], shade: [100, 94, 86], blush: [110, 70, 64] },
 };

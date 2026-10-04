@@ -25,6 +25,7 @@ import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } f
 import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
 import { createQuest, questInteractables, questOnEvent, updateQuest, questTargets } from './quest.js';
+import { createCrew } from './crew.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -70,6 +71,7 @@ export class GameSim {
       ...questInteractables(this),
     ];
     this.pa = createPA(this);
+    this.crew = map.quest ? createCrew() : null;   // the crew's walkie-talkies (the school)
     this.stewEgg = createStewEgg();
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);
@@ -81,9 +83,10 @@ export class GameSim {
   }
 
   // --- players --------------------------------------------------------------
-  addPlayer(id, name) {
+  addPlayer(id, name, { character = 'kearns' } = {}) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
+    p.character = character;   // who they're playing: what they say, what Erik calls them
     if (this.mode === 'explore') p.points = this.cfg.explore.points;
     p.region = this.nav.regionAt(p.pos);
     this.players.push(p);

@@ -1570,3 +1570,32 @@ export function spaceWind(A, out, t, p = {}) {
   n.connect(bp); bp.connect(g); g.connect(out);
   return dur;
 }
+
+// One of the crew talking: out loud, or squashed through a walkie-talkie with a
+// chirp at each end and a bed of static.
+export function crewVoice(A, out, t, p = {}) {
+  const dur = p.dur || 2;
+  if (!p.radio) {
+    const lp = A.filter('lowpass', 5000, 0.7);
+    const boost = A.gain(2.6);
+    lp.connect(boost); boost.connect(out);
+    babble(A, lp, t, { text: p.text || '', dur, f0: p.f0 || 115, grit: p.grit ?? 0.3, peak: 0.6 });
+    return dur + 0.3;
+  }
+  const t0 = t + 0.12;
+  // chirp in
+  const c1 = A.osc('square', 1650, t, 0.07); const cg = A.gain(0); A.env(cg, t, 0.002, 0.06, 0.12); c1.connect(cg); cg.connect(out);
+  const hp = A.filter('highpass', 420, 0.7), bp = A.filter('lowpass', 2900, 0.9);
+  const drive = A.shaper(0.55), boost = A.gain(2.4);
+  hp.connect(bp); bp.connect(drive); drive.connect(boost); boost.connect(out);
+  babble(A, hp, t0, { text: p.text || '', dur, f0: p.f0 || 115, grit: p.grit ?? 0.3, peak: 0.6 });
+  // static under it
+  const n = A.noiseSource('white', t, dur + 0.3);
+  const nf = A.filter('bandpass', 2200, 0.6), ng = A.gain(0);
+  A.env(ng, t, 0.02, 0.2, 0.035, 0, dur);
+  n.connect(nf); nf.connect(ng); ng.connect(out);
+  // chirp out
+  const te = t0 + dur + 0.05;
+  const c2 = A.osc('square', 1250, te, 0.08); const cg2 = A.gain(0); A.env(cg2, te, 0.002, 0.07, 0.1); c2.connect(cg2); cg2.connect(out);
+  return dur + 0.4;
+}

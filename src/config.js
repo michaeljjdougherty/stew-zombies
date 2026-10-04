@@ -966,6 +966,11 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   // "The Final Whistle" (the main quest on the school)
   // ---------------------------------------------------------------------------
+  // the crew's chatter (src/sim/crew.js)
+  crew: {
+    reactCooldown: 9,     // s between one player's reactions
+  },
+
   quest: {
     statueSouls: 16,      // kills near the mascot statue to wake it
     statueRadius: 8,      // m from the statue a kill has to be

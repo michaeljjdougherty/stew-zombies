@@ -7,15 +7,19 @@
 // =============================================================================
 import { RNG } from '../core/rng.js';
 import { PA_LINES, INTERCOM, INTERCOM_REPEAT, lineDuration } from '../lore/erik.js';
+import { CREW, ERIK_ROASTS, ROAST_CHANCE } from '../lore/crew.js';
+import { crewOnEvent } from './crew.js';
 
 // Higher = more important. Important lines queue; optional ones are dropped
 // if Erik is busy or cooling down.
 const PRIORITY = {
-  gameOver: 5, song: 5, songEnd: 4, intercom: 4, intro: 4, milestone: 3, cheddar: 3,
+  gameOver: 5, song: 5, songEnd: 4, intercom: 5, intro: 4, milestone: 3, cheddar: 3,
   power: 2, cheddarEnd: 2, down: 2, boxMoved: 1, madDog: 1, revived: 1, pressureCooker: 1,
   round: 0, roundEnd: 0, idle: 0,
   breaker: 2, breakersDone: 3, trophyPiece: 1, trophyPlaced: 3, statueFed: 2, coin: 3, cladding: 4,
   ritualStart: 3, ritualDone: 3, bossStart: 4, bossPhase2: 4, bossEnd: 5,
+  // the crew (src/sim/crew.js)
+  talk: 4, talkErik: 4, react: 3, radio: 3,
 };
 
 export function createPA(sim) {
@@ -48,11 +52,17 @@ function pickLine(pa, cat, list) {
 }
 
 // Ask Erik to say a line from category `cat` (or a specific `text`).
-export function paSay(sim, cat, { text = null, delay = 0, force = false } = {}) {
+export function paSay(sim, cat, { text = null, delay = 0, force = false, who = 'erik', radio = false, roastTarget = null } = {}) {
   const pa = sim.pa;
   if (!pa.enabled) return false;
   const pri = PRIORITY[cat] ?? 0;
   if (sim.stewEgg && sim.stewEgg.playing && pri < 5) return false;  // nobody talks over the song
+  // now and then Erik picks on whoever you're playing instead
+  if (!text && (cat === 'round' || cat === 'roundEnd' || cat === 'idle' || cat === 'down') && sim.players.length && pa.rng.chance(ROAST_CHANCE)) {
+    const target = (cat === 'down' && roastTarget) || sim.players[Math.floor(pa.rng.next() * sim.players.length)];
+    const ch = target.character;
+    if (ERIK_ROASTS[ch]) text = pickLine(pa, 'roast_' + ch, ERIK_ROASTS[ch]);
+  }
   if (!text) {
     const list = PA_LINES[cat];
     if (!list || !list.length) return false;
@@ -63,7 +73,7 @@ export function paSay(sim, cat, { text = null, delay = 0, force = false } = {}) 
   if (!force && pri === 0 && (busy || cooling)) return false;
   if (!force && pri === 1 && busy) return false;
   if (pa.queue.length >= 3 && pri < 4) return false;
-  pa.queue.push({ cat, text, at: sim.time + delay, pri });
+  pa.queue.push({ cat, text, at: sim.time + delay, pri, who, radio });
   pa.queue.sort((a, b) => b.pri - a.pri || a.at - b.at);
   return true;
 }
@@ -96,7 +106,7 @@ function onEvent(sim, e) {
   const pa = sim.pa, c = sim.cfg.pa;
   switch (e.type) {
     case 'roundStart':
-      if (e.round === 1) paSay(sim, 'intro', { delay: c.introDelay });
+      if (e.round === 1) paSay(sim, 'intro', { delay: c.introDelay });   // then the crew check in (crew.js)
       else if (PA_LINES.milestone[e.round]) paSay(sim, 'milestone', { text: PA_LINES.milestone[e.round], delay: 1.5 });
       else if (e.cheddar) paSay(sim, 'cheddar', { delay: 0.6 });
       else if (chance(sim, 'round')) paSay(sim, 'round', { delay: 2 });
@@ -111,7 +121,7 @@ function onEvent(sim, e) {
       if (!pa.madDogSeen || chance(sim, 'madDog')) paSay(sim, 'madDog', { delay: 0.8 });
       pa.madDogSeen = true;
       break;
-    case 'playerDown': if (!e.final && chance(sim, 'down')) paSay(sim, 'down', { delay: 0.8 }); break;
+    case 'playerDown': if (!e.final && chance(sim, 'down')) paSay(sim, 'down', { delay: 0.8, roastTarget: sim.players.find((p) => p.id === e.playerId) }); break;
     case 'playerRevived': if (chance(sim, 'revived')) paSay(sim, 'revived', { delay: 0.6 }); break;
     case 'zombieKilled': {
       pa.kills.push(sim.time);
@@ -128,15 +138,25 @@ function onEvent(sim, e) {
       break;
     }
   }
+  if (sim.crew) crewOnEvent(sim, e);
 }
 
 // Lines over the PA start with the school chime; live intercom replies and
 // his reaction to the song don't.
 export const CHIME_TIME = 1.0;
-function speak(sim, cat, text) {
+function speak(sim, cat, text, who = 'erik', radio = false) {
   const pa = sim.pa;
+  if (who !== 'erik') {
+    // one of the crew, live or over a walkie
+    const v = CREW[who] ? CREW[who].voice : { rate: 1 };
+    const dur = lineDuration(text) / (v.rate || 1);
+    pa.speaking = { cat, text, until: sim.time + dur + (radio ? 0.25 : 0), who };
+    pa.lines++;
+    sim.emit('crewSays', { who, text, dur, radio, cat, n: pa.lines });
+    return;
+  }
   const dur = lineDuration(text);
-  const lead = cat === 'intercom' || cat === 'song' || cat === 'songEnd' ? 0 : CHIME_TIME;
+  const lead = cat === 'intercom' || cat === 'song' || cat === 'songEnd' || cat === 'talkErik' ? 0 : CHIME_TIME;
   pa.speaking = { cat, text, until: sim.time + lead + dur };
   pa.lines++;
   sim.emit('erikSays', { cat, text, dur, lead, n: pa.lines });
@@ -159,7 +179,7 @@ export function updatePA(sim, dt) {
     const i = pa.queue.findIndex((q) => q.at <= sim.time);
     if (i >= 0) {
       const q = pa.queue.splice(i, 1)[0];
-      if (!(sim.stewEgg && sim.stewEgg.playing && q.pri < 5)) speak(sim, q.cat, q.text);
+      if (!(sim.stewEgg && sim.stewEgg.playing && q.pri < 5)) speak(sim, q.cat, q.text, q.who, q.radio);
     }
   }
   // the odd random barb when he's been quiet a while (only once the game is going)
