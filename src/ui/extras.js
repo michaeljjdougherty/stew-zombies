@@ -25,6 +25,8 @@ export class Extras {
     this.panel.innerHTML = this[tab]();
     this.panel.scrollTop = 0;
     if (tab === 'jukebox') this.bindJukebox();
+    const eb = $('x-ending');
+    if (eb) eb.addEventListener('click', () => this.h.watchEnding());
   }
 
   story() {
@@ -36,7 +38,10 @@ export class Extras {
       <p>Moments before the championship tipped off, Erik struck. He stripped every Stew Leonard of their basketball talent and unleashed a horde of the undead on the gym and the campus around it.</p>
       <p>Trapped inside, the team has to fight through the horde, follow Erik's taunting voice over the intercom, take back what he stole, and expose him in the <b>Press Box</b> above the gym.</p>
       <h4>Erik on the PA</h4>
-      <p>He'll talk to you the whole night. There's a PA handset in the teachers' lounge if you want to talk back.</p>`;
+      <p>He'll talk to you the whole night. There's a PA handset in the teachers' lounge if you want to talk back.</p>
+      <h4>The ending</h4>
+      <p>Spoilers: this plays the "Out of Bounds" cutscene from the end of The Final Whistle.</p>
+      <p><button class="sm" id="x-ending" type="button">Watch the ending</button></p>`;
   }
 
   notes() {

@@ -133,6 +133,7 @@ const lineupUI = new LineupUI({
 });
 const extras = new Extras(CONFIG, {
   progress: () => progress,
+  watchEnding: () => watchEnding(),
   playSong: () => { audio.init(); audio.applyVolumes(); titleMusic.stop(0.6); jukebox.start('music', 0.75); },
   stopSong: () => { jukebox.stop(0.5); startTitleMusic(); },
   songLyric: () => jukebox.lyric(),
@@ -185,9 +186,33 @@ function startEnding() {
   cutsceneUI.show(`${glyph('skip')} skip`);
 }
 
+// From Extras: play the ending on its own, then back to the title.
+let watchingEnding = false;
+function watchEnding() {
+  audio.init(); audio.applyVolumes();
+  titleMusic.stop(0.6);
+  if (jukebox.playing) jukebox.stop(0.3);
+  restart('zombies');
+  const q = sim.quest;
+  if (q) { q.coin = 'placed'; q.cladding = 1; q.erikRevealed = true; q.step = 'ending'; }
+  sim.power = true;
+  renderer.map.powerOn(true);
+  menus.hideAll();
+  watchingEnding = true;
+  startEnding();
+}
+
 function finishEnding() {
   renderer.endEnding();
   cutsceneUI.hide();
+  if (watchingEnding) {
+    watchingEnding = false;
+    restart('zombies');
+    mode = 'title';
+    menus.show('title');
+    startTitleMusic();
+    return;
+  }
   mode = 'over';
   input.enabled = false;
   if (!progress.questDone) { progress.questDone = true; saveProgress(progress); }
