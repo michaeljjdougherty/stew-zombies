@@ -111,7 +111,7 @@ export class Extras {
   credits() {
     return `<h3>Credits</h3>
       <p><b>Stew Zombies</b> — made for Stew.</p>
-      <p>Built with three.js and the Web Audio API. Every model, song and most sound effects are generated in code at load time, and so are the painted textures.</p>
+      <p>Built with three.js and the Web Audio API. The crew, the school, the guns, every song and most sound effects are generated in code at load time, and so are the painted textures.</p>
       <p>Photo surfaces (brick, cinder block, tile, terrazzo, wood floors, carpet, concrete, ceiling tiles, grass): scanned materials from <b>ambientCG</b> by Lennart Demes, released to the public domain (CC0).</p>
       <p>Zombie characters and animations: <b>Mixamo</b> (Adobe), including Zombiegirl by W. Kurniawan, Yaku by J. Ignite and Copzombie by L. Actisdato. The ordinary-looking ones were zombified for the game.</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
