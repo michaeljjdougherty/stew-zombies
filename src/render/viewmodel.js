@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { buildGun, gunMaterials, animateCamo, setArmLook } from './gunModels.js';
+import { realGunMaterials, setFpClip, buildGun, gunMaterials, animateCamo, setArmLook } from './gunModels.js';
 import { CHARACTERS } from './characters.js';
 import { SKIN } from './human.js';
 
@@ -298,6 +298,7 @@ export class Viewmodel {
     const M = pair.R;
     const dual = !!def.dual;
     const ads = aim ? aim.ads : w.adsAmount;
+    this.adsNow = ads;
     const small = def.class === 'pistol';
 
     this.sprintBlend = lerp(this.sprintBlend, p.sprinting ? 1 : 0, 1 - Math.exp(-dt * 10));
@@ -549,6 +550,8 @@ export class Viewmodel {
     this.hemi.intensity = 0.5 + this.envLevel * 1.0;
     this.key.intensity = 0.4 + this.envLevel * 1.4;
     if (this.envMats) for (const m of this.envMats) m.envMapIntensity = 0.12 + this.envLevel * 0.35;
+    for (const m of realGunMaterials) m.envMapIntensity = 0.15 + this.envLevel * 0.55;
+    setFpClip(this.adsNow || 0);
   }
 
   muzzleWorldPosition(camera, out, side = 'R') {

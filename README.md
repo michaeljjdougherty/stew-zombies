@@ -311,13 +311,48 @@ older procedural zombies stand in).
   people (Remy and three Mixamo regulars) zombified for the game: grey-green
   dead skin, bruises and veins, dirty clothes, blood, sunken eyes and a
   bloody mouth. Every zombie's eyes glow green.
-- Animations: walk, run, sprint and crawl (played at the speed the zombie is
-  actually moving), idle, attacking, punching at the window boards, two hit
+- Animations: two walks (each zombie keeps one), run, sprint and crawl
+  (played at the speed the zombie is actually moving), idle, attacking,
+  reaching through the window boards (some punch at them instead), two hit
   flinches (upper body only), and five deaths picked by where the shot came
   from (shot in the face, they go over backwards; from behind, they pitch
   forwards; explosions throw them).
 - Limbs still come off: arms at the elbow, heads, and legs (the zombie keeps
   coming on its hands).
+
+## Guns (models)
+
+Most guns use downloaded Sketchfab models (credits in Extras), shrunk by
+`tools/guns/convert_gun.py` into `assets/guns/` (about 30 MB in all, each
+loaded the first time that gun is shown). Every gun is still built in code
+first: that version decides where the hands, muzzle and sights go and is what
+you see until the model arrives. `REAL_GUNS` in `src/render/gunModels.js`
+says which file each gun uses, which way it has to be turned, and which parts
+of the download to leave out (spare magazines, loose rounds). The PM64,
+Galill and G12 have no model yet.
+
+## The Cheddars (hounds)
+
+The hounds are a skinless beast model, recolored cheddar yellow, thinned out
+and rigged by `tools/cheddar/build_hound.py` into `assets/cheddar/` (about
+1.4 MB). The rig (body, neck, head, jaw, four legs, a four-bone tail) is
+driven in code: a gallop matched to their speed, a lunge and a snapping jaw.
+Every few seconds the nearest one asks you if you wanna play 2K.
+
+## Clearance Sale, the cauldron, and getting back up
+
+- **Clearance Sale** (the fire sale): while it lasts a Mystery Box drops in
+  at every box spot, all at 10 points. When it ends they finish any pull in
+  progress and vanish.
+- **The boiler room cauldron**: a vat of stew bubbling over a fire, fed by
+  pipes from the boiler. Shoot the three red valves open (one on the feed
+  pipe, one on the pipe bank, one up in the corner by the door) and it boils
+  over: 1000 points for everyone and a Double Dough.
+- Picked back up by a teammate (or Second Helping): 3 seconds where nothing
+  can hurt you (`lastStand.reviveInvuln`).
+- One hit from going down, the edges of the screen throb red.
+- If the browser is still holding the sound back (after a refresh, or if you
+  only touched a controller), a note at the top says to click or press a key.
 
 ## Play online
 

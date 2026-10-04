@@ -137,6 +137,7 @@ export class BoxInteractable {
     this.pos = { x: s.x, y: 0.8, z: s.z };
     this.stand = { x: s.x + this.facing.x * 1.0, z: s.z + this.facing.z * 1.0 };
   }
+  emit(sim, type, e = {}) { sim.emit(type, { ...e, boxId: this.id }); }
   get range() { return 1.5; }
   distanceTo(sim, p) { return flatDist(p, this.stand); }
   canUse(sim, p) {
@@ -176,12 +177,12 @@ export class BoxInteractable {
       this.uses++;
       this.totalUses++;
       this.weapon = this.uses >= this.moveAt && this.canMove(sim) ? 'bobble' : this.pick(sim, p);
-      sim.emit('boxOpen', { playerId: p.id, spot: this.spot.id, weapon: this.weapon, spinTime: this.timer });
+      this.emit(sim, 'boxOpen', { playerId: p.id, spot: this.spot.id, weapon: this.weapon, spinTime: this.timer });
     } else if (this.phase === 'offering' && p.id === this.buyerId) {
       if (this.weapon === 'stewBomb') {
         p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase;
       } else giveWeapon(sim, p, this.weapon);
-      sim.emit('boxTaken', { playerId: p.id, weapon: this.weapon });
+      this.emit(sim, 'boxTaken', { playerId: p.id, weapon: this.weapon });
       this.phase = 'closing';
       this.timer = sim.cfg.box.closeTime;
     }
@@ -205,21 +206,21 @@ export class BoxInteractable {
         if (p) { p.points += this.paid; sim.emit('points', { playerId: p.id, amount: this.paid, reason: 'refund', total: p.points }); }
         this.phase = 'leaving';
         this.timer = b.leaveTime;
-        sim.emit('boxBobble', { playerId: this.buyerId, spot: this.spot.id });
+        this.emit(sim, 'boxBobble', { playerId: this.buyerId, spot: this.spot.id });
         return;
       }
       this.phase = 'offering';
       this.timer = b.offerTime;
-      sim.emit('boxLanded', { weapon: this.weapon, playerId: this.buyerId });
+      this.emit(sim, 'boxLanded', { weapon: this.weapon, playerId: this.buyerId });
     } else if (this.phase === 'offering') {
       this.phase = 'closing';
       this.timer = b.closeTime;
-      sim.emit('boxExpired', { weapon: this.weapon });
+      this.emit(sim, 'boxExpired', { weapon: this.weapon });
     } else if (this.phase === 'closing') {
       this.phase = 'idle';
       this.weapon = null;
       this.buyerId = null;
-      sim.emit('boxClosed', {});
+      this.emit(sim, 'boxClosed', {});
     } else if (this.phase === 'leaving') {
       const others = sim.world.boxSpots.filter((s) => s !== this.spot);
       const from = this.spot.id;
@@ -230,10 +231,57 @@ export class BoxInteractable {
       this.timer = b.arriveTime;
       this.weapon = null;
       this.buyerId = null;
-      sim.emit('boxMoved', { from, to: this.spot.id, room: this.spot.room });
+      this.emit(sim, 'boxMoved', { from, to: this.spot.id, room: this.spot.room });
     } else if (this.phase === 'arriving') {
       this.phase = 'idle';
-      sim.emit('boxArrived', { spot: this.spot.id });
+      this.emit(sim, 'boxArrived', { spot: this.spot.id });
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Clearance Sale: while it lasts, a box drops in at every other box spot too.
+// They never fly off on a bobblehead; when the sale ends each one finishes any
+// pull in progress, then vanishes.
+export class SaleBox extends BoxInteractable {
+  constructor(sim, spot) {
+    super(sim);
+    this.id = 'use_box_' + spot.id;
+    this.sale = true;
+    this.spot = spot;
+    this.place();
+    this.phase = 'gone';    // gone | arriving | idle | spinning | offering | closing | vanishing
+    this.present = false;
+  }
+  canUse(sim, p) { return this.phase !== 'gone' && this.phase !== 'vanishing' && super.canUse(sim, p); }
+  canMove() { return false; }
+  // the box's base is solid only while it's there
+  setPresent(sim, on) {
+    if (on === this.present) return;
+    this.present = on;
+    const W = sim.world;
+    if (on) W.solids.push(this.spot.collider); else W.solids = W.solids.filter((b) => b !== this.spot.collider);
+  }
+  update(sim, dt) {
+    const sale = powerupActive(sim, 'clearanceSale');
+    if (this.phase === 'gone') {
+      if (sale && sim.box.spot !== this.spot) {
+        this.phase = 'arriving'; this.timer = sim.cfg.box.arriveTime; this.uses = 0;
+        this.setPresent(sim, true);
+        this.emit(sim, 'saleBoxArrive', { spot: this.spot.id });
+      }
+      return;
+    }
+    if (this.phase === 'vanishing') {
+      this.timer -= dt;
+      if (this.timer <= 0) { this.phase = 'gone'; this.setPresent(sim, false); this.emit(sim, 'saleBoxGone', { spot: this.spot.id }); }
+      return;
+    }
+    if ((!sale || sim.box.spot === this.spot) && this.phase === 'idle') {
+      this.phase = 'vanishing'; this.timer = 1.1;
+      this.emit(sim, 'saleBoxVanish', { spot: this.spot.id });
+      return;
+    }
+    super.update(sim, dt);
   }
 }

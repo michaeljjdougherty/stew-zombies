@@ -209,15 +209,15 @@ export class SoundDirector {
         break;
       }
       case 'boxOpen': {
-        const b = sim.box.pos;
+        const b = sim.boxById(e.boxId).pos;
         if (local) A.play(S.purchase, {}, { gain: 0.7, reverb: 0.15 });
         A.play(S.boxOpen, {}, { pos: b, ref: 3 });
         A.play(S.musicBox, { duration: e.spinTime }, { pos: b, ref: 3, gain: 0.9, reverb: 0.5 });
         break;
       }
-      case 'boxLanded': A.play(S.boxLand, {}, { pos: sim.box.pos, ref: 3, reverb: 0.5 }); break;
+      case 'boxLanded': A.play(S.boxLand, {}, { pos: sim.boxById(e.boxId).pos, ref: 3, reverb: 0.5 }); break;
       case 'boxTaken': if (local) A.play(S.boxTake, {}, { gain: 0.9, reverb: 0.05 }); break;
-      case 'boxExpired': A.play(S.boxShut, {}, { pos: sim.box.pos, ref: 3 }); break;
+      case 'boxExpired': A.play(S.boxShut, {}, { pos: sim.boxById(e.boxId).pos, ref: 3 }); break;
       case 'melee': if (local) A.play(S.knifeSwing, {}, { gain: 0.8, reverb: 0.05 }); break;
       case 'meleeHit': A.play(S.knifeHit, {}, local ? { gain: 1, reverb: 0.1 } : { pos: zpos(e.zombieId, 1.2) }); break;
       case 'zombieHit': {
@@ -337,12 +337,17 @@ export class SoundDirector {
         break;
       }
       case 'boxBobble': {
-        const b = sim.box.pos;
+        const b = sim.boxById(e.boxId).pos;
         A.play(S.erikLaugh, {}, { pos: b, ref: 4, reverb: 0.5, gain: 1.1, delay: 0.2 });
         A.play(S.boxWhoosh, {}, { pos: b, ref: 5, reverb: 0.5, delay: this.cfg.box.leaveTime * 0.4 });
         break;
       }
-      case 'boxMoved': A.play(S.boxThud, {}, { pos: sim.box.pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;
+      case 'valveTurned': A.play(S.steamHiss, { dur: 2.2 }, { pos: e.pos, ref: 3, reverb: 0.5, gain: 0.9 }); break;
+      case 'cauldronBoil': A.play(S.cauldronBoil, {}, { pos: e.pos, ref: 5, reverb: 0.6, gain: 1.1 }); break;
+      case 'cheddarTalk': A.play(S.cheddarVoice, { text: e.text, dur: e.dur }, { pos: e.pos, ref: 4, rolloff: 1.2, reverb: 0.35, bus: 'voice', gain: 1.1 }); break;
+      case 'saleBoxArrive': A.play(S.boxThud, {}, { pos: sim.boxById(e.boxId).pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;
+      case 'saleBoxVanish': A.play(S.boxWhoosh, {}, { pos: sim.boxById(e.boxId).pos, ref: 4, reverb: 0.5 }); break;
+      case 'boxMoved': A.play(S.boxThud, {}, { pos: sim.boxById(e.boxId).pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;
       case 'cheddarEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'zombieKilled':
         if (e.zombieType === 'cheddar') A.play(S.dogYelp, {}, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3 });
@@ -439,6 +444,17 @@ export class SoundDirector {
     if (duck !== A.duck) {
       A.duck = duck;
       A.buses.ambient.gain.setTargetAtTime(A.volumes.ambient * duck, A.now(), 0.15);
+    }
+
+    // the cauldron bubbles away when you're near it
+    const cd = sim.mapData.cauldron;
+    if (cd && localPlayer) {
+      const d = Math.hypot(localPlayer.pos.x - cd.x, localPlayer.pos.z - cd.z);
+      this.blorpT = (this.blorpT ?? 0) - dt;
+      if (d < 14 && this.blorpT <= 0) {
+        this.blorpT = 0.18 + Math.random() * 0.5;
+        A.play(S.stewBubble, {}, { pos: { x: cd.x + (Math.random() - 0.5), y: cd.rim, z: cd.z + (Math.random() - 0.5) }, ref: 1.5, rolloff: 1.4, reverb: 0.4, gain: 0.6, bus: 'ambient' });
+      }
     }
 
     // stuck crossbow bolts beep faster and faster

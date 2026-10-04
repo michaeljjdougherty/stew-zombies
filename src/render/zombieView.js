@@ -144,13 +144,19 @@ export class ZombieViews {
     const attacking = z.attack && (z.attack.phase === 'windup' || z.attack.phase === 'recover');
     if (z.attack && z.attack.phase === 'windup' && v.prevAtk !== 'windup' && v.curName === 'attack') v.cur.time = 0.15;   // each swing restarts the clip
     v.prevAtk = z.attack && z.attack.phase;
+    // each walker keeps one of the two walks; most barrier work is reaching through
+    if (!v.walkName) {
+      const r = ((z.id * 2654435761) >>> 0) / 4294967296;
+      v.walkName = v.clips.walk2 && r < 0.5 ? 'walk2' : 'walk';
+      v.tearName = v.clips.reach && r * 7 % 1 < 0.75 ? 'reach' : 'punch';
+    }
     if (v.crawler) {
       const k = speed > 0.05 ? Math.min(2.4, Math.max(0.5, speed / clipSpeed('crawl'))) : 0.3;
       this.play(v, 'crawl', 0.3, attacking ? 1.6 : k);
     } else if (z.state === 'rising') {
       this.play(v, 'attack', 0.2, 1.3);
     } else if (z.state === 'tearing') {
-      this.play(v, 'punch', 0.25, 1.15);
+      this.play(v, v.tearName, 0.25, v.tearName === 'reach' ? (attacking ? 1.5 : 1.1) : 1.15);
     } else if (attacking) {
       this.play(v, 'attack', 0.15, 1.35);
     } else if (z.state === 'climbing') {
@@ -158,7 +164,7 @@ export class ZombieViews {
     } else if (speed > 0.15) {
       if (z.type === 'sprinter') this.play(v, 'sprint', 0.3, Math.min(1.4, Math.max(0.75, speed / clipSpeed('sprint'))));
       else if (z.type === 'runner') this.play(v, 'run', 0.3, Math.min(1.5, Math.max(0.6, speed / clipSpeed('run'))));
-      else this.play(v, 'walk', 0.35, Math.min(2.2, Math.max(0.6, speed / clipSpeed('walk'))));
+      else this.play(v, v.walkName, 0.35, Math.min(2.2, Math.max(0.6, speed / clipSpeed(v.walkName))));
     } else {
       this.play(v, 'idle', 0.4, 1);
     }

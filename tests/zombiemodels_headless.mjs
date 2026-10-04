@@ -12,10 +12,10 @@ check(cast.length === 8, `8 characters in the cast (${cast.join(', ')})`);
 
 const anims = JSON.parse(readFileSync(new URL('anims.json', dir)));
 const names = anims.clips.map((c) => c.name);
-for (const n of ['walk', 'run', 'sprint', 'crawl', 'idle', 'attack', 'punch', 'hit1', 'hit2', 'death1', 'death2', 'deathBack', 'deathFly', 'deathFront']) check(names.includes(n), `clip ${n}`);
+for (const n of ['walk', 'walk2', 'reach', 'run', 'sprint', 'crawl', 'idle', 'attack', 'punch', 'hit1', 'hit2', 'death1', 'death2', 'deathBack', 'deathFly', 'deathFront']) check(names.includes(n), `clip ${n}`);
 const abin = readFileSync(new URL('anims.bin', dir));
 check(anims.clips.every((c) => c.tracks.every((t) => t.values + t.count * (t.type === 'q' ? 8 : 12) <= abin.length)), 'clip data fits in anims.bin');
-for (const n of ['walk', 'run', 'sprint', 'crawl']) { const c = anims.clips.find((x) => x.name === n); check(c.meta.speed > 0, `${n} knows its foot speed (${c.meta.speed})`); }
+for (const n of ['walk', 'walk2', 'run', 'sprint', 'crawl']) { const c = anims.clips.find((x) => x.name === n); check(c.meta.speed > 0, `${n} knows its foot speed (${c.meta.speed})`); }
 const core = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm', 'LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'];
 const animBones = new Set(anims.clips.flatMap((c) => c.tracks.map((t) => t.bone)).filter((b) => !/Hand(Thumb|Index|Middle|Ring|Pinky)/.test(b)));
 

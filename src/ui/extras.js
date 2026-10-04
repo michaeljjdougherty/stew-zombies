@@ -111,9 +111,11 @@ export class Extras {
   credits() {
     return `<h3>Credits</h3>
       <p><b>Stew Zombies</b> — made for Stew.</p>
-      <p>Built with three.js and the Web Audio API. The crew, the school, the guns, every song and most sound effects are generated in code at load time, and so are the painted textures.</p>
+      <p>Built with three.js and the Web Audio API. The crew, the school, every song and most sound effects are generated in code at load time, and so are the painted textures.</p>
       <p>Photo surfaces (brick, cinder block, tile, terrazzo, wood floors, carpet, concrete, ceiling tiles, grass): scanned materials from <b>ambientCG</b> by Lennart Demes, released to the public domain (CC0).</p>
       <p>Zombie characters and animations: <b>Mixamo</b> (Adobe), including Zombiegirl by W. Kurniawan, Yaku by J. Ignite and Copzombie by L. Actisdato. The ordinary-looking ones were zombified for the game.</p>
+      <p>Gun models from <b>Sketchfab</b> (CC BY 4.0 unless noted): 3D Gun Model by Nexor, Ak-74U by BRAIN_ZIP, AUG A3 by Lolik123654, China Lake Colored by TatumWilbanks, Crossbow by Adipriatna, FAMAS by Frostoise, L96A1 Sniper by Matrixxy, low-poly CZ 75 B by D_U, M14 Rifle and The Franchi SPAS-12 by Ecler, MP5K by Shorty_Digitan, Retro ray-gun by Daniel Santalla, RPK drum mag by Moonify, SAW-GUN by Chaise, Shotgun Benelli M90 (XM1014) by Nayo Skumfuk, Sites Spectre HC 9MM by graemebreezy, SVD Dragunov by neyr; Colt M1911 and Heckler &amp; Koch HK21 by ardickasaretas and Combat Knife by hamzagost32 (Sketchfab Standard license). Reduced in size for the game; guns without a model are still built in code.</p>
+      <p>The Cheddars: Skinless Hound by <b>Pigcraft</b> on Sketchfab (CC BY 4.0), recolored, thinned out and rigged for the game.</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>
       <p>Story, "Out of Bounds" and "The Final Whistle": <b>James Amarante</b>.</p>

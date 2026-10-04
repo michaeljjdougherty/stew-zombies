@@ -62,6 +62,8 @@ export function worldState(sim) {
     projectiles: byId(sim.projectiles.filter((p) => !p.done), (p) => clean(p, PROJ_SKIP)),
     windows: byId(sim.windows, (w) => { const o = {}; for (const k of WINDOW_KEYS) o[k] = clean(w[k]); return o; }),
     box: (() => { const b = sim.box; return clean({ spot: b.spot.id, phase: b.phase, timer: b.timer, weapon: b.weapon, buyerId: b.buyerId, uses: b.uses, totalUses: b.totalUses, paid: b.paid, moveAt: b.moveAt }); })(),
+    cauldron: sim.cauldron ? clean(sim.cauldron) : null,
+    saleBoxes: Object.fromEntries((sim.saleBoxes || []).map((b) => [b.id, clean({ phase: b.phase, timer: b.timer, weapon: b.weapon, buyerId: b.buyerId, uses: b.uses, paid: b.paid })])),
     traps: byId(sim.traps, (t) => clean({ state: t.state, timer: t.timer, ownerId: t.ownerId })),
     madDog: sim.madDog ? clean({ state: sim.madDog.state, timer: sim.madDog.timer, ownerId: sim.madDog.ownerId, weapon: sim.madDog.weapon }) : null,
     quest: sim.quest ? clean(sim.quest, QUEST_SKIP) : null,
@@ -142,7 +144,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
+  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {
@@ -211,6 +213,13 @@ export function applyMirror(sim, M, localId) {
     if (spot) box.moveTo(sim, spot);
   }
   Object.assign(box, { phase: B.phase, timer: B.timer, weapon: B.weapon, buyerId: B.buyerId, uses: B.uses, totalUses: B.totalUses, paid: B.paid, moveAt: B.moveAt });
+  if (sim.cauldron && M.cauldron) deepAssign(sim.cauldron, M.cauldron);
+  for (const b of sim.saleBoxes || []) {
+    const S = M.saleBoxes && M.saleBoxes[b.id];
+    if (!S) continue;
+    Object.assign(b, S);
+    b.setPresent(sim, S.phase !== 'gone');
+  }
   for (const t of sim.traps) { const s = M.traps[t.id]; if (s) Object.assign(t, s); }
   if (sim.madDog && M.madDog) Object.assign(sim.madDog, M.madDog);
 

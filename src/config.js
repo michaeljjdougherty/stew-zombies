@@ -914,6 +914,12 @@ export const CONFIG = {
     },
   },
 
+  // The boiler room cauldron Easter egg (see src/sim/cauldron.js).
+  cauldron: {
+    points: 1000,            // to everyone still alive when it boils over
+    powerup: 'doubleDough',
+  },
+
   // ---------------------------------------------------------------------------
   // Cheddar Rounds: every few rounds a yellow haze rolls in and Erik's rabid
   // hounds ("Cheddars") come down with the lightning instead of zombies.
@@ -942,6 +948,9 @@ export const CONFIG = {
     attackDamage: 35,
     haze: 0.32,              // strength of the yellow screen tint
     preRoundTime: 4,         // haze and thunder before the first strike
+    line: 'Wanna play 2K?',  // what they snarl at you
+    talkEvery: [3.5, 7],     // seconds between one of them saying it
+    talkRange: 14,           // only ones this close to a player talk
   },
 
   // ---------------------------------------------------------------------------
@@ -953,6 +962,7 @@ export const CONFIG = {
     crawlSpeed: 0.9,
     eyeHeight: 0.55,
     reviveHealthFrac: 1,     // health after being revived
+    reviveInvuln: 3,         // seconds you can't be hurt after getting back up
     tempPistol: 'M1912',     // what you get if you have no pistol
     tempPistolMags: 3,
   },

@@ -20,8 +20,8 @@ const walk = (d) => {
     const rel = path.join(d, f);
     if (fs.statSync(path.join(root, rel)).isDirectory()) walk(rel);
     else if (/\.(js|mp3|jpg|webp|json)$/.test(rel)) files[rel] = rel;
-    else if (/\.bin$/.test(rel)) {
-      // artifacts don't serve .bin: ship a base64 copy the loader falls back to
+    else if (/\.(bin|glb)$/.test(rel)) {
+      // artifacts don't serve .bin / .glb: ship a base64 copy the loader falls back to
       const out = path.join('dist', rel + '.json');
       fs.mkdirSync(path.join(root, path.dirname(out)), { recursive: true });
       fs.writeFileSync(path.join(root, out), JSON.stringify({ b64: fs.readFileSync(path.join(root, rel)).toString('base64') }));

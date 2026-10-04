@@ -14,6 +14,7 @@ import { Viewmodel } from './viewmodel.js';
 import { CameraRig } from './cameraRig.js';
 import { PostFX } from './postfx.js';
 import { BoxView } from './boxView.js';
+import { CauldronView } from './cauldronView.js';
 import { ProjectileViews } from './projectileView.js';
 import { MachinesView } from './machinesView.js';
 import { PowerupViews } from './powerupView.js';
@@ -31,6 +32,7 @@ export class GameRenderer {
     this.settings = settings;
     this.sim = sim;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+    r.localClippingEnabled = true;   // first-person guns clip what's right at the eye
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = cfg.graphics.exposure;
     r.outputColorSpace = THREE.SRGBColorSpace;
@@ -77,6 +79,7 @@ export class GameRenderer {
       w = {
         scene, map, effects, puddles,
         box: new BoxView(scene, sim, cfg, map),
+        saleBoxes: new Map((sim.saleBoxes || []).map((b) => [b.id, new BoxView(scene, sim, cfg, map, b.id)])),
         zombies: new ZombieViews(scene, effects, cfg),
         projectiles: new ProjectileViews(scene, effects, cfg),
         machines: new MachinesView(scene, sim, cfg, map),
@@ -95,10 +98,13 @@ export class GameRenderer {
         const p = this.sim.playerById(this.localId);
         if (p) this.rig.explosion({ pos: { x: spot.x, y: 0, z: spot.z }, radius: 2, shake: 0.4 }, p.pos);
       };
+      for (const v of w.saleBoxes.values()) v.onLand = w.box.onLand;
+      w.cauldron = new CauldronView(scene, sim.mapData, effects);
+      w.cauldron.attachLight(map);
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(cfg.graphics.fogColor);
     this.hazeColor = new THREE.Color('#5a4410');
@@ -118,6 +124,8 @@ export class GameRenderer {
     for (const [id, v] of this.map.windowViews) v.win = sim.windowById(id);
     for (const v of this.map.windowViews.values()) for (const p of v.planks) p.anim = null;
     this.box.setSim(sim);
+    for (const v of this.saleBoxes.values()) v.setSim(sim);
+    this.cauldron.reset();
     this.effects.sim = sim;
     this.effects.clear();
     this.puddles.sim = sim;
@@ -181,7 +189,8 @@ export class GameRenderer {
     for (const e of events) {
       this.zombies.onEvent(e, this.sim);
       this.map.onEvent(e);
-      this.box.onEvent(e);
+      this.cauldron.onEvent(e);
+      if (e.boxId && this.saleBoxes.has(e.boxId)) this.saleBoxes.get(e.boxId).onEvent(e); else this.box.onEvent(e);
       this.rig.onEvent(e, id);
       this.viewmodel.onEvent(e, id);
       this.projectiles.onEvent(e);
@@ -465,6 +474,8 @@ export class GameRenderer {
     this.exposure = this.exposure == null ? targetExp : this.exposure + (targetExp - this.exposure) * Math.min(1, dt * 1.5);
     this.renderer.toneMappingExposure = mode === 'title' ? g.exposure : this.exposure;
     this.box.update(dt, time);
+    for (const v of this.saleBoxes.values()) v.update(dt, time);
+    this.cauldron.update(dt, time, sim, this.camera.position);
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);
     this.machines.update(dt);
@@ -498,8 +509,12 @@ export class GameRenderer {
 
     this.damage = Math.max(0, this.damage - dt * 1.6);
     const lowHealth = p && p.alive ? Math.max(0, 1 - p.health / (p.maxHealth * 0.55)) : (p ? 1 : 0);
+    // one more hit and you're down: pulse red around the edges (fades in/out)
+    const hit = this.cfg.zombie.attackDamage * (p && p.boosts && p.boosts.defense ? p.boosts.defense : 1);
+    const brink = p && p.alive && !p.downed && p.health <= hit + 0.01 ? 1 : 0;
+    this.brink = (this.brink || 0) + (brink - (this.brink || 0)) * Math.min(1, dt * 6);
     this.updateBakedLive();
-    this.post.render(dt, { damage: this.damage, lowHealth, flash: this.flash || 0, tint: (this.haze || 0) * this.cfg.cheddar.haze });
+    this.post.render(dt, { damage: this.damage, lowHealth, brink: this.brink, flash: this.flash || 0, tint: (this.haze || 0) * this.cfg.cheddar.haze });
     this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }
 }

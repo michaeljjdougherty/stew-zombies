@@ -1599,3 +1599,77 @@ export function crewVoice(A, out, t, p = {}) {
   const c2 = A.osc('square', 1250, te, 0.08); const cg2 = A.gain(0); A.env(cg2, te, 0.002, 0.07, 0.1); c2.connect(cg2); cg2.connect(out);
   return dur + 0.4;
 }
+
+// A Cheddar talking: a wet, snarling growl that somehow forms words.
+export function cheddarVoice(A, out, t, p = {}) {
+  const dur = p.dur || 1.3;
+  const drive = A.shaper(0.9);
+  const lp = A.filter('lowpass', 2600, 0.9);
+  const g = A.gain(2.4);
+  drive.connect(lp); lp.connect(g); g.connect(out);
+  babble(A, drive, t, { text: p.text || '', dur, f0: 78 + Math.random() * 14, grit: 0.95, peak: 0.75 });
+  // growl underneath: rumbling noise, tremolo like a throat rattle
+  const n = A.noiseSource('brown', t, dur + 0.3);
+  const bp = A.filter('bandpass', 260, 1.5);
+  const ng = A.gain(0); A.env(ng, t, 0.05, dur, 0.55, 0, 0.1);
+  const trem = A.ctx.createOscillator(); trem.frequency.value = 28; trem.start(t); trem.stop(t + dur + 0.4);
+  const tg = A.gain(0.35); trem.connect(tg); tg.connect(ng.gain);
+  n.connect(bp); bp.connect(ng); ng.connect(out);
+  return dur + 0.4;
+}
+
+// --- the boiler room cauldron ---------------------------------------------------
+// One thick bubble of stew: a low, wet "blorp".
+export function stewBubble(A, out, t, p = {}) {
+  const f = (p.f || 1) * (90 + Math.random() * 70);
+  const o = A.osc('sine', f, t, 0.18);
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * 2.6, t + 0.09);
+  const g = A.gain(0); A.env(g, t, 0.01, 0.12, 0.35);
+  const lp = A.filter('lowpass', 900, 3);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  // the pop
+  const n = A.noiseSource('pink', t + 0.08, 0.05);
+  const bp = A.filter('bandpass', 700 + Math.random() * 600, 2);
+  const ng = A.gain(0); A.env(ng, t + 0.08, 0.002, 0.04, 0.2);
+  n.connect(bp); bp.connect(ng); ng.connect(out);
+  return 0.3;
+}
+
+// Steam forcing its way out of a valve that's just been shot open.
+export function steamHiss(A, out, t, p = {}) {
+  const dur = p.dur || 2;
+  const n = A.noiseSource('white', t, dur);
+  const hp = A.filter('highpass', 2500, 0.7);
+  const bp = A.filter('bandpass', 5200, 0.8);
+  const g = A.gain(0);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.03);
+  g.gain.setTargetAtTime(0.0001, t + dur * 0.4, dur * 0.25);
+  n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(out);
+  // the wheel squealing round
+  const o = A.osc('sawtooth', 620, t, 0.35);
+  o.frequency.linearRampToValueAtTime(880, t + 0.3);
+  const og = A.gain(0); A.env(og, t, 0.01, 0.3, 0.06);
+  const obp = A.filter('bandpass', 1400, 6);
+  o.connect(obp); obp.connect(og); og.connect(out);
+  return dur + 0.2;
+}
+
+// All three valves open: the stew roars up and boils over.
+export function cauldronBoil(A, out, t) {
+  const n = A.noiseSource('brown', t, 4);
+  const lp = A.filter('lowpass', 300, 0.8);
+  lp.frequency.linearRampToValueAtTime(1400, t + 0.6);
+  lp.frequency.linearRampToValueAtTime(400, t + 4);
+  const g = A.gain(0); A.env(g, t, 0.15, 3.6, 1.1);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  for (let i = 0; i < 26; i++) stewBubble(A, out, t + 0.1 + Math.random() * 3.2, { f: 0.8 + Math.random() * 0.8 });
+  // a happy little brass sting
+  [0, 4, 7, 12].forEach((s, i) => {
+    const o = A.osc('sawtooth', 262 * Math.pow(2, s / 12), t + 0.3 + i * 0.09, 0.9);
+    const f = A.filter('lowpass', 1800, 1);
+    const og = A.gain(0); A.env(og, t + 0.3 + i * 0.09, 0.02, 0.8, 0.08);
+    o.connect(f); f.connect(og); og.connect(out);
+  });
+  return 4.2;
+}

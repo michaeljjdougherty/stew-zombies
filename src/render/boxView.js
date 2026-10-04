@@ -10,10 +10,12 @@ import { buildGun } from './gunModels.js';
 const W = 1.05, H = 0.55, D = 0.52;
 
 export class BoxView {
-  constructor(scene, sim, cfg, mapView) {
+  // boxId: which box this draws (null = the main one; Clearance Sale boxes have their own)
+  constructor(scene, sim, cfg, mapView, boxId = null) {
     this.scene = scene;
     this.sim = sim;
     this.cfg = cfg;
+    this.boxId = boxId;
     this.group = new THREE.Group();
     scene.add(this.group);
 
@@ -57,28 +59,16 @@ export class BoxView {
     this.display = new THREE.Group();
     this.display.position.y = 0.5;
     this.group.add(this.display);
+    // guns are built the first time the box shows them
     this.guns = new Map();
-    for (const id of Object.keys(cfg.box.weights)) {
-      const def = cfg.weapons[id];
-      let obj;
-      if (def) {
-        obj = buildGun(def.view.model).group;
-        obj.rotation.y = Math.PI / 2; // barrel along the box's length
-        obj.scale.setScalar(1.25);
-      } else if (id === 'stewBomb') obj = stewPot();
-      else continue;
-      obj.visible = false;
-      this.display.add(obj);
-      this.guns.set(id, obj);
-    }
-    this.pool = [...this.guns.keys()];
+    this.pool = Object.keys(cfg.box.weights).filter((id) => cfg.weapons[id] || id === 'stewBomb');
     // Erik's bobblehead: what the box gives you when it's about to leave
     this.bobble = bobblehead();
     this.bobble.visible = false;
     this.display.add(this.bobble);
     this.guns.set('bobble', this.bobble);
 
-    this.phase = 'idle';
+    this.phase = boxId ? 'gone' : 'idle';
     this.t = 0;
     this.cycleT = 0;
     this.shown = null;
@@ -86,8 +76,27 @@ export class BoxView {
     this.place();
   }
 
+  get box() { return this.sim.boxById(this.boxId); }
+
+  gun(id) {
+    if (id === 'bobble') return this.bobble;
+    let obj = this.guns.get(id);
+    if (obj) return obj;
+    const def = this.cfg.weapons[id];
+    if (def) {
+      obj = buildGun(def.view.model).group;
+      obj.rotation.y = Math.PI / 2; // barrel along the box's length
+      obj.scale.setScalar(1.25);
+    } else if (id === 'stewBomb') obj = stewPot();
+    else return null;
+    obj.visible = false;
+    this.display.add(obj);
+    this.guns.set(id, obj);
+    return obj;
+  }
+
   place() {
-    const s = this.sim.box.spot;
+    const s = this.box.spot;
     this.group.position.set(s.x, 0, s.z);
     this.group.rotation.set(0, s.yaw, 0);
     this.group.scale.setScalar(1);
@@ -98,14 +107,18 @@ export class BoxView {
     this.beam.position.y = 0.65 + bh / 2; // from the lid up to the ceiling (or the sky)
   }
 
-  setSim(sim) { this.sim = sim; this.phase = 'idle'; this.show(null); this.place(); }
+  setSim(sim) { this.sim = sim; this.phase = this.boxId ? 'gone' : 'idle'; this.show(null); this.place(); }
 
   show(id) {
     if (this.shown === id) return;
-    if (this.shown) this.guns.get(this.shown).visible = false;
+    const prev = this.shown && this.gun(this.shown);
+    if (prev) prev.visible = false;
     this.shown = id;
-    if (id) this.guns.get(id).visible = true;
+    const o = id && this.gun(id);
+    if (o) o.visible = true;
   }
+
+  dispose() { this.scene.remove(this.group); this.light.level = 0; if (this.mapView.removeVirtualLight) this.mapView.removeVirtualLight(this.light); }
 
   onEvent(e) {
     switch (e.type) {
@@ -116,11 +129,24 @@ export class BoxView {
       case 'boxBobble': this.phase = 'bobble'; this.t = 0; this.show('bobble'); break;
       case 'boxMoved': this.phase = 'arriving'; this.t = 0; this.show(null); this.place(); this.landed = false; break;
       case 'boxArrived': this.phase = 'idle'; break;
+      case 'saleBoxArrive': this.phase = 'arriving'; this.t = 0; this.show(null); this.place(); this.landed = false; break;
+      case 'saleBoxVanish': this.phase = 'vanishing'; this.t = 0; this.show(null); break;
+      case 'saleBoxGone': this.phase = 'gone'; break;
     }
   }
 
   update(dt, time) {
     this.t += dt;
+    // a sale box keeps up with the sim even if an event was missed (online)
+    if (this.boxId) {
+      const b = this.box;
+      if (b.phase === 'gone' && this.phase !== 'gone') this.phase = 'gone';
+      else if (b.phase !== 'gone' && this.phase === 'gone') { this.phase = b.phase === 'arriving' ? 'arriving' : 'idle'; this.t = 0; this.place(); }
+    }
+    this.group.visible = this.phase !== 'gone';
+    if (this.phase === 'gone') { this.light.level = 0; return; }
+    if (this.phase === 'vanishing') return this.updateVanishing(dt, time);
+    if (this.phase === 'arriving' && this.box.phase === 'idle' && this.t > this.cfg.box.arriveTime) this.phase = 'idle';
     if (this.phase === 'bobble') return this.updateLeaving(dt, time);
     if (this.phase === 'arriving') return this.updateArriving(dt, time);
     const open = this.phase === 'spinning' || this.phase === 'offering';
@@ -142,7 +168,7 @@ export class BoxView {
     } else if (this.phase === 'offering') {
       this.display.position.y = 1.0 + Math.sin(time * 2.2) * 0.03;
       // sink back in as time runs out
-      const left = this.sim.box.timer;
+      const left = this.box.timer;
       if (left < 3) this.display.position.y -= (1 - left / 3) * 0.5;
       this.display.rotation.y = Math.sin(time * 1.2) * 0.15;
     } else if (this.phase === 'closing') {
@@ -165,7 +191,7 @@ export class BoxView {
     this.bobble.userData.head.rotation.x = Math.sin(time * 11) * 0.25;
     this.bobble.userData.head.rotation.z = Math.sin(time * 7) * 0.12;
     const lift = Math.max(0, (this.t - T * 0.45) / (T * 0.55));
-    const s = this.sim.box.spot;
+    const s = this.box.spot;
     this.group.position.set(s.x + Math.sin(time * 30) * 0.03 * Math.min(1, lift * 4), lift * lift * 9, s.z);
     this.group.rotation.y = s.yaw + lift * lift * 8;
     this.group.scale.setScalar(Math.max(0.01, 1 - lift * 0.9));
@@ -175,11 +201,25 @@ export class BoxView {
     this.light.level = (1 - lift) * (1.2 + Math.sin(time * 20) * 0.4);
   }
 
+  // Sale's over: the box spins, shrinks and pops out of existence.
+  updateVanishing(dt, time) {
+    const k = Math.min(1, this.t / 1.1);
+    const s = this.box.spot;
+    this.lid.rotation.x += (0 - this.lid.rotation.x) * Math.min(1, dt * 8);
+    this.group.position.set(s.x, k * k * 0.6, s.z);
+    this.group.rotation.y = s.yaw + k * k * 10;
+    this.group.scale.setScalar(Math.max(0.01, 1 - k * k));
+    this.glowMat.emissiveIntensity = 2 + k * 4;
+    this.beam.material.opacity = 0.07 * (1 - k);
+    this.light.level = (1 - k) * 1.4;
+    if (k >= 1) this.group.visible = false;
+  }
+
   // Drops out of the sky into its new spot in a cloud of dust.
   updateArriving(dt, time) {
     const T = this.cfg.box.arriveTime;
     const k = Math.min(1, this.t / (T * 0.6));
-    const s = this.sim.box.spot;
+    const s = this.box.spot;
     this.group.position.set(s.x, (1 - k * k) * 7, s.z);
     this.group.rotation.y = s.yaw + (1 - k) * 3;
     this.group.scale.setScalar(1);

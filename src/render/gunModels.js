@@ -10,6 +10,136 @@ import * as T from './textures.js';
 import { limb, rng, taperedTube } from './human.js';
 import { buildHand } from './hands.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// --- real gun models ----------------------------------------------------------
+// Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
+// ones. Every gun is still built in code first: that version sets where the
+// hands, muzzle and sights go, and is what you see until the model has loaded
+// (or if it can't). The model is then turned to point down -Z (rot, degrees),
+// scaled to the built-in gun's length and lined up with its top edge (sights).
+// hide: parts of the download that aren't the gun (spare mags, loose rounds).
+// mag: parts that should drop out with the magazine on a reload.
+// off: a final nudge [x, y, z] in metres; len: scale on top of the length match.
+export const REAL_GUNS = {
+  pistol: { file: 'm1912', rot: [0, 180, 0], hide: /^Object_(42|43|47|48)$/ },
+  rifle: { file: 'm14_rifle', rot: [0, 180, 0] },
+  doubleBarrel: { file: 'olympus', rot: [0, -90, 0] },
+  smg: { file: 'mp41', rot: [0, 180, 0], hide: /^(Mag_MP40_0|bullet_MP40_0)$/ },
+  revolver: { file: 'pyton', rot: [0, 90, 0] },
+  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0)$/, mag: /^mag1_/ },
+  pump: { file: 'staykout', rot: [0, 180, 0] },
+  mp6k: { file: 'mp5k', rot: [0, 0, 0] },
+  mpk: { file: '3d_gun_model', rot: [0, 90, 0] },
+  ak75u: { file: 'ak-74u', rot: [0, 90, 0] },
+  m17: { file: 'm15', rot: [0, -90, 0], hide: /^Object_(76|140)$/ },
+  cz76: { file: 'low-poly_cz_75_b', rot: [0, 90, 0], hide: /^Object_(7|8|10|12|13|14)$/ },
+  spectur: { file: 'sites_spectre_hc_9mm_low_poly', rot: [0, 180, 0] },
+  famos: { file: 'famas', rot: [0, 180, 0] },
+  awg: { file: 'aug_a3', rot: [0, 90, 0] },
+  spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0] },
+  hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0] },
+  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/ },
+  rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], mag: /RPK_Mag/ },
+  dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/ },
+  l97: { file: 'l96a1_sniper', rot: [0, 90, 0] },
+  chinapond: { file: 'china_lake_colored', rot: [0, 0, 0] },
+  krossbow: { file: 'crossbow', rot: [0, -90, 0], tint: '#4a4c50' },
+  bknife: { file: 'combat_knife', rot: [0, -90, 0] },
+  fucci: { file: 'retro_ray-gun', rot: [0, 90, 0] },
+  chopper: { file: 'saw-gun', rot: [0, -90, 0] },
+};
+export const realGunMaterials = new Set();   // the viewmodel dims these in the dark
+// First person: cut away whatever comes closer than a few cm to the eye (a
+// real stock is taller than the built-in one and would fill the screen).
+const FP_CLIP = [new THREE.Plane(new THREE.Vector3(0, 0, -1), -0.05)];
+const fpMats = new Map();
+// Aiming down the sights the eye sits right on the stock: clip further out.
+export function setFpClip(ads) { FP_CLIP[0].constant = -(0.05 + 0.13 * ads); }
+function fpMaterial(m) {
+  let c = fpMats.get(m);
+  if (!c) { c = m.clone(); c.clippingPlanes = FP_CLIP; fpMats.set(m, c); realGunMaterials.add(c); }
+  return c;
+}
+let realGunsOn = true;
+export function setRealGuns(on) { realGunsOn = on !== false; }
+
+const GUN_BASE = 'assets/guns/';
+const gunCache = new Map();
+let gltf = null;
+async function fetchGlb(file) {
+  try {
+    const r = await fetch(GUN_BASE + file + '.glb');
+    if (r.ok) return await r.arrayBuffer();
+  } catch { /* try the other form */ }
+  // hosts that won't serve .glb get a base64 copy
+  const r = await fetch(GUN_BASE + file + '.glb.json');
+  if (!r.ok) throw new Error(file + '.glb ' + r.status);
+  const s = atob((await r.json()).b64);
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+}
+// One normalized copy per file: pointing down -Z, centered, unwanted parts gone.
+function loadRealGun(model) {
+  const R = REAL_GUNS[model];
+  if (gunCache.has(model)) return gunCache.get(model);
+  const job = (async () => {
+    gltf = gltf || new GLTFLoader();
+    const g = await gltf.parseAsync(await fetchGlb(R.file), '');
+    const root = g.scene;
+    if (R.hide) { const gone = []; root.traverse((o) => { if (R.hide.test(o.name)) gone.push(o); }); for (const o of gone) o.parent.remove(o); }
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (R.tint && !m.map) m.color.multiply(new THREE.Color(R.tint));   // untextured white models
+        realGunMaterials.add(m);
+        if (m.transparent && m.opacity > 0.95) { m.transparent = false; m.depthWrite = true; }
+      }
+    });
+    const turn = new THREE.Group();
+    turn.rotation.set(...R.rot.map((d) => THREE.MathUtils.degToRad(d)));
+    turn.add(root);
+    const holder = new THREE.Group(); holder.add(turn);
+    holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(holder);
+    const c = box.getCenter(new THREE.Vector3());
+    turn.position.sub(c);
+    holder.updateMatrixWorld(true);
+    return { template: holder, size: box.getSize(new THREE.Vector3()) };
+  })().catch((err) => { console.warn('gun model ' + R.file + ':', err.message || err); return null; });
+  gunCache.set(model, job);
+  return job;
+}
+export function preloadRealGun(model) { if (REAL_GUNS[model] && realGunsOn) loadRealGun(model); }
+
+// Swap a built-in gun's look for the real model once it's loaded.
+function attachRealGun(spec, model) {
+  const R = REAL_GUNS[model];
+  loadRealGun(model).then((real) => {
+    if (!real || spec.disposed) return;
+    const own = spec.procBox;
+    const len = own.max.z - own.min.z;
+    const k = (len / real.size.z) * (R.len || 1);
+    const obj = real.template.clone(true);
+    obj.scale.setScalar(k);
+    const off = R.off || [0, 0, 0];
+    obj.position.set((own.min.x + own.max.x) / 2 + off[0], own.max.y - real.size.y * k / 2 + off[1], (own.min.z + own.max.z) / 2 + off[2]);
+    if (spec.camo) obj.traverse((o) => { if (o.isMesh) o.material = camoMaterial(o.material, spec.camo); });
+    if (spec.fp) obj.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fpMaterial) : fpMaterial(o.material); });
+    spec.group.add(obj);
+    for (const m of spec.procMeshes) m.visible = false;
+    // magazine parts ride along with the reload animation
+    if (R.mag && spec.parts.mag) {
+      spec.group.updateMatrixWorld(true);
+      const mags = []; obj.traverse((o) => { if (o.isMesh && R.mag.test(o.name)) mags.push(o); });
+      for (const o of mags) spec.parts.mag.attach(o);
+    }
+    // the muzzle flash comes out of the real barrel
+    spec.muzzle.position.z = (own.min.z + own.max.z) / 2 + off[2] - real.size.z * k / 2;
+    spec.real = obj;
+  });
+}
 
 // --- gun surface textures ----------------------------------------------------
 function cnv(S) { const c = document.createElement('canvas'); c.width = c.height = S; return [c, c.getContext('2d')]; }
@@ -1045,7 +1175,19 @@ export function buildGun(model, { withHands = false, rightOnly = false, camo = n
   spec.group.add(muzzle);
   spec.muzzle = muzzle;
   for (const k of Object.keys(spec.parts)) spec.parts[k].userData.home = spec.parts[k].position.clone();
+  // the built-in gun's own meshes and size (before any hands go on)
+  spec.procMeshes = [];
+  spec.group.traverse((o) => { if (o.isMesh) spec.procMeshes.push(o); });
+  spec.group.updateMatrixWorld(true);
+  spec.procBox = new THREE.Box3();
+  for (const o of spec.procMeshes) {
+    o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    spec.procBox.union(b);
+  }
   if (withHands) addHands(spec, m, rightOnly);
+  spec.fp = withHands;
+  if (REAL_GUNS[model] && realGunsOn) attachRealGun(spec, model);
   return spec;
 }
 

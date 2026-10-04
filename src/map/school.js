@@ -365,6 +365,7 @@ export const SCHOOL = {
     // boiler room
     { kind: 'boiler', box: [-29.5, 0, 5, -24.5, 3.0, 9.5] },
     { kind: 'pipes', box: [-31, 0, 10.6, -26, 1.2, 12] },
+    { kind: 'cauldron', box: [-21.25, 0, 6.45, -19.35, 1.08, 8.35] },
     // science lab
     { kind: 'labBench', box: [-28.5, 0, -24.4, -22.5, 0.92, -23.4] },
     { kind: 'labBench', box: [-28.5, 0, -19.6, -22.5, 0.92, -18.6] },
@@ -440,6 +441,17 @@ export const SCHOOL = {
   madDog: { room: 'court', x: 0, z: -5.6, y: 0, yaw: 0, hidden: true },
 
   // "The Final Whistle" (src/sim/quest.js)
+  // The stew cauldron in the boiler room. Shoot the three red valves open.
+  cauldron: {
+    x: -20.3, z: 7.4, r: 0.85, rim: 1.05,
+    drop: [0, -1.6],           // where the power-up lands (from the center)
+    valves: [
+      { id: 'valve1', x: -22.55, y: 2.25, z: 7.4, face: [0, 0, 1] },      // on the feed pipe from the boiler
+      { id: 'valve2', x: -27.6, y: 1.32, z: 10.45, face: [0, 0, -1] },    // on top of the pipe bank
+      { id: 'valve3', x: -17.68, y: 2.95, z: 2.4, face: [-1, 0, 0] },     // up in the corner by the door
+    ],
+  },
+
   quest: {
     breakers: [
       { id: 'cafe', label: 'cafeteria', room: 'cafe', side: 'w', at: -36.5, y: 1.3 },

@@ -301,11 +301,21 @@ const firstGesture = () => {
   audio.applyVolumes();
   startTitleMusic();
 };
-window.addEventListener('pointerdown', firstGesture);
-window.addEventListener('keydown', firstGesture);
-// any click or key also wakes the audio back up if the browser paused it
-window.addEventListener('pointerdown', () => audio.ensureRunning && audio.ensureRunning());
-window.addEventListener('keydown', () => audio.ensureRunning && audio.ensureRunning());
+// Browsers only unlock sound on a real click, tap or key press (not a
+// controller button), and a refresh locks it again. Listen on every event that
+// counts, and start or wake the audio from inside it.
+const unlockAudio = () => {
+  if (!audio.ctx) { audio.init(); audio.applyVolumes(); startTitleMusic(); }
+  else { audio.ensureRunning(); if (audio.ctx.state !== 'running') audio.ctx.resume().then(() => startTitleMusic()).catch(() => {}); }
+};
+for (const ev of ['pointerdown', 'pointerup', 'mousedown', 'click', 'touchend', 'keydown', 'keyup']) window.addEventListener(ev, unlockAudio, { capture: true });
+// while the browser is still holding the sound back, say how to let it out
+const soundHint = document.getElementById('sound-hint');
+setInterval(() => {
+  const locked = !audio.ctx || audio.ctx.state !== 'running';
+  const show = locked && document.hasFocus() && (mode === 'title' || mode === 'online' || mode === 'play' || mode === 'paused');
+  if (soundHint && soundHint.hidden === show) soundHint.hidden = !show;
+}, 400);
 applySettings(settings);
 renderer.setCharacter(playableCharacter(), settings.shirt);
 menus.show('title');

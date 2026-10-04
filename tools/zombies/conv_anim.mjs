@@ -14,6 +14,8 @@ const norm = (n) => n.replace(/^mixamorig\d*:?/, '');
 // name in the game <- file, and how to treat its root motion
 const CLIPS = [
   ['walk', 'Zombie Walk', 'loop'],
+  ['walk2', 'Walking', 'loop'],
+  ['reach', 'Barrier Reach Through', 'inplace'],
   ['run', 'Zombie Running', 'loop'],
   ['sprint', 'Two Cycle Sprint', 'loop'],
   ['crawl', 'Zombie Crawl', 'loop'],

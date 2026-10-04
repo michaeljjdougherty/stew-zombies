@@ -12,6 +12,26 @@ import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS 
 import { buildStoryProps, updateStoryProps } from './storyProps.js';
 import { campusBounds } from '../map/school.js';
 
+// Rough, sooty bricks for the cauldron's firebox.
+function cauldronBrickTexture() {
+  const [c, g] = T.makeCanvas(256, 128);
+  g.fillStyle = '#2a1a14'; g.fillRect(0, 0, 256, 128);
+  for (let row = 0; row < 8; row++) {
+    for (let col = -1; col < 9; col++) {
+      const x = col * 32 + (row % 2) * 16, y = row * 16;
+      const k = 0.7 + Math.random() * 0.5;
+      g.fillStyle = `rgb(${Math.round(120 * k)},${Math.round(52 * k)},${Math.round(36 * k)})`;
+      g.fillRect(x + 1.5, y + 1.5, 29, 13);
+    }
+  }
+  // soot climbing up from the fire
+  const grd = g.createLinearGradient(0, 128, 0, 0);
+  grd.addColorStop(0, 'rgba(10,6,4,0.1)'); grd.addColorStop(1, 'rgba(10,6,4,0.75)');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 128);
+  const t = T.toTexture(c); t.repeat.set(4, 1);
+  return t;
+}
+
 const SIDE_FACES = { n: [4, 5], s: [5, 4], w: [0, 1], e: [1, 0] }; // [inward face, outward face]
 
 export class MapView {
@@ -562,6 +582,7 @@ export class MapView {
           add(M.metal, { ...b, maxY: b.maxY - 0.06, minX: b.minX + 0.05, maxX: b.maxX - 0.05, minZ: b.minZ + 0.05, maxZ: b.maxZ - 0.05 });
           break;
         case 'boiler': this.boiler(b); break;
+        case 'cauldron': this.cauldron(b); break;
         case 'pipes':
           for (let i = 0; i < 4; i++) {
             const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, b.maxX - b.minX, 10).rotateZ(Math.PI / 2), M.rustMetal);
@@ -666,6 +687,71 @@ export class MapView {
     fire.position.set(cx, 0.75, cz + r + 0.03); this.group.add(fire);
     this.boilerGlow = fire;
     this.addVirtualLight({ x: cx, y: 0.9, z: cz + r + 0.6 }, 0xff6a20, 7, 6, 1.6);
+  }
+
+  // The stew cauldron: a fat cast-iron pot on a brick firebox, fed by a pipe
+  // from the boiler. The stew, bubbles, steam and valve wheels are animated by
+  // CauldronView; this is the part that sits still (and gets baked lighting).
+  cauldron() {
+    const C = this.map.cauldron;
+    if (!C) return;
+    const M = this.mats;
+    const iron = this.cauldronIron || (this.cauldronIron = new THREE.MeshStandardMaterial({ map: T.metalTexture({ color: '#1d1c1a', rust: 0.35 }), roughness: 0.55, metalness: 0.55 }));
+    const brick = new THREE.MeshStandardMaterial({ map: cauldronBrickTexture(), roughness: 0.95 });
+    const g = new THREE.Group(); g.position.set(C.x, 0, C.z); this.group.add(g);
+    // firebox: a squat ring of bricks with an arched mouth toward the door
+    const fb = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.98, 0.5, 28, 1, true), brick); fb.position.y = 0.25; g.add(fb);
+    const fbTop = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.95, 28).rotateX(-Math.PI / 2), brick); fbTop.position.y = 0.5; g.add(fbTop);
+    const ash = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#16110d', roughness: 1 })); ash.position.y = 0.02; g.add(ash);
+    // the pot: a lathe profile, fat belly, thick rolled rim
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+      const a = (i / 16) * Math.PI * 0.62;
+      pts.push(new THREE.Vector2(Math.sin(a) * C.r * 1.02 + 0.02, 0.62 - Math.cos(a) * 0.3 + (i / 16) * 0.18));
+    }
+    pts.push(new THREE.Vector2(C.r * 0.97, C.rim - 0.03));
+    const potMat = iron.clone(); potMat.side = THREE.DoubleSide;
+    const pot = new THREE.Mesh(new THREE.LatheGeometry(pts, 36), potMat); g.add(pot);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(C.r * 0.97, 0.05, 10, 40).rotateX(Math.PI / 2), iron); rim.position.y = C.rim - 0.02; g.add(rim);
+    // stubby legs into the firebox, and two big lifting rings
+    for (let i = 0; i < 3; i++) {
+      const a = i / 3 * Math.PI * 2 + 0.4;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.3, 8), iron);
+      leg.position.set(Math.cos(a) * 0.55, 0.42, Math.sin(a) * 0.55); g.add(leg);
+    }
+    for (const s of [-1, 1]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.022, 8, 18), iron);
+      ring.position.set(s * (C.r + 0.08), C.rim - 0.12, 0); ring.rotation.y = Math.PI / 2; g.add(ring);
+    }
+    // a big wooden paddle left in the stew
+    const paddle = new THREE.Group(); paddle.position.set(0.32, C.rim - 0.1, 0.18); paddle.rotation.set(0.35, 0.3, -0.42); g.add(paddle);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.6, 8), M.darkWood); shaft.position.y = 0.55; paddle.add(shaft);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.03), M.darkWood); blade.position.y = -0.3; paddle.add(blade);
+    // feed pipe from the boiler: out of the tank, along under the ceiling, down to a spout over the pot
+    const pipeY = 2.25, fromX = -24.4;
+    const run = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, C.x - 0.35 - fromX, 10).rotateZ(Math.PI / 2), M.rustMetal);
+    run.position.set((fromX + C.x - 0.35) / 2 - C.x, pipeY, 0); g.add(run);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), M.rustMetal); elbow.position.set(-0.35, pipeY, 0); g.add(elbow);
+    const down = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, pipeY - 1.55, 10), M.rustMetal); down.position.set(-0.35, (pipeY + 1.55) / 2, 0); g.add(down);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.07, 0.14, 10), M.rustMetal); spout.position.set(-0.35, 1.5, 0); g.add(spout);
+    for (const x of [fromX + 0.6, -21.4]) {   // brackets up to the ceiling
+      const br = new THREE.Mesh(new THREE.BoxGeometry(0.04, 3.6 - pipeY, 0.04), M.metal); br.position.set(x - C.x, (3.6 + pipeY) / 2, 0); g.add(br);
+    }
+    // valve bodies (the red wheels are CauldronView's)
+    for (const v of C.valves) {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 10), M.rustMetal);
+      body.position.set(v.x - C.x - v.face[0] * 0.08, v.y, v.z - C.z - v.face[2] * 0.08);
+      body.rotation.set(v.face[2] ? Math.PI / 2 : 0, 0, v.face[0] ? Math.PI / 2 : 0);
+      g.add(body);
+    }
+    // a pipe stub on the wall for the corner valve
+    const v3 = C.valves[2];
+    if (v3) {
+      const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.6 - 1.0, 10), M.rustMetal);
+      stub.position.set(v3.x - C.x + 0.06, 2.3, v3.z - C.z - 0.25); g.add(stub);
+    }
+    // firelight (baked); CauldronView adds a flickering live one
+    this.addVirtualLight({ x: C.x, y: 0.35, z: C.z - 1.0 }, 0xff5a18, 6, 5, 1.7);
   }
 
   labGear(b) {
@@ -1073,6 +1159,8 @@ export class MapView {
     this.vlights.push(v);
     return v;
   }
+
+  removeVirtualLight(v) { const i = this.vlights.indexOf(v); if (i >= 0) this.vlights.splice(i, 1); }
 
   buildLights() {
     const g = this.cfg.graphics;

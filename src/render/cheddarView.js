@@ -5,6 +5,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as T from './textures.js';
+import { houndModel } from './houndModel.js';
 
 function furTexture(seed) {
   T.seedTextures(seed);
@@ -41,10 +42,36 @@ export class CheddarViews {
     this.darkMat = new THREE.MeshStandardMaterial({ color: '#1a120c', roughness: 0.8 });
     this.eyeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 2.2, 0.3) });
     this.glowTex = T.softDotTexture('rgba(255,190,60,0.9)', 'rgba(255,90,10,0)');
+    this.eyeTex = T.softDotTexture('rgba(255,240,170,1)', 'rgba(255,120,0,0)');
     this.onFootstep = null;
+    houndModel.load();
+  }
+
+  // The real hound (once its model has loaded): skinned, cheddar yellow.
+  buildHound(z) {
+    const h = houndModel.instance();
+    const B = h.bone;
+    const root = new THREE.Group();
+    h.root.scale.setScalar(1.38);
+    root.add(h.root);
+    // glowing eyes
+    for (const s of [-1, 1]) {
+      const eye = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.eyeTex, color: new THREE.Color(3, 1.8, 0.3), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      eye.scale.setScalar(0.07);
+      eye.position.set(s * 0.042, 0.035, 0.105);   // from the head joint
+      B.head.add(eye);
+    }
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: new THREE.Color(1.6, 0.8, 0.2), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.55 }));
+    glow.scale.set(1.4, 0.8, 1); glow.position.y = 0.45;
+    root.add(glow);
+    root.scale.setScalar(z.scale);
+    this.scene.add(root);
+    const legs = [['fhipL', 'fkneeL', true], ['fhipR', 'fkneeR', true], ['rhipL', 'rkneeL', false], ['rhipR', 'rkneeR', false]].map(([a, b, front]) => ({ hip: B[a], knee: B[b], front }));
+    return { id: z.id, hound: true, root, body: B.body, hips: B.hips, neck: B.neck, head: B.head, jaw: B.jaw, legs, tails: [B.tail0, B.tail1, B.tail2, B.tail3], glow, phase: Math.random() * 6, appear: 0, flinch: 0, emberT: 0, lastStep: 0, bodyY: B.body.position.y };
   }
 
   build(z) {
+    if (houndModel.ready) return this.buildHound(z);
     const fur = this.furMats[z.seed % this.furMats.length];
     const root = new THREE.Group();
     const body = new THREE.Group(); body.position.y = 0.55; root.add(body);
@@ -103,8 +130,28 @@ export class CheddarViews {
     return { id: z.id, root, body, neck, head, jaw, legs, tail, glow, phase: Math.random() * 6, appear: 0, flinch: 0, emberT: 0, lastStep: 0 };
   }
 
+  // A speech bubble over a hound's head ("Wanna play 2K?").
+  bubble(v, text, dur) {
+    if (v.bubble) { v.bubble.parent.remove(v.bubble); v.bubble.material.map.dispose(); v.bubble.material.dispose(); }
+    const [c, g] = T.makeCanvas(512, 160);
+    g.fillStyle = 'rgba(255,248,225,0.95)'; g.strokeStyle = '#2a1a06'; g.lineWidth = 8;
+    const r = 40;
+    g.beginPath(); g.moveTo(r + 6, 6); g.arcTo(506, 6, 506, 120, r); g.arcTo(506, 120, 6, 120, r); g.lineTo(150, 120); g.lineTo(110, 154); g.lineTo(118, 120);
+    g.arcTo(6, 120, 6, 6, r); g.arcTo(6, 6, 506, 6, r); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#2a1a06'; g.font = '900 54px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, 256, 64);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(0.5, 0.5, 0.5), transparent: true, depthTest: false, fog: false }));   // dimmed so the bloom doesn't wash it out
+    sp.renderOrder = 10;
+    sp.scale.set(1.0, 0.31, 1);
+    sp.position.set(0.25, 1.45, 0);
+    v.root.add(sp);
+    v.bubble = sp; v.bubbleT = dur + 0.6;
+  }
+
   onEvent(e) {
     const v = this.views.get(e.id);
+    if (e.type === 'cheddarTalk' && v) { this.bubble(v, e.text, e.dur); if (v.jaw) v.talkT = e.dur; return; }
     if (e.type === 'zombieHit' && v) v.flinch = 1;
     else if (e.type === 'zombieKilled' && e.zombieType === 'cheddar') {
       const p = v ? v.root.position.clone() : new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z);
@@ -157,19 +204,42 @@ export class CheddarViews {
     const offs = [0, 0.25, Math.PI, Math.PI + 0.25];
     v.legs.forEach((l, i) => {
       const s = Math.sin(ph + offs[i]);
-      l.hip.rotation.x = s * (0.25 + run * 0.7);
-      l.knee.rotation.x = l.front ? -Math.max(0, -Math.cos(ph + offs[i])) * (0.4 + run * 0.8) : Math.max(0, Math.cos(ph + offs[i])) * (0.4 + run * 0.9);
+      const amp = v.hound ? 0.72 : 1;
+      l.hip.rotation.x = s * (0.25 + run * 0.7) * amp;
+      l.knee.rotation.x = (l.front ? -Math.max(0, -Math.cos(ph + offs[i])) * (0.4 + run * 0.8) : Math.max(0, Math.cos(ph + offs[i])) * (0.4 + run * 0.9)) * amp;
     });
-    v.body.position.y = 0.55 + Math.abs(Math.sin(ph)) * 0.05 * run;
+    const bodyY = v.hound ? v.bodyY : 0.55;
+    v.body.position.y = bodyY + Math.abs(Math.sin(ph)) * 0.05 * run * (v.hound ? 0.7 : 1);
     v.body.rotation.x = Math.sin(ph) * 0.08 * run;
     v.flinch = Math.max(0, v.flinch - dt * 5);
     v.body.rotation.z = v.flinch * 0.25 * Math.sin(time * 40);
     // head low when running, snarling when close; jaw snaps when attacking
     const attacking = z.attack.phase !== 'none';
     v.neck.rotation.x = run * 0.35 + (attacking ? -0.25 : 0) + Math.sin(time * 3 + z.id) * 0.04;
-    v.jaw.rotation.x = attacking ? 0.75 : 0.18 + Math.max(0, Math.sin(time * 7 + z.id)) * 0.25;
-    v.tail.rotation.x = -0.3 + Math.sin(ph * 2) * 0.2 * run;
-    v.tail.rotation.y = Math.sin(time * 5) * 0.3;
+    // talking: the jaw flaps along with the words
+    v.talkT = Math.max(0, (v.talkT || 0) - dt);
+    const talk = v.talkT > 0 ? Math.max(0, Math.sin(time * 22)) * 0.5 : 0;
+    const jawOpen = attacking ? 0.75 : 0.18 + Math.max(0, Math.sin(time * 7 + z.id)) * 0.25 + talk;
+    if (v.hound) {
+      // the model's mouth is already open in a snarl: close it a little at rest
+      v.jaw.rotation.x = (jawOpen - 0.5) * 0.7;
+      v.neck.rotation.x *= 0.6;
+      v.tails.forEach((t, i) => {
+        t.rotation.x = (i ? 0.12 : -0.15) + Math.sin(ph * 2 - i * 0.8) * 0.12 * run;
+        t.rotation.y = Math.sin(time * 5 - i * 0.9) * (0.15 + i * 0.05);
+      });
+      v.hips.rotation.x = -Math.sin(ph) * 0.06 * run;
+    } else {
+      v.jaw.rotation.x = jawOpen;
+      v.tail.rotation.x = -0.3 + Math.sin(ph * 2) * 0.2 * run;
+      v.tail.rotation.y = Math.sin(time * 5) * 0.3;
+    }
+    if (v.bubble) {
+      v.bubbleT -= dt;
+      v.bubble.material.opacity = Math.min(1, v.bubbleT * 3);
+      v.bubble.position.y = 1.45 + Math.sin(time * 9) * 0.015;
+      if (v.bubbleT <= 0) { v.root.remove(v.bubble); v.bubble.material.map.dispose(); v.bubble.material.dispose(); v.bubble = null; }
+    }
     if (attacking && z.attack.phase === 'windup') v.body.rotation.x -= 0.2; // lunge
     v.glow.material.opacity = 0.4 + Math.sin(time * 9 + z.id) * 0.12;
     // embers drifting off

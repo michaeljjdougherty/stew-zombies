@@ -15,7 +15,7 @@ import { cancelReload } from './weapons.js';
 import { updateZombies, zombieHitboxes } from './zombies.js';
 import { createRoundState, updateRounds } from './rounds.js';
 import { createWindows, WindowInteractable } from './interactables/windows.js';
-import { DoorInteractable, WallBuyInteractable, BoxInteractable } from './interactables/buyables.js';
+import { DoorInteractable, WallBuyInteractable, BoxInteractable, SaleBox } from './interactables/buyables.js';
 import { Nav } from './nav.js';
 import { updateProjectiles } from './projectiles.js';
 import { setupRange, updateRange } from './range.js';
@@ -25,6 +25,7 @@ import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } f
 import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
 import { createQuest, questInteractables, questOnEvent, updateQuest, questTargets } from './quest.js';
+import { createCauldron, cauldronTargets } from './cauldron.js';
 import { createCrew } from './crew.js';
 
 export class GameSim {
@@ -54,14 +55,17 @@ export class GameSim {
     this.power = !!cfg.power.startsOn;
     this.perkBuys = {};      // perk id -> times bought (solo Second Helping runs out)
     this.box = new BoxInteractable(this);
+    this.saleBoxes = this.world.boxSpots.length > 1 ? this.world.boxSpots.map((s) => new SaleBox(this, s)) : [];
     this.traps = createTraps(this);
     this.madDog = this.world.madDog ? new MadDogInteractable(this, this.world.madDog) : null;
-    this.quest = createQuest(this);   // "The Final Whistle" (school only)
+    this.quest = createQuest(this);
+    this.cauldron = createCauldron(this);   // "The Final Whistle" (school only)
     this.interactables = [
       ...this.windows.filter((w) => w.kind !== 'fence').map((w) => new WindowInteractable(w)),
       ...this.world.doors.map((d) => new DoorInteractable(d)),
       ...this.world.wallBuys.map((wb) => new WallBuyInteractable(wb)),
       this.box,
+      ...this.saleBoxes,
       ...(this.world.powerSwitch ? [new PowerInteractable(this.world.powerSwitch)] : []),
       ...this.world.perkMachines.map((m) => new PerkInteractable(m)),
       ...(this.madDog ? [this.madDog] : []),
@@ -121,6 +125,27 @@ export class GameSim {
 
   weaponDef(loadout) { return this.cfg.weapons[loadout.slots[loadout.current].id]; }
   cancelReload(p) { cancelReload(this, p); }
+  // Cheddars won't shut up about 2K. Every few seconds the closest one says it.
+  cheddarChatter(dt) {
+    const c = this.cfg.cheddar;
+    if (this.cheddarTalkT == null) this.cheddarTalkT = 1.2;
+    this.cheddarTalkT -= dt;
+    if (this.cheddarTalkT > 0) return;
+    let best = null, bd = c.talkRange;
+    for (const z of this.zombies) {
+      if (z.type !== 'cheddar' || z.state === 'dead' || z.state === 'spawning') continue;
+      for (const p of this.players) {
+        if (!p.alive) continue;
+        const d = Math.hypot(z.pos.x - p.pos.x, z.pos.z - p.pos.z);
+        if (d < bd) { bd = d; best = z; }
+      }
+    }
+    if (!best) { this.cheddarTalkT = 0.5; return; }
+    this.cheddarTalkT = this.rng.range(c.talkEvery[0], c.talkEvery[1]);
+    this.emit('cheddarTalk', { id: best.id, text: c.line, dur: 1.3, pos: { x: best.pos.x, y: 0.8, z: best.pos.z } });
+  }
+
+  boxById(id) { return !id || id === this.box.id ? this.box : this.saleBoxes.find((b) => b.id === id) || this.box; }
   damagePlayer(p, amount, source) { damagePlayer(this, p, amount, source); }
 
   addPoints(p, amount, reason) {
@@ -220,13 +245,13 @@ export class GameSim {
   // Bullet trace. Returns ordered impacts: zombies (up to `penetration`), then the wall.
   hitscan(o, d, range, penetration = 1) {
     let wall = this.raycastWorld(o, d, range);
-    // quest targets (the soundboard wire) stop a bullet like a wall does
-    const targets = this.quest ? questTargets(this) : null;
-    if (targets) {
+    // quest targets (the soundboard wire) and the cauldron's valves stop a bullet like a wall does
+    const targets = [...((this.quest && questTargets(this)) || []), ...cauldronTargets(this)];
+    if (targets.length) {
       for (const tg of targets) {
         const t = raySphere(o, d, tg.c, tg.r);
         if (t >= 0 && t < (wall ? wall.t : range)) {
-          wall = { t, normal: v3(-d.x, -d.y, -d.z), box: { kind: 'wire' }, point: v3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t), targetId: tg.id };
+          wall = { t, normal: v3(-d.x, -d.y, -d.z), box: { kind: tg.id.startsWith('valve') ? 'metal' : 'wire' }, point: v3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t), targetId: tg.id };
         }
       }
     }
@@ -285,6 +310,7 @@ export class GameSim {
     updateTraps(this, dt);
     updatePowerups(this, dt);
     updateZombies(this, dt);
+    this.cheddarChatter(dt);
     updateProjectiles(this, dt);
     if (this.zombies.some((z) => z.state === 'dead')) {
       this.zombies = this.zombies.filter((z) => z.state !== 'dead');

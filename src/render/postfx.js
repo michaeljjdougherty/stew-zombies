@@ -27,6 +27,7 @@ const GradeShader = {
     sharpen: { value: 0.35 },
     damage: { value: 0 },
     lowHealth: { value: 0 },
+    brink: { value: 0 },
     flash: { value: 0 },
     tint: { value: new THREE.Vector4(1, 0.85, 0.3, 0) }, // rgb + amount (Cheddar haze)
     resolution: { value: new THREE.Vector2(1, 1) },
@@ -37,7 +38,7 @@ const GradeShader = {
   `,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float time, grain, vignette, desat, contrast, split, sharpen, damage, lowHealth, flash;
+    uniform float time, grain, vignette, desat, contrast, split, sharpen, damage, lowHealth, brink, flash;
     uniform vec3 shadowTint, highTint;
     uniform vec4 tint;
     uniform vec2 resolution;
@@ -82,6 +83,10 @@ const GradeShader = {
       float rim = smoothstep(0.25, 0.75, d);
       c = mix(c, vec3(0.35, 0.02, 0.01), rim * damage * 0.9);
       c = mix(c, vec3(0.25, 0.0, 0.0), rim * lowHealth * 0.55 * (0.75 + 0.25 * sin(time * 6.0)));
+      // one hit from going down: a thick red border that throbs like a heartbeat
+      float beat = pow(0.5 + 0.5 * sin(time * 7.5), 6.0) + pow(0.5 + 0.5 * sin(time * 7.5 - 0.9), 10.0) * 0.6;
+      float brinkEdge = smoothstep(0.32, 0.82, d);
+      c = mix(c, vec3(0.55, 0.0, 0.0), clamp(brinkEdge * brink * (0.62 + 0.3 * beat), 0.0, 0.92));
 
       // flash (Pressure Cooker etc.)
       c = mix(c, vec3(1.0, 0.97, 0.9), flash);
@@ -159,6 +164,7 @@ export class PostFX {
     u.time.value += dt;
     u.damage.value = state.damage;
     u.lowHealth.value = state.lowHealth;
+    u.brink.value = state.brink || 0;
     u.flash.value = state.flash || 0;
     u.tint.value.w = state.tint || 0;
     this.composer.render(dt);

@@ -9,6 +9,7 @@ import { emptyCommand } from '../sim/player.js';
 import { damageZombie } from '../sim/zombies.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { questShot } from '../sim/quest.js';
+import { cauldronShot, isValve } from '../sim/cauldron.js';
 import { worldState, diff, inventorySig } from './state.js';
 
 export class NetHost {
@@ -122,7 +123,7 @@ export class NetHost {
       }
       case 'proj': spawnProjectile(sim, a.type, a.pos, a.vel, p.id, a.opts || {}); break;
       case 'boom': explode(sim, a.pos, a.kind, p.id); break;
-      case 'quest': questShot(sim, a.id, p); break;
+      case 'quest': if (isValve(a.id)) cauldronShot(sim, a.id, p); else questShot(sim, a.id, p); break;
     }
   }
 }

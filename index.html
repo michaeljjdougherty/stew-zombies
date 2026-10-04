@@ -26,6 +26,8 @@
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
   #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  #sound-hint { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; padding: 6px 14px; font-size: 13px; color: #f2e6c9; background: rgba(8,7,6,.78); border: 1px solid rgba(217,180,90,.4); border-radius: 3px; pointer-events: none; animation: snd 1.6s ease-in-out infinite; }
+  @keyframes snd { 50% { opacity: .55; } }
   #spectate { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); text-align: center; pointer-events: none; text-shadow: 0 2px 6px #000; }
   #spectate .lbl { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: #c9b27a; }
   #spectate .who { font-size: 26px; font-weight: 700; color: #f2e6c9; }
@@ -130,6 +132,7 @@
   #subs .sub b { font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: .8em; margin-right: 6px; }
   #subs .sub.erik b { color: #e8a040; }
   #subs .sub.stew b { color: #8fc7ff; }
+  #subs .sub.cheddar b { color: #ffc22a; }
   #subs .sub.radio { font-style: italic; }
   #subs .sub.radio b { color: #9fd8a8; }
   #subs .sub.song { font-family: var(--display); letter-spacing: 1px; font-size: clamp(18px, 2vw, 26px); color: #f0d070; background: rgba(8,7,5,.45); }
@@ -397,6 +400,7 @@
 <canvas id="game"></canvas>
 
 <div id="scope" hidden><span class="dot"></span></div>
+<div id="sound-hint" hidden>🔇 Click or press a key for sound</div>
 <div id="hud" hidden>
   <canvas id="tally" width="360" height="150"></canvas>
   <div id="scoreboard" hidden aria-live="off">

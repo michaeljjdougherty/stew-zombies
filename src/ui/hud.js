@@ -171,6 +171,15 @@ export class HUD {
       case 'stewSays':
         if (e.playerId === this.localId) this.say('stew', this.localName || 'You', e.text, 0, e.dur);
         break;
+      case 'valveTurned':
+        if (e.count < e.total) this.toast(`Valve ${e.count} of ${e.total}`, 'something in the boiler room is heating up', '#ff7a3a', 2.4);
+        break;
+      case 'cauldronBoil':
+        this.toast('The stew boils over!', `+${this.cfg.cauldron.points} for everyone`, '#ffb020', 3.5);
+        break;
+      case 'cheddarTalk':
+        this.say('cheddar', 'Cheddar', e.text, 0, e.dur);
+        break;
       case 'crewSays': {
         // whoever you're playing talks out loud; the rest are on the walkie
         const name = CREW[e.who] ? CREW[e.who].name : e.who;

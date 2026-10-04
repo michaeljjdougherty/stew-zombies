@@ -239,6 +239,8 @@ export function damagePlayer(sim, p, amount, source) {
     sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
     return;
   }
+  // just picked back up: a few seconds where nothing touches you
+  if (p.invulnUntil && sim.time < p.invulnUntil) return;
   if (p.boosts && p.boosts.defense) amount *= p.boosts.defense;
   p.health -= amount;
   p.lastDamageTime = sim.time;
