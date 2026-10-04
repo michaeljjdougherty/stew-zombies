@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   rumble: true,
   padIcons: 'auto',
   character: 'kearns',
+  name: '',               // shown to friends online
   shirt: 'sage',
   renderScale: CONFIG.graphics.renderScale,
   grain: true,

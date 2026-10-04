@@ -146,6 +146,30 @@
   .cs-card span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
   .cs-card[aria-selected="true"] { border-color: var(--brass); background: rgba(217,180,90,.1); }
   .cs-card.locked { opacity: .35; cursor: default; }
+  /* online lobby */
+  .online { max-width: 560px; }
+  .online .on-name { grid-template-columns: 120px 1fr; }
+  .online input[type=text] { all: unset; box-sizing: border-box; border: 1px solid var(--line); background: rgba(255,255,255,.04); padding: 8px 10px; font-size: 16px; color: var(--ink); min-width: 0; }
+  .online input[type=text]:focus-visible { border-color: var(--brass); }
+  .on-join { display: grid; gap: 8px; margin-top: 18px; }
+  .on-joinrow { display: flex; gap: 10px; align-items: stretch; }
+  #on-code { width: 7ch; font-family: var(--display); font-size: 26px !important; letter-spacing: 6px; text-transform: uppercase; text-align: center; }
+  .on-codebox { display: flex; gap: 16px; align-items: end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+  .on-bigcode { font-family: var(--display); font-size: clamp(44px, 7vw, 64px); letter-spacing: 10px; color: var(--brass); line-height: 1; }
+  .on-members { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+  .on-members li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+  .on-members li b { font-weight: 600; }
+  .on-members li span { color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+  .on-members li.you { border-color: var(--brass); }
+  .on-members li.empty { opacity: .4; }
+  .on-chars { margin: 8px 0 14px; }
+  .on-chars .cs-card[disabled] { opacity: .35; cursor: default; }
+  .online button.sm { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 8px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; color: var(--ink); }
+  .online button.sm:hover, .online button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
+  .online button.sm[disabled], .online .menu button[disabled] { opacity: .4; pointer-events: none; }
+  .on-status { min-height: 1.4em; }
+  .on-status.err { color: var(--blood-hi); }
+
   .cs-card:focus-visible { outline: 1px dashed var(--muted); outline-offset: 3px; }
   #cs-swatches { display: flex; gap: 10px; margin-top: 6px; }
   #cs-swatches button { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 1px var(--line); }
@@ -424,6 +448,7 @@
     <h1 class="logo">Stew Zombies<small>Stew Leonard High</small></h1>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
+      <button id="btn-online" type="button">Play Online</button>
       <button id="btn-range" type="button">Firing Range</button>
       <button id="btn-explore" type="button">Explore</button>
       <button id="btn-chars" type="button">Characters</button>
@@ -451,6 +476,7 @@
 <section id="pause" class="screen" hidden>
   <div class="stack">
     <h2>Paused</h2>
+    <p class="note" id="pause-online" hidden>You're online: the game keeps going while this menu is open.</p>
     <nav class="menu">
       <button id="btn-resume" type="button">Resume</button>
       <button id="btn-pause-settings" type="button">Settings</button>
@@ -490,6 +516,39 @@
 </section>
 
 
+
+<section id="online" class="screen" hidden>
+  <div class="stack online">
+    <span class="eyebrow">Up to four of you · one character each</span>
+    <h2>Play Online</h2>
+    <div id="on-start">
+      <label class="row on-name"><span>Your name</span><input id="on-name" data-nav-first type="text" maxlength="16" autocomplete="nickname" spellcheck="false"></label>
+      <nav class="menu"><button id="btn-on-host" type="button">Host a game</button></nav>
+      <div class="on-join">
+        <label for="on-code" class="eyebrow">Or join with a room code</label>
+        <div class="on-joinrow">
+          <input id="on-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button id="btn-on-join" class="sm" type="button">Join</button>
+        </div>
+      </div>
+    </div>
+    <div id="on-lobby" hidden>
+      <div class="on-codebox">
+        <div><span class="eyebrow">Room code</span><div class="on-bigcode" id="on-code-show">----</div></div>
+        <button id="btn-on-copy" class="sm" type="button">Copy invite link</button>
+      </div>
+      <ol class="on-members" id="on-members" aria-label="Players"></ol>
+      <span class="eyebrow">You're playing</span>
+      <div class="cs-list on-chars" id="on-chars" role="listbox" aria-label="Characters"></div>
+      <nav class="menu">
+        <button id="btn-on-go" type="button">Start the game</button>
+        <button id="btn-on-leave" type="button">Leave</button>
+      </nav>
+    </div>
+    <p class="note on-status" id="on-status" role="status" aria-live="polite"></p>
+    <nav class="menu" id="on-backnav"><button id="btn-on-back" type="button">Back</button></nav>
+  </div>
+</section>
 
 <section id="charselect" class="screen charscreen" hidden>
   <div class="stack panel-ui">

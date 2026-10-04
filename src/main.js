@@ -30,8 +30,13 @@ import { MenuNav } from './ui/menunav.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
+import { OnlineSession } from './net/online.js';
+import { NetHost } from './net/host.js';
+import { NetClient } from './net/client.js';
+import { OnlineUI } from './ui/online.js';
+import { emptyCommand } from './sim/player.js';
 
-const LOCAL_ID = 'p1';
+let localId = 'p1';            // online, friends are p2..p4
 const canvas = document.getElementById('game');
 const settings = loadSettings();
 
@@ -39,10 +44,10 @@ const settings = loadSettings();
 const progress = loadProgress();
 
 let sim = makeSim('zombies');
-let player = sim.playerById(LOCAL_ID);
+let player = sim.playerById(localId);
 
 const renderer = new GameRenderer(canvas, sim, CONFIG, settings);
-renderer.localId = LOCAL_ID;
+renderer.localId = localId;
 const input = new Input(canvas, CONFIG, settings);
 input.adsAmount = () => (renderer.aim ? renderer.aim.ads : 0);
 // scoped weapons slow the mouse by the zoom so aim feels the same
@@ -55,10 +60,10 @@ input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 audio.preload(GUN_SAMPLES, SAMPLE_BASE);
 const sound = new SoundDirector(audio, sim, CONFIG);
-sound.localId = LOCAL_ID;
+sound.localId = localId;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
-hud.localId = LOCAL_ID;
+hud.localId = localId;
 hud.localName = CHARACTERS[playableCharacter()].name;
 
 hud.onNoteRead = (id) => {
@@ -87,7 +92,7 @@ const rangeUI = new RangeUI(CONFIG, {
   clear: () => clearZombies(sim),
   close: () => closeRangePanel(),
 });
-rangeUI.localId = LOCAL_ID;
+rangeUI.localId = localId;
 renderer.rig.onFootstep = (sprint, speed) => sound.playerFootstep(sprint, speed);
 
 // 'title' | 'play' | 'paused' | 'dying' | 'over' | 'ending'
@@ -105,7 +110,7 @@ function playableCharacter() {
 
 function makeSim(gameMode) {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(LOCAL_ID, 'Stew', { character: playableCharacter() });
+  s.addPlayer(localId, 'Stew', { character: playableCharacter() });
   return s;
 }
 
@@ -123,8 +128,12 @@ const menus = new Menus(settings, {
   range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
   explore: () => { if (sim.mode !== 'explore') restart('explore'); startPlaying(); },
   resume: () => startPlaying(),
-  restart: () => { restart(sim.mode === 'range' ? 'range' : sim.mode); startPlaying(); },
-  quit: () => { restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
+  restart: () => {
+    if (online) { if (online.isHost) { online.backToLobby(); showOnlineLobby(); } return; }
+    restart(sim.mode === 'range' ? 'range' : sim.mode); startPlaying();
+  },
+  online: () => openOnline(),
+  quit: () => { if (online) leaveOnline(); restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
@@ -156,13 +165,138 @@ const extras = new Extras(CONFIG, {
   songPlaying: () => jukebox.playing,
 });
 
+// ---------------------------------------------------------------------------
+// Online: host or join a lobby, then the same game with friends in it.
+// The host's browser runs the game (NetHost); friends run a copy (NetClient).
+// ---------------------------------------------------------------------------
+const NET_LOCAL = new URLSearchParams(location.search).get('net') === 'local';   // tabs on one computer (testing)
+let online = null;                       // OnlineSession while in a lobby or online game
+const net = { host: null, client: null };
+
+const onlineUI = new OnlineUI(settings, {
+  host: async (name) => { saveSettings(settings); newSession(name); await online.host(); },
+  join: async (name, code) => {
+    saveSettings(settings); newSession(name);
+    try { await online.join(code); } catch (e) { const o = online; online = null; if (o) o.leave(); throw e; }
+  },
+  pick: (ch) => { if (online) online.pick(ch); },
+  start: () => { if (online) online.start(); },
+  leave: () => { leaveOnline(); onlineUI.open(); },
+  back: () => { mode = 'title'; menus.show('title'); },
+});
+
+function newSession(name) {
+  if (online) leaveOnline();
+  online = new OnlineSession({
+    name, character: playableCharacter(), brian: !!progress.questDone, local: NET_LOCAL,
+    onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
+    onStart: (st) => startOnlineGame(st),
+    onGame: (from, m) => { if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); },
+    onPeerLeft: (m) => teammateLeft(m),
+    onToLobby: () => showOnlineLobby(),
+    onEnd: (reason) => onlineEnded(reason),
+  });
+}
+
+function openOnline(code = '') {
+  mode = 'online';
+  if (online && !online.inGame) { showOnlineLobby(); return; }
+  menus.show('online');
+  onlineUI.open(code);
+}
+
+// after a game: everyone back to the lobby
+function showOnlineLobby() {
+  stopOnlineGame();
+  restart('zombies');
+  mode = 'online';
+  input.enabled = false; input.releaseLock();
+  hud.show(false);
+  menus.show('online');
+  if (online) onlineUI.showLobby({ ...online.lobby(), you: online.you }, online.isHost);
+  startTitleMusic();
+}
+
+function startOnlineGame(st) {
+  localId = st.you;
+  const s = new GameSim({ map: SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character });
+  stopOnlineGame();
+  installSim(s);
+  if (online.isHost) {
+    net.host = new NetHost(sim, (to, m) => online && online.send(to, m));
+    for (const p of st.peers) net.host.addRemote(p.peer, p.id);
+  } else {
+    net.client = new NetClient(sim, localId, (m) => online && online.send(null, m));
+  }
+  const me = st.members.find((m) => m.id === localId);
+  renderer.setCharacter(me.character, settings.shirt);
+  hud.localName = CHARACTERS[me.character].name;
+  startPlaying();
+}
+
+// game over / victory online: the host takes everyone back to the lobby
+function onlineOverButtons() {
+  for (const id of ['btn-again', 'btn-win-again']) {
+    const b = $id(id);
+    b.hidden = !!online && !online.isHost;
+    b.textContent = online ? 'Back to the lobby' : 'Play again';
+  }
+  for (const id of ['btn-over-title', 'btn-win-title']) $id(id).textContent = online ? 'Leave the game' : 'Quit to title';
+}
+
+function stopOnlineGame() { net.host = null; net.client = null; }
+
+// a friend dropped out mid-game (host)
+function teammateLeft(m) {
+  if (!net.host) return;
+  net.host.removeRemote(m.peer);
+  const p = sim.playerById(m.id);
+  if (p) {
+    if (p.useTarget && p.useTarget.release) p.useTarget.release(sim, p);
+    sim.players = sim.players.filter((x) => x !== p);
+    sim.emit('playerLeft', { playerId: m.id, name: m.name });
+  }
+}
+
+function leaveOnline() {
+  const o = online;
+  online = null;
+  stopOnlineGame();
+  if (o) o.leave();
+  if (localId !== 'p1') { localId = 'p1'; restart('zombies'); }
+  hud.localName = CHARACTERS[playableCharacter()].name;
+  renderer.setCharacter(playableCharacter(), settings.shirt);
+}
+
+// the connection is gone (host left, kicked, network)
+function onlineEnded(reason) {
+  const wasPlaying = !!(net.host || net.client);
+  online = null;
+  stopOnlineGame();
+  if (wasPlaying || mode !== 'online') {
+    localId = 'p1';
+    restart('zombies');
+    input.enabled = false; input.releaseLock();
+    hud.show(false);
+    if (renderer.ending) { renderer.endEnding(); cutsceneUI.hide(); }
+  }
+  hud.localName = CHARACTERS[playableCharacter()].name;
+  renderer.setCharacter(playableCharacter(), settings.shirt);
+  mode = 'online';
+  menus.show('online');
+  onlineUI.open();
+  if (reason) onlineUI.status(reason, true);
+  startTitleMusic();
+}
+
 // Title theme: browsers only allow sound after the first click or key press.
 function startTitleMusic() {
-  if (!audio.ready || (mode !== 'title' && mode !== 'over') || jukebox.playing) return;
+  if (!audio.ready || (mode !== 'title' && mode !== 'over' && mode !== 'online') || jukebox.playing) return;
   titleMusic.start('music', 0.9);
 }
 const firstGesture = () => {
-  if (mode !== 'title') return;
+  if (mode !== 'title' && mode !== 'online') return;
   audio.init();
   audio.applyVolumes();
   startTitleMusic();
@@ -234,6 +368,7 @@ function finishEnding() {
   const firstTime = !progress.questDone;
   if (firstTime) { progress.questDone = true; saveProgress(progress); }
   menus.showVictory(sim.rounds.round, player, firstTime);
+  onlineOverButtons();
   startTitleMusic();
 }
 
@@ -267,13 +402,19 @@ function pause() {
   mode = 'paused';
   input.enabled = false;
   input.reset();
+  $id('btn-restart').hidden = !!online;
+  $id('pause-online').hidden = !online;
   menus.show('pause');
 }
 
-function restart(gameMode = sim.mode) {
-  const mapChanged = gameMode !== sim.mode;
-  sim = makeSim(gameMode);
-  player = sim.playerById(LOCAL_ID);
+function restart(gameMode = sim.mode) { installSim(makeSim(gameMode)); }
+
+// Swap in a new game (a fresh solo one, or the one an online game starts with).
+function installSim(s) {
+  const mapChanged = s.mapData !== sim.mapData;
+  sim = s;
+  player = sim.playerById(localId);
+  renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
   renderer.setSim(sim);
   if (mapChanged) {
     renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
@@ -326,9 +467,18 @@ let time = 0;
 const debugHold = {};
 function tick(cmd) {
   renderer.beginStep(sim);
-  sim.setInput(LOCAL_ID, { ...cmd, ...debugHold });
-  sim.step(DT);
-  const events = sim.drainEvents();
+  let events;
+  if (net.client) {
+    // a friend's copy: move and shoot locally, mirror the host
+    events = net.client.tick({ ...cmd, ...debugHold }, DT);
+    if (sim.netTeleport) { input.setLook(sim.netTeleport.yaw ?? input.yaw, 0); sim.netTeleport = null; }
+  } else {
+    if (net.host) net.host.preStep();
+    sim.setInput(localId, { ...cmd, ...debugHold });
+    sim.step(DT);
+    events = sim.drainEvents();
+    if (net.host) net.host.postStep(events);
+  }
   renderer.onEvents(events);
   for (const e of events) {
     sound.onEvent(e);
@@ -380,7 +530,7 @@ function refreshGlyphs() {
 }
 
 function rumbleFor(e) {
-  const local = e.playerId === LOCAL_ID;
+  const local = e.playerId === localId;
   switch (e.type) {
     case 'shot': if (local) {
       const def = CONFIG.weapons[e.weapon] || {};
@@ -388,7 +538,7 @@ function rumbleFor(e) {
       pads.rumble(k * 0.6, k, 50 + k * 60);
     } break;
     case 'meleeHit': if (local) pads.rumble(0.3, 0.5, 70); break;
-    case 'playerHit': if (e.playerId === LOCAL_ID) pads.rumble(0.7, 0.4, 160); break;
+    case 'playerHit': if (e.playerId === localId) pads.rumble(0.7, 0.4, 160); break;
     case 'playerDown': if (local) pads.rumble(1, 0.8, 450); break;
     case 'explosion': if (player && e.pos) {
       const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
@@ -423,11 +573,11 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
+const BACK_BUTTON = { online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'credits'];
 const nav = new MenuNav({
   root: () => (mode === 'panel' ? $id('rangepanel') : menus.current ? $id(menus.current) : null),
-  back: (id) => { const b = BACK_BUTTON[id]; if (b) $id(b).click(); },
+  back: (id) => { const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
   start: (id) => { if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
   view: (id) => { if (id === 'rangepanel') closeRangePanel(); },
   bumper: (id, dir) => {
@@ -477,12 +627,14 @@ function frame(now) {
   time += fdt;
   padFrame(fdt);
 
-  if (mode === 'play' || mode === 'dying' || mode === 'panel') {
+  // (online the game goes on while you're in the pause menu)
+  const onlineLive = !!(online && online.inGame && (mode === 'paused' || mode === 'over'));
+  if (mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive) {
     acc += fdt;
     let steps = 0;
     while (acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
       const cmd = input.buildCommand();
-      tick(mode === 'play' ? cmd : { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0 });
+      tick(mode === 'play' ? cmd : mode === 'dying' || mode === 'panel' ? { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0 } : { ...emptyCommand(), yaw: input.yaw, pitch: input.pitch });
       acc -= DT;
       steps++;
     }
@@ -501,14 +653,15 @@ function frame(now) {
       input.releaseLock();
       hud.show(false);
       menus.showGameOver(sim.teamName, sim.rounds.round, player, gameOverLine);
+      onlineOverButtons();
       if (sim.mode === 'zombies' && sim.rounds.round > progress.bestRound) { progress.bestRound = sim.rounds.round; saveProgress(progress); }
     }
   }
 
-  const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' ? acc / DT : 1;
+  const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
-  const worldDt = mode === 'paused' || mode === 'over' ? 0 : fdt;
-  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play');
+  const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
+  renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play');
   audio.updateListener(renderer.camera);
   if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
@@ -522,7 +675,7 @@ requestAnimationFrame(frame);
 // Expose for debugging in the console.
 window.STEW = {
   get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect, lineupUI,
-  get mode() { return mode; }, pads, nav, get device() { return device; }, setInputDevice,
+  get mode() { return mode; }, get online() { return online; }, net, pads, nav, get device() { return device; }, setInputDevice,
   debug: {
     // Run the simulation forward without rendering (for testing).
     run(seconds, patch = {}) {
@@ -537,6 +690,8 @@ window.STEW = {
   },
 };
 refreshGlyphs();
+// an invite link (?join=CODE) opens the online screen with the code filled in
+{ const code = new URLSearchParams(location.search).get('join'); if (code) openOnline(code); }
 document.body.dataset.ready = '1';
 // paint the zombie heads and outfits while the player is still on the title screen
 setTimeout(() => renderer.zombies.kit.build(), 400);
