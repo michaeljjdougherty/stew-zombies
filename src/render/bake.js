@@ -28,6 +28,7 @@ const levels = [];
 for (let i = 0; i < MAX_CHANNELS / 4; i++) levels.push(new THREE.Vector4(1, 1, 1, 1));
 export const bakeUniforms = {
   bakePower: { value: 0 },          // 0..1 as the power comes on
+  bakeScale: { value: 1 },          // everything at once (the ending's blackout)
   lightLevel: { value: levels },    // packed 4 per vec4
   dynPos: { value: Array.from({ length: DYN_LIGHTS }, () => new THREE.Vector3()) }, // view space
   dynColor: { value: Array.from({ length: DYN_LIGHTS }, () => new THREE.Color(0, 0, 0)) },
@@ -117,6 +118,7 @@ attribute vec4 bakeD;   // light from fixtures that need the power (rgb), baked 
 attribute vec3 bakeDir; // main direction the light comes from (world)
 uniform vec4 lightLevel[${MAX_CHANNELS / 4}];
 uniform float bakePower;
+uniform float bakeScale;
 varying vec3 vBakeE;
 varying vec3 vBakeDir;
 varying float vBakeAo;
@@ -127,7 +129,7 @@ const VERT_MAIN = `
   int i1 = clamp( int( bakeA.w + 0.5 ), 0, ${MAX_CHANNELS - 1} ), i2 = clamp( int( bakeB.w + 0.5 ), 0, ${MAX_CHANNELS - 1} );
   float l1 = bakeA.w >= 0.0 ? lightLevel[ i1 / 4 ][ i1 - ( i1 / 4 ) * 4 ] : 0.0;
   float l2 = bakeB.w >= 0.0 ? lightLevel[ i2 / 4 ][ i2 - ( i2 / 4 ) * 4 ] : 0.0;
-  vBakeE = bakeA.rgb * l1 + bakeB.rgb * l2 + bakeC.rgb + bakeD.rgb * bakePower;
+  vBakeE = ( bakeA.rgb * l1 + bakeB.rgb * l2 + bakeC.rgb + bakeD.rgb * bakePower ) * bakeScale;
   vBakeAo = bakeC.w;
   vBakeOn = bakeD.w;
   vBakeDir = length( bakeDir ) > 0.001 ? normalize( ( viewMatrix * vec4( bakeDir, 0.0 ) ).xyz ) : vec3( 0.0 );
@@ -181,7 +183,7 @@ export function applyBake(mat) {
   // meshes without baked values fall back to the real-time lights (flag = 0)
   mat.defaultAttributeValues = { ...(mat.defaultAttributeValues || {}), bakeA: [0, 0, 0, -1], bakeB: [0, 0, 0, -1], bakeC: [0, 0, 0, 1], bakeD: [0, 0, 0, 0], bakeDir: [0, 0, 0] };
   addShaderPatch(mat, 'bake', (shader) => {
-    for (const k of ['bakePower', 'lightLevel', 'dynPos', 'dynColor', 'dynRange']) shader.uniforms[k] = bakeUniforms[k];
+    for (const k of ['bakePower', 'bakeScale', 'lightLevel', 'dynPos', 'dynColor', 'dynRange']) shader.uniforms[k] = bakeUniforms[k];
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\n' + VERT_PARS)
       .replace('#include <project_vertex>', '#include <project_vertex>\n' + VERT_MAIN);

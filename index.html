@@ -245,6 +245,23 @@
   .rp button.sm.primary { background: var(--blood); border-color: var(--blood); }
   .rp-foot { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
 
+  /* ---------------- Ending cutscene ---------------- */
+  #cutscene { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  #cutscene[hidden] { display: none; }
+  #cutscene .lbox { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height 1.2s ease; }
+  #cutscene .lbox.top { top: 0; } #cutscene .lbox.bot { bottom: 0; }
+  #cutscene.on .lbox { height: 11vh; }
+  #cutscene .csub { position: absolute; left: 50%; bottom: calc(11vh + 18px); transform: translateX(-50%); width: min(760px, 86vw); text-align: center; font-size: clamp(16px, 1.8vw, 22px); color: #efe6d2; text-shadow: 0 1px 3px #000, 0 0 10px #000; }
+  #cutscene .csub b { display: block; font-size: .62em; letter-spacing: 4px; text-transform: uppercase; color: #7fe08a; margin-bottom: 4px; }
+  #cutscene .black { position: absolute; inset: 0; background: #000; opacity: 0; }
+  #cutscene .black.on { opacity: 1; }
+  #cutscene .card { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; opacity: 0; transition: opacity 1.6s ease; }
+  #cutscene .card.on { opacity: 1; }
+  #cutscene .card small { font-size: 13px; letter-spacing: 8px; text-transform: uppercase; color: var(--muted); }
+  #cutscene .card b { font-family: var(--display); font-weight: 400; font-size: clamp(64px, 12vw, 150px); line-height: .9; color: var(--blood); text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 40px rgba(156,14,11,.4); }
+  #cutscene .card span { font-size: 14px; letter-spacing: 5px; text-transform: uppercase; color: var(--ink); }
+  #cutscene .skip { position: absolute; right: 18px; bottom: 14px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: rgba(221,211,192,.55); }
+
   /* ---------------- Menus ---------------- */
   .screen { position: fixed; inset: 0; display: grid; align-content: safe center; padding-inline: max(16px, 7vw); padding-block: 32px;
     background: linear-gradient(90deg, rgba(6,5,4,.94) 0%, rgba(6,5,4,.78) 38%, rgba(6,5,4,.25) 75%, rgba(6,5,4,.1) 100%); overflow-y: auto; }
@@ -539,6 +556,32 @@
     <nav class="menu">
       <button id="btn-again" type="button">Play again</button>
       <button id="btn-over-title" type="button">Quit to title</button>
+    </nav>
+  </div>
+</section>
+
+<div id="cutscene" hidden>
+  <div class="lbox top"></div><div class="lbox bot"></div>
+  <div class="csub" aria-live="polite"></div>
+  <div class="black"></div>
+  <div class="card"><small>Stew Zombies</small><b>Map 2</b><span>The season isn't over</span></div>
+  <div class="skip"></div>
+</div>
+
+<section id="victory" class="screen" hidden>
+  <div class="stack">
+    <span class="eyebrow">The Final Whistle · complete</span>
+    <p class="over-big">Erik is <em>gone</em>. The season isn't.</p>
+    <dl class="stats">
+      <div><dt>Rounds</dt><dd id="win-rounds">0</dd></div>
+      <div><dt>Kills</dt><dd id="win-kills">0</dd></div>
+      <div><dt>Headshots</dt><dd id="win-heads">0</dd></div>
+      <div><dt>Points</dt><dd id="win-points">0</dd></div>
+    </dl>
+    <p class="note">Story by James Amarante. To be continued on Map 2.</p>
+    <nav class="menu">
+      <button id="btn-win-again" type="button">Play again</button>
+      <button id="btn-win-title" type="button">Quit to title</button>
     </nav>
   </div>
 </section>

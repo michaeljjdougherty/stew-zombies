@@ -9,7 +9,7 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'pause', 'settings', 'gameover', 'extras', 'charselect', 'lineup'].map((id) => $(id));
+    this.screens = ['title', 'pause', 'settings', 'gameover', 'victory', 'extras', 'charselect', 'lineup'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
@@ -26,6 +26,8 @@ export class Menus {
     $('btn-settings-back').addEventListener('click', () => this.show(this.returnTo));
     $('btn-again').addEventListener('click', () => this.h.restart());
     $('btn-over-title').addEventListener('click', () => this.h.quit());
+    $('btn-win-again').addEventListener('click', () => this.h.restart());
+    $('btn-win-title').addEventListener('click', () => this.h.quit());
 
     this.bindSettings();
   }
@@ -86,6 +88,14 @@ export class Menus {
       showIcons();
       this.h.settingsChanged(s);
     });
+  }
+
+  showVictory(round, p) {
+    $('win-rounds').textContent = String(round);
+    $('win-kills').textContent = String(p.kills);
+    $('win-heads').textContent = String(p.headshots);
+    $('win-points').textContent = String(p.points);
+    this.show('victory');
   }
 
   showGameOver(team, round, p, erikLine = '') {

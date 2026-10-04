@@ -1180,7 +1180,7 @@ export class MapView {
     const range = this.cfg.graphics.lightRange;
     const scored = [];
     for (const v of this.vlights) {
-      const lvl = v.fixture ? v.fixture.level : v.level;
+      const lvl = this.blackout ? 0 : v.fixture ? v.fixture.level : v.level;
       if (lvl <= 0.001) continue;
       const d = v.pos.distanceTo(eye);
       if (d > range) continue;
@@ -1198,6 +1198,7 @@ export class MapView {
       l.decay = e.v.decay;
       l.intensity = e.v.intensity * e.lvl * fade;
     }
+    if (this.blackout) { for (const sp of this.spotPool) sp.intensity = 0; return; }
     const spots = this.vspots.map((s) => ({ s, d: s.target.distanceTo(eye) })).sort((a, b) => a.d - b.d);
     for (let i = 0; i < this.spotPool.length; i++) {
       const sp = this.spotPool[i], e = spots[i];
@@ -1260,7 +1261,7 @@ export class MapView {
     if (!this.baker) this.startBake();
     if (this.baker && !this.baker.done) this.baker.step(this.cfg.graphics.bakeBudgetMs ?? 5);
     const bp = bakeUniforms.bakePower;
-    bp.value += ((this.powered ? 1 : 0) - bp.value) * Math.min(1, dt * 1.2);
+    bp.value += ((this.powered && !this.blackout ? 1 : 0) - bp.value) * Math.min(1, dt * (this.blackout ? 30 : 1.2));
     if (this.sim.power && !this.powered) this.powerOn(true);
     if (this.boilerGlow) this.boilerGlow.material.color.setRGB(2.0 + Math.sin(this.time * 7) * 0.3 + (this.powered ? 1 : 0), 0.6, 0.15);
     if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
@@ -1288,10 +1289,16 @@ export class MapView {
       f.tubeMat.color.setRGB(2.6 * f.level + 0.06, 2.45 * f.level + 0.06, 2.1 * f.level + 0.05);
       if (f.beam) { f.beam.material.opacity = 0.045 * f.level; f.beam.visible = f.level > 0.02; }
     }
+    // the ending: every light in the building dies at once
+    if (this.blackout) {
+      for (const f of this.fixtures) { f.level = 0; f.tubeMat.color.setRGB(0.04, 0.04, 0.035); if (f.beam) f.beam.visible = false; }
+    }
+    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : 1);
+    bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : 1) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
     // baked surfaces follow each light's live brightness
     for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {
       const v = this.vlights[i];
-      setLightLevel(i, v.fixture ? v.fixture.level : v.level);
+      setLightLevel(i, this.blackout ? 0 : v.fixture ? v.fixture.level : v.level);
     }
     if (eye) this.streamLights(eye);
     if (this.paLed) this.paLed.visible = Math.sin(this.time * 3) > -0.2;

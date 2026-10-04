@@ -91,6 +91,29 @@ Phase 8 (built): Erik's on the PA.
   coach's memo cutting Erik, his notebook, the concession stand log, the boiler
   log, an overdue library book, the Mad Dog plaque and The Bargain itself). F to
   read; they're remembered under Extras → Notes found.
+- **The Final Whistle** (the main quest, designed by James; `src/sim/quest.js`,
+  `src/render/questView.js`), with its objective in the top-left corner:
+  1. *Power & the Mad Dog Machine:* throw the main breakers in the cafeteria and
+     the science lab (they replace the old power switch), find the three trophy
+     pieces (library, locker room, teachers' lounge) and rebuild the trophy at
+     center court. The stand slides aside and the Mad Dog Machine comes up
+     through a trapdoor.
+  2. *The Schnitz's Coin:* kill zombies near the towering mascot statue in the
+     Quad. Fed enough souls, its eyes ignite and its jaw drops the Dark Schnitz
+     Coin.
+  3. *Retracting the cladding:* set the coin in the altar under the Press Box;
+     the steel cladding grinds up and Erik is there behind the glass.
+  4. *The half-court sacrifice:* four drained basketballs; hold each glowing
+     circle for 45 s while sprinters claw up out of the court. Each restores a
+     talent (Speed, Jump, Power, Defense); solo you get all four.
+  5. *The Intercom Showdown:* call Erik out at the altar. Waves of Zombie
+     Defenders in Stew Leonards jerseys while he paints red playbook diagrams
+     on the floor; then elites drop Sound Amplifiers for the four speaker
+     towers; then shoot the main soundboard wire.
+  6. *Out of Bounds:* the ending cutscene (skippable): the glass shatters, Erik
+     falls, The Schnitz speaks, Erik vanishes, and past the gym doors the
+     campus is anchored to an asteroid in deep space. Brian Luke steps out of
+     a portal: "You guys coming?" Title card for Map 2 (`src/render/ending.js`).
 - **Set dressing:** the Press Box hanging over a blood-streaked court,
   fiberglass dairy cows, a rotting animatronic cow band on the cafeteria stage,
   the store-style cafeteria marquee and the Rule #1 rock in the Quad

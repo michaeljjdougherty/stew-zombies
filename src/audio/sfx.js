@@ -1513,3 +1513,60 @@ export function hitTick(A, out, t, p = {}) {
 
 // Shared with the music (src/audio/music.js).
 export { voice as singVoice, VOWELS };
+
+// --- the ending ----------------------------------------------------------------
+// The Press Box glass going: a crack, a burst, then tinkling shards.
+export function glassShatter(A, out, t) {
+  const n = A.noiseSource('white', t, 0.5);
+  const hp = A.filter('highpass', 2500, 0.7);
+  const g = A.gain(0); A.env(g, t, 0.001, 0.4, 1.2);
+  n.connect(hp); hp.connect(g); g.connect(out);
+  for (let i = 0; i < 26; i++) {
+    const tt = t + 0.05 + Math.random() * 1.6;
+    const o = A.osc('sine', 2500 + Math.random() * 4500, tt, 0.15);
+    const og = A.gain(0); A.env(og, tt, 0.001, 0.12, 0.15 * (1 - (tt - t) / 2));
+    o.connect(og); og.connect(out);
+  }
+  return 2;
+}
+
+// Every light in the building dying at once.
+export function powerDown(A, out, t) {
+  const o = A.osc('sawtooth', 120, t, 1.6);
+  o.frequency.exponentialRampToValueAtTime(25, t + 1.5);
+  const lp = A.filter('lowpass', 900, 1);
+  lp.frequency.exponentialRampToValueAtTime(120, t + 1.5);
+  const g = A.gain(0); A.env(g, t, 0.01, 1.4, 0.5);
+  o.connect(lp); lp.connect(g); g.connect(out);
+  const n = A.noiseSource('brown', t, 0.3);
+  const ng = A.gain(0); A.env(ng, t, 0.002, 0.25, 0.8);
+  n.connect(ng); ng.connect(out);
+  return 1.8;
+}
+
+// The Schnitz: a deep, rattling voice from everywhere at once.
+export function schnitzVoice(A, out, t, p = {}) {
+  const dur = p.dur || 3;
+  const drive = A.shaper(0.8);
+  const lp = A.filter('lowpass', 1400, 0.8);
+  const g = A.gain(2.2);
+  drive.connect(lp); lp.connect(g); g.connect(out);
+  babble(A, drive, t, { text: p.text || '', dur, f0: 52, grit: 0.95, peak: 0.7 });
+  // a sub drone under it
+  const o = A.osc('sine', 38, t, dur + 1);
+  const og = A.gain(0); A.env(og, t, 0.4, dur, 0.6);
+  o.connect(og); og.connect(out);
+  return dur + 1;
+}
+
+// Wind across nothing at all.
+export function spaceWind(A, out, t, p = {}) {
+  const dur = p.dur || 10;
+  const n = A.noiseSource('pink', t, dur);
+  const bp = A.filter('bandpass', 400, 0.6);
+  bp.frequency.linearRampToValueAtTime(900, t + dur * 0.5);
+  bp.frequency.linearRampToValueAtTime(300, t + dur);
+  const g = A.gain(0); A.env(g, t, 2, dur - 3, 0.25);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  return dur;
+}

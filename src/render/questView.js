@@ -318,6 +318,8 @@ export class QuestView {
     for (const w of this.wisps) this.group.remove(w.s);
     this.wisps = [];
     if (this.erik) { this.group.remove(this.erik.root); this.erik = null; if (this.erikLight) this.erikLight.level = 0; }
+    this.erikHeld = false;
+    if (this.pressBox) for (const p of this.pressBox.panes) p.visible = true;
   }
 
   onEvent(e) {
@@ -493,9 +495,9 @@ export class QuestView {
         if (c > 0 && c < 1) m.position.x += 0;
       }
       if (c > 0 && !this.erik) this.buildErik();
-      if (this.erikLight && !this.erik.root.parent) this.erikLight.level = 0;
+      if (this.erikLight && this.erik && !this.erik.root.parent) this.erikLight.level = 0;
     }
-    if (this.erik) {
+    if (this.erik && !this.erikHeld) {
       this.erik.root.visible = q.cladding > 0;
       idleCharacter(this.erik, t);
       // he watches whoever's closest

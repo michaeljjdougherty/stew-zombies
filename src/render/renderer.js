@@ -20,6 +20,7 @@ import { PowerupViews } from './powerupView.js';
 import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
 import { QuestView } from './questView.js';
+import { Ending } from './ending.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 
@@ -334,7 +335,40 @@ export class GameRenderer {
     for (; si < DYN_LIGHTS; si++) U.dynColor.value[si].setRGB(0, 0, 0);
   }
 
+  // --- the ending cutscene -------------------------------------------------
+  startEnding(settings) {
+    this.ending = new Ending(this, this.sim, { character: settings.character, shirt: settings.shirt });
+    this.endingScene = this.scene;
+    return this.ending;
+  }
+
+  endEnding() {
+    if (!this.ending) return;
+    this.ending.dispose();
+    this.ending = null;
+    this.post.setScene(this.scene);
+    this.endingScene = null;
+  }
+
+  renderEnding(dt, time) {
+    const sim = this.sim;
+    this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: 0 });
+    this.zombies.update(sim, dt, 1, time);
+    this.machines.update(dt);
+    this.quest.update(dt, this.camera);
+    this.effects.update(dt);
+    const scene = this.ending.update(dt, time);
+    if (scene !== this.endingScene) { this.post.setScene(scene); this.endingScene = scene; }
+    const vFov = 52;
+    if (this.camera.fov !== vFov || this.camera.aspect !== this.aspect) { this.camera.fov = vFov; this.camera.aspect = this.aspect; this.camera.updateProjectionMatrix(); }
+    this.viewmodel.root.visible = false;
+    this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
+    this.updateBakedLive();
+    this.post.render(dt, { damage: 0, lowHealth: 0, flash: this.flash || 0, tint: 0 });
+  }
+
   render(dt, alpha, look, p, time, mode = 'play') {
+    if (mode === 'ending' && this.ending) { this.renderEnding(dt, time); return; }
     if (mode === 'showcase') {
       this.getShowcase().render(dt, this.aspect);
       return;

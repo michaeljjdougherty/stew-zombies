@@ -49,6 +49,27 @@ export class SoundDirector {
     return p ? p.loadout.slots[p.loadout.current].id : null;
   }
 
+  // The ending cutscene's sounds (src/render/ending.js cues).
+  cue(name) {
+    const A = this.A;
+    if (!A.ready) return;
+    const booth = { x: 0, y: 6, z: 0 };
+    switch (name) {
+      case 'shatter': A.play(S.glassShatter, {}, { pos: booth, ref: 12, gain: 1.5, reverb: 0.9 }); A.play(S.explosion, {}, { pos: booth, ref: 10, gain: 0.6, reverb: 0.9 }); break;
+      case 'thud': A.play(S.boxThud, {}, { gain: 1.2, reverb: 0.6 }); break;
+      case 'lightsDie': A.play(S.powerDown, {}, { gain: 1.2, reverb: 0.9 }); break;
+      case 'schnitz': A.play(S.schnitzVoice, { text: "This season isn't over yet.", dur: 3 }, { gain: 1.4, reverb: 1, bus: 'voice' }); break;
+      case 'smoke': A.play(S.boxWhoosh, {}, { gain: 1.2, reverb: 0.8 }); A.play(S.smallBoom, {}, { gain: 1, reverb: 0.8 }); break;
+      case 'lightsBack': A.play(S.powerOn, {}, { gain: 1, reverb: 0.8 }); break;
+      case 'doors': A.play(S.creak, {}, { gain: 1.2, reverb: 0.8 }); A.play(S.bang, {}, { gain: 0.9, reverb: 0.9, delay: 1.2 }); break;
+      case 'space': A.play(S.spaceWind, { dur: 12 }, { gain: 0.9, reverb: 0.5 }); break;
+      case 'portal': A.play(S.thunder, { near: 0.4 }, { gain: 0.9, reverb: 0.8 }); A.play(S.electrocute, {}, { gain: 0.9, reverb: 0.6, delay: 0.3 }); break;
+      case 'brian': A.play(S.stewTalk, { text: 'You guys coming?', dur: 1.6 }, { gain: 1.1, reverb: 0.3, bus: 'voice' }); break;
+      case 'black': A.play(S.bang, {}, { gain: 1.3, reverb: 0.2 }); break;
+      case 'card': A.play(S.roundStartSting, {}, { gain: 1, reverb: 0.8 }); break;
+    }
+  }
+
   stopSong() { if (this.song) { this.song.stop(0.4); this.song = null; } }
 
   startAmbience(mapView) {

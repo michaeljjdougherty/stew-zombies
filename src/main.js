@@ -27,6 +27,7 @@ import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
+import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS } from './render/characters.js';
 
@@ -87,9 +88,11 @@ const rangeUI = new RangeUI(CONFIG, {
 rangeUI.localId = LOCAL_ID;
 renderer.rig.onFootstep = (sprint, speed) => sound.playerFootstep(sprint, speed);
 
-// 'title' | 'play' | 'paused' | 'dying' | 'over'
+// 'title' | 'play' | 'paused' | 'dying' | 'over' | 'ending'
 let mode = 'title';
 let dyingT = 0;
+let endingAt = null;          // when the ending cutscene starts (after Erik's booth goes)
+const cutsceneUI = new CutsceneUI();
 
 function makeSim(gameMode) {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
@@ -111,7 +114,7 @@ const menus = new Menus(settings, {
   range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
   explore: () => { if (sim.mode !== 'explore') restart('explore'); startPlaying(); },
   resume: () => startPlaying(),
-  restart: () => { restart(); startPlaying(); },
+  restart: () => { restart(sim.mode === 'range' ? 'range' : sim.mode); startPlaying(); },
   quit: () => { restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
@@ -170,6 +173,28 @@ function startPlaying() {
   document.getElementById('lockhint').hidden = true;
 }
 
+function startEnding() {
+  endingAt = null;
+  mode = 'ending';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  hud.show(false);
+  const E = renderer.startEnding(settings);
+  E.onCue = (n) => { sound.cue(n); cutsceneUI.cue(n); };
+  cutsceneUI.show(`${glyph('skip')} skip`);
+}
+
+function finishEnding() {
+  renderer.endEnding();
+  cutsceneUI.hide();
+  mode = 'over';
+  input.enabled = false;
+  if (!progress.questDone) { progress.questDone = true; saveProgress(progress); }
+  menus.showVictory(sim.rounds.round, player);
+  startTitleMusic();
+}
+
 function updateExploreHud() {
   const el = document.getElementById('explorehud');
   el.hidden = sim.mode !== 'explore';
@@ -217,6 +242,8 @@ function restart(gameMode = sim.mode) {
   rangeUI.setActive(false);
   sound.stopSong();
   gameOverLine = '';
+  endingAt = null;
+  if (renderer.ending) { renderer.endEnding(); cutsceneUI.hide(); }
   sound.sim = sim;
   sound.groanTimers.clear();
   hud.reset();
@@ -237,6 +264,7 @@ window.addEventListener('keydown', (e) => {
     if (mode === 'play') openRangePanel();
     else if (mode === 'panel') closeRangePanel();
   }
+  if (mode === 'ending' && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
   if (e.code === 'Escape' && mode === 'panel') { closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
@@ -267,6 +295,7 @@ function tick(cmd) {
     if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
     if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
     if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
+    if (e.type === 'bossEnd') endingAt = time + 2.4;
     if (device !== 'kbm' && settings.rumble !== false) rumbleFor(e);
   }
 }
@@ -387,6 +416,7 @@ function padFrame(fdt) {
     if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
   }
   const playing = mode === 'play';
+  if (mode === 'ending' && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
   // menus first (no menu is up while playing, so this only tracks the screen)
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
@@ -417,6 +447,10 @@ function frame(now) {
     if (steps >= CONFIG.sim.maxStepsPerFrame) acc = 0;
   }
 
+  // the ending cutscene: Erik's booth is in pieces
+  if (mode === 'play' && endingAt != null && time >= endingAt) startEnding();
+  if (mode === 'ending' && renderer.ending && renderer.ending.done) finishEnding();
+
   if (mode === 'dying') {
     dyingT += fdt;
     if (dyingT > 2.2) {
@@ -432,7 +466,7 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = mode === 'paused' || mode === 'over' ? 0 : fdt;
-  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : 'play');
+  renderer.render(worldDt, alpha, look, player, time, mode === 'title' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play');
   audio.updateListener(renderer.camera);
   if (mode === 'play' || mode === 'dying' || mode === 'panel') sound.update(fdt, player);
   hud.update(fdt, sim, player, renderer.camera, settings.showFps);
@@ -455,6 +489,8 @@ window.STEW = {
     },
     look(yaw, pitch = 0) { input.setLook(yaw, pitch); },
     hold: debugHold, // e.g. STEW.debug.hold.ads = true
+    // jump into the ending cutscene at `at` seconds (for testing)
+    ending(at = 0) { if (mode !== 'ending') startEnding(); renderer.ending.t = at; },
 
   },
 };
