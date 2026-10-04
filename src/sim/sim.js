@@ -10,7 +10,7 @@ import { CONFIG } from '../config.js';
 import { RNG } from '../core/rng.js';
 import { rayAABB, rayCapsule, raySphere, v3 } from '../core/math.js';
 import { buildMap, openDoorCollision } from '../map/build.js';
-import { createPlayer, updatePlayer, emptyCommand, damagePlayer } from './player.js';
+import { createPlayer, updatePlayer, updateRemotePlayer, emptyCommand, damagePlayer } from './player.js';
 import { cancelReload } from './weapons.js';
 import { updateZombies, zombieHitboxes } from './zombies.js';
 import { createRoundState, updateRounds } from './rounds.js';
@@ -32,6 +32,8 @@ export class GameSim {
     this.cfg = cfg;
     this.mode = mode;          // 'zombies' | 'range' | 'explore'
     this.godMode = false;
+    this.replica = false;      // online client: this copy only moves you and mirrors the host
+    this.netOut = [];          // online client: hits, throws and blasts to send to the host
     this.mapData = map;
     this.world = buildMap(map, cfg);
     this.rng = new RNG(seed);
@@ -260,6 +262,7 @@ export class GameSim {
   emit(type, data = {}) {
     const e = { type, t: this.time, ...data };
     this.events.push(e);
+    if (this.replica) return;   // an online client's copy: Erik and the quest live on the host
     if (this.pa && this.pa.enabled && type !== 'erikSays') this.pa.inbox.push(e); // Erik listens to everything
     if (this.quest) questOnEvent(this, e);
   }
@@ -273,7 +276,8 @@ export class GameSim {
 
     for (const p of this.players) {
       const cmd = this.inputs.get(p.id) || emptyCommand();
-      updatePlayer(this, p, cmd, dt);
+      if (p.remote) updateRemotePlayer(this, p, cmd, dt);
+      else updatePlayer(this, p, cmd, dt);
       p.region = this.nav.regionAt(p.pos, p.region);
     }
     for (const it of this.interactables) if (it.update) it.update(this, dt);

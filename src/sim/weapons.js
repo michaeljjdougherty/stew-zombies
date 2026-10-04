@@ -10,6 +10,13 @@ import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
 import { perkMult } from './perks.js';
 
+// Online, a client's copy of the game doesn't hurt zombies itself: it tells the
+// host what it hit (src/net/host.js applies it).
+function netAct(sim, a) { sim.netOut.push(a); }
+const hurt = (sim, z, dmg, info) => (sim.replica ? netAct(sim, { k: 'hit', zid: z.id, dmg, info }) : damageZombie(sim, z, dmg, info));
+const shoot = (sim, type, pos, vel, ownerId, opts) => (sim.replica ? netAct(sim, { k: 'proj', type, pos, vel, opts }) : spawnProjectile(sim, type, pos, vel, ownerId, opts));
+const blast = (sim, pos, kind, ownerId) => (sim.replica ? netAct(sim, { k: 'boom', pos, kind }) : explode(sim, pos, kind, ownerId));
+
 // Perk-adjusted timings.
 const reloadMult = (sim, p) => perkMult(sim, p, 'reloadMult');
 const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult');
@@ -169,7 +176,7 @@ function fire(sim, p, slot, def, side) {
     const d = coneDir(dir, spread * DEG, sim.rng);
     const off = side === 'L' ? -0.12 : 0.12;
     const start = { x: eye.x + d.x * 0.5 + Math.cos(p.yaw) * off * 0.5, y: eye.y + d.y * 0.5 - 0.06, z: eye.z + d.z * 0.5 - Math.sin(p.yaw) * off * 0.5 };
-    spawnProjectile(sim, def.projectile.type, start, { x: d.x * def.projectile.speed, y: d.y * def.projectile.speed, z: d.z * def.projectile.speed }, p.id, { ...def.projectile, weapon: slot.id, ricochets: def.sawBounces ?? def.projectile.bounces });
+    shoot(sim, def.projectile.type, start, { x: d.x * def.projectile.speed, y: d.y * def.projectile.speed, z: d.z * def.projectile.speed }, p.id, { ...def.projectile, weapon: slot.id, ricochets: def.sawBounces ?? def.projectile.bounces });
   } else {
     const pellets = def.pellets || 1;
     // Pellets that hit the same zombie are summed into one hit (one set of points).
@@ -194,17 +201,17 @@ function fire(sim, p, slot, def, side) {
         acc.parts[h.part] = (acc.parts[h.part] || 0) + dmg;
       }
     }
-    for (const h of impacts) if (h.targetId) questShot(sim, h.targetId, p);
+    for (const h of impacts) if (h.targetId) { if (sim.replica) netAct(sim, { k: 'quest', id: h.targetId }); else questShot(sim, h.targetId, p); }
     for (const [id, acc] of perZombie) {
       const z = sim.zombieById(id);
       if (!z) continue;
       const part = acc.parts.head ? 'head' : Object.entries(acc.parts).sort((a, b) => b[1] - a[1])[0][0];
-      damageZombie(sim, z, acc.dmg, { playerId: p.id, part, kind: 'bullet', dir: acc.dir, point: acc.point, weapon: slot.id, pellets });
+      hurt(sim, z, acc.dmg, { playerId: p.id, part, kind: 'bullet', dir: acc.dir, point: acc.point, weapon: slot.id, pellets });
     }
     // Mad Dog explosive rounds: a small blast where the bullet lands
     if (def.explosiveRounds && impacts.length) {
       const h = impacts[0];
-      explode(sim, { x: h.point.x + h.normal.x * 0.1, y: h.point.y + h.normal.y * 0.1, z: h.point.z + h.normal.z * 0.1 }, def.explosiveRounds, p.id);
+      blast(sim, { x: h.point.x + h.normal.x * 0.1, y: h.point.y + h.normal.y * 0.1, z: h.point.z + h.normal.z * 0.1 }, def.explosiveRounds, p.id);
     }
   }
 
@@ -377,7 +384,7 @@ function updateGrenade(sim, p, cmd, dt) {
     if (!stew && t.t >= g.fuse) {
       // held it too long
       const eye = sim.eyePosition(p);
-      explode(sim, { x: eye.x, y: eye.y - 0.3, z: eye.z }, 'cookedOff', p.id);
+      blast(sim, { x: eye.x, y: eye.y - 0.3, z: eye.z }, 'cookedOff', p.id);
       p.throwing = { phase: 'recover', t: g.throwLock };
       return;
     }
@@ -388,8 +395,8 @@ function updateGrenade(sim, p, cmd, dt) {
       const start = { x: eye.x + d.x * 0.4 + Math.cos(p.yaw) * 0.1, y: eye.y + d.y * 0.4, z: eye.z + d.z * 0.4 - Math.sin(p.yaw) * 0.1 };
       const e = stew ? sb : g;
       const vel = { x: d.x * e.throwSpeed + p.vel.x * 0.5, y: d.y * e.throwSpeed + e.throwUp, z: d.z * e.throwSpeed + p.vel.z * 0.5 };
-      if (stew) spawnProjectile(sim, 'stewbomb', start, vel, p.id, { gravity: sb.gravity, bounce: sb.bounce, friction: sb.friction, fuse: sb.lureTime + 1.2, explode: sb.explode });
-      else spawnProjectile(sim, 'frag', start, vel, p.id, { gravity: g.gravity, bounce: g.bounce, friction: g.friction, fuse: g.fuse - t.t, explode: g.explode });
+      if (stew) shoot(sim, 'stewbomb', start, vel, p.id, { gravity: sb.gravity, bounce: sb.bounce, friction: sb.friction, fuse: sb.lureTime + 1.2, explode: sb.explode });
+      else shoot(sim, 'frag', start, vel, p.id, { gravity: g.gravity, bounce: g.bounce, friction: g.friction, fuse: g.fuse - t.t, explode: g.explode });
       p.throwing = { phase: 'recover', t: g.throwLock, kind: t.kind };
       sim.emit('grenadeThrow', { playerId: p.id, cooked: t.t, kind: t.kind });
     }
@@ -443,7 +450,7 @@ function updateMelee(sim, p, cmd, dt, def) {
       const pick = c.find((e) => e.z.id === m.targetId) || c[0];
       if (pick) {
         const dmg = mc.damage * (def.meleeMult || 1);
-        damageZombie(sim, pick.z, dmg, { playerId: p.id, part: 'torso', kind: 'knife', dir: { x: -Math.sin(p.yaw), y: 0, z: -Math.cos(p.yaw) }, point: { x: pick.z.pos.x, y: pick.z.pos.y + (pick.z.crawler ? 0.35 : 1.2), z: pick.z.pos.z } });
+        hurt(sim, pick.z, dmg, { playerId: p.id, part: 'torso', kind: 'knife', dir: { x: -Math.sin(p.yaw), y: 0, z: -Math.cos(p.yaw) }, point: { x: pick.z.pos.x, y: pick.z.pos.y + (pick.z.crawler ? 0.35 : 1.2), z: pick.z.pos.z } });
         sim.emit('meleeHit', { playerId: p.id, zombieId: pick.z.id });
       } else {
         sim.emit('meleeMiss', { playerId: p.id });

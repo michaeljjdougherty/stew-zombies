@@ -76,7 +76,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   p.yaw = cmd.yaw;
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
 
-  updateDrinking(sim, p, dt);
+  if (!sim.replica) updateDrinking(sim, p, dt);   // (online: the host owns perks)
   const downed = !!p.downed;
 
   // --- stance
@@ -174,6 +174,16 @@ export function updatePlayer(sim, p, cmd, dt) {
   // --- weapons and knife
   updateWeapons(sim, p, cmd, dt);
 
+  // online, the host does the buying, prompts and health for you
+  if (sim.replica) return;
+  updateUseAndHealth(sim, p, cmd, dt);
+}
+
+// Interaction prompts and health regen. Online, the host runs only this part
+// for the other players: their own browsers move them and fire their guns.
+function updateUseAndHealth(sim, p, cmd, dt) {
+  const cfg = sim.cfg.player;
+  const downed = !!p.downed;
   // --- interaction prompts (none while you're down)
   if (downed) {
     if (p.useTarget && p.useTarget.release) p.useTarget.release(sim, p);
@@ -184,6 +194,14 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (!downed && p.health < p.maxHealth && sim.time - p.lastDamageTime > cfg.regenDelay) {
     p.health = Math.min(p.maxHealth, p.health + cfg.regenRate * dt);
   }
+}
+
+// Host side of an online teammate: their browser reports where they are and
+// what they shot (src/net/host.js); here we only drink perks, use things and heal.
+export function updateRemotePlayer(sim, p, cmd, dt) {
+  if (!p.alive) return;
+  updateDrinking(sim, p, dt);
+  updateUseAndHealth(sim, p, cmd, dt);
 }
 
 function approach(v, tx, tz, maxDelta) {
