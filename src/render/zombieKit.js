@@ -1,5 +1,5 @@
 // =============================================================================
-// Zombie parts kit: the reunion guests and school staff after the stew.
+// Zombie parts kit: the championship crowd and school staff, raised by The Schnitz.
 // Builds a handful of head variants and outfits once (textures painted in
 // code), then every zombie is assembled from shared geometry and materials so
 // a full horde stays cheap to draw.

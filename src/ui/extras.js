@@ -28,13 +28,15 @@ export class Extras {
   }
 
   story() {
-    return `<h3>Last Bell High</h3>
-      <p>Senior year, four friends everyone just called <b>Stew</b> pulled off the Great Stew Incident: the fire alarm went off in the middle of the class president's big speech, and a goat got loose in the cafeteria wearing his sash.</p>
-      <p>The class president was <b>Erik Madsen</b>. Hall monitor. Science fair champion. Owner of three very loyal dogs. He did not think it was funny.</p>
-      <p>Ten years later, Erik organised the reunion. He cooked the dinner himself: a big pot of stew, with a whole jar of something from the science lab stirred in. Four hundred guests had seconds.</p>
-      <p>Stew showed up late. The doors are chained, the power's been cut, and every speaker in the school belongs to Erik.</p>
+    return `<h3>Stew Leonard High: Out of Bounds</h3>
+      <p class="note">Story by James Amarante.</p>
+      <p>The <b>Stew Leonards</b> were an unstoppable high school basketball team heading into the championship game off an undefeated season. But behind closed doors, friction brewed. Right before the final stretch, the team made a unanimous decision: they cut <b>Erik Madsen</b>. Number 8.</p>
+      <p>Driven by resentment, Erik went looking for the power to take revenge on his former teammates. He found a dark entity known as <b>The Schnitz</b>. In exchange for his soul, The Schnitz gave him powers.</p>
+      <h4>The outbreak</h4>
+      <p>Moments before the championship tipped off, Erik struck. He stripped every Stew Leonard of their basketball talent and unleashed a horde of the undead on the gym and the campus around it.</p>
+      <p>Trapped inside, the team has to fight through the horde, follow Erik's taunting voice over the intercom, take back what he stole, and expose him in the <b>Press Box</b> above the gym.</p>
       <h4>Erik on the PA</h4>
-      <p>He'll talk to you the whole night. If you find his microphone in the principal's office, you can talk back.</p>`;
+      <p>He'll talk to you the whole night. There's a PA handset in the teachers' lounge if you want to talk back.</p>`;
   }
 
   notes() {
@@ -66,14 +68,14 @@ export class Extras {
       <h4>Power-ups</h4><p>Zombies sometimes drop one. Walk over it to grab it.</p><ul>${pus}</ul>
       <h4>Cheddar Rounds</h4><p>Every few rounds Erik lets his dogs out. The whole pack comes for you; the last one drops Full Pantry.</p>
       <h4>Last stand</h4><p>When you go down you can still shoot with your pistol. In solo, Second Helping gets you back up.</p>
-      <h4>Secrets</h4><p>Erik confiscated three things from Stew a long time ago and hid them around the school. Find all ${STEW_ITEMS.length}.</p>`;
+      <h4>Secrets</h4><p>The night he was cut, Erik confiscated the team's ${STEW_ITEMS.length} good-luck charms and hid them around the school. Find them all.</p>`;
   }
 
   jukebox() {
     const prog = this.h.progress();
     const playing = this.h.songPlaying();
     return `<h3>Jukebox</h3>
-      <p><b>"We Go Stew"</b> — Stew Jams, side A. ${prog.song ? 'Unlocked.' : 'Locked: find the three things Erik hid around Last Bell High.'}</p>
+      <p><b>"We Go Stew"</b> — Stew Jams, side A. ${prog.song ? 'Unlocked.' : 'Locked: find the three good-luck charms Erik hid around Stew Leonard High.'}</p>
       <div class="jukebox">
         <button class="sm" id="jb-play" type="button" ${prog.song ? '' : 'disabled'}>${playing ? 'Stop' : 'Play'}</button>
         <div id="lyric"></div>
@@ -107,6 +109,7 @@ export class Extras {
       <p>Photo surfaces (brick, cinder block, tile, terrazzo, wood floors, carpet, concrete, ceiling tiles, grass): scanned materials from <b>ambientCG</b> by Lennart Demes, released to the public domain (CC0).</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>
-      <p>All characters, places and events are fictional. No goats were harmed.</p>`;
+      <p>Story, "Out of Bounds" and "The Final Whistle": <b>James Amarante</b>.</p>
+      <p>A fan-made game for friends. Stew Leonard High is a fictional school; this game isn't affiliated with or endorsed by any real business. All events are fictional.</p>`;
   }
 }

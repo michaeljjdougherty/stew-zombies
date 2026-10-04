@@ -1,5 +1,5 @@
 // =============================================================================
-// MAP DATA — Last Bell High
+// MAP DATA — Stew Leonard High
 // Pure data read by both the simulation (collision, zones, spawns, pathing)
 // and the renderer. Axes: +X east, +Y up, -Z north. Units in meters.
 //
@@ -43,7 +43,7 @@ function fixtureRow(xs, zs, y, litEvery = 3, flickerSet = []) {
 
 export const SCHOOL = {
   id: 'lastbell',
-  name: 'Last Bell High',
+  name: 'Stew Leonard High',
   wallThickness: T,
 
   playerSpawns: [
@@ -69,6 +69,8 @@ export const SCHOOL = {
           out.push({ x, z, y: 7.8, lit, flicker: [4, 10].includes(i) ? 0.8 : lit ? 0.15 : 0, kind: 'hanging' });
           i++;
         }
+        // the Press Box's floodlight over center court (needs the power)
+        out.push({ x: 0, z: 0, y: 4.9, lit: false, flicker: 0.1, kind: 'panel' });
         return out;
       })(),
     },
@@ -87,7 +89,7 @@ export const SCHOOL = {
       fixtures: fixtureRow([19.8, 23.2], [19, 23.5], 3.16, 3, [2]).map((f) => ({ ...f, kind: 'panel' })),
     },
     {
-      id: 'principal', zone: 'office', name: "Principal's Office",
+      id: 'principal', zone: 'office', name: "Teachers' Lounge",
       rect: [25.75, 16.5, 30, 26], height: 3.2, floor: 'carpet', style: 'principal', reverb: 0.2,
       walls: { n: { ranges: [[25.75, 30.5]] }, s: { ranges: [[25.75, 30.5]] }, e: {}, w: { skip: true } },
       ceiling: 'drop',
@@ -327,7 +329,7 @@ export const SCHOOL = {
     { kind: 'counter', box: [18.8, 0, 19.4, 23.4, 1.05, 20.0] },
     { kind: 'cabinets', box: [17.5, 0, 21.2, 18.1, 1.35, 25.2], face: 'e' },
     { kind: 'desk', box: [19.2, 0, 23.4, 20.9, 0.76, 24.3] },
-    // principal's office
+    // teachers' lounge (the old principal's office)
     { kind: 'desk', box: [27.2, 0, 18.3, 29.2, 0.78, 19.3], pa: true },
     { kind: 'shelf', box: [29.55, 0, 22.2, 30, 2.1, 25.5], face: 'w' },
     // cafeteria
@@ -384,6 +386,14 @@ export const SCHOOL = {
     { kind: 'bench', box: [22.6, 0, -16, 23.1, 0.45, -13] },
     { kind: 'bench', box: [22.6, 0, 1, 23.1, 0.45, 4] },
     { kind: 'bench', box: [33, 0, 15.3, 36, 0.45, 15.8] },
+
+    // Stew Leonard High dressing (src/render/storyProps.js): fiberglass dairy
+    // cows, the animatronic cow band on the cafeteria stage, the Rule #1 rock
+    { kind: 'cow', box: [35.3, 0, -24.3, 37.6, 1.85, -23.0], yaw: Math.PI, plinth: true },
+    { kind: 'cow', box: [32.8, 0, 9.0, 35.1, 1.85, 10.2], yaw: Math.PI, plinth: true },
+    { kind: 'animatronic', box: [34.6, 0.9, -35.2, 37.6, 3.0, -33.4], yaw: Math.PI },
+    { kind: 'animatronic', box: [34.6, 0.9, -29.6, 37.6, 3.0, -27.8], yaw: Math.PI },
+    { kind: 'rock', box: [25.4, 0, 12.4, 27.6, 1.1, 13.6] },
   ],
 
   // Wall weapons: weapon id, owning room/side, position along the wall, height.
@@ -432,7 +442,7 @@ export const SCHOOL = {
   ],
 
   // --- story ---------------------------------------------------------------
-  // Erik's PA microphone on the principal's desk: talk back to him.
+  // The PA handset on the teachers' lounge table: talk back to Erik.
   intercom: { x: 28.0, y: 1.08, z: 18.8 },
 
   // Notes to read (words in src/lore/erik.js). `wall` = pinned to a wall
@@ -445,6 +455,7 @@ export const SCHOOL = {
     { id: 'boiler', x: -27.6, y: 1.205, z: 11.0, yaw: 0.1 },
     { id: 'library', x: -18.2, y: 0.955, z: -31.3, yaw: -0.4 },
     { id: 'maddog', x: 6.7, y: 0.905, z: -76.4, yaw: 0.25 },
+    { id: 'contract', x: 28.75, y: 0.785, z: 18.75, yaw: -0.35 },
   ],
 
   // The three Stew items for the song Easter egg. Small and easy to miss.
@@ -482,7 +493,7 @@ export const SCHOOL = {
     { kind: 'vote', room: 'hall', side: 'e', at: 12.5, y: 2.6, w: 0.6, h: 0.82 },
     { kind: 'menu', room: 'cafe', side: 'n', at: 22.9, y: 2.75, w: 2.6, h: 1.15 },
     { kind: 'reunion', room: 'cafe', side: 's', at: 24.75, y: 3.6, w: 6, h: 1.1 },
-    { kind: 'batch7', x: 37.185, y: 1.45, z: -42.6, yaw: -Math.PI / 2, w: 0.32, h: 0.26 },
+    { kind: 'sourMilk', x: 37.185, y: 1.45, z: -42.6, yaw: -Math.PI / 2, w: 0.32, h: 0.26 },
     { kind: 'scienceFair', room: 'lab', side: 'w', at: -25.6, y: 1.75, w: 0.85, h: 1.1 },
     { kind: 'read', room: 'library', side: 'e', at: -36.5, y: 1.9, w: 0.8, h: 1.1 },
     { kind: 'concert', room: 'band', side: 's', at: -20, y: 1.7, w: 0.85, h: 1.15 },

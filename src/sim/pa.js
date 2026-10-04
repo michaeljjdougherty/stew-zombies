@@ -66,7 +66,7 @@ export function paSay(sim, cat, { text = null, delay = 0, force = false } = {}) 
   return true;
 }
 
-// The intercom on the principal's desk: Stew says something, Erik answers.
+// The intercom in the teachers' lounge: Stew says something, Erik answers.
 export function intercomTalk(sim, p) {
   const pa = sim.pa;
   const ex = pa.intercomIndex < INTERCOM.length ? INTERCOM[pa.intercomIndex++] : null;

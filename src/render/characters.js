@@ -147,7 +147,7 @@ export const CHARACTERS = {
     idle: 'peace',
   },
   erik: {
-    name: 'Erik Madsen', villain: true, blurb: 'Evil overlord. Class president. Having way too much fun.',
+    name: 'Erik Madsen', villain: true, blurb: 'Number 8. Cut from the team before the championship. Sold his soul to The Schnitz.',
     height: 1.0, headScale: 1.12,
     body: { shoulders: 0.205, chest: 0.162, waist: 0.15, hips: 0.162, depth: 0.11, build: 0.2 }, limbs: 1, armsOut: 0.12,
     skin: 'fairPink', blush: 1.6,

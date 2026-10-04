@@ -53,7 +53,7 @@ audio.preload(GUN_SAMPLES, SAMPLE_BASE);
 const sound = new SoundDirector(audio, sim, CONFIG);
 sound.localId = LOCAL_ID;
 const hud = new HUD(CONFIG);
-hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the principal's office" : 'the ' + r.name.replace(/^The /, '')]));
+hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
 hud.localId = LOCAL_ID;
 
 // Notes found and the Stew song unlock, remembered in this browser.

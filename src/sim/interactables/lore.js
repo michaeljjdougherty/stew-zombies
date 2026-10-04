@@ -25,7 +25,7 @@ export class IntercomInteractable {
   canUse(sim, p) { return up(p) && sim.pa.enabled; }
   prompt(sim) {
     if (!intercomReady(sim)) return { text: 'Erik is talking', cost: null };
-    return { text: 'Press [F] to talk to Erik', cost: null, sub: 'Principal\'s PA microphone' };
+    return { text: 'Press [F] to talk to Erik', cost: null, sub: 'PA handset: Erik is in the Press Box' };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;

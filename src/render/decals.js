@@ -134,24 +134,24 @@ function erikFace(g, cx, cy, s, { graffiti = false } = {}) {
 
 // --- the posters ----------------------------------------------------------------
 const PAINTERS = {
+  // Erik's old player poster from the team wall: #8, cut.
   vote(g, W, H, d) {
     paper(g, W, H, '#ece6d2');
-    g.fillStyle = '#1f3566'; g.fillRect(0, 0, W, H * 0.16);
-    g.fillStyle = '#9a1f18'; g.fillRect(0, H * 0.16, W, H * 0.025);
-    text(g, 'VOTE', W / 2, H * 0.125, `900 ${H * 0.11}px ${IMPACT}`, '#f4efe0');
+    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, W, H * 0.16);
+    g.fillStyle = '#c9a54e'; g.fillRect(0, H * 0.16, W, H * 0.025);
+    text(g, 'VARSITY', W / 2, H * 0.125, `900 ${H * 0.1}px ${IMPACT}`, '#f4efe0');
     g.fillStyle = '#c9c3ae'; g.fillRect(W * 0.14, H * 0.22, W * 0.72, H * 0.42);
     g.save(); g.beginPath(); g.rect(W * 0.14, H * 0.22, W * 0.72, H * 0.42); g.clip();
     erikFace(g, W / 2, H * 0.43, H * 0.17, { graffiti: d.graffiti });
     g.restore();
-    text(g, 'ERIK MADSEN', W / 2, H * 0.73, `900 ${H * 0.085}px ${IMPACT}`, '#1f3566', 'center', W * 0.92);
-    text(g, 'FOR CLASS PRESIDENT', W / 2, H * 0.8, `700 ${H * 0.045}px ${NARROW}`, '#9a1f18', 'center', W * 0.9);
-    text(g, 'Order. Discipline. Hot Lunch.', W / 2, H * 0.87, `italic ${H * 0.036}px ${SERIF}`, '#333', 'center', W * 0.9);
-    g.fillStyle = '#1f3566'; g.fillRect(0, H * 0.93, W, H * 0.07);
+    text(g, '#8  ERIK MADSEN', W / 2, H * 0.73, `900 ${H * 0.075}px ${IMPACT}`, '#1d4a2a', 'center', W * 0.92);
+    text(g, 'GUARD · STEW LEONARDS', W / 2, H * 0.8, `700 ${H * 0.045}px ${NARROW}`, '#7a5a1a', 'center', W * 0.9);
+    text(g, 'Free throws: 91%. Heart: 100%.', W / 2, H * 0.87, `italic ${H * 0.036}px ${SERIF}`, '#333', 'center', W * 0.9);
+    g.fillStyle = '#1d4a2a'; g.fillRect(0, H * 0.93, W, H * 0.07);
     age(g, W, H);
-    if (d.graffiti) {
-      spray(g, 'STEW', W * 0.5, H * 0.66, H * 0.2, '#c8261c', { rot: -0.22, drips: 9 });
-      spray(g, 'WAS HERE', W * 0.55, H * 0.9, H * 0.07, '#111', { rot: -0.08, drips: 4, font: HAND });
-    }
+    // someone wrote CUT across it
+    spray(g, 'CUT', W * 0.5, H * 0.62, H * 0.22, '#c8261c', { rot: -0.22, drips: 9 });
+    if (d.graffiti) spray(g, 'unanimous', W * 0.55, H * 0.9, H * 0.07, '#111', { rot: -0.08, drips: 4, font: HAND });
     tape(g, W * 0.12, 10, 70, 22, -0.4); tape(g, W * 0.88, 10, 70, 22, 0.4);
     if (rnd() < 0.6) tear(g, W, H);
   },
@@ -172,8 +172,8 @@ const PAINTERS = {
   reunion(g, W, H) {
     // butcher paper, hand painted
     paper(g, W, H, '#d9cfb0');
-    const cols = ['#9a1f18', '#1f3566', '#a8781c', '#2a5a2a'];
-    const str = "WELCOME BACK CLASS OF '16!";
+    const cols = ['#1d4a2a', '#9a1f18', '#a8781c', '#1f3566'];
+    const str = 'GO STEW LEONARDS!';
     g.font = `900 ${H * 0.42}px ${HAND}`;
     const total = g.measureText(str).width;
     let x = W / 2 - Math.min(total, W * 0.94) / 2;
@@ -186,7 +186,7 @@ const PAINTERS = {
       g.restore();
       x += w;
     }
-    text(g, '10 YEAR REUNION  ★  TONIGHT  ★  DINNER IN THE CAFETERIA', W / 2, H * 0.86, `700 ${H * 0.11}px ${NARROW}`, '#3a2c1a', 'center', W * 0.92);
+    text(g, 'CHAMPIONSHIP NIGHT  ★  UNDEFEATED  ★  TIP-OFF 7 PM', W / 2, H * 0.86, `700 ${H * 0.11}px ${NARROW}`, '#3a2c1a', 'center', W * 0.92);
     // streamer scallops
     g.fillStyle = '#9a1f18';
     for (let i = 0; i < W; i += H * 0.3) { g.beginPath(); g.arc(i + H * 0.15, 0, H * 0.15, 0, Math.PI); g.fill(); }
@@ -203,7 +203,7 @@ const PAINTERS = {
     text(g, 'NO RUNNING', W / 2, H * 0.36, `900 ${H * 0.22}px ${IMPACT}`, '#9a1f18', 'center', W * 0.86);
     text(g, 'IN THE HALLS', W / 2, H * 0.55, `900 ${H * 0.13}px ${IMPACT}`, '#222', 'center', W * 0.8);
     text(g, 'Violators WILL be reported.', W / 2, H * 0.71, `italic ${H * 0.07}px ${SERIF}`, '#333', 'center', W * 0.8);
-    text(g, '— E. Madsen, Hall Monitor', W / 2, H * 0.84, `${H * 0.065}px ${HAND}`, '#1f3566', 'center', W * 0.8);
+    text(g, '— Stew Leonard High Front Office', W / 2, H * 0.84, `${H * 0.065}px ${HAND}`, '#1f3566', 'center', W * 0.8);
     age(g, W, H);
     text(g, 'lol', W * 0.82, H * 0.24, `${H * 0.09}px ${HAND}`, '#111');
     tape(g, W / 2, 6, 60, 18, 0.1);
@@ -216,10 +216,10 @@ const PAINTERS = {
     for (let i = 0; i < 30; i++) g.fillRect(rr(0, W), rr(0, H), rr(30, 160), rr(8, 30));
     g.globalAlpha = 1;
     const c = 'rgba(235,235,225,0.9)';
-    text(g, "TODAY'S LUNCH", W / 2, H * 0.22, `${H * 0.13}px ${CHALK}`, c);
+    text(g, "GAME NIGHT MENU", W / 2, H * 0.22, `${H * 0.13}px ${CHALK}`, c);
     text(g, 'STEW', W / 2, H * 0.52, `900 ${H * 0.3}px ${CHALK}`, '#e8c070');
-    text(g, "Chef's special — Erik's recipe!", W / 2, H * 0.68, `${H * 0.075}px ${CHALK}`, c);
-    text(g, 'Seconds: STEW   •   Dessert: also stew', W / 2, H * 0.82, `${H * 0.065}px ${CHALK}`, c);
+    text(g, 'Hot dogs  •  Soft serve  •  FRESH milk', W / 2, H * 0.68, `${H * 0.075}px ${CHALK}`, c);
+    text(g, 'Rule #1: The Student Is Always Right', W / 2, H * 0.82, `${H * 0.065}px ${CHALK}`, c);
     // a smiley that someone gave fangs
     g.strokeStyle = c; g.lineWidth = 3;
     g.beginPath(); g.arc(W * 0.86, H * 0.4, H * 0.08, 0, 7); g.stroke();
@@ -229,37 +229,35 @@ const PAINTERS = {
     for (let i = 0; i < 200; i++) g.fillRect(rr(0, W), rr(0, H), 2, 2);
     g.globalAlpha = 1;
   },
-  batch7(g, W, H) {
+  // a sticky note on the kitchen fridge
+  sourMilk(g, W, H) {
     g.fillStyle = '#efd94a'; g.fillRect(0, 0, W, H);
     g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, 0, W, H * 0.15);
-    text(g, 'BATCH 7', W / 2, H * 0.4, `700 ${H * 0.26}px ${HAND}`, '#1a1a6a');
-    text(g, "ERIK'S!! DO NOT", W / 2, H * 0.64, `${H * 0.14}px ${HAND}`, '#1a1a6a', 'center', W * 0.9);
-    text(g, 'EAT. SERIOUSLY.', W / 2, H * 0.84, `${H * 0.14}px ${HAND}`, '#1a1a6a', 'center', W * 0.9);
+    text(g, 'THE MILK', W / 2, H * 0.4, `700 ${H * 0.22}px ${HAND}`, '#1a1a6a');
+    text(g, 'WENT SOUR. ALL', W / 2, H * 0.64, `${H * 0.14}px ${HAND}`, '#1a1a6a', 'center', W * 0.9);
+    text(g, 'OF IT. AT ONCE.', W / 2, H * 0.84, `${H * 0.14}px ${HAND}`, '#1a1a6a', 'center', W * 0.9);
     g.strokeStyle = '#1a1a6a'; g.lineWidth = 3; g.beginPath(); g.moveTo(W * 0.2, H * 0.47); g.lineTo(W * 0.8, H * 0.47); g.stroke();
   },
   scienceFair(g, W, H) {
     paper(g, W, H, '#e4ead8');
     g.fillStyle = '#2a5a2a'; g.fillRect(0, 0, W, H * 0.14);
-    text(g, 'SCIENCE FAIR 2015', W / 2, H * 0.1, `900 ${H * 0.07}px ${IMPACT}`, '#e8f0d8', 'center', W * 0.9);
+    text(g, 'SCIENCE FAIR 1998', W / 2, H * 0.1, `900 ${H * 0.07}px ${IMPACT}`, '#e8f0d8', 'center', W * 0.9);
     text(g, '1st PLACE', W / 2, H * 0.24, `900 ${H * 0.07}px ${IMPACT}`, '#9a1f18');
     // ribbon
     g.fillStyle = '#2050a0'; g.beginPath(); g.arc(W * 0.8, H * 0.3, H * 0.07, 0, 7); g.fill();
     g.fillRect(W * 0.77, H * 0.33, W * 0.025, H * 0.12); g.fillRect(W * 0.805, H * 0.33, W * 0.025, H * 0.12);
     text(g, '1', W * 0.8, H * 0.325, `900 ${H * 0.07}px ${IMPACT}`, '#f0d070');
     text(g, 'Erik Madsen', W / 2, H * 0.36, `700 ${H * 0.06}px ${SERIF}`, '#111');
-    text(g, '"Re-Animating Amphibians:', W / 2, H * 0.46, `italic ${H * 0.045}px ${SERIF}`, '#222', 'center', W * 0.9);
-    text(g, 'A Study in Batch Chemistry"', W / 2, H * 0.52, `italic ${H * 0.045}px ${SERIF}`, '#222', 'center', W * 0.9);
-    // frog sketch
-    g.save(); g.translate(W / 2, H * 0.7); g.strokeStyle = '#2a5a2a'; g.lineWidth = 3; g.fillStyle = '#7aa04a';
-    g.beginPath(); g.ellipse(0, 0, W * 0.18, H * 0.07, 0, 0, 7); g.fill(); g.stroke();
-    for (const sx of [-1, 1]) {
-      g.beginPath(); g.arc(sx * W * 0.08, -H * 0.06, H * 0.03, 0, 7); g.fillStyle = '#fff'; g.fill(); g.stroke();
-      g.fillStyle = '#111'; g.beginPath(); g.arc(sx * W * 0.08, -H * 0.06, H * 0.012, 0, 7); g.fill();
-      g.fillStyle = '#7aa04a';
-    }
-    g.beginPath(); g.moveTo(-W * 0.06, H * 0.02); g.lineTo(W * 0.06, H * 0.02); g.stroke();
+    text(g, '"The Physics of the', W / 2, H * 0.46, `italic ${H * 0.045}px ${SERIF}`, '#222', 'center', W * 0.9);
+    text(g, 'Perfect Free Throw"', W / 2, H * 0.52, `italic ${H * 0.045}px ${SERIF}`, '#222', 'center', W * 0.9);
+    // a free-throw arc into a hoop
+    g.save(); g.strokeStyle = '#2a5a2a'; g.lineWidth = 3; g.setLineDash([6, 6]);
+    g.beginPath(); g.moveTo(W * 0.18, H * 0.8); g.quadraticCurveTo(W * 0.5, H * 0.5, W * 0.78, H * 0.68); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#d8701e'; g.beginPath(); g.arc(W * 0.18, H * 0.8, H * 0.03, 0, 7); g.fill();
+    g.strokeStyle = '#c8261c'; g.beginPath(); g.moveTo(W * 0.72, H * 0.68); g.lineTo(W * 0.86, H * 0.68); g.stroke();
+    g.strokeStyle = '#555'; g.beginPath(); g.moveTo(W * 0.86, H * 0.55); g.lineTo(W * 0.86, H * 0.8); g.stroke();
     g.restore();
-    text(g, '(it moved)', W / 2, H * 0.88, `${H * 0.05}px ${HAND}`, '#9a1f18');
+    text(g, '(never missed)', W / 2, H * 0.88, `${H * 0.05}px ${HAND}`, '#9a1f18');
     age(g, W, H);
     tape(g, 12, 12, 50, 18, -0.8); tape(g, W - 12, 12, 50, 18, 0.8);
   },
@@ -294,7 +292,7 @@ const PAINTERS = {
     g.save(); g.translate(W / 2, H * 0.55); g.rotate(-0.35);
     g.strokeStyle = 'rgba(170,20,15,0.85)'; g.lineWidth = 6; g.strokeRect(-W * 0.44, -H * 0.07, W * 0.88, H * 0.13);
     text(g, 'CANCELLED', 0, H * 0.04, `900 ${H * 0.1}px ${IMPACT}`, 'rgba(170,20,15,0.85)', 'center', W * 0.82);
-    text(g, 'by order of the class president', 0, H * 0.1, `700 ${H * 0.03}px ${NARROW}`, 'rgba(170,20,15,0.85)');
+    text(g, 'championship night: gym needed', 0, H * 0.1, `700 ${H * 0.03}px ${NARROW}`, 'rgba(170,20,15,0.85)');
     g.restore();
     tape(g, W / 2, 8, 70, 20, 0.05);
   },
@@ -311,14 +309,14 @@ const PAINTERS = {
     g.fillStyle = '#8a6a2a'; g.fillRect(0, 0, W, H);
     g.fillStyle = '#c9a54e'; g.fillRect(W * 0.04, W * 0.04, W * 0.92, H - W * 0.08);
     g.fillStyle = '#ece6d2'; g.fillRect(W * 0.08, W * 0.08, W * 0.84, H - W * 0.16);
-    text(g, 'HALL MONITOR', W / 2, H * 0.16, `900 ${H * 0.065}px ${IMPACT}`, '#1f3566', 'center', W * 0.8);
-    text(g, 'OF THE MONTH', W / 2, H * 0.23, `700 ${H * 0.045}px ${NARROW}`, '#9a1f18');
+    text(g, 'PLAYER', W / 2, H * 0.16, `900 ${H * 0.065}px ${IMPACT}`, '#1d4a2a', 'center', W * 0.8);
+    text(g, 'OF THE WEEK', W / 2, H * 0.23, `700 ${H * 0.045}px ${NARROW}`, '#9a1f18');
     g.fillStyle = '#9fa0a0'; g.fillRect(W * 0.2, H * 0.27, W * 0.6, H * 0.43);
     g.save(); g.beginPath(); g.rect(W * 0.2, H * 0.27, W * 0.6, H * 0.43); g.clip();
     erikFace(g, W / 2, H * 0.47, H * 0.15);
     g.restore();
-    text(g, 'Erik Madsen', W / 2, H * 0.79, `700 ${H * 0.055}px ${SERIF}`, '#111');
-    text(g, 'Every month, 2012 – 2016', W / 2, H * 0.86, `italic ${H * 0.04}px ${SERIF}`, '#333', 'center', W * 0.8);
+    text(g, 'Erik Madsen, #8', W / 2, H * 0.79, `700 ${H * 0.055}px ${SERIF}`, '#111');
+    text(g, 'Week 3, 1998–99 season', W / 2, H * 0.86, `italic ${H * 0.04}px ${SERIF}`, '#333', 'center', W * 0.8);
     age(g, W, H, 0.5);
     // cracked glass
     g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5;
@@ -331,7 +329,7 @@ const PAINTERS = {
     for (let y = 0; y < H; y += 3) { g.fillStyle = '#000'; g.fillRect(0, y, W, 1); }
     g.globalAlpha = 1;
     g.strokeStyle = '#a88a3c'; g.lineWidth = 8; g.strokeRect(14, 14, W - 28, H - 28);
-    text(g, 'LAST BELL', W / 2, H * 0.3, `700 ${H * 0.14}px ${NARROW}`, '#b8984a');
+    text(g, 'STEW LEONARD HIGH', W / 2, H * 0.3, `700 ${H * 0.14}px ${NARROW}`, '#b8984a');
     text(g, 'MAD DOGS', W / 2 + 5, H * 0.8 + 5, `900 ${H * 0.5}px ${IMPACT}`, '#1b0b0a');
     text(g, 'MAD DOGS', W / 2, H * 0.8, `900 ${H * 0.5}px ${IMPACT}`, '#c9a54e');
     // snarling dog heads at each end
@@ -345,13 +343,13 @@ const PAINTERS = {
     const grd = g.createRadialGradient(W / 2, H * 0.15, 5, W / 2, H * 0.15, W * 0.5);
     grd.addColorStop(0, 'rgba(255,240,180,0.6)'); grd.addColorStop(1, 'rgba(255,240,180,0)');
     g.fillStyle = grd; g.fillRect(0, 0, W, H * 0.3);
-    text(g, 'REUNION', W / 2, H * 0.13, `900 ${H * 0.08}px ${IMPACT}`, '#f0d070');
-    text(g, 'TALENT SHOW', W / 2, H * 0.24, `900 ${H * 0.09}px ${IMPACT}`, '#fff', 'center', W * 0.9);
+    text(g, 'CHAMPIONSHIP', W / 2, H * 0.13, `900 ${H * 0.08}px ${IMPACT}`, '#f0d070');
+    text(g, 'PEP RALLY', W / 2, H * 0.24, `900 ${H * 0.09}px ${IMPACT}`, '#fff', 'center', W * 0.9);
     text(g, 'Hosted by', W / 2, H * 0.38, `italic ${H * 0.04}px ${SERIF}`, '#333');
-    text(g, 'ERIK MADSEN', W / 2, H * 0.46, `900 ${H * 0.07}px ${IMPACT}`, '#7a1a3a', 'center', W * 0.9);
-    const acts = ['Erik Madsen — recorder solo', 'Erik Madsen — dramatic reading', 'Erik Madsen — slideshow', '"Stew" — NOT INVITED'];
+    text(g, 'THE BOOSTER CLUB', W / 2, H * 0.46, `900 ${H * 0.07}px ${IMPACT}`, '#7a1a3a', 'center', W * 0.9);
+    const acts = ['The Stew Leonards — team intros', 'The marching band — fight song', 'Unveiling the Mad Dog crate', '#8 Madsen — NOT ON THE ROSTER'];
     acts.forEach((a, i) => text(g, a, W / 2, H * (0.58 + i * 0.07), `${H * 0.038}px ${NARROW}`, i === 3 ? '#9a1f18' : '#222', 'center', W * 0.9));
-    text(g, 'Auditorium · 8 PM', W / 2, H * 0.92, `700 ${H * 0.04}px ${NARROW}`, '#333');
+    text(g, 'Auditorium · 3 PM', W / 2, H * 0.92, `700 ${H * 0.04}px ${NARROW}`, '#333');
     age(g, W, H);
     tape(g, 14, 14, 50, 18, -0.7); tape(g, W - 14, 14, 50, 18, 0.7);
   },
@@ -410,22 +408,23 @@ export function noteTexture(note, { flyer = false } = {}) {
   const [c, g] = makeCanvas(W, H);
   if (flyer) {
     paper(g, W, H, '#f4e8b8');
-    g.fillStyle = '#9a1f18'; g.fillRect(0, 0, W, H * 0.2);
-    text(g, 'LAST BELL HIGH', W / 2, H * 0.08, `700 ${H * 0.045}px ${NARROW}`, '#f4e8b8');
-    text(g, '10-YEAR REUNION', W / 2, H * 0.17, `900 ${H * 0.07}px ${IMPACT}`, '#fff', 'center', W * 0.9);
-    text(g, 'TONIGHT', W / 2, H * 0.32, `900 ${H * 0.09}px ${IMPACT}`, '#1f3566');
-    text(g, 'Dinner: Reunion Stew!', W / 2, H * 0.42, `italic ${H * 0.045}px ${SERIF}`, '#222');
-    // pot drawing
-    g.fillStyle = '#333'; g.beginPath(); g.ellipse(W / 2, H * 0.58, W * 0.2, H * 0.08, 0, 0, Math.PI); g.fill();
-    g.fillRect(W * 0.3, H * 0.5, W * 0.4, H * 0.08);
-    g.strokeStyle = '#999'; g.lineWidth = 3;
-    for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(W * (0.42 + i * 0.08), H * 0.48); g.quadraticCurveTo(W * (0.38 + i * 0.08), H * 0.43, W * (0.43 + i * 0.08), H * 0.38); g.stroke(); }
-    text(g, 'Organised by Erik Madsen', W / 2, H * 0.74, `${H * 0.038}px ${NARROW}`, '#333');
-    text(g, 'Stew NOT invited. — E.M.', W / 2, H * 0.88, `${H * 0.05}px ${HAND}`, '#9a1f18', 'center', W * 0.9);
+    g.fillStyle = '#1d4a2a'; g.fillRect(0, 0, W, H * 0.2);
+    text(g, 'STEW LEONARD HIGH', W / 2, H * 0.08, `700 ${H * 0.045}px ${NARROW}`, '#f4e8b8');
+    text(g, 'STATE CHAMPIONSHIP', W / 2, H * 0.17, `900 ${H * 0.062}px ${IMPACT}`, '#fff', 'center', W * 0.9);
+    text(g, 'TONIGHT · 7 PM', W / 2, H * 0.32, `900 ${H * 0.08}px ${IMPACT}`, '#1d4a2a');
+    text(g, 'Your undefeated Stew Leonards', W / 2, H * 0.42, `italic ${H * 0.042}px ${SERIF}`, '#222', 'center', W * 0.9);
+    // basketball
+    g.fillStyle = '#d8701e'; g.beginPath(); g.arc(W / 2, H * 0.56, H * 0.075, 0, 7); g.fill();
+    g.strokeStyle = '#3a1a08'; g.lineWidth = 3;
+    g.beginPath(); g.arc(W / 2, H * 0.56, H * 0.075, 0, 7); g.moveTo(W / 2 - H * 0.075, H * 0.56); g.lineTo(W / 2 + H * 0.075, H * 0.56); g.moveTo(W / 2, H * 0.485); g.lineTo(W / 2, H * 0.635); g.stroke();
+    text(g, 'STARTERS: #3 #5 #11 #23 #33', W / 2, H * 0.72, `${H * 0.036}px ${NARROW}`, '#333');
+    g.fillStyle = '#111'; g.fillRect(W * 0.3, H * 0.77, W * 0.4, H * 0.04);
+    text(g, '#8', W * 0.76, H * 0.8, `${H * 0.04}px ${HAND}`, '#9a1f18');
+    text(g, 'see you at tip-off — E.M.', W / 2, H * 0.9, `${H * 0.045}px ${HAND}`, '#9a1f18', 'center', W * 0.9);
     age(g, W, H);
     tape(g, W / 2, 8, 70, 20, 0.08);
   } else {
-    paper(g, W, H, note.id === 'detention' ? '#f0c8c8' : note.id === 'recipe' ? '#f4f0e0' : note.id === 'labnotes' ? '#e8eef0' : '#ece4cc');
+    paper(g, W, H, note.id === 'detention' ? '#f0e0c8' : note.id === 'recipe' ? '#f4f0e0' : note.id === 'labnotes' ? '#e8eef0' : note.id === 'contract' ? '#d8c8a8' : '#ece4cc');
     if (note.id === 'labnotes' || note.id === 'recipe') {
       g.strokeStyle = 'rgba(60,90,160,0.35)'; g.lineWidth = 1.5;
       for (let y = H * 0.18; y < H; y += H * 0.055) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }

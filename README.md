@@ -73,23 +73,30 @@ hear (models, textures, sounds) is generated in code. The only library is
 Phase 8 (built): Erik's on the PA.
 
 
-- **The story:** ten years after the Great Stew Incident (a fire alarm, a goat
-  and the class president's sash), Erik Madsen threw the Last Bell High
-  reunion and cooked the stew himself, with a jar of "Batch 7" from the science
-  lab in it. Everyone ate it. Stew showed up late. All of the story text lives
-  in `src/lore/erik.js`.
+- **The story** (rewritten for *Out of Bounds*, story by James Amarante): the
+  undefeated Stew Leonards cut Erik Madsen (#8) right before the championship.
+  He sold his soul to The Schnitz, and at tip-off he stripped the team of
+  their talent and raised the dead on Stew Leonard High. He's sealed in the
+  metal-clad Press Box over center court. All of the story text lives in
+  `src/lore/erik.js`.
 - **Erik on the PA:** he reacts to the game (the intro, milestone rounds,
   Cheddar Rounds, the power, the box moving, you going down, multi-kills, game
   over) and throws in the odd barb when it's quiet. Each line starts with the
   school chime, plays as a placeholder voice through the PA speakers in every
   room (their red light flickers while he talks) and shows as a subtitle.
-- **The intercom:** press F at the microphone on the principal's desk to talk
+- **The intercom:** press F at the PA handset in the teachers' lounge to talk
   back. Eight scripted exchanges, then he just tells you to stop pressing the
   button.
-- **Notes:** seven notes around the school (a flyer, a detention slip, Erik's
-  lab notebook, the stew recipe, the boiler log, an overdue notice, the Mad Dog
-  plaque). F to read; they're remembered under Extras → Notes found.
-- **Easter egg:** Erik hid three things he confiscated from Stew. Find all
+- **Notes:** eight notes around the school (the championship program, the
+  coach's memo cutting Erik, his notebook, the concession stand log, the boiler
+  log, an overdue library book, the Mad Dog plaque and The Bargain itself). F to
+  read; they're remembered under Extras → Notes found.
+- **Set dressing:** the Press Box hanging over a blood-streaked court,
+  fiberglass dairy cows, a rotting animatronic cow band on the cafeteria stage,
+  the store-style cafeteria marquee and the Rule #1 rock in the Quad
+  (`src/render/storyProps.js`).
+- **Easter egg:** Erik confiscated the team's three good-luck charms (the
+  lucky ladle, the warm-up tape, the can of stew). Find all
   three and the school plays **"We Go Stew"**, an original pop-punk song
   generated in code (drums, two guitars, bass, gang vocals) with the lyrics as
   subtitles. It unlocks in the Extras jukebox.

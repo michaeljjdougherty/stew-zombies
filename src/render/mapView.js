@@ -9,6 +9,7 @@ import { BoxBatch, bx } from './geometry.js';
 import * as T from './textures.js';
 import { applySurface } from './surfaces.js';
 import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS } from './bake.js';
+import { buildStoryProps, updateStoryProps } from './storyProps.js';
 import { campusBounds } from '../map/school.js';
 
 const SIDE_FACES = { n: [4, 5], s: [5, 4], w: [0, 1], e: [1, 0] }; // [inward face, outward face]
@@ -43,6 +44,8 @@ export class MapView {
     this.buildWallBuys();
     for (const c of this.group.children.slice(n0)) c.userData.noBake = true;
     this.buildExterior();
+    // the story's set dressing (school only): Press Box, cows, signage, blood
+    if (this.map.id === 'lastbell') this.story = buildStoryProps(this);
     const occ = this.collectOccluders();
     this.buildLights();
     // the bake starts on the first update, once the machines and the box have
@@ -82,6 +85,7 @@ export class MapView {
       const k = g.type === 'BoxGeometry' || g.type === 'RoundedBoxGeometry' ? 0 : 0.12;
       occ.add(box.min.x + sx * k, box.min.y, box.min.z + sz * k, box.max.x - sx * k, box.max.y - sy * k, box.max.z - sz * k);
     });
+    for (const b of this.story?.occluders || []) occ.add(...b);
     occ.finalize();
     return occ;
   }
@@ -1260,6 +1264,7 @@ export class MapView {
     if (this.sim.power && !this.powered) this.powerOn(true);
     if (this.boilerGlow) this.boilerGlow.material.color.setRGB(2.0 + Math.sin(this.time * 7) * 0.3 + (this.powered ? 1 : 0), 0.6, 0.15);
     if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
+    if (this.story) updateStoryProps(this.story, dt, this.time);
     // fluorescent flicker
     for (const f of this.fixtures) {
       if (!f.on) {
