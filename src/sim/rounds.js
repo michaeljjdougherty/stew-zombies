@@ -1,6 +1,7 @@
 // =============================================================================
 // Round manager: counts, spawn pacing, intermissions.
 // =============================================================================
+import { createLoadout } from './weapons.js';
 import { zombieCountForRound, zombieHealthForRound } from '../config.js';
 import { spawnZombie, spawnRising, spawnCheddar } from './zombies.js';
 import { resetRoundDrops, spawnPowerup } from './powerups.js';
@@ -55,6 +56,7 @@ function startRound(sim, n) {
   const players = sim.players.length;
   R.round = n;
   R.phase = 'active';
+  respawnTheFallen(sim);
   resetRoundDrops(sim);
   R.cheddar = sim.mode !== 'range' && n === R.cheddarNext;
   if (R.cheddar) {
@@ -151,5 +153,29 @@ function updateCheddarRound(sim, dt) {
     R.timer = sim.cfg.rounds.intermission;
     sim.emit('cheddarEnd', { round: R.round });
     sim.emit('roundEnd', { round: R.round, cheddar: true });
+  }
+}
+
+// Co-op: anyone who bled out last round is back for this one, next to a
+// teammate who's still standing, with the starting pistol. (Their points stay.)
+export function respawnTheFallen(sim) {
+  if (sim.players.length < 2 || sim.gameOver) return;
+  const standing = sim.players.filter((p) => p.alive && !p.downed);
+  for (const p of sim.players) {
+    if (p.alive) continue;
+    const buddy = standing[0];
+    const spot = buddy ? { x: buddy.pos.x + 0.9, z: buddy.pos.z + 0.6, yaw: buddy.yaw } : sim.mapData.playerSpawns[0];
+    p.alive = true;
+    p.downed = null;
+    p.health = p.maxHealth;
+    p.pos.x = spot.x; p.pos.y = buddy ? buddy.pos.y : 0; p.pos.z = spot.z;
+    p.vel.x = p.vel.y = p.vel.z = 0;
+    p.yaw = spot.yaw || 0;
+    p.region = sim.nav.regionAt(p.pos);
+    p.loadout = createLoadout(sim, sim.cfg.startingWeapon);
+    p.grenades = p.grenadeMax;
+    p.drinking = null; p.reviving = null; p.throwing = null;
+    p.tp = (p.tp || 0) + 1;     // online: tells their own copy it was moved
+    sim.emit('playerRespawn', { playerId: p.id });
   }
 }

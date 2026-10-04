@@ -331,7 +331,7 @@ function startEnding() {
   input.reset();
   input.releaseLock();
   hud.show(false);
-  const E = renderer.startEnding(settings);
+  const E = renderer.startEnding({ ...settings, character: player ? player.character : settings.character });
   E.onCue = (n) => { sound.cue(n); cutsceneUI.cue(n); };
   cutsceneUI.show(`${glyph('skip')} skip`);
 }
@@ -415,6 +415,7 @@ function installSim(s) {
   sim = s;
   player = sim.playerById(localId);
   renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
+  hud.localCharacter = sound.localCharacter = player.character;
   renderer.setSim(sim);
   if (mapChanged) {
     renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
@@ -671,6 +672,25 @@ function frame(now) {
   input.endFrame();
 }
 requestAnimationFrame(frame);
+
+// Online, the game can't stop when this tab is in the background (the browser
+// stops drawing frames there): a tiny worker keeps the simulation ticking.
+const pump = (() => {
+  try { return new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 20);'], { type: 'text/javascript' }))); } catch { return null; }
+})();
+if (pump) pump.onmessage = () => {
+  if (!document.hidden || !online || !online.inGame) return;
+  if (!(mode === 'play' || mode === 'dying' || mode === 'paused' || mode === 'over' || mode === 'panel')) return;
+  const now = performance.now();
+  const fdt = Math.min(0.25, Math.max(0, (now - last) / 1000));
+  last = now;
+  time += fdt;
+  acc += fdt;
+  let steps = 0;
+  while (acc >= DT && steps < 20) { tick({ ...emptyCommand(), yaw: input.yaw, pitch: input.pitch }); acc -= DT; steps++; }
+  if (steps >= 20) acc = 0;
+  if (mode === 'dying') { dyingT += fdt; }
+};
 
 // Expose for debugging in the console.
 window.STEW = {

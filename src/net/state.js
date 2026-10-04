@@ -142,7 +142,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'grenadeMax', 'boardPointsThisRound'];
+  'points', 'kills', 'headshots', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {
@@ -163,7 +163,8 @@ export function applyMirror(sim, M, localId) {
     sim.nav.invalidate();
   }
 
-  // players
+  // players (someone who left is gone from the host's list)
+  if (sim.players.some((p) => p.id !== localId && !M.players[p.id])) sim.players = sim.players.filter((p) => p.id === localId || M.players[p.id]);
   for (const id in M.players) {
     const p = sim.playerById(id);
     if (!p) continue;

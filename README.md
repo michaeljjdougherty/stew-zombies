@@ -295,6 +295,33 @@ left/right for sliders, LB/RB (L1/R1) to flip tabs, shirt colours or lineup
 characters, right stick to turn characters or scroll. Settings has controller
 look speed, aim assist and vibration.
 
+## Play online
+
+**Play Online** on the title screen. One of you picks **Host a game** and
+gets a four-letter room code (and a **Copy invite link** button). Everyone
+else types the code and presses **Join**, or just opens the invite link. In
+the lobby each of you claims a character (Kearns, Ryan, Pit or Rocco, and
+Brian if you've finished The Final Whistle in that browser), and the host
+presses **Start the game**. Up to four players.
+
+- It runs browser to browser (WebRTC through PeerJS, loaded only when you go
+  online). PeerJS's free public server just introduces the browsers; the game
+  goes straight between them. There's no game server to run.
+- The host's browser runs the real game. Everyone else's browser moves and
+  shoots their own player right away (so controls feel local) and tells the
+  host what they hit; the host runs the zombies, buying, perks, points and
+  Erik, and sends everyone what changed about 30 times a second.
+- You see your teammates as their character holding their gun, with their name
+  over their head (red when they're down) and their points over yours.
+- Go down and a teammate can hold **F** on you to pick you up. Bleed out and
+  you're back at the start of the next round, with the starting pistol.
+- The pause menu doesn't pause an online game. Game over or the ending takes
+  everyone back to the lobby when the host says so. If the host leaves, the
+  game ends.
+- The game needs to be on a real web address for friends to reach it (see
+  *Putting it online* below). On one computer, `?net=local` in the address
+  lets two tabs of the same browser play together (for testing).
+
 ## Firing Range
 
 Pick **Firing Range** on the title screen to try every weapon without rounds.
@@ -361,13 +388,20 @@ src/input/            keyboard/mouse/controller → per-tick input commands
   glyphs.js           button prompts for keyboard, Xbox and PlayStation
 src/ui/               HUD (tally marks, points, ammo, subtitles, notes), menus, extras,
                       settings, firing range panel, controller menu navigation (menunav.js)
-src/net/              notes for online co-op (Phase 9)
+src/net/              online co-op
+  state.js            what the host sends (worldState), patches (diff/applyPatch),
+                      and how a friend's copy takes it in (applyMirror)
+  host.js             NetHost: applies friends' reports (moves, hits, throws), sends changes
+  client.js           NetClient: runs your player locally, mirrors the rest, interpolates
+  online.js           OnlineSession: room codes, the lobby, character claims, start
+  peer.js             PeerJS (WebRTC) and same-browser (BroadcastChannel) connections
+  transport.js        a fake laggy network for the headless test
 tests/                headless tests: node tests/<name>_headless.mjs (one per phase)
 ```
 
 The simulation only takes **input commands** and produces **state + events**.
-Rendering, audio and the HUD just read those. That separation is what lets
-online co-op drop in later (see `src/net/README.md`).
+Rendering, audio and the HUD just read those. That separation is what let
+online co-op drop in (see *Play online* and `src/net/`).
 
 In the browser console, `STEW.sim` is the live game state and
 `STEW.debug.run(seconds)` fast-forwards the simulation.
@@ -387,4 +421,4 @@ what each room offers) are in [docs/MAP_DESIGN.md](docs/MAP_DESIGN.md).
 6. ✅ Power-ups and Cheddar Rounds
 7. ✅ Fucci Gun, The Chopper, Stew Bomb, box movement (including a fifth box spot in the Quad)
 8. ✅ Erik's PA taunts and intercom, the hidden Stew song Easter egg, lore, menus, full visual and sound polish
-9. Online co-op for 2–4 players
+9. ✅ Online co-op for 2–4 players (lobby with room codes, browser-to-browser)

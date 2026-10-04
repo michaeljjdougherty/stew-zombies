@@ -386,7 +386,8 @@ export class SoundDirector {
       case 'stewSays': A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 }); this.talkUntil = A.now() + e.dur; break;
       case 'crewSays': {
         const v = (CREW[e.who] && CREW[e.who].voice) || {};
-        A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio: e.radio }, { bus: 'voice', reverb: e.radio ? 0.05 : 0.15, gain: e.radio ? 0.8 : 0.9 });
+        const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;
+        A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: radio ? 0.8 : 0.9 });
         this.talkUntil = A.now() + e.dur;
         break;
       }

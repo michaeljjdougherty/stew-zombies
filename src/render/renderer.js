@@ -23,6 +23,7 @@ import { QuestView } from './questView.js';
 import { Ending } from './ending.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
+import { TeammateViews } from './teammates.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -83,6 +84,7 @@ export class GameRenderer {
         cheddars: new CheddarViews(scene, effects, cfg),
         lore: new LoreView(scene, sim, cfg),
         quest: new QuestView(scene, sim, cfg, map),
+        teammates: new TeammateViews(scene, cfg),
       };
       w.quest.effects = effects;
       w.box.onLand = (spot) => {
@@ -96,7 +98,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest });
+    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(cfg.graphics.fogColor);
     this.hazeColor = new THREE.Color('#5a4410');
@@ -126,6 +128,7 @@ export class GameRenderer {
     this.cheddars.clear();
     this.lore.reset(sim);
     this.quest.setSim(sim);
+    this.teammates.clear();
   }
 
   setSim(sim) {
@@ -160,6 +163,7 @@ export class GameRenderer {
   // Called before each simulation step, to interpolate between steps.
   beginStep(sim) {
     this.zombies.beginStep(sim);
+    this.teammates.beginStep(sim, this.localId);
     this.projectiles.beginStep(sim);
     const p = sim.playerById(this.localId);
     if (p) {
@@ -192,7 +196,12 @@ export class GameRenderer {
           if (e.playerId === id) {
             from = this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), e.side);
             this.effects.muzzle(from);
-          } else from = e.origin;
+          } else {
+            // a teammate: from their gun, with a flash
+            const m = this.teammates.muzzle(e.playerId);
+            from = m ? m.clone() : e.origin;
+            if (m) this.effects.muzzle(from);
+          }
           this.effects.muzzleSmoke(from, e.dir, e.pellets > 1 ? 1.8 : 1, e.playerId === id);
           for (const h of e.impacts) {
             if (h.kind === 'world') this.effects.impact(h.point, h.normal, h.surface);
@@ -410,7 +419,7 @@ export class GameRenderer {
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, pos.y + 0.25, e);
       this.camera.rotation.z = e * 0.9;
       this.camera.rotation.x = look.pitch * (1 - e) + 0.2 * e;
-    }
+    } else this.deathT = 0;   // (online you come back next round)
 
     // title screen: slow drift
     if (mode === 'title') {
@@ -427,6 +436,7 @@ export class GameRenderer {
     this.cheddars.update(sim, this.zombies.prev, dt, alpha, time);
     this.lore.update(dt);
     this.quest.update(dt, this.camera);
+    this.teammates.update(sim, this.localId, dt, alpha, time, this.camera);
 
     // Cheddar Round haze: yellow tint, thicker yellow-brown fog, distant lightning
     const hazeTarget = sim.rounds.cheddar ? 1 : 0;

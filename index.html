@@ -26,6 +26,12 @@
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
   #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  #team { display: grid; gap: 2px; justify-items: end; margin-bottom: 6px; }
+  #team div { display: flex; gap: 10px; align-items: baseline; font-size: 14px; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0,0,0,.9); }
+  #team span { color: var(--muted); letter-spacing: .5px; }
+  #team b { font-family: var(--display); font-weight: 400; font-size: 20px; color: var(--brass); font-variant-numeric: tabular-nums; }
+  #team .down b, #team .down span { color: var(--blood-hi); }
+  #team .out { opacity: .45; }
   #right { position: absolute; right: max(16px, 2.4vw); bottom: max(16px, 2.6vh); text-align: right; display: grid; gap: 6px; justify-items: end; }
   #points { font-family: var(--display); font-size: clamp(26px, 3.2vw, 40px); color: var(--brass); letter-spacing: 1px; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0,0,0,.9); font-variant-numeric: tabular-nums; }
   #popups { position: relative; height: 0; width: 0; }
@@ -376,6 +382,7 @@
 <div id="hud" hidden>
   <canvas id="tally" width="360" height="150"></canvas>
   <div id="right">
+    <div id="team" hidden></div>
     <div id="popups"></div>
     <div id="points">500</div>
     <div id="weapon">

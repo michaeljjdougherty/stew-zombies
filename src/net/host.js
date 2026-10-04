@@ -20,7 +20,7 @@ export class NetHost {
     this.peers = new Map();      // peerId -> { playerId, inbox, use, usePressed, sig }
     this.last = {};
     this.events = [];
-    this.bytes = 0;
+    this.ticks = 0;
   }
 
   addRemote(peerId, playerId) {
@@ -77,7 +77,7 @@ export class NetHost {
       if (sig !== peer.sig) p.invRev++;
       peer.sigPost = sig;
     }
-    if (sim.tick % this.every === 0) this.flush();
+    if (++this.ticks % this.every === 0) this.flush();
   }
 
   flush() {

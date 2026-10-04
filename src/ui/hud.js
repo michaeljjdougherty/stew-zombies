@@ -174,7 +174,8 @@ export class HUD {
       case 'crewSays': {
         // whoever you're playing talks out loud; the rest are on the walkie
         const name = CREW[e.who] ? CREW[e.who].name : e.who;
-        this.say(e.radio ? 'stew radio' : 'stew', e.radio ? `${name} · radio` : name, e.text, 0, e.dur);
+        const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;   // (online: only your own lines are out loud)
+        this.say(radio ? 'stew radio' : 'stew', radio ? `${name} · radio` : name, e.text, 0, e.dur);
         break;
       }
       case 'loreRead':
@@ -191,9 +192,43 @@ export class HUD {
       case 'stewSong':
         this.toast('We Go Stew', 'Stew Jams · side A', '#f0d070', 4);
         break;
+      case 'playerDown':
+        if (e.playerId !== this.localId && !e.final && this.names && this.names[e.playerId]) this.toast(`${this.names[e.playerId]} is down`, 'hold [F] on them to pick them up', '#ff5a40', 3);
+        break;
+      case 'playerDied':
+        if (e.playerId !== this.localId && e.bledOut && this.names && this.names[e.playerId]) this.toast(`${this.names[e.playerId]} bled out`, 'they\'re back next round', '#ff5a40', 3);
+        else if (e.playerId === this.localId && e.bledOut) this.toast('You bled out', 'you\'re back next round if your team survives', '#ff5a40', 6);
+        break;
+      case 'playerRespawn':
+        if (e.playerId === this.localId) this.toast('Back in', 'you\'re back for this round', '#7fcfff', 3);
+        break;
+      case 'playerLeft':
+        this.toast(`${e.name} left the game`, '', '#b8b0a0', 3);
+        break;
       case 'playerHit':
         if (e.playerId === this.localId && e.from) this.hitFrom(e.from);
         break;
+    }
+  }
+
+  // --- teammates (online): names and points over yours ------------------------
+  updateTeam(sim) {
+    const others = sim.players.filter((q) => q.id !== this.localId);
+    this.names = Object.fromEntries(sim.players.map((q) => [q.id, q.name]));
+    const key = others.map((q) => `${q.id}:${q.name}:${q.points}:${q.downed ? 'd' : q.alive ? 'a' : 'x'}`).join('|');
+    if (key === this.last.team) return;
+    this.last.team = key;
+    const el = this.el.team || (this.el.team = document.getElementById('team'));
+    if (!el) return;
+    el.hidden = !others.length;
+    el.textContent = '';
+    for (const q of others) {
+      const row = document.createElement('div');
+      row.className = q.downed ? 'down' : q.alive ? '' : 'out';
+      const n = document.createElement('span'); n.textContent = q.name;
+      const v = document.createElement('b'); v.textContent = q.downed ? 'down' : q.alive ? String(q.points) : 'out';
+      row.append(n, v);
+      el.appendChild(row);
     }
   }
 
@@ -308,6 +343,7 @@ export class HUD {
     // put the note down when you walk away from it
     if (this.noteOpen && !(p.useTarget && p.useTarget.noteId === this.noteOpen)) this.closeNote();
 
+    this.updateTeam(sim);
     // points count up quickly instead of snapping
     if (this.shownPoints === null) this.shownPoints = p.points;
     const diff = p.points - this.shownPoints;

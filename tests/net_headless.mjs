@@ -184,7 +184,47 @@ function makeGame(seed = 11, latency = 5, jitter = 3) {
   // A goes down: the host decides, A's copy follows
   hostSim.damagePlayer(ha, 1e4, null); step(30);
   check(!!aa.downed && CONFIG.weapons[aa.loadout.slots[aa.loadout.current].id].class === 'pistol', 'A goes down with a pistol on A\'s screen');
+  check(B.log.some((e) => e.type === 'playerDown' && e.playerId === 'a'), 'B hears A went down');
+  // B walks over and holds [F] on A
+  bb.pos.x = aa.pos.x + 0.8; bb.pos.z = aa.pos.z;
+  step(20);
+  check(!!(bb.prompt && /revive/.test(bb.prompt.text)), 'B gets the revive prompt: ' + (bb.prompt && bb.prompt.text));
+  B.cmd.use = true;
+  step(60 * (CONFIG.lastStand.reviveTime + 1));
+  B.cmd.use = false;
+  step(30);
+  check(!ha.downed && !aa.downed, 'B picked A up');
+  check(aa.loadout.slots.some((s) => s.id === 'Pyton'), 'A has the box gun back');
   void hostLog;
+}
+
+// --- 4. bleeding out, coming back next round, someone leaving
+{
+  const G = makeGame(15);
+  const { hostSim, clients, step, host } = G;
+  step(60);
+  const A = clients.a, B = clients.b;
+  const ha = hostSim.playerById('a'), aa = A.sim.playerById('a');
+  hostSim.damagePlayer(ha, 1e4, null); step(10);
+  ha.downed.bleed = 0.05; step(40);
+  check(!ha.alive && !aa.alive, 'A bled out (on A\'s screen too)');
+  const before = { x: aa.pos.x, z: aa.pos.z };
+  // next round
+  for (const z of hostSim.zombies) z.state = 'dead';
+  hostSim.rounds.toSpawn = 0; hostSim.rounds.phase = 'intermission'; hostSim.rounds.timer = 0.1;
+  step(60 * 3);
+  check(ha.alive && aa.alive && !aa.downed, `A is back for round ${hostSim.rounds.round}`);
+  check(aa.loadout.slots.length === 1 && aa.loadout.slots[0].id === CONFIG.startingWeapon, 'with the starting pistol');
+  const hb = hostSim.playerById('b');
+  check(Math.hypot(aa.pos.x - hb.pos.x, aa.pos.z - hb.pos.z) < 2.5 && Math.hypot(ha.pos.x - aa.pos.x, ha.pos.z - aa.pos.z) < 0.05, `next to a teammate, on both screens (moved ${Math.hypot(aa.pos.x - before.x, aa.pos.z - before.z).toFixed(1)} m)`);
+  // B leaves mid-game
+  host.removeRemote('B');
+  hostSim.players = hostSim.players.filter((p) => p.id !== 'b');
+  hostSim.emit('playerLeft', { playerId: 'b', name: 'Bo' });
+  step(30);
+  check(!A.sim.playerById('b'), 'B is gone from A\'s game');
+  check(A.log.some((e) => e.type === 'playerLeft'), 'and A heard about it');
+  void B;
 }
 
 process.exit(fails ? 1 : 0);
