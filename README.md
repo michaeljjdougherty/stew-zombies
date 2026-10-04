@@ -322,6 +322,20 @@ presses **Start the game**. Up to four players.
   *Putting it online* below). On one computer, `?net=local` in the address
   lets two tabs of the same browser play together (for testing).
 
+### Putting it online (GitHub Pages)
+
+The game is static files, so GitHub Pages can host it for free:
+
+1. In GitHub Desktop: **File → Add Local Repository…**, pick this folder.
+2. **Publish repository**, untick *Keep this code private* (free Pages sites
+   need a public repository), and publish.
+3. On github.com, open the repository → **Settings → Pages**. Under *Build and
+   deployment* pick **Deploy from a branch**, branch **master**, folder
+   **/ (root)**, and **Save**.
+4. A minute later it's live at `https://<your-username>.github.io/stew-zombies/`.
+
+After that, each update is **Push origin** in GitHub Desktop.
+
 ## Firing Range
 
 Pick **Firing Range** on the title screen to try every weapon without rounds.

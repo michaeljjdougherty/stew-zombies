@@ -84,12 +84,16 @@ const friendly = (err) => {
 
 // --- PeerJS -------------------------------------------------------------------
 function wrapConn(ep, conns, conn) {
+  // ('open' can fire more than once for the same connection: wire it up once)
+  if (conn._stewWired) return false;
+  conn._stewWired = true;
   const send = packer((s) => { try { conn.send(s); } catch { /* closed */ } });
   const recv = unpacker((m) => ep.onMessage(conn.peer, m));
   conns.set(conn.peer, { conn, send });
   conn.on('data', recv);
   conn.on('close', () => { if (conns.delete(conn.peer)) ep.onClose(conn.peer); });
   conn.on('error', () => { if (conns.delete(conn.peer)) ep.onClose(conn.peer); });
+  return true;
 }
 
 function peerEndpoint(peer, conns) {
@@ -115,7 +119,7 @@ export async function hostPeer(code) {
   });
   const ep = peerEndpoint(peer, conns);
   peer.on('connection', (conn) => {
-    conn.on('open', () => { wrapConn(ep, conns, conn); ep.onOpen(conn.peer); });
+    conn.on('open', () => { if (wrapConn(ep, conns, conn)) ep.onOpen(conn.peer); });
   });
   peer.on('error', (e) => ep.onError(friendly(e)));
   return ep;
