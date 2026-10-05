@@ -2,6 +2,10 @@
 """Import recorded voice lines into the game.
 
 Usage: python3 tools/voice/import.py <folder-or-zip> [...]
+       python3 tools/voice/import.py --as <speaker> <folder-or-zip>
+
+--as: the files came back numbered in the batch's order (audio_1.mp3, 002_audio_2.mp3 ...)
+instead of by name; number N becomes that speaker's Nth line in script.csv.
 
 Takes the mp3s named like the TTS batch files (erik_001.mp3, kearns_intercom_01.mp3 ...),
 trims the silence off both ends, evens out the loudness, and writes them to
@@ -43,10 +47,24 @@ def sources(arg):
       if f.lower().endswith('.mp3') and not f.startswith('._'):
         yield os.path.join(d, f)
 
+args = sys.argv[1:]
+as_who = None
+if args[:1] == ['--as']: as_who, args = args[1], args[2:]
+order = [n for n in rows if speaker(n) == as_who] if as_who else []
+
+def name_of(p):
+  base = os.path.splitext(os.path.basename(p))[0]
+  if not as_who: return base
+  import re
+  m = re.search(r'(\d+)$', base) or re.match(r'(\d+)', base)
+  i = int(m.group(1)) if m else 0
+  return order[i - 1] if 1 <= i <= len(order) else base
+
 imported, unknown = 0, []
-for arg in sys.argv[1:]:
+for arg in args:
   for p in sources(arg):
-    name = os.path.splitext(os.path.basename(p))[0]
+    if '__MACOSX' in p: continue
+    name = name_of(p)
     if name not in rows: unknown.append(name); continue
     os.makedirs(os.path.join(OUT, speaker(name)), exist_ok=True)
     clean(p, os.path.join(OUT, speaker(name), name + '.mp3'))

@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-04e',
-  date: 'October 4, 2026',
+  version: '2026-10-05',
+  date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -20,7 +20,7 @@ export const PATCH = {
   sections: [
     { title: 'Just added', items: [
       'Erik has a real voice now. All 115 of his lines are recorded: every taunt over the PA, every intercom reply, his roasts, and his scenes in the intro.',
-      'Kearns is voiced too: his reactions, walkie-talkie calls, story lines, banter, his line in the intro, and what he says into the intercom when you play him. Ryan, Pit, Rocco and Brian still use the placeholder voices for now.',
+      'Kearns and Ryan are voiced too: their reactions, walkie-talkie calls, story lines, banter, their lines in the intro, and what they say into the intercom when you play them. Pit, Rocco and Brian still use the placeholder voices for now.',
       'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
       'Map select: press Play to open a star chart you can drag and zoom. Stew Leonard High sits on its asteroid (the real level, drawn to scale), and the maps still to come are planets with a hint each.',
       'The Chopper is a real wonder weapon now: every shot is a wall of wind that kills and throws every zombie in a wide cone. It hits like one, with a deep boom and a howling roar.',
