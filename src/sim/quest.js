@@ -293,6 +293,15 @@ function banishSpirits(sim) {
   }
 }
 
+// The Schnitz's giants, once the fifty are down: the rest go back where they came from.
+function banishInfused(sim) {
+  for (const z of sim.zombies) {
+    if (!z.infused || z.state === 'dead') continue;
+    z.state = 'dead';
+    sim.emit('zombieBanished', { id: z.id, pos: { ...z.pos }, infused: true });
+  }
+}
+
 // A player's restored talent, as a multiplier (1 = none).
 export function boost(p, stat) { return (p.boosts && p.boosts[stat]) || 1; }
 
@@ -478,8 +487,8 @@ function infusedSpot(sim) {
   return null;
 }
 
-function spawnInfused(sim) {
-  const pos = infusedSpot(sim);
+function spawnInfused(sim, at = null) {
+  const pos = at || infusedSpot(sim);
   if (!pos) return null;
   const I = sim.cfg.quest.infused, zc = sim.cfg.zombie;
   const round = Math.max(1, sim.rounds.round);
@@ -499,7 +508,7 @@ function spawnInfused(sim) {
 
 function updateInfused(sim, dt) {
   const q = sim.quest, I = q.infused, c = sim.cfg.quest.infused;
-  if (I.kills >= c.kills) return;
+  if (q.step !== 'infused' || I.kills >= q.need.infused) return;   // (none after the fifty, until Erik's fight)
   const alive = sim.zombies.filter((z) => z.infused && z.state !== 'dead').length;
   const max = c.maxAlive + Math.max(0, sim.players.length - 1) * c.perPlayer;
   I.spawnT -= dt;
@@ -553,13 +562,35 @@ function startBoss(sim, p) {
 }
 const Q_TOWERS = (sim) => sim.world.quest.towers;
 
-function spawnFromCourt(sim, { type, health, defender = false, elite = false, near = null }) {
+// Erik's fight brings all three kinds: his Zombie Defenders, the blue spirits
+// from the ritual, and The Schnitz's green giants. (CONFIG.quest.boss.mix)
+function spawnBossMix(sim, hp) {
+  const b = sim.quest.boss, c = sim.cfg.quest.boss, m = c.mix;
+  const infusedUp = sim.zombies.filter((z) => z.infused && z.state !== 'dead').length;
+  const infusedMax = m.infusedMax + Math.max(0, sim.players.length - 1) * m.infusedPerPlayer;
+  const roll = sim.rng.next();
+  let z = null;
+  if (roll < m.infused && infusedUp < infusedMax) {
+    // up out of the court, somewhere on the floor
+    const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(6, 11);
+    z = spawnInfused(sim, { x: Math.max(-14.5, Math.min(14.5, Math.cos(a) * d)), y: 0, z: Math.max(-10.5, Math.min(10.5, Math.sin(a) * d)) });
+  } else if (roll < m.infused + m.spirit) {
+    z = spawnFromCourt(sim, { type: sim.rng.chance(0.6) ? 'sprinter' : 'runner', health: hp, spirit: true });
+  }
+  // the rest: ordinary ones, half of them in Erik's Defender jerseys
+  if (!z) z = spawnFromCourt(sim, { type: sim.rng.chance(0.5) ? 'sprinter' : 'runner', health: hp * c.defenderHealth, defender: sim.rng.chance(0.5) });
+  b.defenders.add(z.id);
+  return z;
+}
+
+function spawnFromCourt(sim, { type, health, defender = false, elite = false, spirit = false, near = null }) {
   const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(6, 11);
   const cx = near ? near.x * 0.3 : 0, cz = near ? near.z * 0.3 : 0;
   const pos = { x: Math.max(-15.5, Math.min(15.5, cx + Math.cos(a) * d)), y: -sim.cfg.zombie.riseDepth, z: Math.max(-11.5, Math.min(11.5, cz + Math.sin(a) * d)) };
   const z = makeZombie(sim, { type, pos, yaw: a + Math.PI, health, state: 'rising' });
   z.riseFrom = z.pos.y;
   if (defender) z.defender = true;
+  if (spirit) z.ritual = true;     // (looks like the ritual's blue spirits; with no circle up it just hunts like the rest)
   if (elite) { z.elite = true; z.scale *= 1.28; z.speed *= 0.85; }
   sim.zombies.push(z);
   sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true, defender, elite });
@@ -636,8 +667,7 @@ function updateBoss(sim, dt) {
       b.spawnT -= dt;
       if (b.spawnT <= 0 && sim.zombies.length < c.maxAlive) {
         b.spawnT = c.spawnEvery * sim.rng.range(0.7, 1.3);
-        const z = spawnFromCourt(sim, { type: sim.rng.chance(0.5) ? 'sprinter' : 'runner', health: hp * c.defenderHealth, defender: true });
-        b.defenders.add(z.id);
+        spawnBossMix(sim, hp);
         b.waveLeft--;
       }
     }
@@ -660,15 +690,24 @@ function updateBoss(sim, dt) {
     b.spawnT -= dt;
     if (b.spawnT <= 0 && sim.zombies.length < c.maxAlive * 0.6) {
       b.spawnT = c.spawnEvery * 2.2;
-      b.defenders.add(spawnFromCourt(sim, { type: 'runner', health: hp * c.defenderHealth, defender: true }).id);
+      spawnBossMix(sim, hp);
     }
     // an elite that somehow vanished without dying (cleared by a nuke...) still gives its amp
     for (const id of [...b.elites]) if (!sim.zombieById(id) && !b.amps.some((a) => a.from === id)) dropAmp(sim, id, { x: 0, z: 3 });
     if (placed >= 4) {
       b.phase = 3;
+      b.spawnT = 3;
       b.zones.length = 0;
       sim.emit('bossPhase', { phase: 3 });
       sim.emit('bossOverload', {});
+    }
+  }
+  if (b.phase === 3) {
+    // a light stream of all three while you bring Erik down
+    b.spawnT -= dt;
+    if (b.spawnT <= 0 && sim.zombies.filter((z) => z.state !== 'dead').length < c.phase3MaxAlive) {
+      b.spawnT = c.phase3Every * sim.rng.range(0.8, 1.2);
+      spawnBossMix(sim, hp);
     }
   }
   // whoever's carrying an amp and goes down drops it
@@ -785,6 +824,8 @@ export function questOnEvent(sim, e) {
     q.infused.kills++;
     sim.emit('infusedKill', { count: q.infused.kills, total: q.need.infused, pos: e.pos });
     if (q.infused.kills >= q.need.infused) {
+      // that part's over: no more of them, and the ones still up fade away
+      banishInfused(sim);
       sim.emit('infusedDone', {});
       const text = SCHNITZ_LINES.infusedDone;
       sim.emit('schnitzSays', { text, dur: lineDuration(text) * 1.25, shock: true });

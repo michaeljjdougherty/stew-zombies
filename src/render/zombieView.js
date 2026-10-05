@@ -52,9 +52,17 @@ export class ZombieViews {
       parts.root.add(aura);
     }
     if (z.infused) this.makeInfused(null, [], parts.root, 1);   // (the kit already built it at its scale)
+    let spiritMeshes = null;
+    if (z.ritual) {
+      // the simple models get the ghostly blue too (their materials are cloned first)
+      spiritMeshes = [];
+      parts.root.traverse((o) => { if (o.isMesh && o.material && o.material.color) spiritMeshes.push(o); });
+      this.makeSpirit(spiritMeshes, [glow], parts.root, 1);
+    }
     this.scene.add(parts.root);
     return {
       id: z.id, ...parts, glow,
+      spirit: !!z.ritual, infused: !!z.infused, meshes: spiritMeshes,
       phase: r(4) * Math.PI * 2,
       lastStepPhase: 0,
       hunch: 0.15 + r(5) * 0.25,
@@ -113,7 +121,7 @@ export class ZombieViews {
       skinMat: inst.meshes[0].material,
       offset: r(5),   // so they don't all move in step
       hitT: 0,
-      spirit: !!z.ritual, meshes: inst.meshes,
+      spirit: !!z.ritual, infused: !!z.infused, meshes: inst.meshes,
     };
     this.play(v, 'idle', 0);
     return v;
@@ -156,14 +164,14 @@ export class ZombieViews {
   }
 
   // A spirit zombie dies: it goes limp and floats up into the air, fading out.
-  ascend(v) {
+  ascend(v, color = null) {
     if (v.meshes) for (const m of v.meshes) { m.material.transparent = true; m.material.depthWrite = false; }
     if (v.mixer) {
       v.mixer.stopAllAction();
       const a = v.actions.hit2 || v.actions.idle;
       if (a) { a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.timeScale = 0.35; a.play(); }
     }
-    this.corpses.push({ v, t: 0, spirit: true, spin: (Math.random() - 0.5) * 1.2, y0: v.root.position.y });
+    this.corpses.push({ v, t: 0, spirit: true, spin: (Math.random() - 0.5) * 1.2, y0: v.root.position.y, color });
   }
 
   // crossfade to a looping clip
@@ -359,7 +367,8 @@ export class ZombieViews {
       this.views.delete(e.id);
       this.prev.delete(e.id);
       this.eyesOut(v);
-      if (v.spirit) this.ascend(v); else this.scene.remove(v.root);
+      // (spirits float off blue; The Schnitz's giants, after the fifty, go up in green)
+      if (v.spirit || v.infused) this.ascend(v, v.infused ? [0.6, 4, 0.8] : null); else this.scene.remove(v.root);
     }
   }
 
@@ -681,7 +690,7 @@ export class ZombieViews {
         if (v.meshes) for (const m of v.meshes) m.material.opacity = Math.max(0, 1 - k * 1.1);
         if (Math.random() < dt * 20) {
           const p = v.root.position.clone(); p.y += 0.6 + Math.random() * 1.2; p.x += (Math.random() - 0.5) * 0.5; p.z += (Math.random() - 0.5) * 0.5;
-          this.effects.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.6 + Math.random(), (Math.random() - 0.5) * 0.3), { life: 0.9, size: 0.014, color: [0.5, 1.4, 4], gravity: -1, drag: 0.4 });
+          this.effects.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.6 + Math.random(), (Math.random() - 0.5) * 0.3), { life: 0.9, size: 0.014, color: c.color || [0.5, 1.4, 4], gravity: -1, drag: 0.4 });
         }
         if (k >= 1) { this.scene.remove(v.root); this.corpses.splice(i, 1); }
         continue;

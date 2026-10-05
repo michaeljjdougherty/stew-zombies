@@ -202,6 +202,9 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   check(q.infused.kills === 50, 'fifty infused down (' + q.infused.kills + ')');
   step({}, 2);
   check(log.some((e) => e.type === 'schnitzSays' && e.shock && /How did you do that/.test(e.text)), 'The Schnitz reacts to the fiftieth');
+  check(!sim.zombies.some((z) => z.infused && z.state !== 'dead'), 'the leftover infused fade away');
+  step({}, 60 * 20);
+  check(!sim.zombies.some((z) => z.infused && z.state !== 'dead'), 'and no more infused spawn after the fifty');
   check(q.step === 'infused' && /Mad Dog/.test(questObjective(sim)), 'still needs the Mad Dog: ' + questObjective(sim));
   // there's only the one
   const p2 = sim.addPlayer('p2', 'Two');
@@ -254,12 +257,20 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   sim.godMode = true;
   // clear the waves
   let guard = 0;
+  const kinds = { spirit: 0, infused: 0, plain: 0 };
   while (q.boss.phase === 1 && guard++ < 60 * 120) {
     step({}, 1);
+    for (const z of sim.zombies) if (z.state === 'rising' && !z.counted) { z.counted = true; kinds[z.ritual ? 'spirit' : z.infused ? 'infused' : 'plain']++; }
     for (const z of [...sim.zombies]) if (z.state !== 'rising' && z.state !== 'dead') killZombie(sim, z, { kind: 'bullet', part: 'torso', dir: { x: 0, y: 0, z: 1 }, playerId: 'p1' });
   }
   check(q.boss.phase === 2, 'waves cleared: phase 2 (' + log.filter((e) => e.type === 'bossWave').length + ' waves)');
   check(log.some((e) => e.type === 'zombieSpawn' && e.defender), 'defenders spawned');
+  {
+    const ids = new Set(log.filter((e) => e.type === 'zombieSpawn').map((e) => e.id));
+    const spawned = log.filter((e) => e.type === 'zombieSpawn');
+    check(spawned.some((e) => e.infused), 'the fight brings The Schnitz\'s giants (' + spawned.filter((e) => e.infused).length + ')');
+    check(kinds.spirit > 0 && kinds.infused > 0 && kinds.plain > 0, 'all three kinds in the fight: ' + JSON.stringify(kinds));
+  }
   // elites drop amps; plug them into the towers
   guard = 0;
   while (q.boss.phase === 2 && guard++ < 60 * 200) {

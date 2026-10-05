@@ -1040,6 +1040,15 @@ export const CONFIG = {
       zoneLive: 2.2,
       zoneDps: 55,
       chopperHits: 3,       // phase 3: Chopper blasts on the Press Box to bring Erik down
+      // what climbs out of the court during the fight: the rest are Zombie Defenders
+      mix: {
+        spirit: 0.3,        // share that are blue ritual spirits
+        infused: 0.15,      // share that are The Schnitz's green giants...
+        infusedMax: 2,      // ...but never more than this many up at once
+        infusedPerPlayer: 1,
+      },
+      phase3Every: 2.4,     // s between spawns while you blast the Press Box
+      phase3MaxAlive: 8,
     },
   },
 
