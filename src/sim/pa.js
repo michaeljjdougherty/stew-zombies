@@ -85,8 +85,9 @@ export function intercomTalk(sim, p) {
   const ex = pa.intercomIndex < INTERCOM.length ? INTERCOM[pa.intercomIndex++] : null;
   const stewText = ex ? ex.stew : 'Erik? Hello?';
   const reply = ex ? ex.erik : INTERCOM_REPEAT[Math.floor(pa.rng.next() * INTERCOM_REPEAT.length)];
-  const dur = lineDuration(stewText) * 0.8;
-  sim.emit('stewSays', { playerId: p.id, text: stewText, dur, index: ex ? pa.intercomIndex - 1 : -1 });
+  // whoever you play says it into the handset (their recording, if there is one)
+  const dur = recordedDuration(p.character, stewText) ?? lineDuration(stewText) * 0.8;
+  sim.emit('stewSays', { playerId: p.id, who: p.character, text: stewText, dur, index: ex ? pa.intercomIndex - 1 : -1 });
   // Erik talks over whatever he was going to say next
   pa.queue = pa.queue.filter((q) => q.pri >= 4);
   paSay(sim, 'intercom', { text: reply, delay: dur + 0.5, force: true });

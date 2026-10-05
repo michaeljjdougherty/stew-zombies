@@ -153,7 +153,7 @@ Phase 8 (built): Erik's on the PA.
   Erik's last word on the game-over screen, voice volume and subtitle settings.
 - **Polish:** posters, banners and graffiti painted in code all over the
   school, a red damage-direction indicator, and a hit tick sound.
-- **Voices:** Erik is fully recorded (`assets/voice/erik/`). Everyone else is
+- **Voices:** Erik and Kearns are recorded (`assets/voice/<speaker>/`). Everyone else is
   still synthesized babble timed to each line. To add a character's recordings,
   run `python3 tools/voice/import.py <their zip or folder>`: it trims and
   levels the mp3s (named as in `tools/voice/script.csv`, the line list sent

@@ -1531,7 +1531,7 @@ export function liveVoice(A, out, t, p = {}) {
   const t0 = t + 0.12;
   const c1 = A.osc('square', 1650, t, 0.07); const cg = A.gain(0); A.env(cg, t, 0.002, 0.06, 0.12); c1.connect(cg); cg.connect(out);
   const hp = A.filter('highpass', 400, 0.7), lp = A.filter('lowpass', 3200, 0.9);
-  const drive = A.shaper(0.35), g = A.gain(p.gain ?? 0.85);
+  const drive = A.shaper(0.35), g = A.gain(p.gain ?? 0.65);
   src.connect(hp); hp.connect(lp); lp.connect(drive); drive.connect(g); g.connect(out);
   src.start(t0);
   const n = A.noiseSource('white', t, dur + 0.3);

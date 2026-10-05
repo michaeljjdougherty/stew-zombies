@@ -2,7 +2,7 @@
 // the PA uses the recorded length.
 import fs from 'node:fs';
 import { PA_LINES, INTERCOM, INTERCOM_REPEAT } from '../src/lore/erik.js';
-import { ERIK_ROASTS, TALKS, BANTER } from '../src/lore/crew.js';
+import { ERIK_ROASTS, TALKS, BANTER, REACT, RADIO } from '../src/lore/crew.js';
 import { VOICE_LINES } from '../src/lore/voiceLines.js';
 import { recording, voiceManifest, VOICE_BASE } from '../src/lore/voice.js';
 
@@ -19,6 +19,22 @@ const intro = fs.readFileSync(new URL('../src/render/intro.js', import.meta.url)
 for (const m of intro.matchAll(/who: '(erik|erikPA)', text: '((?:[^'\\]|\\.)*)'/g)) erik.push(m[2].replace(/\\'/g, "'"));
 for (const t of Object.keys(VOICE_LINES.erik)) check(erik.includes(t), 'recording not used in the game: ' + t);
 for (const t of erik) check(recording('erik', t), 'no recording for Erik line: ' + t);
+// the crew: every recording matches a line they really say
+const crew = {};
+const say = (who, t) => (crew[who] ||= new Set()).add(t);
+for (const by of Object.values(REACT)) for (const [who, list] of Object.entries(by)) list.forEach((t) => say(who, t));
+for (const list of Object.values(RADIO)) for (const l of list) say(l.who, l.text);
+for (const list of Object.values(TALKS)) for (const l of list) say(l.who, l.text);
+for (const conv of BANTER) for (const l of conv) say(l.who, l.text);
+for (const m of intro.matchAll(/who: '(\w+)', text: '((?:[^'\\]|\\.)*)'/g)) say(m[1], m[2].replace(/\\'/g, "'"));
+for (const who of ['kearns', 'ryan', 'pit', 'rocco', 'brian']) { INTERCOM.forEach((x) => say(who, x.stew)); say(who, 'Erik? Hello?'); }
+for (const [who, by] of Object.entries(VOICE_LINES)) {
+  if (who === 'erik') continue;
+  for (const t of Object.keys(by)) check(crew[who] && crew[who].has(t), `${who} recording not used in the game: ${t}`);
+  const all = crew[who] ? [...crew[who]] : [];
+  const missing = all.filter((t) => !by[t]);
+  console.log(`voice: ${who} ${Object.keys(by).length}/${all.length} lines recorded` + (missing.length ? ` (still synth: ${missing.map((t) => JSON.stringify(t)).join(', ')})` : ''));
+}
 const m = voiceManifest();
 for (const [key, [path]] of Object.entries(m)) check(fs.existsSync(new URL('../' + VOICE_BASE + path + '.mp3', import.meta.url)), 'missing file ' + path);
 for (const [who, by] of Object.entries(VOICE_LINES)) for (const [t, [f, d]] of Object.entries(by)) check(d > 0.3 && d < 12, `odd length ${f} ${d}`);

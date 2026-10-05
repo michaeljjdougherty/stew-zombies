@@ -469,7 +469,13 @@ export class SoundDirector {
         this.talkUntil = A.now() + e.lead + e.dur;
         break;
       }
-      case 'stewSays': A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 }); this.talkUntil = A.now() + e.dur; break;
+      case 'stewSays': {
+        const key = voiceKey(e.who, e.text);
+        if (key && A.hasSample(key)) A.play(S.liveVoice, { key }, { bus: 'voice', reverb: 0.15, gain: 1 });
+        else A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 });
+        this.talkUntil = A.now() + e.dur;
+        break;
+      }
       case 'crewSays': {
         const v = (CREW[e.who] && CREW[e.who].voice) || {};
         const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;
