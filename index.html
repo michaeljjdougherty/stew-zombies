@@ -26,9 +26,68 @@
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
   #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  /* --- career: sign in, the Career screen, the title chip --- */
+  .profile-chip { margin: -6px 0 0; font-size: 13px; color: var(--muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .profile-chip .pc-name { font: 700 15px var(--body); color: var(--ink); letter-spacing: .5px; }
+  .profile-chip .pc-g { font: 700 13px var(--mono); color: #e8e8e8; padding: 1px 7px; border: 1px solid var(--line); border-radius: 10px; }
+  .profile-chip .pc-note { font-size: 12px; }
+  #signin .stack { max-width: 520px; }
+  .si-form { display: flex; gap: 10px; }
+  .si-form input { flex: 1; min-width: 0; font: 600 18px var(--body); color: var(--ink); background: rgba(255,255,255,.05); border: 1px solid var(--line); padding: 10px 12px; outline: none; }
+  .si-form input:focus { border-color: var(--blood-hi); }
+  .si-form button { all: unset; cursor: pointer; font: 700 14px var(--body); letter-spacing: 1px; text-transform: uppercase; padding: 0 18px; background: var(--blood-hi); color: #fff; white-space: nowrap; }
+  .si-form button:disabled { opacity: .45; cursor: default; }
+  .si-form button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .si-status { min-height: 1.4em; margin: -8px 0 0; font-size: 14px; color: var(--muted); }
+  .si-status b { color: var(--ink); }
+  .si-tip b { color: var(--ink); font-weight: 600; }
+  .menu .si-guest { font-size: 18px; color: var(--muted); }
+  #career .stack { max-width: 640px; }
+  .cr-g { margin: -14px 0 0; display: flex; align-items: center; gap: 8px; font: 700 16px var(--mono); color: #eee; }
+  .cr-gicon { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #eee; font: 800 12px var(--body); }
+  .cr-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 18px; margin: 0; }
+  .cr-stats div { display: grid; gap: 2px; }
+  .cr-stats dt { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .cr-stats dd { margin: 0; font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
+  .cr-count { font-weight: 400; letter-spacing: 1px; text-transform: none; margin-left: 8px; }
+  .cr-achs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .ca { display: grid; grid-template-columns: 40px 1fr max-content; gap: 12px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); background: rgba(255,255,255,.025); opacity: .62; }
+  .ca.on { opacity: 1; border-color: rgba(255,255,255,.28); background: rgba(255,255,255,.06); }
+  .ca-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #2a2a2a; color: #777; }
+  .ca.on .ca-icon { background: #e9e9e9; color: #151515; }
+  .ca-icon svg { width: 22px; height: 22px; }
+  .ca-body { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+  .ca-body b { font-size: 15px; color: var(--ink); font-weight: 600; }
+  .ca-prog { display: block; height: 4px; background: rgba(255,255,255,.1); margin-top: 4px; }
+  .ca-prog i { display: block; height: 100%; background: var(--blood-hi); }
+  .ca-num { font: 11px var(--mono); }
+  .ca-g { font: 700 14px var(--mono); color: #eee; }
+  .cr-menu { flex-direction: row; gap: 26px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .cr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* --- "Achievement unlocked": a circle pops, then the bar slides out of it --- */
+  #ach-toast { position: fixed; left: 50%; bottom: 10vh; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; pointer-events: none; filter: drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
+  #ach-toast .at-icon { position: relative; z-index: 2; width: 62px; height: 62px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #4a4a4a, #161616 70%); border: 3px solid #f2f2f2; color: #f5f5f5; transform: scale(0); }
+  #ach-toast .at-icon svg { width: 30px; height: 30px; }
+  #ach-toast .at-bar { position: relative; z-index: 1; margin-left: -31px; height: 52px; max-width: 0; overflow: hidden; border-radius: 0 26px 26px 0; background: linear-gradient(180deg, rgba(58,58,58,.97), rgba(26,26,26,.97)); border: 1px solid rgba(255,255,255,.14); border-left: 0; }
+  #ach-toast .at-text { display: grid; gap: 1px; padding: 7px 26px 0 44px; white-space: nowrap; opacity: 0; }
+  #ach-toast small { font: 600 12px var(--body); color: #cfcfcf; letter-spacing: .3px; }
+  #ach-toast b { font: 700 17px var(--body); color: #fff; letter-spacing: .2px; }
+  #ach-toast.show .at-icon { animation: at-pop .42s cubic-bezier(.2,1.6,.4,1) forwards; }
+  #ach-toast.show .at-bar { animation: at-open .5s .38s cubic-bezier(.2,.8,.2,1) forwards; }
+  #ach-toast.show .at-text { animation: at-fade .3s .7s ease forwards; }
+  #ach-toast.hide .at-text { animation: at-fade-out .2s ease forwards; }
+  #ach-toast.hide .at-bar { max-width: 480px; animation: at-close .35s .12s ease-in forwards; }
+  #ach-toast.hide .at-icon { transform: scale(1); animation: at-shrink .25s .42s ease-in forwards; }
+  @keyframes at-pop { from { transform: scale(0); } to { transform: scale(1); } }
+  @keyframes at-open { from { max-width: 0; } to { max-width: 480px; } }
+  @keyframes at-fade { to { opacity: 1; } }
+  @keyframes at-fade-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes at-close { from { max-width: 480px; } to { max-width: 0; } }
+  @keyframes at-shrink { from { transform: scale(1); } to { transform: scale(0); } }
   /* --- boot splash: the Tiger Fish Interactive logo --- */
   #splash { position: fixed; inset: 0; z-index: 9999; background: #000; display: grid; place-items: center; cursor: pointer; outline: none; transition: opacity .9s ease; }
   #splash.out { opacity: 0; pointer-events: none; }
+  #splash[hidden], #ach-toast[hidden] { display: none; }
   #splash .sp-logo { width: min(52vw, 60vh, 430px); transform: scale(.96); }
   #splash .sp-logo img { display: block; width: 100%; height: auto; opacity: .06; filter: drop-shadow(0 0 22px rgba(60,225,215,.28)); user-select: none; -webkit-user-drag: none; }
   #splash .sp-hint { position: absolute; bottom: 11%; left: 0; right: 0; text-align: center; font: 600 12px var(--body); letter-spacing: 4px; text-transform: uppercase; color: rgba(225,240,240,.62); animation: sp-pulse 1.8s ease-in-out infinite; }
@@ -565,6 +624,11 @@
   <span class="sp-hint">Loading…</span>
 </div>
 <canvas id="game"></canvas>
+<!-- "Achievement unlocked" (src/ui/careerUI.js) -->
+<div id="ach-toast" hidden role="status" aria-live="polite">
+  <span class="at-icon"></span>
+  <span class="at-bar"><span class="at-text"><small>Achievement unlocked</small><b><span class="at-g">0G</span> – <span class="at-title"></span></b></span></span>
+</div>
 
 <div id="scope" hidden><span class="dot"></span></div>
 <div id="sound-hint" hidden>🔇 Click or press a key for sound</div>
@@ -729,12 +793,14 @@
   <div class="stack">
     <span class="eyebrow">Out of Bounds · story by James Amarante</span>
     <h1 class="logo">Stew Zombies<small>Stew Leonard High</small></h1>
+    <p id="profile-chip" class="profile-chip"></p>
     <nav class="menu">
       <button id="btn-play" type="button">Play</button>
       <button id="btn-online" type="button">Play Online</button>
       <button id="btn-range" type="button">Firing Range</button>
       <button id="btn-explore" type="button">Explore</button>
       <button id="btn-chars" type="button">Characters</button>
+      <button id="btn-career" type="button">Career &amp; Achievements</button>
       <button id="btn-extras" type="button">Extras</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>
@@ -765,6 +831,35 @@
       <button id="btn-pause-settings" type="button">Settings</button>
       <button id="btn-restart" type="button">Restart</button>
       <button id="btn-quit" type="button">Quit to title</button>
+    </nav>
+  </div>
+</section>
+
+<section id="signin" class="screen" hidden>
+  <div class="stack signin">
+    <span class="eyebrow">Stew Zombies · Out of Bounds</span>
+    <h2>Who's playing?</h2>
+    <form id="si-form" class="si-form" autocomplete="off">
+      <input id="si-name" data-nav-first type="text" maxlength="16" placeholder="Username" spellcheck="false" autocapitalize="off" aria-label="Username">
+      <button id="btn-si-go" type="submit">Sign in</button>
+    </form>
+    <p class="si-status" id="si-status" aria-live="polite"></p>
+    <p class="note si-tip"><b>Use the same username every time you play.</b> Your career stats (kills, revives, rounds survived) and your achievements are saved to it, and pick up where you left off whenever you sign in with it again.</p>
+    <nav class="menu"><button id="btn-si-guest" type="button" class="si-guest">Play as a guest (nothing saved)</button></nav>
+  </div>
+</section>
+
+<section id="career" class="screen" hidden>
+  <div class="stack career">
+    <span class="eyebrow">Career</span>
+    <h2 id="cr-name">Guest</h2>
+    <p class="cr-g"><span class="cr-gicon">G</span><span id="cr-g"></span></p>
+    <dl class="cr-stats" id="cr-stats"></dl>
+    <h3 class="set-head">Achievements <span id="cr-count" class="cr-count"></span></h3>
+    <ul class="cr-achs" id="cr-achs"></ul>
+    <nav class="menu cr-menu">
+      <button id="btn-career-switch" type="button">Switch username</button>
+      <button id="btn-career-back" type="button">Back</button>
     </nav>
   </div>
 </section>

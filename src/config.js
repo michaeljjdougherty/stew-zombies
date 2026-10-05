@@ -969,6 +969,18 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // Career stats and achievements, saved per username (src/career/career.js)
+  // ---------------------------------------------------------------------------
+  career: {
+    // The Firebase Realtime Database that keeps everyone's careers online, e.g.
+    // 'https://stew-zombies-default-rtdb.firebaseio.com'. Empty: careers are
+    // saved in each browser only.
+    firebaseUrl: '',
+    flushEvery: 15,          // seconds between saves during a game
+    timeout: 6,              // give up on the database after this long (and save locally)
+  },
+
+  // ---------------------------------------------------------------------------
   // Boot splash: the Tiger Fish Interactive logo (src/ui/splash.js)
   // ---------------------------------------------------------------------------
   splash: {

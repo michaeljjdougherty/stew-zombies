@@ -1692,6 +1692,26 @@ export function crewVoice(A, out, t, p = {}) {
 }
 
 // A Cheddar talking: a wet, snarling growl that somehow forms words.
+// Achievement unlocked: a soft low thump, then two bright bell tones and a shimmer.
+export function achievementChime(A, out, t) {
+  const bell = (f, at, peak, len) => {
+    for (const [mult, g] of [[1, 1], [2.01, 0.35], [3.0, 0.12]]) {
+      const o = A.osc('sine', f * mult, t + at, len + 0.1);
+      const e = A.gain(0); A.env(e, t + at, 0.006, len, peak * g);
+      o.connect(e); e.connect(out);
+    }
+  };
+  const th = A.osc('sine', 140, t, 0.3); th.frequency.exponentialRampToValueAtTime(60, t + 0.25);
+  const tg = A.gain(0); A.env(tg, t, 0.005, 0.25, 0.5); th.connect(tg); tg.connect(out);
+  bell(659.3, 0.04, 0.28, 0.5);    // E5
+  bell(987.8, 0.16, 0.3, 1.1);     // B5
+  const n = A.noiseSource('white', t + 0.16, 0.9);
+  const hp = A.filter('highpass', 7000, 0.7);
+  const ng = A.gain(0); A.env(ng, t + 0.16, 0.02, 0.8, 0.06);
+  n.connect(hp); hp.connect(ng); ng.connect(out);
+  return 1.4;
+}
+
 // A recorded "Wanna play 2K?" (CONFIG.cheddar.lineAudio), with a little of the
 // growl under it so it still sounds like it came out of a hound.
 export function cheddarClip(A, out, t, p = {}) {

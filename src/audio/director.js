@@ -54,6 +54,13 @@ export class SoundDirector {
   }
 
   // The ending cutscene's sounds (src/render/ending.js cues).
+  // Achievement unlocked (the pop-up's chime).
+  achievement() {
+    const A = this.A;
+    if (!A.ready) return;
+    A.play(S.achievementChime, {}, { gain: 1.1, reverb: 0.25, bus: 'music' });
+  }
+
   // The boot splash: the Tiger Fish logo flickers on while the dead moan.
   splash(moans) {
     const A = this.A;

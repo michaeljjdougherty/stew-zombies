@@ -10,7 +10,7 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'mapselect', 'pause', 'settings', 'gameover', 'victory', 'extras', 'charselect', 'lineup', 'online'].map((id) => $(id));
+    this.screens = ['title', 'mapselect', 'pause', 'settings', 'gameover', 'victory', 'extras', 'charselect', 'lineup', 'online', 'signin', 'career'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
@@ -20,6 +20,7 @@ export class Menus {
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
     $('btn-extras').addEventListener('click', () => this.h.extras());
     $('btn-chars').addEventListener('click', () => this.h.characters());
+    $('btn-career').addEventListener('click', () => this.h.career());
     $('btn-extras-back').addEventListener('click', () => this.h.extrasBack());
     $('btn-resume').addEventListener('click', () => this.h.resume());
     $('btn-pause-settings').addEventListener('click', () => this.openSettings('pause'));

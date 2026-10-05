@@ -36,6 +36,9 @@ import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/gly
 import { MenuNav } from './ui/menunav.js';
 import { PatchNotes } from './ui/patchNotes.js';
 import { Splash } from './ui/splash.js';
+import { Career } from './career/career.js';
+import { CareerTracker } from './career/tracker.js';
+import { SignInUI, AchievementToast, refreshProfileChip, renderCareer } from './ui/careerUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
@@ -168,6 +171,7 @@ const menus = new Menus(settings, {
   extras: () => { menus.show('extras'); extras.open(); },
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
+  career: () => { renderCareer(career); menus.show('career'); },
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
@@ -629,8 +633,10 @@ function tick(cmd) {
     events = sim.drainEvents();
     if (net.host) safely('host', () => net.host.postStep(events));
   }
+  safely('career', () => careerTracker.tick(sim, localId, DT, { hardcore: !!hud.hardcore }));
   for (const e of events) safely('render:' + e.type, () => renderer.onEvents([e]));
   for (const e of events) {
+    safely('career:' + e.type, () => careerTracker.onEvent(e, sim, localId));
     safely('sound:' + e.type, () => sound.onEvent(e));
     safely('hud:' + e.type, () => hud.onEvent(e));
     safely('range:' + e.type, () => rangeUI.onEvent(e));
@@ -723,14 +729,40 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
+const BACK_BUTTON = { career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
+// --- careers: a username, its stats and achievements (src/career/) ---
+const career = new Career(CONFIG.career);
+const careerTracker = new CareerTracker(career);
+const achToast = new AchievementToast(() => sound.achievement());
+career.onUnlock = (a) => achToast.push(a);
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); };
+const signIn = new SignInUI(career, { done: () => {} });
+function afterSignIn() {
+  // your username is your name online too
+  if (career.signedIn && settings.name !== career.profile.name) { settings.name = career.profile.name; saveSettings(settings); }
+  refreshProfileChip(career);
+}
+$id('btn-career-back').addEventListener('click', () => menus.show('title'));
+$id('btn-career-switch').addEventListener('click', () => {
+  signIn.h.done = () => { afterSignIn(); renderCareer(career); menus.show('career'); };
+  menus.show('signin'); signIn.open();
+});
+window.addEventListener('pagehide', () => career.flush());
+refreshProfileChip(career);
 const patchNotes = new PatchNotes();
 const bootParams = new URLSearchParams(location.search);
 splash = new Splash(CONFIG.splash, {
   // (inside the click / key press, so the browser lets the sound out)
   sound: () => { audio.init(); audio.applyVolumes(); sound.splash(CONFIG.splash.moans); },
-  done: () => { startTitleMusic(); if (!bootParams.get('join')) patchNotes.maybeShow(); },
+  done: () => {
+    startTitleMusic();
+    if (bootParams.get('join')) return;
+    // who's playing? (then the title, and any new patch notes)
+    signIn.h.done = () => { afterSignIn(); menus.show('title'); patchNotes.maybeShow(); };
+    menus.show('signin');
+    signIn.open();
+  },
 });
 const nav = new MenuNav({
   root: () => (splash.active ? $id('splash') : patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id(exploreUI.isOpen ? 'explorepanel' : 'rangepanel') : menus.current ? $id(menus.current) : null),
@@ -864,7 +896,7 @@ if (pump) pump.onmessage = () => {
 
 // Expose for debugging in the console.
 window.STEW = {
-  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect, lineupUI,
+  get sim() { return sim; }, renderer, CONFIG, input, rangeUI, hud, sound, audio, titleMusic, jukebox, progress, extras, menus, charSelect, lineupUI, career, careerTracker, achToast,
   get mode() { return mode; }, get online() { return online; }, net, pads, nav, get device() { return device; }, setInputDevice,
   debug: {
     // Run the simulation forward without rendering (for testing).
@@ -886,7 +918,7 @@ refreshGlyphs();
 // the boot splash first (skipped for invite links and ?nosplash), then the patch notes
 {
   const code = bootParams.get('join');
-  if (code) { splash.finish(true); openOnline(code); }
+  if (code) { splash.finish(true); if (career.lastName) career.signIn(career.lastName).then(afterSignIn); openOnline(code); }
   else if (bootParams.has('nosplash')) splash.finish(true);
 }
 document.body.dataset.ready = '1';

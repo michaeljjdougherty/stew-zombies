@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05i',
+  version: '2026-10-05j',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -22,6 +22,8 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Just added', items: [
+      'Careers: sign in with a username when the game starts (use the same one every time). Your kills, revives, rounds survived and more are saved to it. See them under Career & Achievements on the title screen.',
+      'Achievements: ten to start, 500G in all, with a pop-up the moment you earn one.',
       'A Tiger Fish Interactive logo (and some company) when the game starts up.',
       'More graphics settings for slower computers: a quality preset (Low, Medium, High, Ultra), auto resolution that drops the resolution when the frame rate dips, a frame rate cap, sharpness for high-res screens, how many real lights there are, an effects level (particles, snow, blood marks, how long bodies stay), and simple zombie and gun models. Render scale now goes down to 35%.',
       'Easter egg expanded.',
