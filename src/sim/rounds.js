@@ -103,6 +103,17 @@ function pickSpawn(sim) {
   return cands[cands.length - 1];
 }
 
+// Explore mode: start round n now (zombies on, the map cleared).
+export function exploreJumpToRound(sim, n) {
+  if (sim.mode !== 'explore') return;
+  n = Math.max(1, Math.min(100, Math.round(n)));
+  for (const z of sim.zombies) if (z.state !== 'dead') { z.state = 'dead'; sim.emit('zombieRemoved', { id: z.id }); }
+  for (const w of sim.windows) { w.queue.length = 0; w.climbing = null; }
+  sim.explore.zombies = true;
+  sim.emit('exploreZombies', { on: true });
+  startRound(sim, n);
+}
+
 export function updateRounds(sim, dt) {
   const R = sim.rounds, c = sim.cfg.rounds;
   if (R.phase === 'pregame' || R.phase === 'intermission') {

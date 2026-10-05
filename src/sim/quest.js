@@ -118,7 +118,7 @@ export class BreakerInteractable {
   canUse(sim, p) { return up(p) && !sim.quest.breakers.includes(this.b.id); }
   prompt(sim) {
     const n = sim.quest.breakers.length, t = sim.quest.need.breakers;
-    return { text: `Press [F] to throw the ${this.b.label} main breaker`, cost: null, sub: n ? `${n} of ${t} thrown` : `one of ${t} main breakers` };
+    return { text: `Press [F] to throw the ${this.b.label} main breaker`, cost: null, sub: n ? `${n} of ${t} thrown` : `one of ${t} main breakers`, hint: true };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
@@ -168,7 +168,7 @@ export class TrophyStandInteractable {
   canUse(sim, p) { return up(p) && !sim.quest.trophyPlaced; }
   prompt(sim) {
     const q = sim.quest, n = q.pieces.length, t = q.need.pieces;
-    if (n < t) return { text: 'The championship trophy is in pieces', cost: null, sub: n ? `${n} of ${t} pieces found` : 'find the pieces around the school' };
+    if (n < t) return { text: 'The championship trophy is in pieces', cost: null, sub: n ? `${n} of ${t} pieces found` : 'find the pieces around the school', hint: !n };
     return { text: 'Press [F] to put the trophy back together', cost: null };
   }
   use(sim, p, cmd) {
@@ -226,7 +226,7 @@ export class AltarInteractable {
     const q = sim.quest;
     if (q.step === 'boss' && !q.boss) return { text: 'Press [F] to call Erik out', cost: null, sub: 'the Intercom Showdown: get ready first' };
     if (q.coin === 'held') return { text: 'Press [F] to set the Dark Schnitz Coin in the altar', cost: null };
-    return { text: 'An altar under the Press Box', cost: null, sub: 'there\'s a coin-shaped hollow in the top' };
+    return { text: 'An altar under the Press Box', cost: null, sub: 'there\'s a coin-shaped hollow in the top', hint: true };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
@@ -400,7 +400,7 @@ export class ChopperTableInteractable {
   prompt(sim, p) {
     const q = sim.quest, C = q.chopper, n = C.parts.length, t = q.need.parts;
     if (!C.built) {
-      if (n < t) return { text: 'A workbench', cost: null, sub: n ? `${n} of ${t} Chopper parts found` : `find the ${t} parts of the Chopper around the school` };
+      if (n < t) return { text: 'A workbench', cost: null, sub: n ? `${n} of ${t} Chopper parts found` : `find the ${t} parts of the Chopper around the school`, hint: !n };
       return { text: 'Press [F] to build the Chopper', cost: null };
     }
     if (C.holder) return { text: 'Press [F] to refill the Chopper', cost: null };
@@ -910,4 +910,80 @@ export function questObjective(sim) {
     case 'ending': return null;
     default: return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Explore mode: jump straight to a part of the Easter egg. Everything before
+// it is done (power on, trophy rebuilt, coin placed, talents back...), the way
+// it would be if you'd played it. Only goes forward: Explore restarts the
+// game first to go back (main.js).
+// ---------------------------------------------------------------------------
+export const QUEST_SKIPS = [
+  { id: 'power', name: 'Restore the power', step: 'power' },
+  { id: 'trophy', name: 'The trophy pieces', step: 'trophy' },
+  { id: 'statue', name: 'Feed the mascot statue', step: 'statue' },
+  { id: 'coin', name: 'The Dark Schnitz Coin', step: 'coin' },
+  { id: 'altar', name: 'The altar under the Press Box', step: 'altar' },
+  { id: 'ritual', name: 'The four circles', step: 'ritual' },
+  { id: 'chopper', name: 'Build the Chopper', step: 'chopper' },
+  { id: 'schnitz', name: 'The Schnitz (lift the Chopper)', step: 'chopper' },
+  { id: 'infused', name: 'The infused zombies', step: 'infused' },
+  { id: 'boss', name: 'The Intercom Showdown', step: 'boss' },
+  { id: 'blast', name: 'Blast Erik out (last phase)', step: 'boss' },
+];
+
+export function questSkipTo(sim, id, p) {
+  const q = sim.quest;
+  if (!q) return false;
+  const Q = sim.world.quest, c = sim.cfg.quest;
+  const at = QUEST_SKIPS.findIndex((s) => s.id === id);
+  if (at < 0) return false;
+  const past = (key) => QUEST_SKIPS.findIndex((s) => s.id === key) < at;
+  const back = sim.time - 1000;   // "long ago": the timed bits finish on the next update
+  if (past('power')) {
+    q.breakers = Q.breakers.map((b) => b.id);
+    sim.turnOnPower(p);
+  }
+  if (past('trophy')) {
+    q.pieces = Q.trophyPieces.map((t) => t.id);
+    q.trophyPlaced = true; q.trophyPlacedAt = back;      // the Mad Dog Machine comes up
+  }
+  if (past('statue')) {
+    q.statueSouls = q.need.souls; q.statueAwake = true; q.statueAwakeAt = back;
+  }
+  if (past('coin')) { q.coin = 'held'; q.coinHolder = p.id; }
+  if (past('altar')) { q.coin = 'placed'; q.coinHolder = null; q.claddingStart = back; }
+  if (past('ritual')) {
+    for (const b of q.ritual.balls) { b.done = true; b.progress = c.ritualTime; }
+    q.ritual.active = null;
+    for (const pl of sim.players) pl.boosts = { ...c.boosts };
+  }
+  if (past('chopper')) {
+    q.chopper.parts = (Q.chopperParts || []).map((x) => x.id);
+    q.chopper.built = true;
+  }
+  if (past('schnitz')) {
+    q.schnitz = { at: back, next: SCHNITZ_LINES.chopper.length, done: true, by: p.id };
+    q.darkUntil = 0;
+    q.chopper.holder = p.id;
+    if (chopperSlot(p, true) < 0) giveWeapon(sim, p, CHOPPER);
+  }
+  if (past('infused')) {
+    q.infused.kills = q.need.infused;
+    q.chopper.upgraded = true;
+    const i = chopperSlot(p, true);
+    if (i >= 0) p.loadout.slots[i].id = CHOPPER + '+';
+    giveWeapon(sim, p, CHOPPER + '+');
+  }
+  q.step = QUEST_SKIPS[at].step;
+  if (id === 'blast') {
+    startBoss(sim, p);
+    const b = q.boss;
+    b.phase = 3; b.wave = c.boss.waves;
+    b.towers = b.towers.map(() => true);
+    b.amps = b.towers.map((_, i) => ({ id: i + 1, from: null, x: 0, z: 0, state: 'placed', holder: null, tower: i }));
+    sim.emit('bossPhase', { phase: 3 });
+  }
+  sim.emit('questStep', { step: q.step, skipped: true });
+  return true;
 }

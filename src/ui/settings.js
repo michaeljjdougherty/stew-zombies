@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   ao: CONFIG.graphics.ao,
   reflections: CONFIG.graphics.reflections,
   showFps: false,
+  questHints: 'walkthrough',   // the Easter egg: 'walkthrough' shows each step, 'hardcore' doesn't
 };
 
 export function loadSettings() {

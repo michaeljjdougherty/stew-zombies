@@ -166,6 +166,12 @@ Phase 8 (built): Erik's on the PA.
   Erik's last word on the game-over screen, voice volume and subtitle settings.
 - **Polish:** posters, banners and graffiti painted in code all over the
   school, a red damage-direction indicator, and a hit tick sound.
+- **Walkthrough / Hardcore** (map screen, saved per browser): Walkthrough shows
+  the Easter egg's objective line and how-to hints; Hardcore hides them (the
+  HUD's `hardcore` flag; quest prompts mark their hint lines with `hint`).
+- **Explore menu** (B / View, `src/ui/explore.js`): any gun (plain or Mad Dog),
+  start any round (`exploreJumpToRound`), zombies on/off, and jump to any part
+  of the egg (`questSkipTo` in `src/sim/quest.js`; going back restarts Explore).
 - **Voices:** Erik, Kearns and Ryan are recorded. Everyone else is still
   synthesized babble timed to each line. To add a character's recordings, run
   `python3 tools/voice/import.py <their zip or folder>` (or `--as <speaker>`

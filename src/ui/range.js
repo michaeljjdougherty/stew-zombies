@@ -8,7 +8,7 @@ import { zombieHealthForRound } from '../config.js';
 
 const $ = (id) => document.getElementById(id);
 
-const GROUPS = [
+export const GROUPS = [
   ['Wonder weapons', (d) => !!d.wonder],
   ['Pistols', (d) => d.class === 'pistol' && !d.projectile],
   ['SMGs', (d) => d.class === 'smg'],

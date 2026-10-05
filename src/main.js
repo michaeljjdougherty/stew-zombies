@@ -25,6 +25,9 @@ import { LineupUI } from './ui/lineupui.js';
 import { TitleMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
 import { voiceSprites } from './lore/voice.js';
+import { ExploreUI } from './ui/explore.js';
+import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
+import { exploreJumpToRound } from './sim/rounds.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
@@ -97,6 +100,23 @@ const rangeUI = new RangeUI(CONFIG, {
   close: () => closeRangePanel(),
 });
 rangeUI.localId = localId;
+
+// Explore: the menu (B / View): any gun, any round, any part of the Easter egg
+const exploreUI = new ExploreUI(CONFIG, {
+  give: (id) => rangeGive(sim, player, id),
+  round: (n) => { exploreJumpToRound(sim, n); updateExploreHud(); },
+  zombies: (on) => { sim.setExploreZombies(on); updateExploreHud(); exploreUI.refresh(); },
+  skip: (id) => exploreSkip(id),
+  close: () => closeExplorePanel(),
+});
+
+// Jump to part of the egg. Going back (or redoing the part you're on) starts Explore over first.
+function exploreSkip(id) {
+  const s = QUEST_SKIPS.find((x) => x.id === id);
+  if (!s || !sim.quest) return;
+  if (QUEST_STEPS.indexOf(s.step) <= QUEST_STEPS.indexOf(sim.quest.step)) restart('explore');
+  questSkipTo(sim, id, player);
+}
 renderer.rig.onFootstep = (sprint, speed) => sound.playerFootstep(sprint, speed);
 
 // 'title' | 'play' | 'paused' | 'dying' | 'over' | 'ending'
@@ -337,6 +357,7 @@ function startPlaying() {
   menus.hideAll();
   hud.show(true);
   rangeUI.setActive(sim.mode === 'range');
+  hud.hardcore = settings.questHints === 'hardcore' && sim.mode !== 'explore';   // (Explore always shows the egg's steps)
   updateExploreHud();
   mode = 'play';
   document.getElementById('lockhint').hidden = true;
@@ -381,6 +402,8 @@ const mapSelect = new MapSelect({
   watchIntro: () => { mapSelect.close(); startIntro('maps'); },
   back: () => { mapSelect.close(); menus.show('title'); },
   introSeen: () => !!progress.introSeen,
+  hints: () => settings.questHints || 'walkthrough',
+  setHints: (v) => { settings.questHints = v === 'hardcore' ? 'hardcore' : 'walkthrough'; saveSettings(settings); },
 });
 function openMapSelect() {
   menus.show('mapselect');
@@ -460,6 +483,21 @@ function openRangePanel() {
   rangeUI.open(sim, player);
 }
 
+function openExplorePanel() {
+  if (mode !== 'play' || sim.mode !== 'explore') return;
+  mode = 'panel';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  exploreUI.open(sim, player);
+}
+
+function closeExplorePanel() {
+  if (mode !== 'panel') return;
+  exploreUI.close();
+  startPlaying();
+}
+
 function closeRangePanel() {
   if (mode !== 'panel') return;
   rangeUI.close();
@@ -519,11 +557,11 @@ window.addEventListener('keyup', (e) => { if (e.code === 'Tab' && keyBoard) { ke
 window.addEventListener('blur', () => { keyBoard = false; padBoard = false; hud.showScoreboard(false); });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !e.repeat) {
-    if (mode === 'play') openRangePanel();
-    else if (mode === 'panel') closeRangePanel();
+    if (mode === 'play') { if (sim.mode === 'explore') openExplorePanel(); else openRangePanel(); }
+    else if (mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); }
   }
   if ((mode === 'ending' || mode === 'intro') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
-  if (e.code === 'Escape' && mode === 'panel') { closeRangePanel(); return; }
+  if (e.code === 'Escape' && mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
   if (e.code === 'KeyZ' && !e.repeat && mode === 'play' && sim.mode === 'explore') { sim.setExploreZombies(!sim.explore.zombies); updateExploreHud(); }
@@ -674,14 +712,14 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
+const BACK_BUTTON = { mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 const patchNotes = new PatchNotes();
 const nav = new MenuNav({
-  root: () => (patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id('rangepanel') : menus.current ? $id(menus.current) : null),
+  root: () => (patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id(exploreUI.isOpen ? 'explorepanel' : 'rangepanel') : menus.current ? $id(menus.current) : null),
   back: (id) => { if (id === 'patchnotes') { patchNotes.close(); return; } const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
-  start: (id) => { if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
-  view: (id) => { if (id === 'rangepanel') closeRangePanel(); },
+  start: (id) => { if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel' || id === 'explorepanel') $id(BACK_BUTTON[id]).click(); },
+  view: (id) => { if (id === 'rangepanel') closeRangePanel(); else if (id === 'explorepanel') closeExplorePanel(); },
   bumper: (id, dir) => {
     if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
     else if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
@@ -722,7 +760,7 @@ function padFrame(fdt) {
   if (st.pressed(BTN.MENU)) { input.releaseLock(); pause(); }
   else if (st.pressed(BTN.VIEW) && sim.mode !== 'zombies') {
     if (sim.mode === 'range') openRangePanel();
-    else if (sim.mode === 'explore') { sim.setExploreZombies(!sim.explore.zombies); updateExploreHud(); }
+    else if (sim.mode === 'explore') openExplorePanel();
   }
 }
 

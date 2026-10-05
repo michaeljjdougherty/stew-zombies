@@ -39,6 +39,9 @@ export class HUD {
   }
 
   // Big centered message (power on, new upgraded gun, perk).
+  // Hardcore: the Easter egg's how-to hints stay hidden (walkthrough shows them)
+  hint(text) { return this.hardcore ? '' : text; }
+
   toast(t1, t2 = '', color = null, time = 3) {
     const el = this.el.toast;
     el.querySelector('.t1').textContent = t1;
@@ -113,7 +116,7 @@ export class HUD {
         this.toast(`Trophy piece ${e.count} of ${e.total}`, e.name, '#e8c060', 2.8);
         break;
       case 'questStep':
-        if (e.step === 'chopper') this.toast('Build the Chopper', 'its four parts are somewhere in the school', '#ff7050', 4);
+        if (e.step === 'chopper' && !this.hardcore) this.toast('Build the Chopper', 'its four parts are somewhere in the school', '#ff7050', 4);
         break;
       case 'chopperPart':
         this.toast(`Chopper part ${e.count} of ${e.total}`, e.name, '#ff7050', 2.8);
@@ -122,10 +125,10 @@ export class HUD {
         this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours' : 'built · a teammate has it', '#ff7050', 3.5);
         break;
       case 'chopperReturned':
-        this.toast('The Chopper is back on the workbench', 'in the Boiler Room', '#ff7050', 3);
+        this.toast('The Chopper is back on the workbench', this.hint('in the Boiler Room'), '#ff7050', 3);
         break;
       case 'chopperUpgraded':
-        this.toast('The Meat Grinder', 'strong enough to bring Erik down', '#ff3b1f', 3.5);
+        this.toast('The Meat Grinder', this.hint('strong enough to bring Erik down'), '#ff3b1f', 3.5);
         break;
       case 'schnitzSays':
         this.say('schnitz', 'The Schnitz', e.text, 0, e.dur);
@@ -137,10 +140,10 @@ export class HUD {
         if (e.count % 10 === 0 && e.count < e.total) this.toast(`Infused ${e.count} of ${e.total}`, '', '#6dff7a', 2);
         break;
       case 'infusedDone':
-        this.toast('The infused are down', 'now the Chopper', '#6dff7a', 3);
+        this.toast('The infused are down', this.hint('now the Chopper'), '#6dff7a', 3);
         break;
       case 'pressBoxShrug':
-        if (e.playerId === this.localId) this.toast('It barely rattles the glass', 'upgrade the Chopper in the Mad Dog Machine', '#c04040', 2.6);
+        if (e.playerId === this.localId) this.toast('It barely rattles the glass', this.hint('upgrade the Chopper in the Mad Dog Machine'), '#c04040', 2.6);
         break;
       case 'pressBoxBlast':
         if (e.hits < e.of) this.toast('The glass is cracking', `${e.hits} of ${e.of}`, '#ff7050', 2.2);
@@ -164,11 +167,11 @@ export class HUD {
         if (e.wave > 1) this.toast(`Wave ${e.wave} of ${e.of}`, 'Zombie Defenders', '#ff4030', 2.4);
         break;
       case 'bossPhase':
-        if (e.phase === 2) this.toast('Overcharge the system', 'take the amplifiers off his elites', '#7fe08a', 3.5);
-        else this.toast('The speakers are howling', 'blast the Press Box with the upgraded Chopper!', '#ff7050', 3.5);
+        if (e.phase === 2) this.toast('Overcharge the system', this.hint('take the amplifiers off his elites'), '#7fe08a', 3.5);
+        else this.toast('The speakers are howling', this.hint('blast the Press Box with the upgraded Chopper!'), '#ff7050', 3.5);
         break;
       case 'ampTaken':
-        if (e.playerId === this.localId) this.toast('Sound Amplifier', 'plug it into a speaker tower', '#7fe08a', 2.4);
+        if (e.playerId === this.localId) this.toast('Sound Amplifier', this.hint('plug it into a speaker tower'), '#7fe08a', 2.4);
         break;
       case 'towerPowered':
         this.toast(`Speaker tower ${e.count} of 4`, '', '#7fe08a', 2.2);
@@ -415,7 +418,7 @@ export class HUD {
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
     // the quest's current objective, top left
-    const obj = sim.quest ? questObjective(sim) : null;
+    const obj = sim.quest && !this.hardcore ? questObjective(sim) : null;
     if (obj !== this.last.objective) {
       this.last.objective = obj;
       this.el.quest.hidden = !obj;
@@ -470,7 +473,7 @@ export class HUD {
     let prompt = p.prompt ? p.prompt.text + (p.prompt.cost != null ? ` [Cost: ${p.prompt.cost}]` : '') : '';
     if (p.rebuilding) prompt = 'Rebuilding barrier';
     this.set('prompt', this.el.prompt, prompt && glyphify(prompt), 'innerHTML');
-    this.set('promptsub', this.el.promptsub, p.prompt && p.prompt.sub ? p.prompt.sub : '');
+    this.set('promptsub', this.el.promptsub, p.prompt && p.prompt.sub && !(p.prompt.hint && this.hardcore) ? p.prompt.sub : '');
 
     // timed power-ups
     const act = sim.powerups.active;

@@ -197,6 +197,7 @@ export class MapSelect {
     $('ms-zout').addEventListener('click', () => this.zoomBy(1 / 1.6));
     $('ms-home').addEventListener('click', () => this.flyTo(MAPS.find((m) => m.id === this.sel), true));
     $('ms-play').addEventListener('click', () => { const m = this.current(); if (m.ready) this.h.play(m.id, $('ms-intro').checked); });
+    for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.addEventListener('change', () => { if (r.checked && this.h.setHints) this.h.setHints(r.value); });
     $('ms-watch').addEventListener('click', () => this.h.watchIntro());
     $('ms-back').addEventListener('click', () => this.h.back());
     this.raf = null;
@@ -206,6 +207,8 @@ export class MapSelect {
 
   open() {
     $('ms-intro').checked = !this.h.introSeen();
+    const hints = this.h.hints ? this.h.hints() : 'walkthrough';
+    for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.checked = r.value === hints;
     this.resize();
     // start on the whole system, then drift in to the selected world
     this.cam = { x: 0, y: -60, k: this.overviewK() };
@@ -265,6 +268,7 @@ export class MapSelect {
     $('ms-play').disabled = !m.ready;
     $('ms-play').textContent = m.ready ? 'Play' : 'Coming soon';
     $('ms-introrow').hidden = !m.ready;
+    $('ms-moderow').hidden = !m.ready;
     if (fly) this.flyTo(m);
   }
 

@@ -72,6 +72,7 @@ const LEGEND = {
   charselect: [['confirm', 'Select'], ['prev', ''], ['next', 'T-shirt'], ['rotate', 'Turn'], ['back', 'Back']],
   lineup: [['confirm', 'Select'], ['prev', ''], ['next', 'Character'], ['rotate', 'Turn'], ['back', 'Back']],
   rangepanel: [['confirm', 'Select'], ['scroll', 'Scroll'], ['back', 'Close']],
+  explorepanel: [['confirm', 'Select'], ['scroll', 'Scroll'], ['back', 'Close']],
 };
 export function legend(screen, dev = device) {
   const rows = LEGEND[screen];
@@ -84,11 +85,11 @@ export function controlsList(dev = device) {
   const rows = dev === 'kbm' ? [
     ['move', 'Move'], ['look', 'Look · left click fires · right click aims'], ['sprint', 'Sprint (hold)'], ['jump', 'Jump'], ['crouch', 'Crouch'],
     ['reload', 'Reload (sprint to cancel)'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'], ['tactical', 'Stew Bomb'],
-    ['use', 'Buy and use things · hold to rebuild barriers'], ['swap', 'Switch weapons (or the wheel)'], ['zombies', 'Explore mode: zombies on / off'], ['scores', 'Scoreboard'], ['pause', 'Pause'],
+    ['use', 'Buy and use things · hold to rebuild barriers'], ['swap', 'Switch weapons (or the wheel)'], ['zombies', 'Explore mode: zombies on / off (B: the menu)'], ['scores', 'Scoreboard'], ['pause', 'Pause'],
   ] : [
     ['move', 'Move'], ['look', 'Look'], ['fire', 'Fire'], ['ads', 'Aim down sights'], ['sprint', 'Sprint (click)'], ['jump', 'Jump'], ['crouch', 'Crouch (toggle)'],
     ['use', 'Buy and use things · reload when there\'s nothing to buy · hold to rebuild'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'],
-    ['tactical', 'Stew Bomb'], ['swap', 'Switch weapons'], ['zombies', 'Explore mode: zombies on / off · Firing range: weapons panel'], ['scores', 'Scoreboard (zombies)'], ['pause', 'Pause'],
+    ['tactical', 'Stew Bomb'], ['swap', 'Switch weapons'], ['zombies', 'Explore mode: the menu · Firing range: weapons panel'], ['scores', 'Scoreboard (zombies)'], ['pause', 'Pause'],
   ];
   return rows.map(([a, t]) => `<dt>${glyph(a, dev)}</dt><dd>${esc(t)}</dd>`).join('');
 }

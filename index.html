@@ -271,8 +271,26 @@
   .dmg.head { color: #f0c84a; font-size: 24px; }
   .dmg.blast { color: #ff9a40; }
   .dmg.kill { color: var(--blood-hi); font-size: 26px; }
-  #rangepanel { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(6,5,4,.72); z-index: 5; }
-  #rangepanel[hidden] { display: none; }
+  #rangepanel, #explorepanel { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(6,5,4,.72); z-index: 5; }
+  #rangepanel[hidden], #explorepanel[hidden] { display: none; }
+  #ep-weapons { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 16px; align-items: start; }
+  #ep-slots { font: 12px var(--mono); color: var(--muted); }
+  #ep-now { font-size: 12px; color: var(--muted); margin-left: 4px; }
+  .ep-egg-wrap { display: grid; gap: 10px; }
+  .ep-egg-wrap small { color: var(--muted); font-size: 11px; }
+  #ep-egg { display: flex; flex-wrap: wrap; gap: 8px; }
+  #ep-egg button.sm.done { color: var(--muted); border-color: rgba(255,255,255,.08); }
+  #ep-egg button.sm.on { border-color: var(--brass); color: var(--brass); }
+  .ms-moderow { display: grid; gap: 6px; font-size: 13px; color: var(--ink); }
+  .ms-moderow[hidden] { display: none; }
+  .ms-moderow .ms-modes { display: flex; gap: 6px; }
+  .ms-moderow label { flex: 1; display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); cursor: pointer; background: rgba(255,255,255,.02); }
+  .ms-moderow label:has(input:checked) { border-color: var(--blood-hi); background: rgba(156,14,11,.16); }
+  .ms-moderow input { position: absolute; opacity: 0; pointer-events: none; }
+  .ms-moderow label b { font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  .ms-moderow label small { font-size: 11px; color: var(--muted); line-height: 1.35; }
+  .ms-moderow > span { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .ms-moderow label:focus-within { outline: 1px dashed var(--muted); outline-offset: 2px; }
   .rp { width: min(1100px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); padding: 20px 22px; display: grid; gap: 16px; }
   .rp-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
   .rp-head h2 { font-size: 34px; }
@@ -538,7 +556,7 @@
   <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
   <div id="subs" aria-live="polite"></div>
   <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>
-  <div id="explorehud" hidden>Explore · endless points · <span data-glyph="zombies"><kbd>Z</kbd></span> zombies <b id="ex-z">off</b></div>
+  <div id="explorehud" hidden>Explore · endless points · <span data-glyph="panel"><kbd>B</kbd></span> menu · <kbd>Z</kbd> zombies <b id="ex-z">off</b></div>
   <div id="rangehud" hidden><div id="rstats"></div><div id="rhint"><span data-glyph="panel"><kbd>B</kbd></span> weapons &amp; options</div></div>
 </div>
 <div id="dmgnums"></div>
@@ -579,6 +597,40 @@
   </div>
 </section>
 
+<section id="explorepanel" hidden>
+  <div class="rp">
+    <div class="rp-head">
+      <h2>Explore</h2>
+      <span id="ep-slots"></span>
+    </div>
+    <div class="rp-opts">
+      <div class="rp-round">Start round
+        <button id="ep-round-dec5" class="sm" type="button" aria-label="Five rounds lower">−5</button>
+        <button id="ep-round-dec" class="sm" type="button" aria-label="One round lower">−</button>
+        <b id="ep-round">1</b>
+        <button id="ep-round-inc" class="sm" type="button" aria-label="One round higher">+</button>
+        <button id="ep-round-inc5" class="sm" type="button" aria-label="Five rounds higher">+5</button>
+        <button id="ep-round-go" class="sm primary" type="button">Go</button>
+        <span id="ep-now"></span>
+      </div>
+      <label><input id="ep-zombies" type="checkbox"> Zombies on</label>
+    </div>
+    <div class="rp-opts ep-egg-wrap">
+      <span>Easter egg · jump to: <small>(going back to an earlier part restarts Explore)</small></span>
+      <div id="ep-egg"></div>
+    </div>
+    <div class="rp-opts">
+      <label><input id="ep-upgraded" type="checkbox"> Mad Dog upgraded</label>
+      <span>Picking a gun fills your empty slot, or replaces the one in your hands.</span>
+    </div>
+    <div id="ep-weapons"></div>
+    <div class="rp-foot">
+      <span>Endless points. You can't die here.</span>
+      <button id="ep-close" class="sm" type="button" data-glyph-text="Back to exploring [B]">Back to exploring [B]</button>
+    </div>
+  </div>
+</section>
+
 <div id="patchnotes" class="pn-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pn-title">
   <div class="pn-card">
     <header><span class="eyebrow">Patch notes · <span id="pn-date"></span></span><h2 id="pn-title">What's new</h2></header>
@@ -597,6 +649,13 @@
       <h3 id="ms-name"></h3>
       <p id="ms-blurb"></p>
       <ul id="ms-facts"></ul>
+      <div class="ms-moderow" id="ms-moderow">
+        <span>Easter egg</span>
+        <div class="ms-modes">
+          <label><input type="radio" name="ms-hints" value="walkthrough"><b>Walkthrough</b><small>Shows each step of the egg on screen.</small></label>
+          <label><input type="radio" name="ms-hints" value="hardcore"><b>Hardcore</b><small>Classic zombies: no hints, figure it out.</small></label>
+        </div>
+      </div>
       <label class="ms-introrow" id="ms-introrow"><input type="checkbox" id="ms-intro"> Play the intro first</label>
       <div class="ms-actions">
         <button id="ms-play" type="button" data-nav-first>Play</button>

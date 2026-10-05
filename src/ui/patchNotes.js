@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05d',
+  version: '2026-10-05e',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -19,6 +19,8 @@ export const PATCH = {
   },
   sections: [
     { title: 'Just added', items: [
+      'Walkthrough or Hardcore: pick on the map screen. Walkthrough shows each step of the Easter egg like before. Hardcore is classic zombies: no objective, no hints, figure it out.',
+      'Explore has a menu now (B, or View on a controller): spawn in any gun (plain or Mad Dog\'d), start any round, switch the zombies on or off, and jump to any part of the Easter egg.',
       'The Final Whistle has a new step: after you take back all four talents, build the Chopper (four parts around the school, a workbench in the boiler room), then put it through the Mad Dog Machine. Only the upgraded Chopper can knock Erik out of the Press Box at the end of the Intercom Showdown.',
       'When you first lift the Chopper, the lights go down and The Schnitz speaks from the dark, its green eyes over the stew. Nothing attacks you while it talks. Then its infused zombies come: twice as tall, slower, much tougher and glowing green. Kill fifty of them.',
       'The blue spirit zombies only exist while a circle is being held: when it goes out or fills, they fade away.',
