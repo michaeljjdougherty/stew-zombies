@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05k',
+  version: '2026-10-05l',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -22,6 +22,7 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Just added', items: [
+      'Rocco has his real voice: all 62 of his lines are recorded.',
       'Usernames have a 4-digit PIN now: make one the first time you use a name, and only you can sign in as it from then on.',
       'The Easter egg\'s final fight is a lot tougher.',
       'Careers: sign in with a username when the game starts (use the same one every time). Your kills, revives, rounds survived and more are saved to it. See them under Career & Achievements on the title screen.',
@@ -36,7 +37,7 @@ export const PATCH = {
       'Lighting: no more blinding glare. Shiny surfaces (steel counters, table tops, the cows) don\'t mirror the lights any more, and the glow around bright things is softer.',
       'A zombie\'s green eyes go dark the instant it dies.',
       'Erik has a real voice now. All 115 of his lines are recorded: every taunt over the PA, every intercom reply, his roasts, and his scenes in the intro.',
-      'Kearns and Ryan are voiced too: their reactions, walkie-talkie calls, story lines, banter, their lines in the intro, and what they say into the intercom when you play them. Pit, Rocco and Brian still use the placeholder voices for now.',
+      'Kearns and Ryan are voiced too: their reactions, walkie-talkie calls, story lines, banter, their lines in the intro, and what they say into the intercom when you play them. Pit and Brian still use the placeholder voices for now.',
       'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
       'Map select: press Play to open a star chart you can drag and zoom. Stew Leonard High sits on its asteroid (the real level, drawn to scale), and the maps still to come are planets with a hint each.',
       'The Chopper is a real wonder weapon now: every shot is a wall of wind that kills and throws every zombie in its path, with a deep boom and a howling roar.',
