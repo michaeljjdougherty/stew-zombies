@@ -52,6 +52,7 @@ export function gunshot(A, out, t, p = {}) {
   if (p.kind === 'blade') return bladeFire(A, out, t, p);
   if (p.kind === 'fucci') return fucciFire(A, out, t, p);
   if (p.kind === 'saw') return sawFire(A, out, t, p);
+  if (p.kind === 'wind') return windFire(A, out, t, p);
   const pitch = (p.pitch || 1) * R(0.96, 1.04);
   const body = p.body || 2200, thumpF = p.thump || 140;
   const mix = A.gain(1);
@@ -1240,6 +1241,45 @@ export function fucciImpact(A, out, t) {
   const ng = A.gain(0); A.env(ng, t, 0.002, 0.25, 0.5);
   n.connect(ng); ng.connect(out);
   return 0.5;
+}
+
+// The Chopper: it sucks air in for a beat, then a wall of wind leaves the
+// barrel - a sub-bass punch you feel, a tearing roar, and a long howl after.
+function windFire(A, out, t, p = {}) {
+  const low = p.upgraded ? 0.85 : 1;
+  const bus = A.gain(1.6);
+  const drive = A.shaper(0.45);
+  bus.connect(drive); drive.connect(out);
+  // the inhale
+  const inh = A.noiseSource('pink', t, 0.16);
+  const ibp = A.filter('bandpass', 600, 1.2); ibp.frequency.exponentialRampToValueAtTime(2400, t + 0.14);
+  const ig = A.gain(0.0001); ig.gain.exponentialRampToValueAtTime(0.35, t + 0.13); ig.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  inh.connect(ibp); ibp.connect(ig); ig.connect(bus);
+  const t0 = t + 0.14;
+  // sub punch
+  const sub = A.osc('sine', 78 * low, t0, 1.0); sub.frequency.exponentialRampToValueAtTime(26 * low, t0 + 0.7);
+  const sg = A.gain(0); A.env(sg, t0, 0.005, 0.85, 1.6);
+  sub.connect(sg); sg.connect(bus);
+  const sub2 = A.osc('triangle', 150 * low, t0, 0.4); sub2.frequency.exponentialRampToValueAtTime(45 * low, t0 + 0.3);
+  const s2g = A.gain(0); A.env(s2g, t0, 0.004, 0.32, 0.7);
+  sub2.connect(s2g); s2g.connect(bus);
+  // the crack at the front of it
+  const cr = A.noiseSource('white', t0, 0.06);
+  const chp = A.filter('highpass', 1800, 0.7);
+  const cg = A.gain(0); A.env(cg, t0, 0.001, 0.05, 1.1);
+  cr.connect(chp); chp.connect(cg); cg.connect(bus);
+  // the roar: a noise wall sweeping down
+  const roar = A.noiseSource('white', t0, 1.6);
+  const rlp = A.filter('lowpass', 7000, 0.9); rlp.frequency.exponentialRampToValueAtTime(260, t0 + 1.4);
+  const rg = A.gain(0); A.env(rg, t0, 0.01, 1.4, 1.0);
+  roar.connect(rlp); rlp.connect(rg); rg.connect(bus);
+  // the howl after it, wobbling
+  const how = A.noiseSource('pink', t0 + 0.1, 2.4);
+  const hbp = A.filter('bandpass', 900 * low, 3); hbp.frequency.exponentialRampToValueAtTime(320 * low, t0 + 2.4);
+  const hg = A.gain(0); A.env(hg, t0 + 0.1, 0.25, 2.0, 0.5);
+  const wob = A.osc('sine', 5.5, t0, 2.6); const wg = A.gain(220); wob.connect(wg); wg.connect(hbp.frequency);
+  how.connect(hbp); hbp.connect(hg); hg.connect(bus);
+  return 2.8;
 }
 
 function sawFire(A, out, t) {

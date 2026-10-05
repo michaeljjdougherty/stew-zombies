@@ -1,8 +1,9 @@
 // =============================================================================
-// Map select: a real-looking town map you can drag and zoom, with Stew Leonard
-// High on it (drawn from the actual level) and pins for the maps that aren't
-// out yet. Pick a map from the list or its pin; Play starts it (with the intro
-// the first time).
+// Map select: a star chart you can drag and zoom. Since The Final Whistle the
+// campus has been anchored to an asteroid out in deep space, so every map is
+// its own world: Stew Leonard High on its rock (the real level, drawn from the
+// map data), and planets for the maps that aren't out yet. Pick one from the
+// list or its pin; Play starts it (with the intro the first time).
 // =============================================================================
 import { SCHOOL } from '../map/school.js';
 
@@ -13,30 +14,29 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 // The maps. Only the first one is playable for now.
 export const MAPS = [
   {
-    id: 'lastbell', name: 'Stew Leonard High', tag: 'Out of Bounds', ready: true, at: [2, -27],
+    id: 'lastbell', name: 'Stew Leonard High', tag: 'Out of Bounds', ready: true, at: [4, -27], world: 'The asteroid',
     blurb: 'Championship night. Erik Madsen sealed himself in the Press Box over center court and let the dead in. Hold the school, turn the power back on, and drag him out of there.',
     facts: ['Map 1', '1–4 players', 'Story by James Amarante'],
   },
   {
-    id: 'map2', name: 'Map 2', tag: 'Coming soon', ready: false, at: [760, -470], far: true,
+    id: 'map2', name: 'Map 2', tag: 'Coming soon', ready: false, at: [820, -430], r: 170,
     blurb: 'The season isn\'t over.',
-    facts: ['Somewhere past the parking lot', 'Way past'],
+    facts: ['Through the portal', 'Brian knows the way'],
   },
   {
-    id: 'creamery', name: 'Classified', tag: 'Coming soon', ready: false, at: [-470, 300],
-    blurb: 'The old creamery out by Gravy Creek has been locked up for years. Something in the walk-in freezer is still knocking.',
+    id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,
+    blurb: 'Something under the ice is still knocking.',
     facts: ['Coming soon'],
   },
   {
-    id: 'kearnita', name: 'Classified', tag: 'Coming soon', ready: false, at: [520, 330],
+    id: 'red', name: 'Classified', tag: 'Coming soon', ready: false, at: [560, 420], r: 85,
     blurb: 'Kearnita would know what to do.',
     facts: ['Coming soon'],
   },
 ];
 
-// --- the town (metres; x east, y = the level's z, south) -------------------------
 function rng(seed) { let s = (Math.abs(Math.floor(seed)) % 2147483646) + 1; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
-const W0 = -760, W1 = 960, H0 = -640, H1 = 560;
+const SUN = [-1150, -760];
 
 function el(tag, attrs = {}, parent = null) {
   const e = document.createElementNS(NS, tag);
@@ -44,148 +44,126 @@ function el(tag, attrs = {}, parent = null) {
   if (parent) parent.appendChild(e);
   return e;
 }
-
-// Roads: [points, width, name, kind]
-const ROADS = [
-  [[[W0, 105], [-200, 100], [0, 98], [220, 104], [W1, 120]], 16, 'Stew Leonard Way', 'major'],
-  [[[-95, H0], [-92, -200], [-96, 100], [-110, 300], [-150, H1]], 13, 'Ladle Lane', 'major'],
-  [[[W0, -420], [-300, -330], [100, -260], [420, -150], [W1, -60]], 20, 'Route 8', 'highway'],
-  [[[260, H0], [255, -260], [250, 104], [240, H1]], 12, 'Dairy Road', 'major'],
-  [[[-95, -150], [80, -152], [255, -150]], 9, 'Booster Ave', 'minor'],
-  [[[-420, H0], [-410, -300], [-430, 100], [-440, H1]], 10, 'Broth Blvd', 'minor'],
-  [[[W0, 300], [-430, 300], [-110, 290], [240, 310], [600, 330], [W1, 320]], 11, 'Gravy Creek Rd', 'minor'],
-  [[[600, -300], [610, 120], [590, H1]], 10, 'Ladle Lane N', 'minor'],
-  [[[-95, 200], [250, 205]], 8, '', 'minor'],
-  [[[-420, -60], [-96, -50]], 8, 'Mascot St', 'minor'],
-  [[[255, -40], [600, -30]], 8, 'Tip-Off Ct', 'minor'],
-  [[[-560, H0], [-570, -420]], 8, '', 'minor'],
-];
-// Gravy Creek and the pond
-const CREEK = [[W0, 380], [-560, 360], [-460, 410], [-300, 390], [-120, 430], [80, 420], [300, 460], [520, 440], [700, 480], [W1, 470]];
-
-function path(points, close = false) {
-  let d = '';
-  points.forEach(([x, y], i) => {
-    if (i === 0) { d += `M${x},${y}`; return; }
-    const [px, py] = points[i - 1];
-    const mx = (px + x) / 2, my = (py + y) / 2;
-    d += i === 1 ? ` L${mx},${my}` : ` Q${px},${py} ${mx},${my}`;
-    if (i === points.length - 1) d += ` L${x},${y}`;
-  });
-  return close ? d + ' Z' : d;
+function grad(defs, id, stops, { radial = true, cx = '50%', cy = '50%', r = '50%', fx, fy, x1, y1, x2, y2 } = {}) {
+  const g = radial ? el('radialGradient', { id, cx, cy, r, ...(fx ? { fx, fy } : {}) }, defs) : el('linearGradient', { id, x1, y1, x2, y2 }, defs);
+  for (const [o, c, a = 1] of stops) el('stop', { offset: o, 'stop-color': c, 'stop-opacity': a }, g);
+  return g;
 }
-
-// Little building footprints on the town blocks (not on roads, water or campus).
-function blocks(g) {
-  const R = rng(19);
-  const avoid = (x, y) => {
-    if (x > -95 && x < 230 && y > -160 && y < 92) return true;   // the campus
-    for (const [pts, w] of ROADS) {
-      for (let i = 1; i < pts.length; i++) {
-        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
-        const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
-        const k = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L));
-        if (Math.hypot(ax + dx * k - x, ay + dy * k - y) < w / 2 + 16) return true;
-      }
-    }
-    for (let i = 1; i < CREEK.length; i++) {
-      const [ax, ay] = CREEK[i - 1], [bx, by] = CREEK[i];
-      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
-      const k = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L));
-      if (Math.hypot(ax + dx * k - x, ay + dy * k - y) < 40) return true;
-    }
-    return false;
-  };
-  for (let y = H0 + 30; y < H1 - 20; y += 34) {
-    for (let x = W0 + 30; x < W1 - 20; x += 30 + R() * 16) {
-      if (R() < 0.38) continue;
-      const cx = x + R() * 8, cy = y + R() * 8;
-      if (avoid(cx, cy)) continue;
-      const w = 10 + R() * 16, h = 9 + R() * 14;
-      el('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, class: 'ms-bld', transform: `rotate(${(R() - 0.5) * 6} ${cx} ${cy})` }, g);
-    }
-  }
-}
-
-function trees(g, x0, y0, x1, y1, n, seed) {
-  const R = rng(seed);
-  for (let i = 0; i < n; i++) el('circle', { cx: x0 + R() * (x1 - x0), cy: y0 + R() * (y1 - y0), r: 3 + R() * 4, class: 'ms-tree' }, g);
+// where the light falls on a world at (x, y): the side facing the sun
+function lit(x, y) {
+  const dx = SUN[0] - x, dy = SUN[1] - y, l = Math.hypot(dx, dy);
+  return { fx: `${50 + dx / l * 28}%`, fy: `${50 + dy / l * 28}%` };
 }
 
 function buildWorld(svg) {
+  const defs = el('defs', {}, svg);
+  grad(defs, 'ms-neb1', [['0%', '#6a2c8c', 0.45], ['100%', '#6a2c8c', 0]]);
+  grad(defs, 'ms-neb2', [['0%', '#1f6f8b', 0.4], ['100%', '#1f6f8b', 0]]);
+  grad(defs, 'ms-neb3', [['0%', '#8c2c4c', 0.3], ['100%', '#8c2c4c', 0]]);
+  grad(defs, 'ms-sun', [['0%', '#fff6dc'], ['18%', '#ffd27a'], ['45%', '#ff8a3a', 0.35], ['100%', '#ff6a20', 0]]);
+  grad(defs, 'ms-glow', [['0%', '#9ff6ff', 0.9], ['60%', '#4aa8ff', 0.35], ['100%', '#2050ff', 0]]);
+  grad(defs, 'ms-shade', [['0%', '#000', 0], ['55%', '#000', 0.25], ['100%', '#000', 0.85]]);
+
+  // far layer (moves slower: depth)
+  const far = el('g', { id: 'ms-far' }, svg);
+  const R = rng(5);
+  for (const [x, y, r, g] of [[-500, -300, 700, 'ms-neb1'], [600, 300, 600, 'ms-neb2'], [200, -700, 500, 'ms-neb3'], [-900, 500, 500, 'ms-neb2'], [1100, -100, 400, 'ms-neb1']]) {
+    el('ellipse', { cx: x, cy: y, rx: r * 1.4, ry: r, fill: `url(#${g})` }, far);
+  }
+  for (let i = 0; i < 900; i++) {
+    const b = R();
+    el('circle', { cx: (R() - 0.5) * 4200, cy: (R() - 0.5) * 2800, r: b > 0.985 ? 2.6 : b > 0.9 ? 1.6 : 0.9, class: 'ms-star', opacity: 0.3 + R() * 0.7 }, far);
+  }
+
   const world = el('g', { id: 'ms-world' }, svg);
-  el('rect', { x: W0 - 400, y: H0 - 400, width: W1 - W0 + 800, height: H1 - H0 + 800, class: 'ms-land' }, world);
-  // topographic contours
-  const topo = el('g', { class: 'ms-topo' }, world);
-  for (const [cx, cy, r0, n] of [[-480, -260, 40, 7], [640, 240, 30, 6], [-300, 470, 30, 4]]) {
-    for (let i = 0; i < n; i++) {
-      const r = r0 + i * 34, R = rng(cx + i * 7 + 1000);
-      const pts = []; for (let a = 0; a < 16; a++) { const ang = (a / 16) * Math.PI * 2; const rr = r * (0.82 + R() * 0.3); pts.push([cx + Math.cos(ang) * rr * 1.3, cy + Math.sin(ang) * rr]); }
-      pts.push(pts[0], pts[1]);
-      el('path', { d: path(pts, true) }, topo);
+  // the sun, off in the corner, and the orbits round it
+  el('circle', { cx: SUN[0], cy: SUN[1], r: 420, fill: 'url(#ms-sun)' }, world);
+  for (const [rx, ry] of [[1500, 1060], [2050, 1420], [2500, 1700]]) el('ellipse', { cx: SUN[0], cy: SUN[1], rx, ry, class: 'ms-orbit' }, world);
+
+  // --- the planets (coming soon)
+  for (const m of MAPS) {
+    if (m.ready) continue;
+    const [x, y] = m.at, r = m.r;
+    const L = lit(x, y);
+    const g = el('g', { class: 'ms-planet' }, world);
+    const id = 'ms-p-' + m.id;
+    const pal = m.id === 'map2' ? ['#d7b6ff', '#8b5cc8', '#3a1f6a'] : m.id === 'ice' ? ['#f2fbff', '#a9d6ea', '#3c6a88'] : ['#ffb08a', '#c4502c', '#4a160c'];
+    grad(defs, id, [['0%', pal[0]], ['45%', pal[1]], ['100%', pal[2]]], { fx: L.fx, fy: L.fy, cx: L.fx, cy: L.fy, r: '75%' });
+    const clip = el('clipPath', { id: id + '-c' }, defs); el('circle', { cx: x, cy: y, r }, clip);
+    if (m.id === 'map2') {
+      // rings behind
+      el('ellipse', { cx: x, cy: y, rx: r * 2.0, ry: r * 0.42, class: 'ms-ring back', transform: `rotate(-14 ${x} ${y})` }, g);
     }
+    el('circle', { cx: x, cy: y, r: r * 1.12, fill: m.id === 'ice' ? 'rgba(200,240,255,.12)' : m.id === 'map2' ? 'rgba(180,140,255,.12)' : 'rgba(255,120,80,.1)' }, g);   // atmosphere
+    el('circle', { cx: x, cy: y, r, fill: `url(#${id})` }, g);
+    const surf = el('g', { 'clip-path': `url(#${id}-c)` }, g);
+    const PR = rng(x + y);
+    if (m.id === 'map2') {
+      for (let i = -6; i <= 6; i++) el('rect', { x: x - r, y: y + i * r / 6 - 6, width: r * 2, height: 6 + PR() * 14, fill: PR() < 0.5 ? 'rgba(255,255,255,.08)' : 'rgba(40,10,80,.18)', transform: `rotate(-14 ${x} ${y})` }, surf);
+      el('ellipse', { cx: x + r * 0.3, cy: y + r * 0.25, rx: r * 0.22, ry: r * 0.12, fill: 'rgba(255,190,220,.35)', transform: `rotate(-14 ${x} ${y})` }, surf);
+    } else if (m.id === 'ice') {
+      for (let i = 0; i < 9; i++) { const a = PR() * 6.28, d = PR() * r; el('path', { d: `M${x + Math.cos(a) * d},${y + Math.sin(a) * d} l${(PR() - 0.5) * r},${(PR() - 0.5) * r * 0.6}`, class: 'ms-crack' }, surf); }
+      el('ellipse', { cx: x, cy: y - r * 0.82, rx: r * 0.6, ry: r * 0.22, fill: 'rgba(255,255,255,.45)' }, surf);
+    } else {
+      for (let i = 0; i < 12; i++) { const a = PR() * 6.28, d = PR() * r * 0.9; el('circle', { cx: x + Math.cos(a) * d, cy: y + Math.sin(a) * d, r: 3 + PR() * 12, fill: 'rgba(60,10,0,.35)' }, surf); }
+      el('path', { d: `M${x - r},${y + r * 0.1} q${r * 0.6},${-r * 0.3} ${r * 2},${r * 0.05}`, fill: 'none', stroke: 'rgba(80,20,5,.45)', 'stroke-width': 6 }, surf);
+    }
+    // night side
+    const sh = id + '-s';
+    grad(defs, sh, [['0%', '#000', 0], ['50%', '#000', 0.05], ['100%', '#02010a', 0.88]], { cx: L.fx, cy: L.fy, fx: L.fx, fy: L.fy, r: '85%' });
+    el('circle', { cx: x, cy: y, r, fill: `url(#${sh})` }, g);
+    if (m.id === 'map2') el('path', { d: ringFront(x, y, r), class: 'ms-ring', transform: `rotate(-14 ${x} ${y})` }, g);
   }
-  // parks
-  for (const [x, y, w, h, name] of [[-380, -230, 240, 150, 'Schnitz Woods'], [300, 170, 180, 110, 'Booster Park'], [-700, 160, 200, 120, '']]) {
-    el('rect', { x, y, width: w, height: h, rx: 18, class: 'ms-park' }, world);
-    trees(world, x + 8, y + 8, x + w - 8, y + h - 8, Math.floor(w * h / 500), x * 3 + y);
-    if (name) world.appendChild(label(x + w / 2, y + h / 2, name, 'park'));
+
+  // --- Brian's portal, and the way through it
+  const P = [250, 70], M2 = MAPS[1].at;
+  el('path', { d: `M${P[0]},${P[1]} C${P[0] + 260},${P[1] - 40} ${M2[0] - 320},${M2[1] + 260} ${M2[0] - 150},${M2[1] + 110}`, class: 'ms-route' }, world);
+  el('circle', { cx: P[0], cy: P[1], r: 26, fill: 'url(#ms-glow)' }, world);
+  el('circle', { cx: P[0], cy: P[1], r: 9, class: 'ms-portal' }, world);
+  world.appendChild(label(P[0], P[1] + 26, 'Portal', 'small'));
+
+  // --- the asteroid, with the school anchored on its flat top
+  const rock = el('g', { class: 'ms-rock' }, world);
+  const RR = rng(77);
+  const pts = [];
+  for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2; const r = 150 * (0.82 + RR() * 0.18) * (1 + 0.1 * Math.sin(a * 3)); pts.push([4 + Math.cos(a) * r * 1.15, -27 + Math.sin(a) * r]); }
+  const L = lit(4, -27);
+  grad(defs, 'ms-rockg', [['0%', '#8a8098'], ['55%', '#4a4258'], ['100%', '#1a1624']], { cx: L.fx, cy: L.fy, fx: L.fx, fy: L.fy, r: '80%' });
+  el('path', { d: 'M' + pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + ' Z', fill: 'url(#ms-rockg)', class: 'ms-rockedge' }, rock);
+  for (let i = 0; i < 16; i++) {
+    const a = RR() * 6.28, d = 60 + RR() * 75, cr = 4 + RR() * 12;
+    el('ellipse', { cx: 4 + Math.cos(a) * d * 1.1, cy: -27 + Math.sin(a) * d * 0.95, rx: cr, ry: cr * 0.8, class: 'ms-crater' }, rock);
   }
-  // water
-  el('path', { d: path(CREEK), class: 'ms-water-line' }, world);
-  el('ellipse', { cx: -560, cy: 470, rx: 80, ry: 45, class: 'ms-water' }, world);
-  world.appendChild(label(150, 450, 'Gravy Creek', 'water'));
-  // town blocks
-  blocks(el('g', {}, world));
-  // roads (casing, then fill, then names)
-  const rc = el('g', {}, world), rf = el('g', {}, world);
-  for (const [pts, w, , kind] of ROADS) {
-    el('path', { d: path(pts), class: 'ms-road-case ' + kind, 'stroke-width': w + 4 }, rc);
-    el('path', { d: path(pts), class: 'ms-road ' + kind, 'stroke-width': w }, rf);
+  for (let i = 0; i < 9; i++) {
+    let x = 4 + (RR() - 0.5) * 260, y = -27 + (RR() - 0.5) * 220; let d = `M${x},${y}`;
+    for (let k = 0; k < 6; k++) { x += (RR() - 0.5) * 40; y += (RR() - 0.5) * 40; d += ` L${x.toFixed(1)},${y.toFixed(1)}`; }
+    el('path', { d, class: 'ms-vein' }, rock);
   }
-  for (const [pts, , name] of ROADS) {
-    if (!name) continue;
-    const a = pts[Math.floor(pts.length / 2) - 1], b = pts[Math.floor(pts.length / 2)];
-    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
-    const t = label((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, name, 'road');
-    t.dataset.rot = ang > 90 || ang < -90 ? ang + 180 : ang;
-    world.appendChild(t);
-  }
-  // the campus: grounds, field, parking, the school itself
-  const campus = el('g', { class: 'ms-campus' }, world);
-  el('rect', { x: -82, y: -142, width: 302, height: 228, rx: 6, class: 'ms-grounds' }, campus);
-  el('rect', { x: 70, y: -128, width: 128, height: 70, rx: 34, class: 'ms-track' }, campus);
-  el('rect', { x: 88, y: -116, width: 92, height: 46, class: 'ms-field' }, campus);
-  for (let i = 1; i < 10; i++) el('line', { x1: 88 + i * 9.2, y1: -116, x2: 88 + i * 9.2, y2: -70, class: 'ms-yard' }, campus);
-  el('rect', { x: -60, y: 32, width: 150, height: 46, class: 'ms-lot' }, campus);
-  for (let i = 0; i < 25; i++) el('line', { x1: -56 + i * 6, y1: 34, x2: -56 + i * 6, y2: 46, class: 'ms-stall' }, campus);
-  for (let i = 0; i < 25; i++) el('line', { x1: -56 + i * 6, y1: 64, x2: -56 + i * 6, y2: 76, class: 'ms-stall' }, campus);
-  trees(campus, -78, -138, -40, -92, 16, 5);
-  trees(campus, 140, 20, 215, 80, 22, 6);
-  const school = el('g', { class: 'ms-school' }, campus);
-  const roomLabels = el('g', { class: 'ms-roomlabels' }, campus);
+  // the campus pad and the school (to scale, metres)
+  el('ellipse', { cx: 4, cy: -27, rx: 70, ry: 66, class: 'ms-pad' }, rock);
+  const school = el('g', { class: 'ms-school' }, rock);
+  const roomLabels = el('g', { class: 'ms-roomlabels' }, rock);
   for (const room of SCHOOL.rooms) {
     const [x0, z0, x1, z1] = room.rect;
     el('rect', { x: x0, y: z0, width: x1 - x0, height: z1 - z0, class: room.outdoor ? 'ms-room out' : 'ms-room' }, school);
-    const t = label((x0 + x1) / 2, (z0 + z1) / 2, room.name, 'room');
-    roomLabels.appendChild(t);
+    roomLabels.appendChild(label((x0 + x1) / 2, (z0 + z1) / 2, room.name, 'room'));
   }
-  campus.appendChild(label(40, -92, 'Stew Leonard High', 'campus'));
-  campus.appendChild(label(134, -93, 'Field', 'small'));
-  campus.appendChild(label(15, 55, 'Parking', 'small'));
-  // neighborhoods
-  for (const [x, y, n] of [[-600, -520, 'North Broth'], [520, -480, 'Dairy Flats'], [-620, 40, 'Ladle Hill'], [420, 30, 'Tip-Off'], [-260, 230, 'Creekside'], [560, 520, 'The Bottoms']]) world.appendChild(label(x, y, n, 'hood'));
-  // the top-right corner: the paper's burned through, and there are stars behind it
-  const burn = el('g', { class: 'ms-burn' }, world);
-  const R = rng(88);
-  const edge = []; for (let i = 0; i <= 14; i++) { const a = (i / 14) * Math.PI / 2; const r = 230 + R() * 60; edge.push([W1 + 80 - Math.cos(a) * r * 1.4, H0 - 80 + Math.sin(a) * r]); }
-  el('path', { d: `M${W1 + 400},${H0 - 400} L${edge[0][0]},${H0 - 400} ` + edge.map(([x, y]) => `L${x},${y}`).join(' ') + ` L${W1 + 400},${edge[14][1]} Z`, class: 'ms-hole' }, burn);
-  el('path', { d: 'M' + edge.map(([x, y]) => `${x},${y}`).join(' L'), class: 'ms-char' }, burn);
-  for (let i = 0; i < 70; i++) {
-    const a = R() * Math.PI / 2, r = R() * 260;
-    el('circle', { cx: W1 + 80 - Math.cos(a) * r * 1.3, cy: H0 - 80 + Math.sin(a) * r * 0.9, r: 0.6 + R() * 1.8, class: 'ms-star' }, burn);
+  // the gym's doors, open, light spilling out onto the stone
+  el('ellipse', { cx: -12, cy: 19, rx: 9, ry: 5, fill: 'url(#ms-glow)', opacity: 0.5 }, rock);
+  world.appendChild(label(4, -98, 'Stew Leonard High', 'campus'));
+  // a few rocks drifting about
+  for (let i = 0; i < 26; i++) {
+    const a = RR() * 6.28, d = 230 + RR() * 900;
+    const x = 4 + Math.cos(a) * d * 1.3, y = -27 + Math.sin(a) * d * 0.8, r = 2 + RR() * 9;
+    el('circle', { cx: x, cy: y, r, class: 'ms-debris' }, world);
   }
-  return { world, roomLabels };
+  return { world, far, roomLabels };
+}
+
+// the front half of a tilted ring (the back half is drawn behind the planet)
+function ringFront(x, y, r) {
+  const rx = r * 2.0, ry = r * 0.42;
+  return `M${x - rx},${y} A${rx},${ry} 0 0 0 ${x + rx},${y}`;
 }
 
 function label(x, y, text, kind) {
@@ -204,8 +182,9 @@ export class MapSelect {
     this.view = $('ms-view');
     this.svg = $('ms-svg');
     this.pinsEl = $('ms-pins');
-    const { world, roomLabels } = buildWorld(this.svg);
+    const { world, far, roomLabels } = buildWorld(this.svg);
     this.world = world;
+    this.far = far;
     this.roomLabels = roomLabels;
     this.labels = [...this.svg.querySelectorAll('.ms-label')];
     this.cam = { x: 30, y: -30, k: 2.2 };
@@ -227,16 +206,21 @@ export class MapSelect {
 
   open() {
     $('ms-intro').checked = !this.h.introSeen();
-    this.select(this.sel, false);
-    this.cam = { x: 30, y: -30, k: this.fitK() };
     this.resize();
+    // start on the whole system, then drift in to the selected world
+    this.cam = { x: 0, y: -60, k: this.overviewK() };
+    this.select(this.sel, true);
     this.loop();
   }
   close() { cancelAnimationFrame(this.raf); this.raf = null; this.last = 0; }
 
-  fitK() {
+  fitK() {   // the asteroid (and the school on it) filling the view
     const r = this.view.getBoundingClientRect();
-    return Math.max(0.6, Math.min(r.width / 420, r.height / 300));
+    return Math.max(0.5, Math.min(r.width / 420, r.height / 340));
+  }
+  overviewK() {
+    const r = this.view.getBoundingClientRect();
+    return Math.max(0.12, Math.min(r.width / 2600, r.height / 1700));
   }
 
   buildList() {
@@ -259,7 +243,7 @@ export class MapSelect {
       p.setAttribute('aria-label', m.ready ? m.name : `${m.name} (coming soon)`);
       p.innerHTML = m.ready
         ? '<i></i><em>Map 1</em>'
-        : `<i><b>?</b></i><em>${m.far ? '???' : 'Coming soon'}</em>`;
+        : `<i><b>?</b></i><em>${m.id === 'map2' ? '???' : 'Coming soon'}</em>`;
       p.addEventListener('click', (e) => { e.stopPropagation(); this.select(m.id); });
       p.tabIndex = -1;   // the list is the keyboard / controller way in
       this.pinsEl.appendChild(p);
@@ -286,7 +270,7 @@ export class MapSelect {
 
   flyTo(m, home = false) {
     const fit = this.fitK();
-    const k = m.ready ? fit * (home ? 1 : 1.15) : m.far ? fit * 0.42 : fit * 0.6;
+    const k = m.ready ? fit * (home ? 1 : 1.1) : Math.min(fit, Math.min(this.vw || 800, this.vh || 600) / (m.r * (m.id === 'map2' ? 5.2 : 3.4)));
     this.goal = { x: m.at[0], y: m.at[1], k };
   }
 
@@ -296,7 +280,7 @@ export class MapSelect {
     // zoom about the point under the cursor (of wherever the camera is headed)
     const b = this.goal || this.cam;
     const wx = b.x + (sx - r.width / 2) / b.k, wy = b.y + (sy - r.height / 2) / b.k;
-    const k = Math.max(0.35, Math.min(14, b.k * f));
+    const k = Math.max(0.08, Math.min(14, b.k * f));
     this.goal = { x: wx - (sx - r.width / 2) / k, y: wy - (sy - r.height / 2) / k, k };
   }
 
@@ -323,13 +307,13 @@ export class MapSelect {
     v.addEventListener('pointermove', (e) => {
       const r = v.getBoundingClientRect();
       const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
-      $('ms-coord').textContent = `${(41.12 - w.y / 111000).toFixed(4)}° N  ${(73.42 - w.x / 84000).toFixed(4)}° W`;
+      $('ms-coord').textContent = `SECTOR 8 · ${(w.x / 10).toFixed(1)} · ${(-w.y / 10).toFixed(1)}`;
       const p = ptrs.get(e.pointerId);
       if (!p) return;
       if (ptrs.size === 2 && pinch) {
         ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const [a, b] = [...ptrs.values()];
-        this.cam.k = Math.max(0.35, Math.min(14, pinch.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+        this.cam.k = Math.max(0.08, Math.min(14, pinch.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
         return;
       }
       this.cam.x -= (e.clientX - p.x) / this.cam.k;
@@ -353,7 +337,7 @@ export class MapSelect {
     this.goal = null;
     this.cam.x += x * dt * 420 / this.cam.k;
     this.cam.y += y * dt * 420 / this.cam.k;
-    if (zoom) this.cam.k = Math.max(0.35, Math.min(14, this.cam.k * Math.exp(zoom * dt * 1.8)));
+    if (zoom) this.cam.k = Math.max(0.08, Math.min(14, this.cam.k * Math.exp(zoom * dt * 1.8)));
   }
 
   resize() {
@@ -378,22 +362,24 @@ export class MapSelect {
   draw() {
     const c = this.cam, k = c.k;
     this.world.setAttribute('transform', `translate(${this.vw / 2 - c.x * k} ${this.vh / 2 - c.y * k}) scale(${k})`);
+    // the stars and nebulae sit much further back: they move less
+    const fk = 0.35 + k * 0.15, fp = 0.3;
+    this.far.setAttribute('transform', `translate(${this.vw / 2 - c.x * fk * fp} ${this.vh / 2 - c.y * fk * fp}) scale(${fk})`);
     // labels stay the same size on screen
     for (const t of this.labels) {
       const x = +t.dataset.x, y = +t.dataset.y;
       t.setAttribute('x', x); t.setAttribute('y', y);
       const kind = t.classList;
-      const size = kind.contains('room') ? 10.5 : kind.contains('campus') ? 15 : kind.contains('hood') ? 13 : kind.contains('small') ? 10 : 11;
+      const size = kind.contains('room') ? 10.5 : kind.contains('campus') ? 14 : kind.contains('small') ? 10 : 11;
       t.setAttribute('font-size', size / k);
       const rot = t.dataset.rot;
       t.setAttribute('transform', rot ? `rotate(${rot} ${x} ${y})` : '');
     }
     this.roomLabels.style.opacity = Math.max(0, Math.min(1, (k - 4.5) / 2));
-    this.svg.classList.toggle('far', k < 1.2);
+    this.svg.classList.toggle('far', k < 0.6);
     for (const { m, p } of this.pins) {
-      const s = this.toScreen(m.at[0], m.at[1]);
+      const s = this.toScreen(m.at[0], m.at[1] - (m.r ? m.r * 1.02 : 0));   // planets: the pin sits on top
       p.style.transform = `translate(${s.x}px, ${s.y}px)`;
     }
-    $('ms-scale-txt').textContent = `${Math.round(100 / k)} m`;
   }
 }

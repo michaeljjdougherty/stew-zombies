@@ -46,21 +46,26 @@ const fire = (step) => { step({ firePressed: true, fire: true }); step({}, 8); }
   check(me.health === me.maxHealth || me.health > 1e8, 'no self damage at range');
 }
 
-// --- 2. The Chopper: cuts through a line, ricochets
+// --- 2. The Chopper: a wall of wind that kills and throws everything in a cone
 {
   const { sim, me, log, step, place } = game(2);
   // (off to the side of center court: the altar and trophy stand are in the middle now)
   place(6, 8, 0, -0.04);
   giveWeapon(sim, me, 'The Chopper'); step({}, 60);
-  const line = [];
-  for (let i = 0; i < 6; i++) line.push(addZ(sim, 6, 5 - i * 1.2, 2000));
-  fire(step); step({}, 90);
-  const dead = line.filter((z) => z.state === 'dead').length;
-  check(dead === 6, `one blade cuts through a line of 6 (${dead})`);
-  check(log.some((e) => e.type === 'sawRicochet'), 'the blade ricochets off the wall');
-  step({}, 60 * 4);
-  check(sim.projectiles.length === 0 && log.some((e) => e.type === 'projectileGone'), 'and is eventually spent (' + log.filter((e) => e.type === 'sawRicochet').length + ' ricochets)');
-  check(CONFIG.weapons['The Chopper+'].sawBounces === 6, 'Meat Grinder bounces more');
+  const front = [];
+  for (let i = 0; i < 6; i++) front.push(addZ(sim, 6 + (i % 3 - 1) * 1.6, 5 - i * 1.1, 2000));
+  const behind = addZ(sim, 6, 11, 2000);
+  const far = addZ(sim, 6, -6.5, 2000);
+  const side = addZ(sim, 12, 8, 2000);
+  fire(step); step({}, 30);
+  const dead = front.filter((z) => z.state === 'dead').length;
+  check(dead === 6, `one blast kills the whole group in front (${dead}/6)`);
+  check(behind.state !== 'dead' && far.state !== 'dead' && side.state !== 'dead', 'nothing behind, beside or out of range');
+  check(log.some((e) => e.type === 'windBlast'), 'windBlast event');
+  const flung = log.filter((e) => e.type === 'zombieKilled' && e.fling && e.fling.dist > 0.5).length;
+  check(flung === 6, `every one of them is thrown (${flung})`);
+  check(me.loadout.slots.find((s) => s && s.id === 'The Chopper').clip === 1, 'two shots a clip');
+  check(CONFIG.weapons['The Chopper+'].wind.range > CONFIG.weapons['The Chopper'].wind.range && CONFIG.weapons['The Chopper+'].magSize === 4, 'the Meat Grinder blows further, four a clip');
 }
 
 // --- 3. Stew Bomb: lures zombies, then blows them up

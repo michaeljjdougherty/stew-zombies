@@ -488,6 +488,75 @@ export class Effects {
     this.muzzleT = 0.06;
   }
 
+  // The Chopper: a wall of wind out of the barrel - shock rings racing down a
+  // cone, a pale rush of air and dust, and everything loose flying with it.
+  windBlast(origin, dir, range = 13, angle = 30) {
+    const o = new THREE.Vector3(origin.x, origin.y - 0.15, origin.z);
+    const d = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
+    const tan = Math.tan(angle * Math.PI / 180);
+    if (!this.windMat) {
+      this.windMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 0.9, 1.0), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+      this.ringGeo = new THREE.RingGeometry(0.86, 1, 48);
+      this.coneGeo = new THREE.ConeGeometry(1, 1, 40, 1, true).translate(0, -0.5, 0).rotateX(-Math.PI / 2);   // apex at 0, opening along +z
+      this.waves = [];
+    }
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), d);
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(this.ringGeo, this.windMat.clone());
+      m.quaternion.copy(q);
+      this.scene.add(m);
+      this.waves.push({ m, t: -i * 0.06, life: 0.5, o: o.clone(), d: d.clone(), range, tan, ring: true });
+    }
+    const cone = new THREE.Mesh(this.coneGeo, this.windMat.clone());
+    cone.quaternion.copy(q); cone.position.copy(o);
+    this.scene.add(cone);
+    this.waves.push({ m: cone, t: 0, life: 0.45, o: o.clone(), d: d.clone(), range, tan, ring: false });
+    // the rush of air and dust
+    const side = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3().crossVectors(side, d).normalize();
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * tan;
+      const v = d.clone().addScaledVector(side, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize().multiplyScalar(14 + Math.random() * 12);
+      this.puff(o.clone().addScaledVector(d, 0.8 + Math.random() * 1.5), { color: 0xcfd6dc, size: 0.35, grow: 4.5, life: 0.6 + Math.random() * 0.4, alpha: 0.16, vel: v, shade: false });
+    }
+    // dust off the floor along the cone, and grit flying
+    for (let i = 0; i < 14; i++) {
+      const k = 0.15 + Math.random() * 0.85;
+      const at = o.clone().addScaledVector(d, range * k); at.y = 0.15;
+      at.addScaledVector(side, (Math.random() - 0.5) * 2 * tan * range * k);
+      this.puff(at, { color: 0x8a8070, size: 0.6, grow: 3, life: 1.4, alpha: 0.3, vel: d.clone().multiplyScalar(6 + Math.random() * 4).setY(0.6), shade: true });
+    }
+    for (let i = 0; i < 40; i++) {
+      const v = d.clone().multiplyScalar(16 + Math.random() * 14);
+      v.x += (Math.random() - 0.5) * 8; v.z += (Math.random() - 0.5) * 8; v.y += Math.random() * 4;
+      this.spawnParticle(o.clone().addScaledVector(d, 1), v, { life: 0.5 + Math.random() * 0.5, size: 0.012 + Math.random() * 0.012, color: [0.5, 0.48, 0.42], gravity: 6, drag: 1.4 });
+    }
+    this.ceilingDust(o.clone().addScaledVector(d, range * 0.4), 4, 1.3);
+  }
+
+  updateWaves(dt) {
+    if (!this.waves) return;
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i];
+      w.t += dt;
+      if (w.t < 0) { w.m.visible = false; continue; }
+      w.m.visible = true;
+      const k = w.t / w.life;
+      if (k >= 1) { this.scene.remove(w.m); w.m.material.dispose(); this.waves.splice(i, 1); continue; }
+      const ease = 1 - (1 - k) * (1 - k);
+      if (w.ring) {
+        const dist = 1.4 + ease * w.range;
+        w.m.position.copy(w.o).addScaledVector(w.d, dist);
+        w.m.scale.setScalar(0.25 + dist * w.tan);
+        w.m.material.opacity = 0.28 * (1 - k);
+      } else {
+        const len = 1 + ease * w.range;
+        w.m.scale.set(len * w.tan, len * w.tan, len);
+        w.m.material.opacity = 0.12 * (1 - k) * Math.min(1, w.t * 20);
+      }
+    }
+  }
+
   explosion(pos, radius = 4) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
     const k = radius / 4.5;
@@ -529,6 +598,7 @@ export class Effects {
   // ---------------------------------------------------------------------------
   update(dt) {
     this.time += dt;
+    this.updateWaves(dt);
     // droplets
     let n = 0;
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -719,5 +789,6 @@ export class Effects {
     for (const g of this.gibList) this.scene.remove(g.m);
     this.gibList.length = 0;
     this.emitters.length = 0;
+    if (this.waves) { for (const w of this.waves) this.scene.remove(w.m); this.waves.length = 0; }
   }
 }

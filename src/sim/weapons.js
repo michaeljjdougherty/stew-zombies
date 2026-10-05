@@ -9,6 +9,7 @@ import { cauldronShot, isValve } from './cauldron.js';
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
+import { windBlast } from './wind.js';
 import { perkMult } from './perks.js';
 
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
@@ -176,7 +177,11 @@ function fire(sim, p, slot, def, side) {
   const spread = currentSpread(sim, p, def);
 
   const impacts = [];
-  if (def.projectile) {
+  if (def.wind) {
+    // The Chopper: a wall of wind (the host works out who it throws)
+    if (sim.replica) netAct(sim, { k: 'wind', origin: eye, dir, weapon: slot.id });
+    else windBlast(sim, p, eye, dir, def, slot.id);
+  } else if (def.projectile) {
     const d = coneDir(dir, spread * DEG, sim.rng);
     const off = side === 'L' ? -0.12 : 0.12;
     const start = { x: eye.x + d.x * 0.5 + Math.cos(p.yaw) * off * 0.5, y: eye.y + d.y * 0.5 - 0.06, z: eye.z + d.z * 0.5 - Math.sin(p.yaw) * off * 0.5 };
@@ -234,7 +239,7 @@ function fire(sim, p, slot, def, side) {
     impacts: impacts.map((h) => ({ kind: h.kind, point: h.point, normal: h.normal, zombieId: h.zombieId, part: h.part, surface: h.surface })),
     clip: side === 'L' ? slot.clipL : slot.clip,
     action: def.action || null,
-    projectile: def.projectile ? def.projectile.type : null,
+    projectile: def.projectile ? def.projectile.type : def.wind ? 'wind' : null,
     pellets: def.pellets || 1,
   });
 }

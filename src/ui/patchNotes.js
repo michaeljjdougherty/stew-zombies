@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-04b',
+  version: '2026-10-04c',
   date: 'October 4, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -20,7 +20,9 @@ export const PATCH = {
   sections: [
     { title: 'Just added', items: [
       'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
-      'Map select: press Play to open a town map you can drag and zoom, with Stew Leonard High drawn from the real level. A few pins on it are marked "coming soon".',
+      'Map select: press Play to open a star chart you can drag and zoom. Stew Leonard High sits on its asteroid (the real level, drawn to scale), and the maps still to come are planets with a hint each.',
+      'The Chopper is a real wonder weapon now: every shot is a wall of wind that kills and throws every zombie in a wide cone. It hits like one, with a deep boom and a howling roar.',
+      'Lighting: white things (like the papers all over the floors) no longer glow like light bulbs.',
       'Brian is pickable online the moment you finish The Final Whistle, even if you\'re still in the same lobby.',
     ] },
     { title: 'Out of Bounds: the story', items: [

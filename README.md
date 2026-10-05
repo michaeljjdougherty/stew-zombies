@@ -137,7 +137,8 @@ Phase 8 (built): Erik's on the PA.
   *Tip-off*, a packed gym, where Erik on the PA welcomes the undefeated Stew
   Leonards ("...Not anymore"), the lights go green, the team's talent drains
   up to the Press Box, the balls go dead, the court splits open, and the
-  shutter slams down over the booth. It plays the first time you start the
+  shutter slams down over the booth. (The court only gets its blood once the
+  dead are out.) It plays the first time you start the
   map; the map screen and Extras can play it again.
 - **Set dressing:** the Press Box hanging over a blood-streaked court,
   fiberglass dairy cows, a rotting animatronic cow band on the cafeteria stage,
@@ -162,10 +163,12 @@ Phase 7 (built):
   and gold. Gold plasma rings hit for 1000 and splash everything around the
   impact. Mad Dog upgrade: **Fucci Haute Couture** (pink plasma, 40-round mag,
   double damage, bigger splash).
-- **The Chopper** (Mystery Box): a buzz-saw launcher. Every blade cuts through
-  a whole line of zombies, taking arms off, and ricochets off walls three
-  times before it buries itself. Mad Dog upgrade: **The Meat Grinder** (triple
-  damage, six ricochets, 10 blades a mag).
+- **The Chopper** (Mystery Box wonder weapon, `src/sim/wind.js`): each shot is
+  a wall of wind. Every zombie in a wide cone out to 13 m (and anything right
+  up against you) is killed and thrown, end over end, as far as the walls let
+  it fly. Two shots a clip, a sub-bass punch and a howling roar, shock rings
+  down the cone and the dust coming off the floor. Mad Dog upgrade: **The Meat
+  Grinder** (17 m, a wider cone, four shots a clip).
 - **Stew Bombs** (Mystery Box, press **Q**, 3 at a time): a pot of stew with a
   ladle banging out a tune. Every zombie within ~30 m drops what it's doing
   and crowds round it for 7 seconds, then it blows.
@@ -357,12 +360,16 @@ front of your eye.
 
 ## Map select
 
-**Play** opens a town map (`src/ui/mapselect.js`): drag it, scroll or pinch
-to zoom, and Stew Leonard High is drawn from the real level, with its rooms
-named when you zoom in close. The list on the left (or the pins) picks a map.
-Three more pins are "coming soon" with a hint each, and the corner of the
-map has burned through to stars. "Play the intro first" is ticked until
-you've seen it. On a controller the bumpers switch maps.
+**Play** opens a star chart (`src/ui/mapselect.js`). Since the end of The
+Final Whistle the campus sits on an asteroid in deep space, so each map is its
+own world: Stew Leonard High on its rock (the school drawn to scale from the
+real level, with its rooms named when you zoom in close, and Brian's portal
+just off the edge), and planets for the maps that aren't out yet: a ringed
+giant for Map 2 at the end of a dotted route from the portal, an ice world and
+a red one, each "coming soon" with a hint. Drag it, scroll or pinch to zoom;
+the stars and nebulae drift behind. The list on the left (or the pins) picks a
+map. "Play the intro first" is ticked until you've seen it. On a controller
+the bumpers switch maps.
 
 ## Patch notes
 

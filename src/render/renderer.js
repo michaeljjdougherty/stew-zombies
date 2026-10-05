@@ -229,6 +229,11 @@ export class GameRenderer {
           if (p) this.rig.explosion(e, p.pos);
           break;
         }
+        case 'windBlast': {
+          this.effects.windBlast(e.origin, e.dir, e.range, e.angle);
+          if (e.playerId === id) this.rig.shake = Math.min(1.6, Math.max(this.rig.shake || 0, 1.0));
+          break;
+        }
         case 'sawHit':
           this.effects.bloodBurst(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), { x: Math.random() - 0.5, y: 0.5, z: Math.random() - 0.5 }, 30, 1.4);
           break;

@@ -313,6 +313,7 @@ export function buildStoryProps(mapView) {
   const blood = buildCourtBlood();
   blood.userData.noBake = true;
   root.add(blood);
+  story.blood = blood;   // the intro hides it until the outbreak
 
   // statues and animatronics from the map's props
   for (const p of map.props || []) {

@@ -530,6 +530,7 @@ export function killZombie(sim, z, info = {}) {
   sim.emit('zombieKilled', {
     id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind, zombieType: z.type,
     dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId, force: info.force || 0, crawler: !!z.crawler,
+    fling: info.fling || null,
   });
   maybeDrop(sim, z, { ...info, wasState });
 }

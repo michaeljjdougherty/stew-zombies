@@ -257,10 +257,11 @@ export class MapView {
 
     // floor grime / litter overlay for non-court rooms
     if (room.id !== 'court' && room.litter !== false && !room.outdoor) {
-      const ov = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2),
-        new THREE.MeshStandardMaterial({ map: litterTexture(w, d, room.id.length * 17), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, roughness: 0.8 }),
-      );
+      // it shares the floor's mesh, so it gets the floor's baked light and
+      // shadow (lit on its own, the white papers shone like light bulbs)
+      const lt = litterTexture(w, d, room.id.length * 17);
+      lt.repeat.set(1 / w, 1 / d); lt.offset.set(-x0 / w, z1 / d);
+      const ov = new THREE.Mesh(geo, applyBake(new THREE.MeshStandardMaterial({ map: lt, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, roughness: 0.8 })));
       ov.position.set((x0 + x1) / 2, 0.004, (z0 + z1) / 2);
       this.group.add(ov);
     }
@@ -1585,8 +1586,12 @@ function litterTexture(w, d, seed) {
   }
   for (let i = 0; i < w * d * 0.35; i++) {
     g.save(); g.translate(r() * W, r() * H); g.rotate(r() * 6.28);
-    g.fillStyle = `rgba(${170 + r() * 40},${165 + r() * 35},${140 + r() * 30},0.85)`;
+    // old, trodden-on paper: off-white at best, never bright
+    const k = 0.72 + r() * 0.2;
+    g.fillStyle = `rgba(${Math.round(150 * k)},${Math.round(144 * k)},${Math.round(124 * k)},0.85)`;
     g.fillRect(-10, -13, 20, 26);
+    g.fillStyle = `rgba(60,45,25,${0.1 + r() * 0.25})`;   // footprints and grime
+    g.beginPath(); g.ellipse((r() - 0.5) * 10, (r() - 0.5) * 14, 5 + r() * 6, 3 + r() * 5, r() * 3, 0, 7); g.fill();
     g.fillStyle = 'rgba(60,60,80,0.3)';
     for (let k = -9; k < 12; k += 4) g.fillRect(-7, k, 14, 1);
     g.restore();

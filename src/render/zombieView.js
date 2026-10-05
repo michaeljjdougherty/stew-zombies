@@ -278,7 +278,7 @@ export class ZombieViews {
     for (const g of v.glows) g.visible = false;
     let name;
     if (v.crawler) name = null;
-    else if (e.kind === 'explosive') name = 'deathFly';
+    else if (e.kind === 'explosive' || e.fling) name = 'deathFly';
     else if (fromFront) name = ['death1', 'deathBack', 'death1'][Math.floor(Math.random() * 3)];
     else name = Math.random() < 0.5 ? 'death2' : 'deathFront';
     v.mixer.stopAllAction();
@@ -289,7 +289,8 @@ export class ZombieViews {
       a.play();
       a.time = a.getClip().duration * 0.12;   // skip the wind-up: they drop
     }
-    this.corpses.push({ v, t: 0, rig: true, kd: { x: d.x, z: d.z }, knockback: e.kind === 'knife' ? 0.15 : 0.25 });
+    this.corpses.push({ v, t: 0, rig: true, kd: { x: d.x, z: d.z }, knockback: e.kind === 'knife' ? 0.15 : 0.25, fling: this.flingOf(v, e) });
+    if (e.fling) return;   // the blood comes when it lands
     const p = v.root.position;
     const off = (fromFront ? 1 : -1) * 0.7;
     if (e.kind !== 'electric') this.effects.bloodPool(new THREE.Vector3(p.x - fwdX * off + d.x * 0.3, 0, p.z - fwdZ * off + d.z * 0.3), (0.9 + Math.random() * 0.7) * (v.root.children[0].scale.x * 100));
@@ -392,6 +393,37 @@ export class ZombieViews {
     for (let i = 0; i < 3; i++) this.effects.bloodDecal(new THREE.Vector3(p.x + (Math.random() - 0.5) * 2, 0, p.z + (Math.random() - 0.5) * 2), new THREE.Vector3(0, 1, 0), 0.8 + Math.random() * 0.8);
   }
 
+  // Thrown by the wind: a ballistic arc to where the sim says it can land,
+  // tumbling end over end on the way.
+  flingOf(v, e) {
+    const f = e.fling;
+    if (!f) return null;
+    const g = 14;
+    const T = Math.sqrt(8 * f.up / g);
+    v.root.rotation.order = 'YXZ';
+    return { from: v.root.position.clone(), x: f.x, z: f.z, dist: f.dist, T, vy: 0.5 * g * T, g, t: 0, flips: f.dist > 6 ? 1 : 0.5, landed: false };
+  }
+
+  // one step of a thrown corpse; true once it's on the ground
+  fly(c, v, dt) {
+    const F = c.fling;
+    if (F.landed) return true;
+    F.t += dt;
+    const k = Math.min(1, F.t / F.T);
+    v.root.position.set(F.from.x + F.x * F.dist * k, Math.max(0, F.from.y + F.vy * F.t - 0.5 * F.g * F.t * F.t), F.from.z + F.z * F.dist * k);
+    v.root.rotation.x = F.flips >= 1 ? -Math.PI * 2 * k : -k * 0.6;   // big throws go end over end
+    if (k >= 1) {
+      F.landed = true;
+      v.root.position.y = 0;
+      v.root.rotation.x = 0;
+      const p = v.root.position;
+      this.effects.bloodPool(new THREE.Vector3(p.x, 0, p.z), 0.9 + Math.random() * 0.6);
+      this.effects.puff(new THREE.Vector3(p.x, 0.2, p.z), { color: 0x6a6052, size: 0.5, grow: 2.5, life: 1, alpha: 0.35 });
+      if (this.onLand) this.onLand(p);
+    }
+    return F.landed;
+  }
+
   makeCorpse(v, e) {
     if (v.spirit) { this.ascend(v); return; }
     if (v.rig) { this.corpseRigged(v, e); return; }
@@ -410,7 +442,9 @@ export class ZombieViews {
       knockback: e.kind === 'knife' ? 0.2 : 0.35,
       kd: { x: d.x, z: d.z },
       crawler: v.crawler,
+      fling: this.flingOf(v, e),
     });
+    if (e.fling) { v.glow.visible = false; for (const eye of v.eyes) eye.visible = false; return; }
     if (e.headshot && v.limbs.head) this.loseLimb(v, 'head', e.dir);
     v.glow.visible = false;
     for (const eye of v.eyes) eye.visible = false;
@@ -609,7 +643,8 @@ export class ZombieViews {
         // the death clip does the falling; slide back a touch, then sink and go
         v.mixer.update(dt);
         this.applyLostLimbs(v);
-        if (c.t < 0.3) { v.root.position.x += c.kd.x * c.knockback * dt * 3; v.root.position.z += c.kd.z * c.knockback * dt * 3; }
+        if (c.fling && !this.fly(c, v, dt)) continue;
+        if (c.t < 0.3 && !c.fling) { v.root.position.x += c.kd.x * c.knockback * dt * 3; v.root.position.z += c.kd.z * c.knockback * dt * 3; }
         if (c.t > gcfg.corpseTime) {
           const st = (c.t - gcfg.corpseTime) / gcfg.corpseSinkTime;
           v.root.position.y = -st * 0.6;
@@ -617,6 +652,13 @@ export class ZombieViews {
         }
         continue;
       }
+      if (c.fling && !this.fly(c, v, dt)) {
+        // limp and spread-eagled in the air
+        v.armL.shoulder.rotation.z = 1.2; v.armR.shoulder.rotation.z = -1.2;
+        v.legL.knee.rotation.x = 0.5; v.legR.knee.rotation.x = 0.2;
+        continue;
+      }
+      if (c.fling && !c.flingDone) { c.flingDone = true; c.t = 0; c.knockback = 0; }
       const ft = Math.min(1, c.t / c.fallTime);
       const e = ft * ft; // accelerate like gravity
       if (c.crawler) {

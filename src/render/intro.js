@@ -210,6 +210,9 @@ export class Intro {
     }
     this.risers = [];
     this.scenePhase = null;
+    // the court's clean before the outbreak (the blood comes with the dead)
+    this.blood = map.story && map.story.blood;
+    if (this.blood) this.blood.visible = false;
   }
 
   buildCrowd() {
@@ -496,6 +499,7 @@ export class Intro {
       }
       // the court splits and they claw up out of it
       if (t >= B.rise && !this.risen) { this.risen = true; this.raise(); }
+      if (this.blood) this.blood.visible = t > B.rise + 1.2;
       for (const z of this.risers) {
         z.stateTime += dt;
         const k = Math.min(1, z.stateTime / this.sim.cfg.zombie.riseTime);
@@ -557,6 +561,7 @@ export class Intro {
 
   dispose() {
     this.map.blackout = false;
+    if (this.blood) this.blood.visible = true;
     this.scene.remove(this.group);
     if (this.fireLight) { this.fireLight.level = 0; if (this.map.removeVirtualLight) this.map.removeVirtualLight(this.fireLight); }
     if (this.qv) this.qv.erikHeld = false;

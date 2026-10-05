@@ -7,6 +7,7 @@
 // =============================================================================
 import { emptyCommand } from '../sim/player.js';
 import { damageZombie } from '../sim/zombies.js';
+import { windBlast } from '../sim/wind.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { questShot } from '../sim/quest.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
@@ -123,6 +124,7 @@ export class NetHost {
       }
       case 'proj': spawnProjectile(sim, a.type, a.pos, a.vel, p.id, a.opts || {}); break;
       case 'boom': explode(sim, a.pos, a.kind, p.id); break;
+      case 'wind': { const def = sim.cfg.weapons[a.weapon]; if (def && def.wind) windBlast(sim, p, a.origin, a.dir, def, a.weapon); break; }
       case 'quest': if (isValve(a.id)) cauldronShot(sim, a.id, p); else questShot(sim, a.id, p); break;
     }
   }

@@ -709,18 +709,18 @@ export const CONFIG = {
       view: { model: 'fucci', flash: 0.9, flashColor: '#ffcf4a' },
       upgrade: { name: 'Fucci Haute Couture', color: '#ff2fa0', magSize: 40, impactMult: 2, explodeUp: true },
     }),
-    // The Chopper: a buzz-saw launcher. Each blade cuts through every zombie
-    // in a line and ricochets off walls a few times before it falls.
+    // The Chopper: a wonder weapon. Each shot is a wall of wind that kills
+    // and throws every zombie in a wide cone in front of you.
     'The Chopper': gun('launcher', {
       name: 'The Chopper', boxOnly: true, wonder: true,
-      fireMode: 'semi', rpm: 100, damage: 0, magSize: 6, reserve: 42,
-      reloadStyle: 'mag', reloadTime: 2.8, reloadEmptyTime: 3.0, drawTime: 0.7,
-      projectile: { type: 'saw', speed: 21, gravity: 0, impactDamage: 2600, headMult: 1, bounces: 3, life: 4 },
-      spread: { hipBase: 0.8, hipMax: 2, perShot: 0.4, ads: 0.1 },
-      recoil: { pitch: 2.4, yaw: 0.6, recovery: 7, adsMult: 0.8, viewKick: 1.4 },
-      sound: { kind: 'saw', body: 0, thump: 0, crack: 0, tail: 0.3, pitch: 1 },
+      fireMode: 'semi', rpm: 75, damage: 0, magSize: 2, reserve: 12,
+      reloadStyle: 'mag', reloadTime: 2.6, reloadEmptyTime: 2.8, drawTime: 0.7,
+      wind: { range: 13, angle: 30, near: 1.8, maxKills: 30 },
+      spread: { hipBase: 0, hipMax: 0, perShot: 0, ads: 0 },
+      recoil: { pitch: 5.5, yaw: 1.2, recovery: 5, adsMult: 0.9, viewKick: 3.2 },
+      sound: { kind: 'wind', body: 0, thump: 0, crack: 0, tail: 1, pitch: 1 },
       view: { model: 'chopper', flash: 0 },
-      upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 10, impactMult: 3, sawBounces: 6 },
+      upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 4, wind: { range: 17, angle: 36, near: 2.2, maxKills: 45 } },
     }),
   },
 
@@ -1040,13 +1040,13 @@ export const CONFIG = {
     fogDensity: 0.036,
     exposure: 1.25,
     // the eye adjusts: brighter exposure in the dark, lower once the power's on
-    exposureDark: 1.7,
+    exposureDark: 1.5,
     exposureLit: 0.9,
     beamOpacity: 0.016,      // the haze under each ceiling light
     tubeGlow: 1.7,           // how hot the light panels themselves look
     bloomStrength: 0.75,     // soft halos round every light
     bloomRadius: 0.7,
-    bloomThreshold: 0.72,
+    bloomThreshold: 0.95,    // only lights and glowing things bloom, not white paint under a lamp
     grain: 0.06,
     vignette: 0.9,
     desaturate: 0.3,
