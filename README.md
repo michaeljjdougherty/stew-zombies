@@ -345,6 +345,14 @@ the built-in gun's was, so `REAL_GUNS` also says where it is: `rh` / `rk`
 When aiming, a gun is pushed out until the shooting hand is at least 19 cm in
 front of your eye.
 
+## Patch notes
+
+The first time the game opens after an update, a "What's new" pop-up lists
+the changes, with a thank-you note and photo from Michael and James at the
+top (`src/ui/patchNotes.js`; the photo is `assets/ui/thanks.jpg`). It shows
+once per update on each browser, and Extras → Patch notes brings it back.
+For the next update, edit `PATCH` and change its `version`.
+
 ## Props (models)
 
 `tools/props/build_props.py` shrinks the downloaded props into

@@ -1,8 +1,9 @@
 // =============================================================================
 // Extras screen: the story, notes you've found, how to play, the jukebox
-// (the Stew song once you've unlocked it) and credits.
+// (the Stew song once you've unlocked it), patch notes and credits.
 // =============================================================================
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
+import { PATCH, patchNotesHTML } from './patchNotes.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -106,6 +107,10 @@ export class Extras {
     const l = this.h.songLyric() || '';
     if (el.textContent !== l) el.textContent = l;
     if (b && !this.h.songPlaying() && b.textContent === 'Stop') b.textContent = 'Play';
+  }
+
+  patch() {
+    return `<h3>Patch notes · ${PATCH.date}</h3><div class="pn-body pn-inline">${patchNotesHTML()}</div>`;
   }
 
   credits() {

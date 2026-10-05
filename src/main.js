@@ -27,6 +27,7 @@ import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
+import { PatchNotes } from './ui/patchNotes.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
@@ -619,11 +620,12 @@ input.assist = () => {
 };
 
 const BACK_BUTTON = { online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
-const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'credits'];
+const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
+const patchNotes = new PatchNotes();
 const nav = new MenuNav({
-  root: () => (mode === 'panel' ? $id('rangepanel') : menus.current ? $id(menus.current) : null),
-  back: (id) => { const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
-  start: (id) => { if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
+  root: () => (patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id('rangepanel') : menus.current ? $id(menus.current) : null),
+  back: (id) => { if (id === 'patchnotes') { patchNotes.close(); return; } const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
+  start: (id) => { if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
   view: (id) => { if (id === 'rangepanel') closeRangePanel(); },
   bumper: (id, dir) => {
     if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
@@ -758,7 +760,7 @@ window.STEW = {
 };
 refreshGlyphs();
 // an invite link (?join=CODE) opens the online screen with the code filled in
-{ const code = new URLSearchParams(location.search).get('join'); if (code) openOnline(code); }
+{ const code = new URLSearchParams(location.search).get('join'); if (code) openOnline(code); else patchNotes.maybeShow(); }
 document.body.dataset.ready = '1';
 // paint the zombie heads and outfits while the player is still on the title screen
 setTimeout(() => renderer.zombies.kit.build(), 400);
