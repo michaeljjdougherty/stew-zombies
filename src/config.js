@@ -976,6 +976,10 @@ export const CONFIG = {
     // 'https://stew-zombies-default-rtdb.firebaseio.com'. Empty: careers are
     // saved in each browser only.
     firebaseUrl: 'https://stew-zombies-default-rtdb.firebaseio.com',
+    // The project's Web API key (Firebase console: Project settings > General).
+    // With it, every username gets a 4-digit PIN (src/career/auth.js); empty:
+    // no PINs, a username is just a name.
+    firebaseApiKey: '',
     flushEvery: 15,          // seconds between saves during a game
     timeout: 6,              // give up on the database after this long (and save locally)
   },

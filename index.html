@@ -38,6 +38,19 @@
   .si-form button { all: unset; cursor: pointer; font: 700 14px var(--body); letter-spacing: 1px; text-transform: uppercase; padding: 0 18px; background: var(--blood-hi); color: #fff; white-space: nowrap; }
   .si-form button:disabled { opacity: .45; cursor: default; }
   .si-form button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .si-pin { display: grid; gap: 10px; }
+  .si-pin[hidden], .si-form[hidden] { display: none; }
+  .si-pinrow input::placeholder { letter-spacing: 1px; font: 600 14px var(--body); }
+  .si-pinhead { margin: 0; font-size: 15px; color: var(--ink); }
+  .si-pinrow { display: flex; gap: 10px; }
+  .si-pinrow input { width: 6.2em; font: 700 22px var(--mono); letter-spacing: 8px; text-align: center; color: var(--ink); background: rgba(255,255,255,.05); border: 1px solid var(--line); padding: 8px 6px; outline: none; }
+  .si-pinrow input:focus { border-color: var(--blood-hi); }
+  .si-pinrow input[hidden] { display: none; }
+  .si-pinrow button { all: unset; cursor: pointer; font: 700 14px var(--body); letter-spacing: 1px; text-transform: uppercase; padding: 0 18px; background: var(--blood-hi); color: #fff; }
+  .si-pinrow button:disabled { opacity: .45; cursor: default; }
+  .si-link { all: unset; cursor: pointer; justify-self: start; font-size: 13px; color: var(--muted); }
+  .si-link:hover, .si-link:focus-visible { color: var(--ink); }
+  .si-status.err { color: #ff8a7a; }
   .si-status { min-height: 1.4em; margin: -8px 0 0; font-size: 14px; color: var(--muted); }
   .si-status b { color: var(--ink); }
   .si-tip b { color: var(--ink); font-weight: 600; }
@@ -843,8 +856,18 @@
       <input id="si-name" data-nav-first type="text" maxlength="16" placeholder="Username" spellcheck="false" autocapitalize="off" aria-label="Username">
       <button id="btn-si-go" type="submit">Sign in</button>
     </form>
+    <!-- the PIN step (src/ui/careerUI.js): enter yours, or make one for a new username -->
+    <form id="si-pinform" class="si-pin" autocomplete="off" hidden>
+      <p class="si-pinhead" id="si-pinhead"></p>
+      <div class="si-pinrow">
+        <input id="si-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="PIN" aria-label="4-digit PIN" autocomplete="off">
+        <input id="si-pin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Again" aria-label="Type the PIN again" autocomplete="off">
+        <button id="btn-si-pin" type="submit">Sign in</button>
+      </div>
+      <button id="btn-si-back" type="button" class="si-link">← Use a different username</button>
+    </form>
     <p class="si-status" id="si-status" aria-live="polite"></p>
-    <p class="note si-tip"><b>Use the same username every time you play.</b> Your career stats (kills, revives, rounds survived) and your achievements are saved to it, and pick up where you left off whenever you sign in with it again.</p>
+    <p class="note si-tip"><b>Use the same username every time you play.</b> Your career stats (kills, revives, rounds survived) and your achievements are saved to it, and pick up where you left off whenever you sign in with it again.<span id="si-pintip" hidden> The first time you use a name you'll make a 4-digit PIN, so only you can sign in as it.</span></p>
     <nav class="menu"><button id="btn-si-guest" type="button" class="si-guest">Play as a guest (nothing saved)</button></nav>
   </div>
 </section>

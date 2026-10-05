@@ -89,3 +89,71 @@ console.log(process.exitCode ? 'FAILED' : 'all career checks passed');
   check(s.rounds === sim.rounds.round - 1 && s.games === 1 && s.bestRound === sim.rounds.round, `real game: rounds ${s.rounds}, best ${s.bestRound}, games ${s.games}`);
   console.log(process.exitCode ? 'FAILED' : 'all career checks passed');
 }
+
+// PINs: a fake Firebase with sign-in and the database rules
+{
+  const accounts = {}; const pdb = {}; let tries = 0;
+  const tokens = {};
+  const ff = async (url, o = {}) => {
+    const res = (status, body) => ({ ok: status < 400, status, json: async () => body });
+    if (url.includes('identitytoolkit')) {
+      const b = JSON.parse(o.body);
+      if (url.includes('signUp')) {
+        if (accounts[b.email]) return res(400, { error: { message: 'EMAIL_EXISTS' } });
+        accounts[b.email] = { pw: b.password, uid: 'u' + Object.keys(accounts).length };
+      } else {
+        const a = accounts[b.email];
+        if (!a || a.pw !== b.password) { tries++; return res(400, { error: { message: tries > 5 ? 'TOO_MANY_ATTEMPTS_TRY_LATER' : 'INVALID_LOGIN_CREDENTIALS' } }); }
+      }
+      const a = accounts[b.email]; const tok = 'tok-' + a.uid + '-' + Math.random(); tokens[tok] = a.uid;
+      return res(200, { idToken: tok, refreshToken: 'r', expiresIn: '3600', localId: a.uid });
+    }
+    const m = url.match(/players\/([^.?]*)\.json(\?auth=(.*))?/); const key = decodeURIComponent(m[1]);
+    if (o.method === 'GET') return res(200, pdb[key] ?? null);
+    const uid = m[3] ? tokens[decodeURIComponent(m[3])] : null;
+    const body = JSON.parse(o.body);
+    const cur = pdb[key];
+    // rules: signed in, the career is unclaimed or yours, and stays yours
+    if (!uid || (cur && cur.uid && cur.uid !== uid) || (body.uid ?? (cur && cur.uid)) !== uid) return res(401, { error: 'Permission denied' });
+    const p = pdb[key] || (pdb[key] = {});
+    for (const [path, v] of Object.entries(body)) {
+      const parts = path.split('/'); let obj = p; while (parts.length > 1) { const k = parts.shift(); obj = obj[k] || (obj[k] = {}); }
+      const k = parts[0];
+      if (v && v['.sv'] && v['.sv'].increment) obj[k] = (obj[k] || 0) + v['.sv'].increment; else if (v && v['.sv']) obj[k] = 1; else obj[k] = v;
+    }
+    return res(200, {});
+  };
+  const memA = {}; const stA = { getItem: (k) => memA[k] ?? null, setItem: (k, v) => { memA[k] = v; } };
+  const cfgP = { firebaseUrl: 'https://x.firebaseio.com', firebaseApiKey: 'k' };
+  const A = new Career(cfgP, { fetchFn: ff, storage: stA });
+  check(A.pinsOn, 'PINs on with an API key');
+  check((await A.lookup('Kearns')).claimed === false, 'a new name is free');
+  let r = await A.signIn('Kearns', '4821', { create: true });
+  check(r.ok && A.signedIn, 'new name: make a PIN, signed in');
+  A.add('kills', 7); await A.flush();
+  check(pdb.kearns && pdb.kearns.uid && pdb.kearns.stats.kills === 7, 'its career is stamped with the account and saved');
+  check((await A.lookup('kearns')).claimed, 'now the name is taken');
+  const memB = {}; const stB = { getItem: (k) => memB[k] ?? null, setItem: (k, v) => { memB[k] = v; } };
+  const B = new Career(cfgP, { fetchFn: ff, storage: stB });
+  r = await B.signIn('Kearns', '1111', { create: true });
+  check(!r.ok && r.code === 'taken', 'someone else can\'t make a PIN for a taken name');
+  r = await B.signIn('Kearns', '1111');
+  check(!r.ok && r.code === 'badpin' && !B.signedIn, 'wrong PIN: not signed in');
+  r = await B.signIn('Kearns', '4821');
+  check(r.ok && B.profile.stats.kills === 7, 'right PIN on another computer: the career comes back');
+  // a stranger signed in as themselves can't write to Kearns
+  const Cx = new Career(cfgP, { fetchFn: ff, storage: { getItem: () => null, setItem() {} } });
+  await Cx.signIn('Ryan', '2222', { create: true });
+  Cx.key = 'kearns'; Cx.add('kills', 1000); await Cx.flush();
+  check(pdb.kearns.stats.kills === 7, 'the rules keep other accounts off your career');
+  // offline: this device knows the PIN
+  const offl = async (url, o) => { throw new Error('net'); };
+  const D = new Career(cfgP, { fetchFn: offl, storage: stA });
+  r = await D.signIn('Kearns', '4821');
+  check(r.ok && r.offline && D.signedIn, 'offline on a device you used: the PIN still works');
+  r = await new Career(cfgP, { fetchFn: offl, storage: stA }).signIn('Kearns', '0000');
+  check(!r.ok, 'offline with the wrong PIN: no');
+  for (let i = 0; i < 6; i++) r = await B.signIn('Kearns', '9999');
+  check(r.code === 'locked', 'too many wrong PINs: locked for a while');
+  console.log(process.exitCode ? 'FAILED' : 'all career checks passed');
+}

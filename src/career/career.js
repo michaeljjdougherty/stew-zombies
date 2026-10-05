@@ -8,10 +8,12 @@
 // the same name both count. If the database can't be reached, everything
 // waits in this browser and goes up next time it can.
 //
-// There are no passwords: a username is just a name. Anyone who types yours
-// plays as you. (It's a game for friends.)
+// With CONFIG.career.firebaseApiKey set, every username has a 4-digit PIN:
+// you make one the first time you use a name, and need it to sign in as that
+// name again (src/career/auth.js). Without it, a username is just a name.
 // =============================================================================
 import { ACHIEVEMENTS, ACH_BY_ID } from './achievements.js';
+import { PinAuth, pinOk, pinHash } from './auth.js';
 
 const LS = 'stew-zombies-career-v1';
 export const STAT_KEYS = ['kills', 'revives', 'rounds', 'headshots', 'downs', 'games', 'bestRound'];
@@ -30,6 +32,7 @@ export class Career {
     this.url = String(cfg.firebaseUrl || '').trim().replace(/\/+$/, '');
     this.fetch = fetchFn;
     this.storage = storage;
+    this.auth = this.url && cfg.firebaseApiKey ? new PinAuth(cfg.firebaseApiKey, fetchFn, cfg.timeout || 8) : null;
     this.db = this.loadLocal();
     this.profile = null;        // { name, stats, achievements: { id: time } }
     this.key = null;
@@ -44,7 +47,7 @@ export class Career {
     let d = null;
     try { d = JSON.parse(this.storage && this.storage.getItem(LS)); } catch { d = null; }
     d = d && typeof d === 'object' ? d : {};
-    return { profiles: d.profiles || {}, pending: d.pending || {}, last: d.last || '' };
+    return { profiles: d.profiles || {}, pending: d.pending || {}, last: d.last || '', pins: d.pins || {} };
   }
   saveLocal() {
     if (this.profile) this.db.profiles[this.key] = this.profile;
@@ -52,6 +55,7 @@ export class Career {
   }
 
   get lastName() { return this.db.last || ''; }
+  get pinsOn() { return !!this.auth; }
   get signedIn() { return !!this.profile; }
   get gamerscore() { return this.profile ? scoreOf(this.profile) : 0; }
   pending() { return this.db.pending[this.key] || (this.db.pending[this.key] = blankPending()); }
@@ -59,10 +63,16 @@ export class Career {
   // --- the database -----------------------------------------------------------
   async request(method, key, body) {
     if (!this.url || !this.fetch) throw new Error('no database');
+    let q = '';
+    if (method !== 'GET' && this.auth) {
+      const tok = await this.auth.token();
+      if (!tok) throw new Error('not signed in');
+      q = '?auth=' + encodeURIComponent(tok);
+    }
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
     const t = ctl && setTimeout(() => ctl.abort(), (this.cfg.timeout || 6) * 1000);
     try {
-      const r = await this.fetch(`${this.url}/players/${encodeURIComponent(key)}.json`, {
+      const r = await this.fetch(`${this.url}/players/${encodeURIComponent(key)}.json${q}`, {
         method, headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined, keepalive: method === 'PATCH',
       });
@@ -80,18 +90,49 @@ export class Career {
     return p ? { name: p.name, kills: p.stats.kills, rounds: p.stats.rounds, g: scoreOf(p) } : null;
   }
 
+  // Is this username taken (does it have a PIN)? { exists, claimed, offline }
+  async lookup(rawName) {
+    const key = nameKey(rawName);
+    if (!key) return null;
+    if (!this.url) return { exists: !!this.db.profiles[key], claimed: false, offline: false };
+    try {
+      const c = await this.request('GET', key);
+      return { exists: !!c, claimed: !!(c && c.uid), offline: false };
+    } catch {
+      return { exists: !!this.db.profiles[key], claimed: !!this.db.pins[key], offline: true };
+    }
+  }
+
   // --- signing in -------------------------------------------------------------
-  async signIn(rawName) {
+  // With PINs on: signIn(name, pin, { create }) -> { ok, code } where code is
+  // 'taken' (someone has that name: ask for its PIN), 'badpin', 'locked'
+  // (too many tries), 'offline', 'setup' (Firebase sign-in isn't switched on).
+  async signIn(rawName, pin = null, { create = false } = {}) {
     const name = cleanName(rawName);
     const key = nameKey(name);
-    if (!key) return false;
-    if (this.profile && this.key !== key) await this.flush();
+    if (!key) return { ok: false, code: 'error' };
+    if (this.profile && this.key !== key) await this.flush();   // (the last name's stats go up under its own sign-in)
+    let offline = false;
+    if (this.auth) {
+      if (!pinOk(pin)) return { ok: false, code: 'badpin' };
+      try {
+        if (create) await this.auth.create(key, pin); else await this.auth.signIn(key, pin);
+      } catch (e) {
+        if (e.code !== 'offline') return { ok: false, code: e.code };
+        // no connection: this browser can let you in if you've signed in here before
+        const h = await pinHash(key, pin);
+        if (this.db.pins[key] && this.db.pins[key] === h) offline = true;
+        else return { ok: false, code: 'offline' };
+      }
+      this.db.pins[key] = await pinHash(key, pin);
+    }
     this.key = key;
     this.profile = normalize(this.db.profiles[key], name);
     this.profile.name = name;
     this.db.last = name;
     this.saveLocal();
     this.changed();
+    if (offline) { this.status = 'offline'; this.changed(); return { ok: true, offline: true }; }
     if (this.url) {
       try {
         const cloud = await this.request('GET', key);
@@ -113,6 +154,7 @@ export class Career {
           pend.ach = { ...this.profile.achievements };
           pend.fresh = true;
         }
+        if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
         this.status = 'online';
         this.saveLocal();
         this.changed();
@@ -122,11 +164,12 @@ export class Career {
         this.changed();
       }
     }
-    return true;
+    return { ok: true };
   }
 
   signOut() {
     this.flush();
+    if (this.auth) this.auth.signOut();
     this.profile = null; this.key = null;
     this.changed();
   }
@@ -172,6 +215,7 @@ export class Career {
     if (!this.profile) return;
     if (this.dirty) { this.dirty = false; this.saveLocal(); this.changed(); }
     if (!this.url || this.flushing) return;
+    if (this.auth && !this.auth.session) return;   // signed in offline: it all waits for next time
     const key = this.key, p = this.pending();
     const body = {};
     for (const [k, n] of Object.entries(p.inc)) if (n) body['stats/' + k] = { '.sv': { increment: n } };
@@ -180,6 +224,7 @@ export class Career {
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
+    if (this.auth) body.uid = this.auth.session.uid;   // (the rules: only this account can change this career)
     // what's being sent now comes off the pile only once it's gone through
     const sent = JSON.parse(JSON.stringify({ inc: p.inc, max: p.max, ach: p.ach }));
     this.flushing = true;
