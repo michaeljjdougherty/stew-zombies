@@ -24,7 +24,7 @@ import { updateLastStand, anyoneStanding } from './laststand.js';
 import { createPowerupState, updatePowerups, notePointsEarned, powerupActive } from './powerups.js';
 import { createPA, updatePA } from './pa.js';
 import { IntercomInteractable, NoteInteractable, StewItemInteractable, createStewEgg, updateStewEgg } from './interactables/lore.js';
-import { createQuest, questInteractables, questOnEvent, updateQuest, questTargets } from './quest.js';
+import { createQuest, questInteractables, questOnEvent, updateQuest } from './quest.js';
 import { createCauldron, cauldronTargets } from './cauldron.js';
 import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js';
 import { createCrew } from './crew.js';
@@ -248,8 +248,8 @@ export class GameSim {
   // Bullet trace. Returns ordered impacts: zombies (up to `penetration`), then the wall.
   hitscan(o, d, range, penetration = 1) {
     let wall = this.raycastWorld(o, d, range);
-    // quest targets (the soundboard wire) and the cauldron's valves stop a bullet like a wall does
-    const targets = [...((this.quest && questTargets(this)) || []), ...cauldronTargets(this)];
+    // the cauldron's valves stop a bullet like a wall does
+    const targets = cauldronTargets(this);
     if (targets.length) {
       for (const tg of targets) {
         const t = raySphere(o, d, tg.c, tg.r);

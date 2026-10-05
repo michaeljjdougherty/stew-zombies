@@ -140,7 +140,6 @@ export class ZombieViews {
   // A spirit zombie dies: it goes limp and floats up into the air, fading out.
   ascend(v) {
     if (v.meshes) for (const m of v.meshes) { m.material.transparent = true; m.material.depthWrite = false; }
-    for (const g of v.glows || []) g.visible = true;
     if (v.mixer) {
       v.mixer.stopAllAction();
       const a = v.actions.hit2 || v.actions.idle;
@@ -424,7 +423,33 @@ export class ZombieViews {
     return F.landed;
   }
 
+  // Dead: the eyes go out the instant it dies. The glow sprites switch off and
+  // the eyes' glowing material swaps for a dark copy (shared per material).
+  eyesOut(v) {
+    if (v.eyesOut) return;
+    v.eyesOut = true;
+    if (v.glow) v.glow.visible = false;
+    for (const g of v.glows || []) g.visible = false;
+    for (const eye of v.eyes || []) if (eye.material) eye.material = this.deadEyeMat(eye.material);
+    for (const m of v.meshes || []) if (m.material && m.material.emissiveMap) m.material = this.deadEyeMat(m.material);
+  }
+
+  deadEyeMat(mat) {
+    if (mat.userData.deadEye) return mat;
+    const cache = this.deadEyes || (this.deadEyes = new WeakMap());
+    let d = cache.get(mat);
+    if (!d) {
+      d = mat.clone();
+      d.emissive = new THREE.Color(0, 0, 0);
+      d.emissiveIntensity = 0;
+      d.userData.deadEye = true;
+      cache.set(mat, d);
+    }
+    return d;
+  }
+
   makeCorpse(v, e) {
+    this.eyesOut(v);
     if (v.spirit) { this.ascend(v); return; }
     if (v.rig) { this.corpseRigged(v, e); return; }
     if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
@@ -444,10 +469,8 @@ export class ZombieViews {
       crawler: v.crawler,
       fling: this.flingOf(v, e),
     });
-    if (e.fling) { v.glow.visible = false; for (const eye of v.eyes) eye.visible = false; return; }
+    if (e.fling) return;
     if (e.headshot && v.limbs.head) this.loseLimb(v, 'head', e.dir);
-    v.glow.visible = false;
-    for (const eye of v.eyes) eye.visible = false;
     // pool of blood beneath
     const p = v.root.position;
     const off = (fromFront ? 1 : -1) * 0.7;

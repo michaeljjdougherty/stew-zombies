@@ -346,7 +346,16 @@ export class SoundDirector {
         A.play(S.powerOn, {}, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.9, reverb: 0.6 });
         break;
       case 'bossOverload': A.play(S.thunder, { near: 0.6 }, { gain: 1, reverb: 0.8 }); break;
-      case 'wireHit': A.play(S.electrocute, {}, { pos: { x: 0, y: 4.7, z: 2 }, ref: 8, gain: 1.2, reverb: 0.6 }); break;
+      case 'pressBoxBlast':
+        A.play(S.glassShatter, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.7, reverb: 0.8 });
+        A.play(S.electrocute, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 8, gain: 0.9, reverb: 0.6, delay: 0.1 });
+        break;
+      case 'chopperPart': A.play(S.stewItemGet, { count: e.count }, { gain: 0.8, reverb: 0.3, bus: 'music' }); break;
+      case 'chopperBuilt':
+        A.play(S.boardRepair, {}, { pos: e.pos, ref: 4, gain: 1, reverb: 0.5 });
+        A.play(S.boardRepair, {}, { pos: e.pos, ref: 4, gain: 0.9, reverb: 0.5, delay: 0.35 });
+        A.play(S.stewItemGet, { count: 4 }, { gain: 0.9, reverb: 0.4, bus: 'music', delay: 0.7 });
+        break;
       case 'ritualStart':
         A.play(S.thunder, { near: 0.3 }, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.8, reverb: 0.8 });
         A.play(S.erikLaugh, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.9, reverb: 0.8, bus: 'voice', delay: 0.5 });

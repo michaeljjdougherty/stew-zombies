@@ -121,11 +121,17 @@ Phase 8 (built): Erik's on the PA.
   4. *The half-court sacrifice:* four drained basketballs; hold each glowing
      circle for 45 s while sprinters claw up out of the court. Each restores a
      talent (Speed, Jump, Power, Defense); solo you get all four.
-  5. *The Intercom Showdown:* call Erik out at the altar. Waves of Zombie
+  5. *Building the Chopper:* its motor (kitchen counter), saw blade
+     (auditorium stage), housing (art room table) and grip (loading dock
+     dumpster) appear once the circles are done; put it together on the
+     workbench in the boiler room. Anyone can take one there afterwards, and
+     on this map it no longer comes out of the Mystery Box.
+  6. *The Intercom Showdown:* call Erik out at the altar. Waves of Zombie
      Defenders in Stew Leonards jerseys while he paints red playbook diagrams
      on the floor; then elites drop Sound Amplifiers for the four speaker
-     towers; then shoot the main soundboard wire.
-  6. *Out of Bounds:* the ending cutscene (skippable): the glass shatters, Erik
+     towers; then blast the Press Box with the Chopper (3 hits) to knock him
+     out of it.
+  7. *Out of Bounds:* the ending cutscene (skippable): the glass shatters, Erik
      falls, The Schnitz speaks, Erik vanishes, and past the gym doors the
      campus is anchored to an asteroid in deep space. Brian Luke steps out of
      a portal: "You guys coming?" Title card for Map 2 (`src/render/ending.js`).

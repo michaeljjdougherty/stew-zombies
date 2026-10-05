@@ -4,7 +4,6 @@
 // (magazine, break-open, cylinder, belt, shell-by-shell), ADS and melee.
 // Weapon stats come from CONFIG.weapons; nothing here is weapon-specific.
 // =============================================================================
-import { questShot } from './quest.js';
 import { cauldronShot, isValve } from './cauldron.js';
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
@@ -210,7 +209,7 @@ function fire(sim, p, slot, def, side) {
         acc.parts[h.part] = (acc.parts[h.part] || 0) + dmg;
       }
     }
-    for (const h of impacts) if (h.targetId) { if (sim.replica) netAct(sim, { k: 'quest', id: h.targetId }); else if (isValve(h.targetId)) cauldronShot(sim, h.targetId, p); else questShot(sim, h.targetId, p); }
+    for (const h of impacts) if (h.targetId && isValve(h.targetId)) { if (sim.replica) netAct(sim, { k: 'quest', id: h.targetId }); else cauldronShot(sim, h.targetId, p); }
     for (const [id, acc] of perZombie) {
       const z = sim.zombieById(id);
       if (!z) continue;

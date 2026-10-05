@@ -169,7 +169,7 @@ export class MapView {
       cabinets: std({ map: T.cabinetTexture(), roughness: 0.6, metalness: 0.3 }),
       shelf: std({ map: T.bookshelfTexture(), roughness: 0.9 }),
       tableTop: std({ map: T.tableTopTexture(), roughness: 0.5 }),
-      steel: std({ map: T.steelTexture(), roughness: 0.35, metalness: 0.5 }),
+      steel: std({ map: T.steelTexture(), roughness: 0.62, metalness: 0.4 }),   // brushed: sharper than this and the kitchen's counters mirror the lights into a glare
     };
     // Walls. lower/lowerH: the painted (or tiled / panelled) band at the bottom.
     // surf: the photo surface above the band; below: a different one in the band.

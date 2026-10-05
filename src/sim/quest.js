@@ -13,21 +13,26 @@
 //   3. Retracting the cladding: put the coin in the occult altar under the
 //      Press Box. The steel cladding grinds up into the roof and there's Erik,
 //      sealed in behind the glass.
-//   (4. the half-court ritual and 5. the Intercom Showdown follow.)
+//   (4. the half-court ritual, 5. building the Chopper and 6. the Intercom
+//   Showdown follow. The Chopper's blast is what brings Erik down.)
 //
 // Pure simulation: state + events. The quest views (src/render/questView.js),
 // the HUD and the sound director read it.
 // =============================================================================
 import { paSay } from './pa.js';
 import { makeZombie, pickZombieType, killZombie } from './zombies.js';
-import { zombieHealthForRound } from '../config.js';
+import { zombieHealthForRound, baseWeaponId } from '../config.js';
+import { giveWeapon } from './weapons.js';
+import { DEG } from '../core/math.js';
 
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const up = (p) => p.alive && !p.downed;
 const solid = (x0, y0, z0, x1, y1, z1, kind) => ({ minX: x0, minY: y0, minZ: z0, maxX: x1, maxY: y1, maxZ: z1, kind });
 
 // The steps, in order. `step` on the quest state is one of these.
-export const QUEST_STEPS = ['power', 'trophy', 'statue', 'coin', 'altar', 'cladding', 'ritual', 'boss', 'ending', 'done'];
+export const QUEST_STEPS = ['power', 'trophy', 'statue', 'coin', 'altar', 'cladding', 'ritual', 'chopper', 'boss', 'ending', 'done'];
+const reached = (q, step) => QUEST_STEPS.indexOf(q.step) >= QUEST_STEPS.indexOf(step);
+export const CHOPPER = 'The Chopper';
 
 export function createQuest(sim) {
   const Q = sim.world.quest;
@@ -59,7 +64,11 @@ export function createQuest(sim) {
   sim.world.solids.push(solid(al.x - 0.65, 0, al.z - 0.42, al.x + 0.65, 0.88, al.z + 0.42, 'altar'));
   // the speaker towers in the gym's corners
   for (const t of Q.towers || []) sim.world.solids.push(solid(t.x - 0.5, 0, t.z - 0.45, t.x + 0.5, 2.9, t.z + 0.45, 'tower'));
-  st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls };
+  // the Chopper's workbench in the boiler room
+  const tb = Q.chopperTable;
+  if (tb) sim.world.solids.push(solid(tb.x - tb.w / 2, 0, tb.z - tb.d / 2, tb.x + tb.w / 2, tb.h, tb.z + tb.d / 2, 'workbench'));
+  st.chopper = { parts: [], built: false };
+  st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls, parts: (Q.chopperParts || []).length };
   // 4. the half-court ritual: four drained basketballs
   st.ritual = {
     balls: Q.ritualBalls.map((b) => ({ ...b, progress: 0, done: false })),
@@ -81,6 +90,8 @@ export function questInteractables(sim) {
     new CoinInteractable(Q.statue.coin),
     new AltarInteractable(Q.altar),
     ...Q.ritualBalls.map((b) => new RitualBallInteractable(b)),
+    ...(Q.chopperParts || []).map((c) => new ChopperPartInteractable(c)),
+    ...(Q.chopperTable ? [new ChopperTableInteractable(Q.chopperTable)] : []),
     new AmpPickupInteractable(),
     ...Q.towers.map((t, i) => new TowerInteractable(t, i)),
   ];
@@ -318,7 +329,71 @@ function updateRitual(sim, dt) {
     }
     sim.emit('ritualDone', { id: ball.id, stat: ball.stat, players: [...r.stood], pos: { x: ball.x, y: 0, z: ball.z } });
     paSay(sim, 'ritualDone', { delay: 1 });
-    if (r.balls.every((b) => b.done)) advance(sim, 'boss');
+    if (r.balls.every((b) => b.done)) advance(sim, 'chopper');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Building the Chopper: four parts around the school, put together on the
+//    workbench in the boiler room. Once it's built, anyone can take one there
+//    (or top up its ammo).
+// ---------------------------------------------------------------------------
+export class ChopperPartInteractable {
+  constructor(c) {
+    this.c = c;
+    this.id = 'chopper_' + c.id;
+    this.kind = 'chopperPart';
+    this.requireLook = true;
+    this.pos = { x: c.x, y: c.y, z: c.z };
+  }
+  get range() { return 1.6; }
+  distanceTo(sim, p) { return flatDist(p.pos, this.pos); }
+  canUse(sim, p) { const q = sim.quest; return up(p) && reached(q, 'chopper') && !q.chopper.parts.includes(this.c.id); }
+  prompt() { return { text: `Press [F] to take the ${this.c.name}`, cost: null, sub: 'a part of the Chopper' }; }
+  use(sim, p, cmd) {
+    if (!cmd.usePressed) return;
+    const q = sim.quest;
+    q.chopper.parts.push(this.c.id);
+    sim.emit('chopperPart', { playerId: p.id, id: this.c.id, name: this.c.name, count: q.chopper.parts.length, total: q.need.parts, pos: { ...this.pos } });
+  }
+}
+
+// the slot holding the Chopper (plain or Mad Dog'd), or -1
+const chopperSlot = (p) => p.loadout.slots.findIndex((s) => baseWeaponId(s.id) === CHOPPER && !s.away);
+
+export class ChopperTableInteractable {
+  constructor(t) {
+    this.t = t;
+    this.id = 'chopper_table';
+    this.kind = 'chopperTable';
+    this.requireLook = false;
+    this.pos = { x: t.x, y: t.h, z: t.z };
+  }
+  get range() { return 1.9; }
+  distanceTo(sim, p) { return flatDist(p.pos, this.pos); }
+  canUse(sim, p) { return up(p) && reached(sim.quest, 'chopper'); }
+  prompt(sim, p) {
+    const q = sim.quest, n = q.chopper.parts.length, t = q.need.parts;
+    if (!q.chopper.built) {
+      if (n < t) return { text: 'A workbench', cost: null, sub: n ? `${n} of ${t} Chopper parts found` : `find the ${t} parts of the Chopper around the school` };
+      return { text: 'Press [F] to build the Chopper', cost: null };
+    }
+    if (p && chopperSlot(p) >= 0) return { text: 'Press [F] to refill the Chopper', cost: null };
+    return { text: 'Press [F] to take the Chopper', cost: null };
+  }
+  use(sim, p, cmd) {
+    if (!cmd.usePressed) return;
+    const q = sim.quest;
+    if (!q.chopper.built) {
+      if (q.chopper.parts.length < q.need.parts) { sim.emit('useDenied', { playerId: p.id }); return; }
+      q.chopper.built = true;
+      sim.emit('chopperBuilt', { playerId: p.id, pos: { x: this.t.x, y: this.t.h, z: this.t.z } });
+      advance(sim, 'boss');
+    }
+    // the builder walks away with it; everyone else can come and take one
+    const have = chopperSlot(p);
+    giveWeapon(sim, p, have >= 0 ? p.loadout.slots[have].id : CHOPPER);
+    sim.emit('chopperTaken', { playerId: p.id, refill: have >= 0 });
   }
 }
 
@@ -328,7 +403,8 @@ function updateRitual(sim, dt) {
 //     Occult Playbook Diagrams on the floor: red zones that hurt.
 //   Phase 2 (Overcharging the System): elite defenders drop Sound Amplifiers;
 //     plug one into each of the four speaker towers in the gym's corners.
-//   Phase 3: shoot the main soundboard wire. The feedback shatters the glass.
+//   Phase 3: blast the Press Box with the Chopper. The glass gives and Erik
+//     comes down.
 // ---------------------------------------------------------------------------
 function startBoss(sim, p) {
   const q = sim.quest, c = sim.cfg.quest.boss;
@@ -338,7 +414,7 @@ function startBoss(sim, p) {
     zones: [], zoneT: 3, zoneId: 1,
     elites: new Set(), elitesSpawned: 0, eliteT: 2,
     amps: [], ampId: 1, towers: Q_TOWERS(sim).map(() => false),
-    wireHits: 0, over: false,
+    blasts: 0, over: false,
   };
   // the round in progress just stops: this is Erik's fight now
   sim.emit('bossStart', { playerId: p.id });
@@ -523,30 +599,35 @@ export class TowerInteractable {
   }
 }
 
-// A bullet hit the soundboard wire (sim.hitscan reports it; weapons.js calls this).
-export function questShot(sim, targetId, p) {
+// A Chopper blast (wind.js calls this for every shot). In phase 3, a blast
+// that takes in the Press Box cracks the glass; enough of them and he's out.
+export function questWind(sim, p, origin, dir, W) {
   const q = sim.quest;
-  if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over || targetId !== 'wire') return;
-  const b = q.boss;
-  b.wireHits++;
-  sim.emit('wireHit', { hits: b.wireHits, of: sim.cfg.quest.boss.wireHits, playerId: p ? p.id : null });
-  if (b.wireHits >= sim.cfg.quest.boss.wireHits) {
+  if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over) return false;
+  const P = sim.world.quest.pressBox;
+  if (!P) return false;
+  const dx = P.x - origin.x, dy = P.y - origin.y, dz = P.z - origin.z;
+  const d = Math.hypot(dx, dy, dz);
+  if (d > W.range + P.r) return false;
+  // inside the cone, counting the booth's size
+  const cos = (dx * dir.x + dy * dir.y + dz * dir.z) / d;
+  const off = Math.acos(Math.max(-1, Math.min(1, cos)));
+  if (off > W.angle * DEG + Math.atan2(P.r, d)) return false;
+  // and not through a wall (from another room)
+  if (sim.raycastWorld(origin, { x: dx / d, y: dy / d, z: dz / d }, Math.max(0.1, d - P.r), true)) return false;
+  const b = q.boss, need = sim.cfg.quest.boss.chopperHits;
+  b.blasts++;
+  sim.emit('pressBoxBlast', { hits: b.blasts, of: need, playerId: p ? p.id : null });
+  if (b.blasts >= need) {
     b.over = true;
     b.zones.length = 0;
-    // the feedback blows every eardrum in the building: the horde drops
+    // the booth gives way and the horde drops with him
     for (const z of [...sim.zombies]) if (z.state !== 'dead') killZombie(sim, z, { kind: 'sonic', part: 'head', dir: { x: 0, y: 1, z: 0 }, playerId: null });
     sim.emit('bossEnd', { playerId: p ? p.id : null });
     paSay(sim, 'bossEnd', { force: true });
     advance(sim, 'ending');
   }
-}
-
-// The live shootable target, if any: the soundboard wire under the Press Box.
-export function questTargets(sim) {
-  const q = sim.quest;
-  if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over) return null;
-  const w = sim.world.quest.wire;
-  return [{ id: 'wire', c: { x: w.x, y: w.y, z: w.z }, r: w.r }];
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -650,6 +731,12 @@ export function questObjective(sim) {
     case 'coin': return 'Take the Dark Schnitz Coin from the statue';
     case 'altar': return 'Set the coin in the altar under the Press Box';
     case 'cladding': return 'The cladding is coming up...';
+    case 'chopper': {
+      const n = q.chopper.parts.length, t = q.need.parts;
+      if (q.chopper.built) return 'Take the Chopper from the workbench in the Boiler Room';
+      if (n < t) return `Build the Chopper: find its parts around the school (${n}/${t})`;
+      return 'Build the Chopper on the workbench in the Boiler Room';
+    }
     case 'ritual': {
       const r = q.ritual;
       const done = r.balls.filter((b) => b.done).length;
@@ -661,10 +748,10 @@ export function questObjective(sim) {
     }
     case 'boss': {
       const b = q.boss;
-      if (!b) return 'Call Erik out at the altar under the Press Box';
+      if (!b) return 'Call Erik out at the altar under the Press Box (bring the Chopper)';
       if (b.phase === 1) return `Intercom Lockdown: clear Erik's Zombie Defenders (wave ${b.wave} of ${sim.cfg.quest.boss.waves}) · stay out of the red plays`;
       if (b.phase === 2) return `Overcharge the system: take the Sound Amplifiers off the elites and plug them into the speaker towers (${b.towers.filter(Boolean).length}/4)`;
-      return 'Shoot the main soundboard wire under the Press Box!';
+      return `Blast Erik out of the Press Box with the Chopper! (${b.blasts}/${sim.cfg.quest.boss.chopperHits})`;
     }
     case 'ending': return null;
     default: return null;

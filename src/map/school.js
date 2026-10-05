@@ -467,9 +467,20 @@ export const SCHOOL = {
     trophyStand: { x: 0, z: -5.6, slideTo: { x: 2.4, z: -5.6 } },
     statue: { x: 31.5, z: -3.2, coin: { x: 27.25, y: 0.62, z: -3.2 } },
     altar: { x: 0, z: 0 },
-    // the Intercom Showdown: speaker towers in the gym's corners, the wire under the booth
+    // the Intercom Showdown: speaker towers in the gym's corners
     towers: [{ x: -15.9, z: -11.6 }, { x: 15.9, z: -11.6 }, { x: -15.9, z: 11.6 }, { x: 15.9, z: 11.6 }],
-    wire: { x: 0, y: 4.7, z: 2.05, r: 0.5 },
+    // the Press Box over center court, as a target for the Chopper's blast
+    pressBox: { x: 0, y: 6.35, z: 0, r: 2.4 },
+    // The Chopper, built after the ritual: four parts around the school and the
+    // workbench in the boiler room, by the stew cauldron. (x, y, z: where the
+    // part lies, y on top of whatever it's sitting on)
+    chopperParts: [
+      { id: 'motor', name: 'Chopper motor', where: 'Kitchen', x: 30.0, y: 0.95, z: -46.7 },
+      { id: 'blade', name: 'saw blade', where: 'Auditorium', x: -2.0, y: 0.9, z: -72.6 },
+      { id: 'housing', name: 'Chopper housing', where: 'Band & Art Rooms', x: -19.5, y: 0.76, z: -52.9 },
+      { id: 'grip', name: 'Chopper grip', where: 'Loading Dock', x: 38.8, y: 1.4, z: -55.3 },
+    ],
+    chopperTable: { x: -17.9, z: 10.2, w: 0.8, d: 2.4, h: 0.92 },   // against the east wall
     ritualBalls: [
       { id: 'speed', stat: 'speed', x: -4.6, z: -3 },
       { id: 'jump', stat: 'jump', x: 4.6, z: -3 },

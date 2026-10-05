@@ -112,6 +112,18 @@ export class HUD {
       case 'trophyPiece':
         this.toast(`Trophy piece ${e.count} of ${e.total}`, e.name, '#e8c060', 2.8);
         break;
+      case 'questStep':
+        if (e.step === 'chopper') this.toast('Build the Chopper', 'its four parts are somewhere in the school', '#ff7050', 4);
+        break;
+      case 'chopperPart':
+        this.toast(`Chopper part ${e.count} of ${e.total}`, e.name, '#ff7050', 2.8);
+        break;
+      case 'chopperBuilt':
+        this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours' : 'built on the workbench · go take one', '#ff7050', 3.5);
+        break;
+      case 'pressBoxBlast':
+        if (e.hits < e.of) this.toast('The glass is cracking', `${e.hits} of ${e.of}`, '#ff7050', 2.2);
+        break;
       case 'madDogRevealed':
         this.toast('The Mad Dog Machine', 'up from under the gym floor', '#ff5030', 3.5);
         break;
@@ -132,7 +144,7 @@ export class HUD {
         break;
       case 'bossPhase':
         if (e.phase === 2) this.toast('Overcharge the system', 'take the amplifiers off his elites', '#7fe08a', 3.5);
-        else this.toast('The speakers are howling', 'shoot the main soundboard wire!', '#7fe08a', 3.5);
+        else this.toast('The speakers are howling', 'blast the Press Box with the Chopper!', '#ff7050', 3.5);
         break;
       case 'ampTaken':
         if (e.playerId === this.localId) this.toast('Sound Amplifier', 'plug it into a speaker tower', '#7fe08a', 2.4);

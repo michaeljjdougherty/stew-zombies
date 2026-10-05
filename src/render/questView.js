@@ -2,7 +2,8 @@
 // What "The Final Whistle" looks like: the main breakers, the trophy pieces and
 // stand, the trapdoor the Mad Dog Machine comes up through, the mascot statue
 // waking up, soul wisps, the Dark Schnitz Coin, the altar under the Press Box,
-// the cladding grinding up, and Erik in his booth.
+// the cladding grinding up, Erik in his booth, the Chopper's parts and the
+// workbench in the boiler room, and the booth's glass cracking under the blasts.
 //
 // Reads sim.quest; never changes it.
 // =============================================================================
@@ -11,6 +12,7 @@ import { trophyParts } from './propModels.js';
 import * as T from './textures.js';
 import { buildCharacter, idleCharacter } from './characters.js';
 import { PRESS_BOX } from './storyProps.js';
+import { buildGun } from './gunModels.js';
 
 const GOLD = () => new THREE.MeshStandardMaterial({ color: '#d8ac3c', roughness: 0.22, metalness: 1, emissive: new THREE.Color(0.25, 0.16, 0.02), emissiveIntensity: 0.6 });
 
@@ -135,6 +137,102 @@ function trophyPart(id, mat) {
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), mat); ball.position.y = id === 'all' ? 0.15 : 0.175; g.add(ball);
   }
   return g;
+}
+
+// --- the Chopper's parts ----------------------------------------------------------
+let chopperMats = null;
+function choppersMats() {
+  if (chopperMats) return chopperMats;
+  chopperMats = {
+    red: new THREE.MeshStandardMaterial({ color: '#b3261e', roughness: 0.45, metalness: 0.3 }),
+    yellow: new THREE.MeshStandardMaterial({ color: '#e8b81a', roughness: 0.5 }),
+    dark: new THREE.MeshStandardMaterial({ color: '#2a2a2c', roughness: 0.4, metalness: 0.8 }),
+    steel: new THREE.MeshStandardMaterial({ color: '#c9ccd0', roughness: 0.28, metalness: 1 }),
+    black: new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.6 }),
+  };
+  return chopperMats;
+}
+// Each part at the gun's own size, resting on y = 0.
+function chopperPart(id) {
+  const M = choppersMats();
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  if (id === 'motor') {
+    add(new THREE.CylinderGeometry(0.042, 0.042, 0.12, 16).rotateZ(Math.PI / 2), M.dark, 0, 0.046, 0);
+    for (let i = 0; i < 6; i++) add(new THREE.CylinderGeometry(0.047, 0.047, 0.006, 18).rotateZ(Math.PI / 2), M.steel, -0.045 + i * 0.018, 0.046, 0);
+    add(new THREE.CylinderGeometry(0.01, 0.01, 0.07, 8).rotateZ(Math.PI / 2), M.black, 0.02, 0.09, 0.025);
+    add(new THREE.CylinderGeometry(0.012, 0.012, 0.03, 8).rotateZ(Math.PI / 2), M.steel, 0.075, 0.046, 0);
+  } else if (id === 'blade') {
+    add(new THREE.CylinderGeometry(0.09, 0.09, 0.005, 28), M.steel, 0, 0.004, 0);
+    add(new THREE.CylinderGeometry(0.022, 0.022, 0.014, 10), M.dark, 0, 0.008, 0);
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      const t = add(new THREE.BoxGeometry(0.016, 0.005, 0.012), M.steel, Math.cos(a) * 0.095, 0.004, Math.sin(a) * 0.095);
+      t.rotation.y = -a + 0.5;
+    }
+  } else if (id === 'housing') {
+    add(new THREE.BoxGeometry(0.075, 0.095, 0.3), M.red, 0, 0.048, 0);
+    for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.077, 0.018, 0.02), i % 2 ? M.black : M.yellow, 0, 0.012, -0.1 + i * 0.022);
+    add(new THREE.BoxGeometry(0.07, 0.03, 0.06), M.red, 0, 0.11, -0.11);
+    add(new THREE.BoxGeometry(0.072, 0.006, 0.06), M.yellow, 0, 0.127, -0.11);
+  } else if (id === 'grip') {
+    add(new THREE.BoxGeometry(0.03, 0.1, 0.04), M.black, 0, 0.05, 0).rotation.x = -0.25;
+    add(new THREE.BoxGeometry(0.008, 0.03, 0.012), M.dark, 0, 0.09, -0.03);
+    add(new THREE.BoxGeometry(0.012, 0.012, 0.15), M.black, 0, 0.11, -0.05);
+    add(new THREE.BoxGeometry(0.01, 0.03, 0.01), M.black, 0, 0.095, -0.12);
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+  return g;
+}
+
+// The plans on the workbench: the Chopper, its four parts circled.
+function blueprintTexture() {
+  const [c, g] = T.makeCanvas(512, 320);
+  g.fillStyle = '#1d4f8a'; g.fillRect(0, 0, 512, 320);
+  g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1;
+  for (let x = 0; x < 512; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 320); g.stroke(); }
+  for (let y = 0; y < 320; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); }
+  g.strokeStyle = '#e8f2ff'; g.lineWidth = 3;
+  g.strokeRect(120, 120, 230, 70);                                    // housing
+  g.beginPath(); g.arc(90, 112, 46, 0, 7); g.stroke();                 // blade
+  g.strokeRect(350, 130, 70, 52);                                      // motor
+  g.beginPath(); g.moveTo(250, 190); g.lineTo(240, 260); g.lineTo(275, 260); g.lineTo(285, 190); g.stroke();   // grip
+  g.setLineDash([6, 6]); g.strokeStyle = '#ffd23a';
+  for (const [x, y, r] of [[90, 112, 60], [235, 155, 80], [385, 156, 50], [262, 228, 42]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
+  g.setLineDash([]);
+  g.fillStyle = '#e8f2ff'; g.font = '900 30px Impact, "Arial Black", sans-serif'; g.textAlign = 'left';
+  g.fillText('THE CHOPPER', 18, 300);
+  g.font = '700 16px "Courier New", monospace';
+  g.fillText('MOTOR · BLADE · HOUSING · GRIP', 230, 300);
+  return T.toTexture(c, { repeat: false });
+}
+
+// Cracks spreading over the booth's glass, one more burst per blast.
+function crackTexture(level) {
+  const S = 512;
+  const [c, g] = T.makeCanvas(S, S);
+  g.clearRect(0, 0, S, S);
+  let seed = 77;
+  const r = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const hits = [[0.32, 0.45], [0.68, 0.38], [0.5, 0.62], [0.2, 0.7], [0.8, 0.66]].slice(0, level + 1);
+  g.strokeStyle = 'rgba(235,250,255,0.95)'; g.lineCap = 'round';
+  for (const [hx, hy] of hits) {
+    const x0 = hx * S, y0 = hy * S;
+    const spokes = 9 + Math.floor(r() * 5);
+    for (let i = 0; i < spokes; i++) {
+      let a = (i / spokes) * Math.PI * 2 + r() * 0.4, x = x0, y = y0;
+      g.lineWidth = 5;
+      g.beginPath(); g.moveTo(x, y);
+      const len = 60 + r() * 150 * (0.6 + level * 0.25);
+      for (let d = 0; d < len; d += 14) { a += (r() - 0.5) * 0.5; x += Math.cos(a) * 14; y += Math.sin(a) * 14; g.lineTo(x, y); }
+      g.stroke();
+    }
+    // rings round the impact
+    g.lineWidth = 3.5;
+    for (const rr of [18, 36, 58]) { g.beginPath(); for (let k = 0; k <= 14; k++) { const a = (k / 14) * Math.PI * 2; const q = rr * (0.8 + r() * 0.4); g[k ? 'lineTo' : 'moveTo'](x0 + Math.cos(a) * q, y0 + Math.sin(a) * q); } g.stroke(); }
+    g.fillStyle = 'rgba(235,250,255,0.75)'; g.beginPath(); g.arc(x0, y0, 16, 0, 7); g.fill();
+  }
+  return T.toTexture(c, { repeat: false });
 }
 
 export class QuestView {
@@ -299,15 +397,67 @@ export class QuestView {
       const amp = this.ampModel(); amp.position.set(0, 3.12, 0.1); amp.visible = false; g.add(amp);
       return { g, lightMat, amp };
     });
-    // the main soundboard wire: a junction box under the booth, a fat cable up into it
-    const W = Q.wire;
-    if (W) {
-      this.wireBox = add(new THREE.BoxGeometry(0.5, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: '#2a2a28', metalness: 0.6, roughness: 0.4 }), W.x, W.y, W.z);
-      const cable = add(new THREE.CylinderGeometry(0.045, 0.045, PRESS_BOX.y0 - W.y + 0.1, 8), new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.6 }), W.x, (W.y + PRESS_BOX.y0) / 2, W.z);
-      void cable;
-      this.wireGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.2, 0.2, 0.2) });
-      add(new THREE.BoxGeometry(0.52, 0.06, 0.32), this.wireGlow, W.x, W.y - 0.12, W.z);
+    // --- the Chopper: its four parts where they lie, the workbench in the boiler room
+    this.choppers = (Q.chopperParts || []).map((c) => {
+      const g = chopperPart(c.id);
+      g.scale.setScalar(1.6);
+      g.position.set(c.x, c.y, c.z);
+      g.rotation.y = c.x * 0.7;
+      g.visible = false;
+      this.group.add(g);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.halo, color: 0xff7050, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
+      halo.scale.setScalar(0.7); halo.position.set(c.x, c.y + 0.12, c.z); halo.visible = false;
+      this.group.add(halo);
+      // its spot on the workbench once it's found
+      const onBench = chopperPart(c.id);
+      onBench.scale.setScalar(1.6);
+      onBench.visible = false;
+      return { c, g, halo, onBench };
+    });
+    const tb = Q.chopperTable;
+    if (tb) {
+      const bench = new THREE.Group();
+      bench.position.set(tb.x, 0, tb.z);
+      this.group.add(bench);
+      const top = new THREE.MeshStandardMaterial({ map: T.toTexture(T.noiseCanvas(256, 9, 3)), color: '#6a4a2c', roughness: 0.8 });
+      const legM = new THREE.MeshStandardMaterial({ color: '#4a4d50', roughness: 0.55, metalness: 0.4 });
+      add(new THREE.BoxGeometry(tb.w, 0.06, tb.d), top, 0, tb.h - 0.03, 0, bench);
+      add(new THREE.BoxGeometry(tb.w - 0.08, 0.04, tb.d - 0.1), top, 0, 0.18, 0, bench);       // lower shelf
+      for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) add(new THREE.BoxGeometry(0.05, tb.h - 0.06, 0.05), legM, x * (tb.w / 2 - 0.05), (tb.h - 0.06) / 2, z * (tb.d / 2 - 0.05), bench);
+      // a vise on the end, a pegboard of tools on the wall behind
+      add(new THREE.BoxGeometry(0.16, 0.1, 0.12), legM, 0, tb.h + 0.05, tb.d / 2 - 0.12, bench);
+      const peg = add(new THREE.BoxGeometry(0.03, 0.9, tb.d - 0.2), new THREE.MeshStandardMaterial({ color: '#8a6e4a', roughness: 0.9 }), tb.w / 2 - 0.02, tb.h + 0.75, 0, bench);
+      void peg;
+      for (let i = 0; i < 6; i++) add(new THREE.BoxGeometry(0.02, 0.22 + (i % 3) * 0.06, 0.04), i % 2 ? legM : choppersMats().red, tb.w / 2 - 0.05, tb.h + 0.6 + (i % 2) * 0.25, -0.8 + i * 0.32, bench);
+      // the plans
+      const plan = add(new THREE.PlaneGeometry(0.62, 0.39).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: blueprintTexture(), roughness: 0.9 }), -0.04, tb.h + 0.002, 0.55, bench);
+      plan.rotation.y = Math.PI / 2;
+      // where the found parts go, and the finished Chopper
+      const slots = [-0.65, -1.0, -0.3, 0.02];   // motor, blade, housing, grip (the plans lie past them)
+      this.choppers.forEach((ch, i) => { ch.onBench.position.set(0.02, tb.h, slots[i] ?? 0); bench.add(ch.onBench); });
+      this.builtChopper = buildGun('chopper').group;
+      this.builtChopper.scale.setScalar(1.5);
+      this.builtChopper.position.set(0, tb.h + 0.16, -0.35);
+      this.builtChopper.visible = false;
+      bench.add(this.builtChopper);
+      this.benchHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.halo, color: 0xff7050, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      this.benchHalo.scale.setScalar(1.1); this.benchHalo.position.set(0, tb.h + 0.2, -0.35);
+      bench.add(this.benchHalo);
+      this.bench = bench;
     }
+    // --- cracks on the Press Box's glass as the Chopper hits it
+    this.cracks = [];
+    this.crackTex = [];
+    if (this.pressBox) {
+      for (const pane of this.pressBox.panes) {
+        const m = new THREE.Mesh(pane.geometry, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, side: THREE.DoubleSide }));
+        m.position.copy(pane.position); m.rotation.copy(pane.rotation); m.scale.copy(pane.scale);
+        m.visible = false;
+        pane.parent.add(m);
+        this.cracks.push(m);
+      }
+    }
+    this.crackLevel = 0;
     this.groundAmps = new Map();
     this.plays = new Map();
   }
@@ -334,10 +484,20 @@ export class QuestView {
     if (this.erik) { this.group.remove(this.erik.root); this.erik = null; if (this.erikLight) this.erikLight.level = 0; }
     this.erikHeld = false;
     if (this.pressBox) for (const p of this.pressBox.panes) p.visible = true;
+    this.crackLevel = 0;
+    for (const m of this.cracks || []) m.visible = false;
   }
 
   onEvent(e) {
     if (!this.Q) return;
+    if (e.type === 'pressBoxBlast') {
+      this.boothShake = 1;
+      // glass bits rain down from the booth
+      if (this.effects) for (let i = 0; i < 40; i++) {
+        const a = Math.random() * Math.PI * 2;
+        this.effects.spawnParticle(new THREE.Vector3(Math.cos(a) * 2.5, PRESS_BOX.y0 + Math.random() * 1.5, Math.sin(a) * 1.8), new THREE.Vector3(Math.cos(a) * 2, Math.random() * 1.5, Math.sin(a) * 2), { life: 1.2, size: 0.02, color: [2.2, 2.6, 2.8], gravity: 9, drag: 0.4 });
+      }
+    }
     if (e.type === 'statueSoul' && this.mascot) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.wispTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       s.scale.setScalar(0.35);
@@ -439,14 +599,34 @@ export class QuestView {
       const k = on ? (B.phase === 3 ? 2.5 + Math.sin(t * 30) * 1.2 : 1.6 + Math.sin(t * 4 + i) * 0.4) : (B && B.phase === 2 ? 0.4 + Math.sin(t * 3) * 0.2 : 0.12);
       tw.lightMat.color.setRGB(on ? k * 0.15 : k, on ? k : k * 0.1, on ? k * 0.25 : k * 0.08);
     }
-    if (this.wireGlow) {
-      const hot = B && B.phase === 3 && !B.over;
-      const k = hot ? 2 + Math.sin(t * 25) * 1.2 + (B.wireHits || 0) : 0.2;
-      this.wireGlow.color.setRGB(hot ? k * 0.4 : 0.2, hot ? k : 0.2, hot ? k * 0.3 : 0.2);
-      if (hot && this.effects && Math.random() < dt * 8) {
-        const W = this.Q.wire;
-        this.effects.spawnParticle(new THREE.Vector3(W.x + (Math.random() - 0.5) * 0.4, W.y - 0.15, W.z), new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2), { life: 0.4, size: 0.01, color: [2, 5, 2.4], gravity: 9, drag: 1 });
-      }
+    // the Chopper's parts, the workbench and the finished gun
+    const CH = q.chopper;
+    const hunting = CH && (q.step === 'chopper' || q.step === 'boss' || q.step === 'ending');
+    for (const ch of this.choppers) {
+      const have = CH && CH.parts.includes(ch.c.id);
+      const show = hunting && !have;
+      ch.g.visible = ch.halo.visible = show;
+      if (show) { ch.g.rotation.y = t * 0.6; ch.halo.material.opacity = 0.25 + Math.sin(t * 2.5) * 0.1; }
+      ch.onBench.visible = !!(have && !CH.built);
+    }
+    if (this.builtChopper) {
+      const built = !!(CH && CH.built);
+      this.builtChopper.visible = built;
+      if (built) this.builtChopper.rotation.y = Math.sin(t * 0.7) * 0.3;
+      this.benchHalo.material.opacity = built ? 0.3 + Math.sin(t * 2.2) * 0.08 : (q.step === 'chopper' && CH.parts.length >= q.need.parts ? 0.35 + Math.sin(t * 4) * 0.12 : 0);
+    }
+    // the booth's glass cracks a little more with every blast, and the booth shudders
+    const blasts = B ? B.blasts || 0 : 0;
+    if (blasts !== this.crackLevel && this.cracks.length) {
+      this.crackLevel = blasts;
+      const tex = blasts > 0 ? (this.crackTex[blasts] ||= crackTexture(blasts - 1)) : null;
+      for (const m of this.cracks) { m.visible = !!tex; if (tex) { m.material.map = tex; m.material.needsUpdate = true; } }
+    }
+    if (this.pressBox && this.pressBox.group) {
+      this.boothShake = Math.max(0, (this.boothShake || 0) - dt * 2.5);
+      const k = this.boothShake * 0.06;
+      this.pressBox.group.position.x = Math.sin(t * 61) * k;
+      this.pressBox.group.position.z = Math.cos(t * 47) * k;
     }
     // amplifiers lying on the court
     const seen = new Set();

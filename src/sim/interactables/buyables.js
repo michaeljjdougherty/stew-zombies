@@ -155,7 +155,8 @@ export class BoxInteractable {
   pick(sim, p) {
     const w = sim.cfg.box.weights;
     const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
-    const ok = (id) => (sim.cfg.weapons[id] && !held.has(id)) || (id === 'stewBomb' && p.stewBombs <= 0);
+    // (the Chopper is built, not pulled, on a map with the quest)
+    const ok = (id) => (sim.cfg.weapons[id] && !held.has(id) && !(sim.quest && sim.cfg.weapons[id].buildable)) || (id === 'stewBomb' && p.stewBombs <= 0);
     const pool = Object.entries(w).filter(([id]) => ok(id));
     const total = pool.reduce((a, [, v]) => a + v, 0);
     let r = sim.rng.next() * total;

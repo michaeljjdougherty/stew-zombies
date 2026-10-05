@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05',
+  version: '2026-10-05b',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -19,6 +19,8 @@ export const PATCH = {
   },
   sections: [
     { title: 'Just added', items: [
+      'The Final Whistle has a new step: after you take back all four talents, build the Chopper (four parts around the school, a workbench in the boiler room). It\'s what knocks Erik out of the Press Box at the end of the Intercom Showdown, so it no longer comes out of the Mystery Box on Stew Leonard High.',
+      'A zombie\'s green eyes go dark the instant it dies.',
       'Erik has a real voice now. All 115 of his lines are recorded: every taunt over the PA, every intercom reply, his roasts, and his scenes in the intro.',
       'Kearns and Ryan are voiced too: their reactions, walkie-talkie calls, story lines, banter, their lines in the intro, and what they say into the intercom when you play them. Pit, Rocco and Brian still use the placeholder voices for now.',
       'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
@@ -37,7 +39,8 @@ export const PATCH = {
       'Find the three pieces of the championship trophy and rebuild it at center court. The Mad Dog Machine rises through a trapdoor.',
       'Wake the mascot statue in the Quad for the Dark Schnitz Coin, then put it in the altar under the Press Box to expose Erik.',
       'The half-court ritual: hold each of the four circles for 45 seconds to win back a lost talent (Speed, Jump, Power, Defense). The circles are much bigger now. Regular zombies leave whoever is in the circle alone, and blue spirit zombies with glowing eyes rise instead, then float away when you kill them.',
-      'The Intercom Showdown, in three phases: Zombie Defenders and burning playbook diagrams, then elites that drop Sound Amplifiers for the speaker towers, then the soundboard wire.',
+      'Build the Chopper: after the four circles, find its motor, saw blade, housing and grip around the school and put it together on the workbench in the boiler room, by the stew cauldron. Once it\'s built, everyone can take one there.',
+      'The Intercom Showdown, in three phases: Zombie Defenders and burning playbook diagrams, then elites that drop Sound Amplifiers for the speaker towers, then blasting Erik out of the Press Box with the Chopper.',
       'An ending cutscene. Watch it again any time from Extras.',
     ] },
     { title: 'The crew and online co-op', items: [

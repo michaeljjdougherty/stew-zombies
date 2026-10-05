@@ -713,6 +713,7 @@ export const CONFIG = {
     // and throws every zombie in a wide cone in front of you.
     'The Chopper': gun('launcher', {
       name: 'The Chopper', boxOnly: true, wonder: true,
+      buildable: true,   // on maps with the quest it's built at the boiler room workbench, not pulled from the box
       fireMode: 'semi', rpm: 75, damage: 0, magSize: 2, reserve: 12,
       reloadStyle: 'mag', reloadTime: 2.6, reloadEmptyTime: 2.8, drawTime: 0.7,
       wind: { range: 13, angle: 30, near: 1.8, maxKills: 30 },
@@ -1026,7 +1027,7 @@ export const CONFIG = {
       zoneWarn: 1.6,        // s a play glows faintly before it burns
       zoneLive: 2.2,
       zoneDps: 55,
-      wireHits: 3,          // phase 3: hits on the soundboard wire
+      chopperHits: 3,       // phase 3: Chopper blasts on the Press Box to bring Erik down
     },
   },
 

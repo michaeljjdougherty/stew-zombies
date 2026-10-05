@@ -1,12 +1,14 @@
 // =============================================================================
 // The Chopper's blast: a wall of wind out of the barrel. Every zombie in the
 // cone (and anything right up against you) is killed and thrown, the near ones
-// hardest, as far as the walls let them fly.
+// hardest, as far as the walls let them fly. In the quest's last phase it's
+// also what knocks Erik out of the Press Box (quest.js questWind).
 //
 //   def.wind = { range, angle (half-angle, degrees), near (point-blank radius), maxKills }
 // =============================================================================
 import { DEG } from '../core/math.js';
 import { damageZombie } from './zombies.js';
+import { questWind } from './quest.js';
 
 export function windBlast(sim, p, origin, dir, def, weapon) {
   const W = def.wind;
@@ -38,5 +40,7 @@ export function windBlast(sim, p, origin, dir, def, weapon) {
     const fling = { x: fx, z: fz, dist, up: 1.2 + k * 2.2 };
     damageZombie(sim, z, 1e6, { playerId: p.id, part: 'torso', kind: 'wind', dir: { x: fx, y: 0.5, z: fz }, point: c, force: 1, weapon, fling });
   }
+  // the quest's finale: blasting Erik out of the Press Box
+  questWind(sim, p, origin, dir, W);
   return hits.length;
 }

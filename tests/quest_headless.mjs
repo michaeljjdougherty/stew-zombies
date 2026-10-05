@@ -124,9 +124,58 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
     check(q.ritual.balls.find((x) => x.id === b.b.id).done, `${b.b.stat} restored`);
   }
   check(me.boosts && me.boosts.speed > 1 && me.boosts.jump > 1 && me.boosts.power > 1 && me.boosts.defense < 1, 'solo: all four boosts ' + JSON.stringify(me.boosts));
-  check(q.step === 'boss', 'on to the boss');
+  check(q.step === 'chopper', 'on to building the Chopper');
   check(log.filter((e) => e.type === 'zombieRise').length > 10, 'a horde clawed up during the rituals (' + log.filter((e) => e.type === 'zombieRise').length + ')');
   void baseSpeed; void find;
+}
+
+// 5. building the Chopper
+{
+  const { sim, me, log, step, place, use, find } = makeQuestGame(12);
+  const q = sim.quest;
+  const parts = sim.interactables.filter((i) => i.kind === 'chopperPart');
+  const table = find('chopperTable');
+  check(parts.length === 4 && table, 'four Chopper parts and a workbench');
+  // not before the ritual's done
+  q.step = 'ritual';
+  place(parts[0].pos.x + 0.9, parts[0].pos.z, parts[0].pos.x, parts[0].pos.z);
+  check(!parts[0].canUse(sim, me), 'parts can\'t be taken before the circles are done');
+  q.step = 'chopper';
+  check(/Chopper/.test(questObjective(sim)), 'objective: ' + questObjective(sim));
+  // the workbench with nothing on it
+  const tb = SCHOOL.quest.chopperTable;
+  place(tb.x - 1.2, tb.z, tb.x, tb.z);
+  check(me.prompt && /workbench/i.test(me.prompt.text), 'empty workbench: ' + (me.prompt && me.prompt.text) + ' / ' + (me.prompt && me.prompt.sub));
+  use();
+  check(!q.chopper.built, 'can\'t build without the parts');
+  for (const it of parts) {
+    // stand next to it, wherever it's reachable from
+    let ok = false;
+    for (const [dx, dz] of [[0, 1.1], [0, -1.1], [1.1, 0], [-1.1, 0]]) {
+      place(it.pos.x + dx, it.pos.z + dz, it.pos.x, it.pos.z);
+      if (Math.hypot(me.pos.x - (it.pos.x + dx), me.pos.z - (it.pos.z + dz)) < 0.2 && me.prompt && /take the/.test(me.prompt.text)) { ok = true; break; }
+    }
+    check(ok, `can reach the ${it.c.name} (${it.c.where}): ` + (me.prompt && me.prompt.text));
+    use();
+  }
+  check(q.chopper.parts.length === 4, 'all four parts found (' + q.chopper.parts.join(', ') + ')');
+  check(log.filter((e) => e.type === 'chopperPart').length === 4, 'four chopperPart events');
+  place(tb.x - 1.2, tb.z, tb.x, tb.z);
+  check(/build the Chopper/.test(me.prompt && me.prompt.text), 'workbench: ' + (me.prompt && me.prompt.text));
+  use();
+  check(q.chopper.built && q.step === 'boss', 'built: on to the showdown');
+  check(me.loadout.slots.some((s) => s.id === 'The Chopper'), 'the builder has the Chopper');
+  check(/refill/.test(me.prompt && me.prompt.text), 'then the bench refills it: ' + (me.prompt && me.prompt.text));
+  // a teammate can take their own
+  const p2 = sim.addPlayer('p2', 'Two');
+  p2.pos.x = tb.x - 1.2; p2.pos.z = tb.z; p2.yaw = Math.PI / 2;
+  sim.setInput('p2', { ...emptyCommand(), usePressed: true, use: true }); step({}, 1);
+  check(p2.loadout.slots.some((s) => s.id === 'The Chopper'), 'a teammate takes one from the bench');
+  // and the box never gives it out on this map
+  const box = sim.interactables.find((i) => i.kind === 'box' || (i.pick && i.canMove));
+  let pulled = false;
+  if (box) for (let i = 0; i < 400; i++) if (box.pick(sim, p2) === 'The Chopper') pulled = true;
+  check(box && !pulled, 'the Mystery Box doesn\'t give the Chopper on this map');
 }
 
 // 6. the Intercom Showdown
@@ -175,17 +224,31 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   }
   check(q.boss.phase === 3 && q.boss.towers.every(Boolean), 'four towers powered: phase 3');
   check(log.filter((e) => e.type === 'ampDrop').length >= 4, 'elites dropped amplifiers');
-  // the wire: a bullet aimed at it reports it
-  const W = SCHOOL.quest.wire;
-  const o = { x: 0, y: 1.6, z: 7 };
-  const d = { x: W.x - o.x, y: W.y - o.y, z: W.z - o.z }; const l = Math.hypot(d.x, d.y, d.z); d.x /= l; d.y /= l; d.z /= l;
-  const hits = sim.hitscan(o, d, 60, 1);
-  check(hits.some((h) => h.targetId === 'wire'), 'bullets can hit the soundboard wire');
-  // fire the real gun at it
-  me.pos.x = 0; me.pos.z = 7; me.vel.x = me.vel.z = 0;
-  me.yaw = Math.atan2(-d.x, -d.z); me.pitch = Math.asin(d.y);
-  for (let i = 0; i < 8 && !q.boss.over; i++) { step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 25); }
-  check(q.boss.over && q.step === 'ending', 'the wire blows: Erik is done (' + q.boss.wireHits + ' hits)');
+  // phase 3: blast the Press Box with the Chopper
+  const { giveWeapon } = await import('../src/sim/weapons.js');
+  giveWeapon(sim, me, 'The Chopper');
+  const P = SCHOOL.quest.pressBox;
+  const aim = (x, z) => {
+    me.pos.x = x; me.pos.z = z; me.vel.x = me.vel.z = 0;
+    const d = { x: P.x - x, y: P.y - 1.6, z: P.z - z }; const l = Math.hypot(d.x, d.y, d.z);
+    me.yaw = Math.atan2(-d.x / l, -d.z / l); me.pitch = Math.asin(d.y / l);
+  };
+  // from the locker room it doesn't count (there's a wall in the way)
+  aim(-21, -6);
+  step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 60);
+  check(q.boss.blasts === 0, 'no blast through the wall');
+  // looking away doesn't count either
+  aim(0, 7); me.yaw += Math.PI;
+  step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 60);
+  check(q.boss.blasts === 0, 'no blast facing away');
+  aim(0, 7);
+  for (let i = 0; i < 12 && !q.boss.over; i++) {
+    const s = me.loadout.slots[me.loadout.current];
+    if (s.clip === 0) { step({ reload: true, reloadPressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 200); }
+    step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 60);
+  }
+  check(log.filter((e) => e.type === 'pressBoxBlast').length === CONFIG.quest.boss.chopperHits, 'each Chopper blast cracks the booth (' + log.filter((e) => e.type === 'pressBoxBlast').length + ')');
+  check(q.boss.over && q.step === 'ending', 'Erik is blasted out: the ending (' + q.boss.blasts + ' blasts)');
   check(log.some((e) => e.type === 'bossEnd'), 'bossEnd event');
 }
 
