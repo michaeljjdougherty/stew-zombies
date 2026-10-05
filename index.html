@@ -469,6 +469,7 @@
   .note { font-size: 13px; color: var(--muted); max-width: 52ch; line-height: 1.5; margin: 0; }
 
   .settings { display: grid; gap: 14px; }
+  #settings .stack { max-width: 580px; }
   .row { display: grid; grid-template-columns: 170px 1fr 56px; align-items: center; gap: 12px; font-size: 14px; }
   .row output { font: 13px var(--mono); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
   .row input[type=range] { width: 100%; accent-color: var(--blood-hi); }
@@ -504,9 +505,13 @@
   .keys dt:has(.glyph) { border: 0; padding: 0; font-size: 15px; }
   #prompt .glyph, #hint .glyph { font-size: 0.95em; margin: 0 2px; }
   #explorehud .glyph, #rhint .glyph { font-size: 12px; }
-  .icons-row .cycle { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 5px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; min-width: 110px; text-align: center; }
-  .row.icons-row { grid-template-columns: 170px max-content 1fr; }
-  .icons-row output { font: 12px var(--body); color: var(--muted); text-align: left; }
+  .cycle-row .cycle { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 5px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; min-width: 110px; text-align: center; }
+  .row.cycle-row { grid-template-columns: 170px max-content 1fr; }
+  .cycle-row output { font: 12px var(--body); color: var(--muted); text-align: left; }
+  .cycle-row .cycle:focus-visible, .cycle-row .cycle:hover { border-color: var(--blood-hi); }
+  .set-head { font: 700 12px var(--body); letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin: 10px 0 -4px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .set-head:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+  @media (max-width: 640px) { .row.cycle-row { grid-template-columns: max-content 1fr; } }
   #padbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; white-space: nowrap; z-index: 40; display: flex; align-items: center; gap: 8px; font: 13px var(--body); color: var(--ink); letter-spacing: .5px; text-transform: uppercase; pointer-events: none; }
   #padbar.on-lineup { bottom: 66px; }
   #padbar span { margin-right: 14px; color: #d8d2c4; }
@@ -735,6 +740,7 @@
   <div class="stack">
     <h2>Settings</h2>
     <div class="settings">
+      <h3 class="set-head">Controls &amp; sound</h3>
       <label class="row"><span>Mouse sensitivity</span><input data-nav-first id="set-sens" type="range" min="0.1" max="3" step="0.05"><output id="set-sens-val"></output></label>
       <label class="row"><span>Aiming sensitivity</span><input id="set-ads" type="range" min="0.2" max="1.5" step="0.05"><output id="set-ads-val"></output></label>
       <label class="row"><span>Controller look speed</span><input id="set-padsens" type="range" min="0.3" max="2.5" step="0.05"><output id="set-padsens-val"></output></label>
@@ -742,19 +748,31 @@
       <label class="row"><span>Master volume</span><input id="set-vol" type="range" min="0" max="1" step="0.01"><output id="set-vol-val"></output></label>
       <label class="row"><span>Music</span><input id="set-music" type="range" min="0" max="1" step="0.01"><output id="set-music-val"></output></label>
       <label class="row"><span>Erik &amp; voices</span><input id="set-voice" type="range" min="0" max="1" step="0.01"><output id="set-voice-val"></output></label>
-      <label class="row"><span>Render scale</span><input id="set-scale" type="range" min="0.5" max="1" step="0.05"><output id="set-scale-val"></output></label>
+      <h3 class="set-head">Graphics</h3>
+      <div class="row cycle-row"><span>Quality preset</span><button id="set-preset" class="cycle" type="button">High</button><output id="set-preset-note"></output></div>
+      <label class="row"><span>Render scale</span><input id="set-scale" type="range" min="0.35" max="1" step="0.05"><output id="set-scale-val"></output></label>
+      <div class="row cycle-row"><span>Frame rate cap</span><button id="set-fpscap" class="cycle" type="button">Off</button><output id="set-fpscap-note"></output></div>
+      <div class="row cycle-row"><span>Sharpness</span><button id="set-sharp" class="cycle" type="button">Sharp</button><output id="set-sharp-note"></output></div>
+      <div class="row cycle-row"><span>Dynamic lights</span><button id="set-lights" class="cycle" type="button">High</button><output id="set-lights-note"></output></div>
+      <div class="row cycle-row"><span>Effects</span><button id="set-effects" class="cycle" type="button">High</button><output id="set-effects-note"></output></div>
+      <div class="row cycle-row"><span>Zombie models</span><button id="set-zmodels" class="cycle" type="button">Detailed</button><output id="set-zmodels-note"></output></div>
+      <div class="row cycle-row"><span>Gun models</span><button id="set-gmodels" class="cycle" type="button">Detailed</button><output id="set-gmodels-note"></output></div>
       <div class="checks">
-        <label><input id="set-invert" type="checkbox"> Invert look Y</label>
-        <label><input id="set-grain" type="checkbox"> Film grain</label>
+        <label><input id="set-autores" type="checkbox"> Auto resolution</label>
         <label><input id="set-bloom" type="checkbox"> Bloom</label>
         <label><input id="set-ao" type="checkbox"> Ambient occlusion</label>
         <label><input id="set-refl" type="checkbox"> Reflections</label>
+        <label><input id="set-grain" type="checkbox"> Film grain</label>
         <label><input id="set-fps" type="checkbox"> Show FPS</label>
+      </div>
+      <h3 class="set-head">Other</h3>
+      <div class="checks">
+        <label><input id="set-invert" type="checkbox"> Invert look Y</label>
         <label><input id="set-subs" type="checkbox"> Subtitles</label>
         <label><input id="set-assist" type="checkbox"> Aim assist (controller)</label>
         <label><input id="set-rumble" type="checkbox"> Vibration</label>
       </div>
-      <div class="row icons-row"><span>Button prompts</span><button id="set-icons" class="cycle" type="button">Auto</button><output>Auto: whatever you used last</output></div>
+      <div class="row cycle-row"><span>Button prompts</span><button id="set-icons" class="cycle" type="button">Auto</button><output>Auto: whatever you used last</output></div>
     </div>
     <nav class="menu"><button id="btn-settings-back" type="button">Back</button></nav>
   </div>

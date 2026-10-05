@@ -2,6 +2,7 @@
 // Menus: title, pause, settings, extras, game over. Plain DOM, wired with callbacks.
 // =============================================================================
 import { CONFIG } from '../config.js';
+import { graphicsPreset, applyGraphicsPreset } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,20 +45,31 @@ export class Menus {
 
   bindSettings() {
     const s = this.settings;
+    const refresh = [];      // re-read every control from s (after a preset)
+    const changed = () => { this.h.settingsChanged(s); showPreset(); };
     const range = (id, key, fmt) => {
       const el = $(id), out = $(id + '-val');
-      el.value = s[key];
-      out.textContent = fmt(s[key]);
+      const show = () => { el.value = s[key]; out.textContent = fmt(s[key]); };
+      show(); refresh.push(show);
       el.addEventListener('input', () => {
         s[key] = parseFloat(el.value);
         out.textContent = fmt(s[key]);
-        this.h.settingsChanged(s);
+        changed();
       });
     };
     const check = (id, key) => {
       const el = $(id);
-      el.checked = !!s[key];
-      el.addEventListener('change', () => { s[key] = el.checked; this.h.settingsChanged(s); });
+      const show = () => { el.checked = !!s[key]; };
+      show(); refresh.push(show);
+      el.addEventListener('change', () => { s[key] = el.checked; changed(); });
+    };
+    // a button that steps through choices: [value, label, note]
+    const cycle = (id, key, opts) => {
+      const btn = $(id), note = $(id + '-note');
+      const find = () => Math.max(0, opts.findIndex(([v]) => v === s[key]));
+      const show = () => { const o = opts[find()]; btn.textContent = o[1]; if (note) note.textContent = o[2] || ''; };
+      show(); refresh.push(show);
+      btn.addEventListener('click', () => { s[key] = opts[(find() + 1) % opts.length][0]; show(); changed(); });
     };
     $('set-fov').min = CONFIG.camera.minFov;
     $('set-fov').max = CONFIG.camera.maxFov;
@@ -74,10 +86,59 @@ export class Menus {
     check('set-bloom', 'bloom');
     check('set-ao', 'ao');
     check('set-refl', 'reflections');
+    check('set-autores', 'autoRes');
     check('set-fps', 'showFps');
     check('set-subs', 'subtitles');
     check('set-assist', 'aimAssist');
     check('set-rumble', 'rumble');
+
+    // --- graphics
+    cycle('set-fpscap', 'fpsCap', CONFIG.graphics.fpsCaps.map((c) => [c, c ? `${c} fps` : 'Off', c ? (c <= 30 ? 'Steadier and cooler on weak machines' : 'Saves power and heat') : 'As fast as your screen allows']));
+    cycle('set-sharp', 'sharpness', [
+      [1, 'Standard', 'Big boost on Retina / 4K screens'],
+      [1.5, 'Sharp', 'Crisper on high-res screens'],
+      [2, 'Max', 'Full Retina detail (heavy)'],
+    ]);
+    cycle('set-lights', 'lights', [
+      ['low', 'Low', '4 real lights near you'],
+      ['medium', 'Medium', '6 real lights near you'],
+      ['high', 'High', '10 real lights near you'],
+      ['ultra', 'Ultra', '12 real lights near you'],
+    ]);
+    cycle('set-effects', 'effects', [
+      ['low', 'Low', 'Fewer particles, snow and marks; bodies clear fast'],
+      ['medium', 'Medium', 'Some particles, snow and marks'],
+      ['high', 'High', 'Everything'],
+    ]);
+    cycle('set-zmodels', 'zombieModels', [
+      ['detailed', 'Detailed', 'Full animated zombies'],
+      ['simple', 'Simple', 'Low-poly zombies (from the next ones that spawn)'],
+    ]);
+    cycle('set-gmodels', 'gunModels', [
+      ['detailed', 'Detailed', 'Full gun models'],
+      ['simple', 'Simple', 'Low-poly guns'],
+    ]);
+    const PRESETS = [
+      ['low', 'Low', 'Older laptops and Chromebooks'],
+      ['medium', 'Medium', 'Most laptops'],
+      ['high', 'High', 'Gaming PCs and newer Macs'],
+      ['ultra', 'Ultra', 'Fast desktops'],
+    ];
+    const presetBtn = $('set-preset'), presetNote = $('set-preset-note');
+    const showPreset = () => {
+      const k = graphicsPreset(s);
+      const o = PRESETS.find(([v]) => v === k);
+      presetBtn.textContent = o ? o[1] : 'Custom';
+      presetNote.textContent = o ? o[2] : 'Your own mix';
+    };
+    showPreset();
+    presetBtn.addEventListener('click', () => {
+      const i = PRESETS.findIndex(([v]) => v === graphicsPreset(s));   // Custom steps to Low
+      applyGraphicsPreset(s, PRESETS[(i + 1) % PRESETS.length][0]);
+      for (const f of refresh) f();
+      changed();
+    });
+
     // button prompts: Auto / Xbox / PlayStation
     const ICONS = [['auto', 'Auto'], ['xbox', 'Xbox'], ['ps', 'PlayStation']];
     const iconBtn = $('set-icons');

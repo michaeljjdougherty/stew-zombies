@@ -449,7 +449,9 @@ export function buildCrust(mv) {
   const flakes = new THREE.Points(sg, new THREE.PointsMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: new THREE.Color(0.95, 0.97, 1.0), size: 0.09, sizeAttenuation: true, transparent: true, opacity: 0.85, depthWrite: false }));
   flakes.frustumCulled = false;
   group.add(flakes);
-  out.snow = { flakes, pos, drift, box, origin: new THREE.Vector3() };
+  out.snow = { flakes, pos, drift, box, origin: new THREE.Vector3(), count: N };
+  // Settings › Effects: fewer flakes on the lower levels
+  out.setDetail = (f) => { out.snow.count = Math.max(200, Math.round(N * f)); sg.setDrawRange(0, out.snow.count); };
 
   out.update = (dt, eye, time) => updateCrust(out, dt, eye, time);
   return out;
@@ -519,7 +521,8 @@ function updateCrust(W, dt, eye, time) {
   const S = W.snow, p = S.pos, b = S.box;
   // first frame: scatter them round wherever the camera is
   if (!S.placed) { for (let i = 0; i < p.length; i += 3) { p[i] += eye.x; p[i + 2] += eye.z; } S.placed = true; }
-  for (let i = 0; i < p.length; i += 3) {
+  const end = S.count * 3;
+  for (let i = 0; i < end; i += 3) {
     const k = i / 3;
     p[i + 1] -= dt * (1.1 + (k % 7) * 0.12);
     p[i] += dt * (0.6 + Math.sin(time * 0.7 + S.drift[k]) * 0.5);

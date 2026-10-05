@@ -37,7 +37,7 @@ export class ZombieViews {
   }
 
   build(z) {
-    if (this.models.ready) return this.buildRigged(z);
+    if (this.models.ready && !this.simple) return this.buildRigged(z);   // (Settings › Zombie models: Simple skips the rigged ones)
     const r = (k) => hash(z.seed + k * 7919);
     const parts = this.kit.assemble(r, { scale: z.scale, outfit: z.defender || z.elite ? 'jersey' : null });
     const glow = new THREE.Sprite(this.glowMat);

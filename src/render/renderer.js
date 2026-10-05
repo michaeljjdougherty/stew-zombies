@@ -25,6 +25,7 @@ import { Ending } from './ending.js';
 import { Intro } from './intro.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
+import { applyQuality, AutoRes } from './quality.js';
 import { TeammateViews } from './teammates.js';
 
 export class GameRenderer {
@@ -114,6 +115,7 @@ export class GameRenderer {
     this.zombies.onFootstep = footstep;
     this.mapData = sim.mapData;
     if (this.post) this.post.setScene(w.scene);
+    if (fresh && this.settings) applyQuality(this, this.settings);
     if (!fresh) this.resetWorld(sim);
     this.sim = sim;
   }
@@ -153,7 +155,10 @@ export class GameRenderer {
 
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
-    const pr = Math.min(window.devicePixelRatio || 1, this.cfg.graphics.maxPixelRatio) * (this.settings.renderScale || 1);
+    const sharp = this.settings.sharpness || this.cfg.graphics.maxPixelRatio;
+    const dyn = this.settings.autoRes && this.autoRes ? this.autoRes.scale : 1;
+    const pr = Math.min(window.devicePixelRatio || 1, sharp) * (this.settings.renderScale || 1) * dyn;
+    this.pixelRatio = pr;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     this.post.setSize(w, h, pr);
@@ -168,7 +173,16 @@ export class GameRenderer {
     this.post.setBloom(s.bloom);
     this.post.setAO(s.ao);
     this.cfg.graphics.reflections = s.reflections !== false;
+    if (!this.autoRes) this.autoRes = new AutoRes(this.cfg);
+    if (!s.autoRes) this.autoRes.reset();
+    applyQuality(this, s);
     this.resize();
+  }
+
+  // Auto resolution: fed each frame's length; resizes when it moves the scale.
+  frameTime(dt, targetFps) {
+    if (!this.settings || !this.settings.autoRes || !this.autoRes) return;
+    if (this.autoRes.sample(dt, targetFps)) this.resize();
   }
 
   // Called before each simulation step, to interpolate between steps.

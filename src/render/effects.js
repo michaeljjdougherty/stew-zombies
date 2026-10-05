@@ -179,8 +179,19 @@ export class Effects {
   }
 
   // ---------------------------------------------------------------------------
+  // Settings › Effects: a share of the dust motes and particles
+  setDetail(f) {
+    this.detail = f;
+    const n = this.dustVel.length / 3;
+    this.dustCount = Math.round(n * f);
+    this.dust.geometry.setDrawRange(0, this.dustCount);
+    this.particleCap = Math.max(120, Math.round(this.maxP * f));
+  }
+
   spawnParticle(pos, vel, { life = 1, size = 0.02, color = [0.25, 0.01, 0.01], gravity = 9.8, drag = 0.5, floorDecal = false, decalSize = 0 } = {}) {
-    if (this.particles.length >= this.maxP) this.particles.shift();
+    // on lower effects, skip a share of the spray (the ones that leave a mark stay)
+    if (this.detail < 1 && !floorDecal && Math.random() > this.detail) return;
+    if (this.particles.length >= (this.particleCap || this.maxP)) this.particles.shift();
     this.particles.push({ p: pos.clone(), v: vel.clone(), life, max: life, size, color, gravity, drag, floorDecal, decalSize });
   }
 
@@ -745,7 +756,8 @@ export class Effects {
     const pa = this.dust.geometry.attributes.position;
     const arr = pa.array, vel = this.dustVel;
     const rooms = this.sim.mapData.rooms;
-    for (let i = 0; i < arr.length; i += 3) {
+    const dustEnd = (this.dustCount ?? arr.length / 3) * 3;
+    for (let i = 0; i < dustEnd; i += 3) {
       const room = rooms[this.dustRoom[i / 3]];
       const [bx0, bz0, bx1, bz1] = room.rect, H = room.height;
       vel[i] += (Math.random() - 0.5) * 0.02 * dt * 60;

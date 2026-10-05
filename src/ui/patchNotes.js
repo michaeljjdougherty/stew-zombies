@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05f',
+  version: '2026-10-05g',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -22,6 +22,7 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Just added', items: [
+      'More graphics settings for slower computers: a quality preset (Low, Medium, High, Ultra), auto resolution that drops the resolution when the frame rate dips, a frame rate cap, sharpness for high-res screens, how many real lights there are, an effects level (particles, snow, blood marks, how long bodies stay), and simple zombie and gun models. Render scale now goes down to 35%.',
       'Walkthrough or Hardcore: pick on the map screen. Walkthrough shows each step of the Easter egg like before. Hardcore is classic zombies: no objective, no hints, figure it out.',
       'Explore has a menu now (B, or View on a controller): spawn in any gun (plain or Mad Dog\'d), start any round, switch the zombies on or off, and jump to any part of the Easter egg.',
       'The Final Whistle has a new step: after you take back all four talents, build the Chopper (four parts around the school, a workbench in the boiler room), then put it through the Mad Dog Machine. Only the upgraded Chopper can knock Erik out of the Press Box at the end of the Intercom Showdown.',

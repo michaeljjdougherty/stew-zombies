@@ -88,6 +88,17 @@ export class Viewmodel {
     this.scoped = false;
   }
 
+  // Settings › Gun models changed: throw the built guns away; the one in hand
+  // is rebuilt with the new detail on the next frame.
+  resetModels() {
+    for (const pair of this.models.values()) {
+      for (const m of [pair.R, pair.L]) if (m) this.root.remove(m.group);
+    }
+    this.models.clear();
+    this.current = null;
+    this.currentId = null;
+  }
+
   // Show the model(s) for a weapon id (built on first use).
   setWeapon(id) {
     if (id === this.currentId) return;

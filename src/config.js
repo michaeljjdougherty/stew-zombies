@@ -1073,7 +1073,7 @@ export const CONFIG = {
     corpseSinkTime: 2.5,
     ambientLight: 0.32,      // pre-power base light
     viewmodelFov: 54,
-    maxPointLights: 10,      // nearest lights are streamed into this many real lights
+    maxPointLights: 12,      // the light pool's size; Settings › Dynamic lights uses up to this many
     maxSpotLights: 4,
     bakeBudgetMs: 6,         // time per frame spent baking the lighting after a map loads
     reflections: true,       // puddles and blood pools mirror the room (a small cube map round the camera)
@@ -1081,6 +1081,29 @@ export const CONFIG = {
     reflectionInterval: 0.2, // seconds between refreshes (one face is drawn per frame)
     maxBloodPools: 16,
     lightRange: 32,
+
+    // ---- Settings › Graphics: what each choice means (src/render/quality.js)
+    // Each preset sets every graphics option at once; touching one by hand
+    // shows "Custom".
+    presets: {
+      low:    { renderScale: 0.6, autoRes: true,  sharpness: 1,   ao: false, bloom: false, reflections: false, grain: false, lights: 'low',    effects: 'low',    zombieModels: 'simple',   gunModels: 'simple' },
+      medium: { renderScale: 0.8, autoRes: true,  sharpness: 1,   ao: false, bloom: true,  reflections: false, grain: true,  lights: 'medium', effects: 'medium', zombieModels: 'detailed', gunModels: 'detailed' },
+      high:   { renderScale: 1.0, autoRes: false, sharpness: 1.5, ao: true,  bloom: true,  reflections: true,  grain: true,  lights: 'high',   effects: 'high',   zombieModels: 'detailed', gunModels: 'detailed' },
+      ultra:  { renderScale: 1.0, autoRes: false, sharpness: 2,   ao: true,  bloom: true,  reflections: true,  grain: true,  lights: 'ultra',  effects: 'high',   zombieModels: 'detailed', gunModels: 'detailed' },
+    },
+    // Dynamic lights: how many real point / spot lights the nearest fixtures get
+    lightLevels: { low: [4, 1], medium: [6, 2], high: [10, 4], ultra: [12, 4] },
+    // Effects: share of particles, dust and snowflakes; share of blood/bullet
+    // marks kept; how long bodies lie before sinking (s)
+    effectLevels: {
+      low:    { fx: 0.35, marks: 0.35, corpseTime: 4 },
+      medium: { fx: 0.65, marks: 0.6,  corpseTime: 6 },
+      high:   { fx: 1,    marks: 1,    corpseTime: 9 },
+    },
+    // Auto resolution: lowers the render scale while the frame rate is under
+    // target and brings it back when there's room
+    autoRes: { min: 0.5, low: 0.88, high: 0.97, every: 1.2, step: 0.08 },
+    fpsCaps: [0, 144, 120, 60, 30],   // Settings › Frame rate cap (0 = off)
   },
 
   // ---------------------------------------------------------------------------

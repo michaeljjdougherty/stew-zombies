@@ -770,12 +770,21 @@ function padFrame(fdt) {
   }
 }
 
+let capAt = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  // Settings › Frame rate cap: skip display refreshes until the next frame is due
+  const cap = settings.fpsCap | 0;
+  if (cap > 0) {
+    const iv = 1000 / cap;
+    if (now - capAt < iv - 2) return;
+    capAt = now - capAt > iv * 2 ? now : capAt + iv;
+  }
   const fdt = Math.min(0.1, Math.max(0, (now - last) / 1000)); // rAF time can start before the clock we read at load
   last = now;
   time += fdt;
   padFrame(fdt);
+  if (mode === 'play') renderer.frameTime(fdt, cap > 0 ? Math.min(cap, 60) : 60);   // auto resolution
 
   // (online the game goes on while you're in the pause menu)
   const onlineLive = !!(online && online.inGame && (mode === 'paused' || mode === 'over'));

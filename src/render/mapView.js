@@ -1344,6 +1344,16 @@ export class MapView {
       this.group.add(s); this.group.add(s.target);
       this.spotPool.push(s);
     }
+    this.setLightBudget(g.activePointLights ?? g.maxPointLights, g.activeSpotLights ?? g.maxSpotLights);
+  }
+
+  // Settings › Dynamic lights: only the first n of each pool are real lights.
+  // (Hiding a light changes the shaders, so this only runs on a settings change.)
+  setLightBudget(np, ns) {
+    this.pool.forEach((l, i) => { l.visible = i < np; });
+    this.spotPool.forEach((l, i) => { l.visible = i < ns; });
+    this.livePoints = Math.min(np, this.pool.length);
+    this.liveSpots = Math.min(ns, this.spotPool.length);
   }
 
   // Assign the most relevant virtual lights to the real pool.
@@ -1358,7 +1368,7 @@ export class MapView {
       scored.push({ v, lvl, d, s: v.intensity * lvl / (1 + d * d * 0.05) });
     }
     scored.sort((a, b) => b.s - a.s);
-    for (let i = 0; i < this.pool.length; i++) {
+    for (let i = 0; i < (this.livePoints ?? this.pool.length); i++) {
       const l = this.pool[i];
       const e = scored[i];
       if (!e) { l.intensity = 0; continue; }
@@ -1373,7 +1383,7 @@ export class MapView {
     }
     if (this.blackout) { for (const sp of this.spotPool) sp.intensity = 0; return; }
     const spots = this.vspots.map((s) => ({ s, d: s.target.distanceTo(eye) })).sort((a, b) => a.d - b.d);
-    for (let i = 0; i < this.spotPool.length; i++) {
+    for (let i = 0; i < (this.liveSpots ?? this.spotPool.length); i++) {
       const sp = this.spotPool[i], e = spots[i];
       if (!e || e.d > range) { sp.intensity = 0; continue; }
       sp.position.copy(e.s.pos);

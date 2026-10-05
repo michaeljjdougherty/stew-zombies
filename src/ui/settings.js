@@ -25,6 +25,14 @@ export const DEFAULT_SETTINGS = {
   ao: CONFIG.graphics.ao,
   reflections: CONFIG.graphics.reflections,
   showFps: false,
+  // more graphics (see CONFIG.graphics.presets)
+  autoRes: false,           // drop the resolution when the frame rate dips
+  fpsCap: 0,                // 0 = no cap
+  sharpness: CONFIG.graphics.maxPixelRatio,   // pixel ratio cap on high-DPI screens
+  lights: 'high',           // dynamic lights: low / medium / high / ultra
+  effects: 'high',          // particles, dust, snow, marks, bodies: low / medium / high
+  zombieModels: 'detailed', // 'simple' = the low-poly zombies, no skinning
+  gunModels: 'detailed',    // 'simple' = the built-in low-poly guns
   questHints: 'walkthrough',   // the Easter egg: 'walkthrough' shows each step, 'hardcore' doesn't
 };
 
@@ -36,4 +44,17 @@ export function loadSettings() {
 
 export function saveSettings(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* storage unavailable */ }
+}
+
+// Which preset the graphics options match right now ('custom' if none).
+export function graphicsPreset(s) {
+  for (const [k, p] of Object.entries(CONFIG.graphics.presets)) {
+    if (Object.entries(p).every(([key, v]) => (typeof v === 'number' ? Math.abs(s[key] - v) < 0.001 : s[key] === v))) return k;
+  }
+  return 'custom';
+}
+
+export function applyGraphicsPreset(s, name) {
+  const p = CONFIG.graphics.presets[name];
+  if (p) Object.assign(s, p);
 }
