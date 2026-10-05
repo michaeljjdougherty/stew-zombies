@@ -8,6 +8,7 @@
 import { RNG } from '../core/rng.js';
 import { PA_LINES, INTERCOM, INTERCOM_REPEAT, lineDuration } from '../lore/erik.js';
 import { CREW, ERIK_ROASTS, ROAST_CHANCE } from '../lore/crew.js';
+import { recordedDuration } from '../lore/voice.js';
 import { crewOnEvent } from './crew.js';
 
 // Higher = more important. Important lines queue; optional ones are dropped
@@ -89,7 +90,7 @@ export function intercomTalk(sim, p) {
   // Erik talks over whatever he was going to say next
   pa.queue = pa.queue.filter((q) => q.pri >= 4);
   paSay(sim, 'intercom', { text: reply, delay: dur + 0.5, force: true });
-  pa.intercomBusyUntil = sim.time + dur + 0.5 + lineDuration(reply) + sim.cfg.pa.intercomCooldown;
+  pa.intercomBusyUntil = sim.time + dur + 0.5 + erikDuration(reply) + sim.cfg.pa.intercomCooldown;
 }
 
 export function intercomReady(sim) {
@@ -141,6 +142,9 @@ function onEvent(sim, e) {
   if (sim.crew) crewOnEvent(sim, e);
 }
 
+// How long Erik takes to say it: the recording's length when there is one.
+const erikDuration = (text) => recordedDuration('erik', text) ?? lineDuration(text);
+
 // Lines over the PA start with the school chime; live intercom replies and
 // his reaction to the song don't.
 export const CHIME_TIME = 1.0;
@@ -149,13 +153,13 @@ function speak(sim, cat, text, who = 'erik', radio = false) {
   if (who !== 'erik') {
     // one of the crew, live or over a walkie
     const v = CREW[who] ? CREW[who].voice : { rate: 1 };
-    const dur = lineDuration(text) / (v.rate || 1);
+    const dur = recordedDuration(who, text) ?? lineDuration(text) / (v.rate || 1);
     pa.speaking = { cat, text, until: sim.time + dur + (radio ? 0.25 : 0), who };
     pa.lines++;
     sim.emit('crewSays', { who, text, dur, radio, cat, n: pa.lines });
     return;
   }
-  const dur = lineDuration(text);
+  const dur = erikDuration(text);
   const lead = cat === 'intercom' || cat === 'song' || cat === 'songEnd' || cat === 'talkErik' ? 0 : CHIME_TIME;
   pa.speaking = { cat, text, until: sim.time + lead + dur };
   pa.lines++;

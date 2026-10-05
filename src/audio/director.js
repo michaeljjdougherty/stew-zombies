@@ -8,6 +8,7 @@ import { powerupActive } from '../sim/powerups.js';
 import { GUN_VOICES, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
 import { CREW } from '../lore/crew.js';
+import { voiceKey } from '../lore/voice.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -89,6 +90,12 @@ export class SoundDirector {
   voiceLine(who, text, dur) {
     const A = this.A;
     if (!A.ready) return;
+    const key = voiceKey(who === 'erikPA' ? 'erik' : who, text);
+    if (key && A.hasSample(key)) {
+      if (who === 'erikPA') A.play(S.paVoice, { key, chime: false, arena: true }, { bus: 'voice', reverb: 0.75, gain: 1 });
+      else A.play(S.liveVoice, { key }, { bus: 'voice', reverb: who === 'schnitz' ? 1 : 0.25, gain: 1 });
+      return;
+    }
     if (who === 'schnitz') A.play(S.schnitzVoice, { text, dur }, { gain: 1.4, reverb: 1, bus: 'voice' });
     else if (who === 'erikPA') A.play(S.erikPA, { text, dur, chime: false }, { bus: 'voice', reverb: 0.7, gain: 1 });
     else if (who === 'erik') A.play(S.crewVoice, { text, dur, f0: 142, grit: 0.4 }, { bus: 'voice', reverb: 0.25, gain: 0.95 });
@@ -455,15 +462,20 @@ export class SoundDirector {
       case 'roundEnd': A.play(S.roundEndSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       case 'roundStart': A.play(S.roundStartSting, {}, { bus: 'music', reverb: 0.5, gain: 0.9 }); break;
       // --- Erik, the intercom, the Easter egg
-      case 'erikSays':
-        A.play(S.erikPA, { text: e.text, dur: e.dur, chime: e.lead > 0, angry: e.cat === 'song' || e.cat === 'pressureCooker' }, { bus: 'voice', reverb: 0.5, gain: 0.95 });
+      case 'erikSays': {
+        const key = voiceKey('erik', e.text);
+        if (key && A.hasSample(key)) A.play(S.paVoice, { key, chime: e.lead > 0 }, { bus: 'voice', reverb: 0.5, gain: 1 });
+        else A.play(S.erikPA, { text: e.text, dur: e.dur, chime: e.lead > 0, angry: e.cat === 'song' || e.cat === 'pressureCooker' }, { bus: 'voice', reverb: 0.5, gain: 0.95 });
         this.talkUntil = A.now() + e.lead + e.dur;
         break;
+      }
       case 'stewSays': A.play(S.stewTalk, { text: e.text, dur: e.dur }, { bus: 'voice', reverb: 0.15, gain: 0.9 }); this.talkUntil = A.now() + e.dur; break;
       case 'crewSays': {
         const v = (CREW[e.who] && CREW[e.who].voice) || {};
         const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;
-        A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: radio ? 0.8 : 0.9 });
+        const key = voiceKey(e.who, e.text);
+        if (key && A.hasSample(key)) A.play(S.liveVoice, { key, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: 1 });
+        else A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: radio ? 0.8 : 0.9 });
         this.talkUntil = A.now() + e.dur;
         break;
       }

@@ -21,6 +21,7 @@ import * as T from './textures.js';
 import { buildCharacter, idleCharacter } from './characters.js';
 import { PRESS_BOX } from './storyProps.js';
 import { makeZombie } from '../sim/zombies.js';
+import { recordedDuration } from '../lore/voice.js';
 
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -43,9 +44,9 @@ export const INTRO_LINES = [
   { at: 18.6, who: 'erik', text: 'You\'ll regret this. Every one of you.', dur: 2.4 },
   { at: 25.6, who: 'erik', text: 'Undefeated. Because of ME. And they cut me.', dur: 2.8 },
   { at: 29.4, who: 'schnitz', text: 'You want them to lose.', dur: 2.4 },
-  { at: 32.0, who: 'erik', text: 'I want them to lose everything. Their speed. Their jump. All of it.', dur: 3.2 },
-  { at: 35.6, who: 'schnitz', text: 'Talent has a price, Number Eight.', dur: 2.6 },
-  { at: 38.0, who: 'erik', text: 'Take it.', dur: 1.2 },
+  { at: 31.9, who: 'erik', text: 'I want them to lose everything. Their speed. Their jump. All of it.', dur: 3.2 },
+  { at: 35.9, who: 'schnitz', text: 'Talent has a price, Number Eight.', dur: 2.6 },
+  { at: 38.6, who: 'erik', text: 'Take it.', dur: 1.2 },
   { at: 49.2, who: 'erikPA', text: 'Ladies and gentlemen... your undefeated... Stew Leonards!', dur: 3.6 },
   { at: 53.6, who: 'erikPA', text: '...Not anymore.', dur: 1.8 },
   { at: 60.6, who: 'erikPA', text: 'Let\'s see you win without your talent.', dur: 2.8 },
@@ -326,7 +327,9 @@ export class Intro {
     // lines
     while (this.lineIx < INTRO_LINES.length && t >= INTRO_LINES[this.lineIx].at) {
       const L = INTRO_LINES[this.lineIx++];
-      if (this.onLine) this.onLine(L.who, L.text, L.dur);
+      // subtitles stay up at least as long as the recording, when there is one
+      const rec = recordedDuration(L.who === 'erikPA' ? 'erik' : L.who, L.text);
+      if (this.onLine) this.onLine(L.who, L.text, Math.max(L.dur, rec ? rec + 0.3 : 0));
     }
     // keep the quest's own props quiet while we use the court
     if (this.R.quest && this.R.quest.balls) for (const b of this.R.quest.balls) if (b.g) b.g.visible = false;

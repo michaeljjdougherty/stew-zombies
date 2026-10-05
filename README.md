@@ -153,9 +153,14 @@ Phase 8 (built): Erik's on the PA.
   Erik's last word on the game-over screen, voice volume and subtitle settings.
 - **Polish:** posters, banners and graffiti painted in code all over the
   school, a red damage-direction indicator, and a hit tick sound.
-- **Voices are placeholders:** synthesized babble timed to each line. To swap in
-  real recordings later, play them from the `erikSays` / `stewSays` events in
-  `src/audio/director.js`.
+- **Voices:** Erik is fully recorded (`assets/voice/erik/`). Everyone else is
+  still synthesized babble timed to each line. To add a character's recordings,
+  run `python3 tools/voice/import.py <their zip or folder>`: it trims and
+  levels the mp3s (named as in `tools/voice/script.csv`, the line list sent
+  out for TTS), copies them into `assets/voice/<speaker>/` and regenerates
+  `src/lore/voiceLines.js`. Recorded lines play automatically (PA, walkie or
+  in person) and the game times subtitles and turn-taking to their length;
+  anything unrecorded falls back to the synth.
 
 Phase 7 (built):
 

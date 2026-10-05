@@ -1397,11 +1397,11 @@ export function paChime(A, out, t) {
 }
 
 // The PA chain: tinny band-limited speaker with hum and crackle.
-function paChain(A, out, t, dur, { hum = 0.02, crackle = 0.025 } = {}) {
-  const hp = A.filter('highpass', 420, 0.8);
-  const lp = A.filter('lowpass', 3300, 1.2);
-  const pk = A.filter('peaking', 1700, 1.2); pk.gain.value = 7;
-  const drive = A.shaper(0.25);
+function paChain(A, out, t, dur, { hum = 0.02, crackle = 0.025, low = 420, high = 3300, honk = 7, grit = 0.25 } = {}) {
+  const hp = A.filter('highpass', low, 0.8);
+  const lp = A.filter('lowpass', high, 1.2);
+  const pk = A.filter('peaking', 1700, 1.2); pk.gain.value = honk;
+  const drive = A.shaper(grit);
   const g = A.gain(0.85);
   hp.connect(pk); pk.connect(drive); drive.connect(lp); lp.connect(g); g.connect(out);
   // mains hum
@@ -1490,6 +1490,57 @@ export function erikPA(A, out, t, p = {}) {
   const tg = A.gain(0); A.env(tg, t0 - 0.08, 0.005, 0.1, 0.35); th.connect(tg); tg.connect(chain);
   babble(A, chain, t0, { text: p.text || '', dur, f0: 142, grit: 0.4, peak: 0.6, whine: p.angry ? 1.15 : 1 });
   return (t0 - t) + dur + 0.6;
+}
+
+// A recorded line over the school PA: the chime, the mic thump, then the
+// recording through the speaker chain (a bit cleaner than the synth so every
+// word comes through). p: { key, chime, gain, arena }
+export function paVoice(A, out, t, p = {}) {
+  const buf = A.pickSample(p.key);
+  if (!buf) return 0;
+  const chime = p.chime !== false;
+  const t0 = chime ? t + 1.0 : t;
+  if (chime) paChime(A, out, t);
+  const dur = buf.duration;
+  const chain = paChain(A, out, t0, dur, p.arena
+    ? { low: 260, high: 5200, honk: 4, grit: 0.12, hum: 0.012, crackle: 0.012 }   // the gym's big speakers
+    : { low: 330, high: 4300, honk: 5, grit: 0.16 });
+  const th = A.osc('sine', 90, t0 - 0.08, 0.12); th.frequency.exponentialRampToValueAtTime(40, t0 + 0.04);
+  const tg = A.gain(0); A.env(tg, t0 - 0.08, 0.005, 0.1, 0.35); th.connect(tg); tg.connect(chain);
+  const src = A.ctx.createBufferSource();
+  src.buffer = buf;
+  const g = A.gain(p.gain ?? 0.8);
+  src.connect(g); g.connect(chain);
+  src.start(t0);
+  return (t0 - t) + dur + 0.6;
+}
+
+// A recorded line said in person, or over a walkie-talkie (p.radio).
+export function liveVoice(A, out, t, p = {}) {
+  const buf = A.pickSample(p.key);
+  if (!buf) return 0;
+  const src = A.ctx.createBufferSource();
+  src.buffer = buf;
+  const dur = buf.duration;
+  if (!p.radio) {
+    const g = A.gain(p.gain ?? 0.9);
+    src.connect(g); g.connect(out);
+    src.start(t);
+    return dur + 0.2;
+  }
+  const t0 = t + 0.12;
+  const c1 = A.osc('square', 1650, t, 0.07); const cg = A.gain(0); A.env(cg, t, 0.002, 0.06, 0.12); c1.connect(cg); cg.connect(out);
+  const hp = A.filter('highpass', 400, 0.7), lp = A.filter('lowpass', 3200, 0.9);
+  const drive = A.shaper(0.35), g = A.gain(p.gain ?? 0.85);
+  src.connect(hp); hp.connect(lp); lp.connect(drive); drive.connect(g); g.connect(out);
+  src.start(t0);
+  const n = A.noiseSource('white', t, dur + 0.3);
+  const nf = A.filter('bandpass', 2200, 0.6), ng = A.gain(0);
+  A.env(ng, t, 0.02, 0.2, 0.03, 0, dur);
+  n.connect(nf); nf.connect(ng); ng.connect(out);
+  const te = t0 + dur + 0.05;
+  const c2 = A.osc('square', 1250, te, 0.08); const cg2 = A.gain(0); A.env(cg2, te, 0.002, 0.07, 0.1); c2.connect(cg2); cg2.connect(out);
+  return dur + 0.4;
 }
 
 // [VOICE PLACEHOLDER: one of Stew talking into the principal's microphone]
