@@ -610,10 +610,10 @@ export class QuestView {
       ch.onBench.visible = !!(have && !CH.built);
     }
     if (this.builtChopper) {
-      const built = !!(CH && CH.built);
+      const built = !!(CH && CH.built && !CH.holder);   // sitting on the bench, waiting
       this.builtChopper.visible = built;
       if (built) this.builtChopper.rotation.y = Math.sin(t * 0.7) * 0.3;
-      this.benchHalo.material.opacity = built ? 0.3 + Math.sin(t * 2.2) * 0.08 : (q.step === 'chopper' && CH.parts.length >= q.need.parts ? 0.35 + Math.sin(t * 4) * 0.12 : 0);
+      this.benchHalo.material.opacity = built ? 0.3 + Math.sin(t * 2.2) * 0.08 : (q.step === 'chopper' && !CH.built && CH.parts.length >= q.need.parts ? 0.35 + Math.sin(t * 4) * 0.12 : 0);
     }
     // the booth's glass cracks a little more with every blast, and the booth shudders
     const blasts = B ? B.blasts || 0 : 0;

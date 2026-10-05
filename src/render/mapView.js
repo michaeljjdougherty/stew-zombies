@@ -67,11 +67,31 @@ export class MapView {
     this.buildExterior();
     // the story's set dressing (school only): Press Box, cows, signage, blood
     if (this.map.id === 'lastbell') this.story = buildStoryProps(this);
+    this.tameGloss();
     const occ = this.collectOccluders();
     this.buildLights();
     // the bake starts on the first update, once the machines and the box have
     // added their lights too
     this.occ = occ;
+  }
+
+  // Nothing in the school is polished: glossy surfaces under the real-time
+  // lights threw blinding hotspots (steel counters, table tops, the fiberglass
+  // cows) that the bloom then smeared across the screen. Rough every opaque
+  // surface up to a satin finish and keep metals from mirroring the lamps.
+  tameGloss() {
+    const g = this.cfg.graphics;
+    const minRough = g.minRoughness ?? 0.6, maxMetal = g.maxMetalness ?? 0.45;
+    const seen = new Set();
+    this.group.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (!m || seen.has(m) || !m.isMeshStandardMaterial || m.transparent) continue;
+        seen.add(m);
+        if (m.roughness < minRough) m.roughness = minRough + (m.roughness / minRough) * 0.1;
+        if (m.metalness > maxMetal) m.metalness = maxMetal;
+      }
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1341,7 +1361,9 @@ export class MapView {
       l.color.copy(e.v.color);
       l.distance = e.v.distance;
       l.decay = e.v.decay;
-      l.intensity = e.v.intensity * e.lvl * fade;
+      // (these only light things without baked light: props, people, zombies.
+      // Unshadowed at full strength they came out brighter than the room.)
+      l.intensity = e.v.intensity * e.lvl * fade * (this.cfg.graphics.liveLightScale ?? 1);
     }
     if (this.blackout) { for (const sp of this.spotPool) sp.intensity = 0; return; }
     const spots = this.vspots.map((s) => ({ s, d: s.target.distanceTo(eye) })).sort((a, b) => a.d - b.d);

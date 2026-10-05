@@ -119,7 +119,16 @@ export class HUD {
         this.toast(`Chopper part ${e.count} of ${e.total}`, e.name, '#ff7050', 2.8);
         break;
       case 'chopperBuilt':
-        this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours' : 'built on the workbench · go take one', '#ff7050', 3.5);
+        this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours · now feed it to the Mad Dog' : 'built · a teammate has it', '#ff7050', 3.5);
+        break;
+      case 'chopperReturned':
+        this.toast('The Chopper is back on the workbench', 'in the Boiler Room', '#ff7050', 3);
+        break;
+      case 'chopperUpgraded':
+        this.toast('The Meat Grinder', 'strong enough to bring Erik down', '#ff3b1f', 3.5);
+        break;
+      case 'pressBoxShrug':
+        if (e.playerId === this.localId) this.toast('It barely rattles the glass', 'upgrade the Chopper in the Mad Dog Machine', '#c04040', 2.6);
         break;
       case 'pressBoxBlast':
         if (e.hits < e.of) this.toast('The glass is cracking', `${e.hits} of ${e.of}`, '#ff7050', 2.2);
@@ -144,7 +153,7 @@ export class HUD {
         break;
       case 'bossPhase':
         if (e.phase === 2) this.toast('Overcharge the system', 'take the amplifiers off his elites', '#7fe08a', 3.5);
-        else this.toast('The speakers are howling', 'blast the Press Box with the Chopper!', '#ff7050', 3.5);
+        else this.toast('The speakers are howling', 'blast the Press Box with the upgraded Chopper!', '#ff7050', 3.5);
         break;
       case 'ampTaken':
         if (e.playerId === this.localId) this.toast('Sound Amplifier', 'plug it into a speaker tower', '#7fe08a', 2.4);

@@ -124,13 +124,14 @@ Phase 8 (built): Erik's on the PA.
   5. *Building the Chopper:* its motor (kitchen counter), saw blade
      (auditorium stage), housing (art room table) and grip (loading dock
      dumpster) appear once the circles are done; put it together on the
-     workbench in the boiler room. Anyone can take one there afterwards, and
-     on this map it no longer comes out of the Mystery Box.
+     workbench in the boiler room. There's only the one: the builder carries
+     it (the bench refills it) and it goes back on the bench if they lose it.
+     Then upgrade it in the Mad Dog Machine. (The box still gives Choppers.)
   6. *The Intercom Showdown:* call Erik out at the altar. Waves of Zombie
      Defenders in Stew Leonards jerseys while he paints red playbook diagrams
      on the floor; then elites drop Sound Amplifiers for the four speaker
-     towers; then blast the Press Box with the Chopper (3 hits) to knock him
-     out of it.
+     towers; then blast the Press Box with the upgraded Chopper (3 hits) to
+     knock him out of it. The plain Chopper only rattles the glass.
   7. *Out of Bounds:* the ending cutscene (skippable): the glass shatters, Erik
      falls, The Schnitz speaks, Erik vanishes, and past the gym doors the
      campus is anchored to an asteroid in deep space. Brian Luke steps out of

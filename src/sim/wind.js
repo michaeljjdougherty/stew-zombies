@@ -41,6 +41,6 @@ export function windBlast(sim, p, origin, dir, def, weapon) {
     damageZombie(sim, z, 1e6, { playerId: p.id, part: 'torso', kind: 'wind', dir: { x: fx, y: 0.5, z: fz }, point: c, force: 1, weapon, fling });
   }
   // the quest's finale: blasting Erik out of the Press Box
-  questWind(sim, p, origin, dir, W);
+  questWind(sim, p, origin, dir, W, weapon);
   return hits.length;
 }

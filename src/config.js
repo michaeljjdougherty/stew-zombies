@@ -713,7 +713,6 @@ export const CONFIG = {
     // and throws every zombie in a wide cone in front of you.
     'The Chopper': gun('launcher', {
       name: 'The Chopper', boxOnly: true, wonder: true,
-      buildable: true,   // on maps with the quest it's built at the boiler room workbench, not pulled from the box
       fireMode: 'semi', rpm: 75, damage: 0, magSize: 2, reserve: 12,
       reloadStyle: 'mag', reloadTime: 2.6, reloadEmptyTime: 2.8, drawTime: 0.7,
       wind: { range: 13, angle: 30, near: 1.8, maxKills: 30 },
@@ -1045,9 +1044,12 @@ export const CONFIG = {
     exposureLit: 0.9,
     beamOpacity: 0.016,      // the haze under each ceiling light
     tubeGlow: 1.7,           // how hot the light panels themselves look
-    bloomStrength: 0.75,     // soft halos round every light
-    bloomRadius: 0.7,
-    bloomThreshold: 0.95,    // only lights and glowing things bloom, not white paint under a lamp
+    bloomStrength: 0.5,      // soft halos round every light
+    bloomRadius: 0.6,
+    bloomThreshold: 1.1,     // only lights and glowing things bloom, not a lit surface
+    minRoughness: 0.6,       // no mirror-shiny surfaces in the school (mapView.tameGloss)
+    maxMetalness: 0.45,
+    liveLightScale: 0.85,    // real-time lights on unbaked things (props, people), to sit with the baked rooms
     grain: 0.06,
     vignette: 0.9,
     desaturate: 0.3,

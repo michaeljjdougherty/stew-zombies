@@ -67,7 +67,7 @@ export function createQuest(sim) {
   // the Chopper's workbench in the boiler room
   const tb = Q.chopperTable;
   if (tb) sim.world.solids.push(solid(tb.x - tb.w / 2, 0, tb.z - tb.d / 2, tb.x + tb.w / 2, tb.h, tb.z + tb.d / 2, 'workbench'));
-  st.chopper = { parts: [], built: false };
+  st.chopper = { parts: [], built: false, holder: null, upgraded: false };
   st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls, parts: (Q.chopperParts || []).length };
   // 4. the half-court ritual: four drained basketballs
   st.ritual = {
@@ -335,8 +335,11 @@ function updateRitual(sim, dt) {
 
 // ---------------------------------------------------------------------------
 // 5. Building the Chopper: four parts around the school, put together on the
-//    workbench in the boiler room. Once it's built, anyone can take one there
-//    (or top up its ammo).
+//    workbench in the boiler room. There's only the one: whoever builds it
+//    carries it (the bench tops up its ammo), and if they lose it, it goes
+//    back on the bench for someone to take. Then it has to go through the Mad
+//    Dog Machine before it can bring Erik down. (The Mystery Box can still
+//    give out Choppers of its own.)
 // ---------------------------------------------------------------------------
 export class ChopperPartInteractable {
   constructor(c) {
@@ -358,8 +361,9 @@ export class ChopperPartInteractable {
   }
 }
 
-// the slot holding the Chopper (plain or Mad Dog'd), or -1
-const chopperSlot = (p) => p.loadout.slots.findIndex((s) => baseWeaponId(s.id) === CHOPPER && !s.away);
+// the slot holding the Chopper (plain or Mad Dog'd), or -1. `away` counts:
+// a Chopper sitting in the Mad Dog Machine is still yours.
+const chopperSlot = (p, away = false) => p.loadout.slots.findIndex((s) => baseWeaponId(s.id) === CHOPPER && (away || !s.away));
 
 export class ChopperTableInteractable {
   constructor(t) {
@@ -371,29 +375,46 @@ export class ChopperTableInteractable {
   }
   get range() { return 1.9; }
   distanceTo(sim, p) { return flatDist(p.pos, this.pos); }
-  canUse(sim, p) { return up(p) && reached(sim.quest, 'chopper'); }
+  canUse(sim, p) {
+    const q = sim.quest, C = q.chopper;
+    if (!up(p) || !reached(q, 'chopper')) return false;
+    // once it's built: the bench gives it out while nobody has it, and tops up whoever does
+    return !C.built || !C.holder || C.holder === p.id;
+  }
   prompt(sim, p) {
-    const q = sim.quest, n = q.chopper.parts.length, t = q.need.parts;
-    if (!q.chopper.built) {
+    const q = sim.quest, C = q.chopper, n = C.parts.length, t = q.need.parts;
+    if (!C.built) {
       if (n < t) return { text: 'A workbench', cost: null, sub: n ? `${n} of ${t} Chopper parts found` : `find the ${t} parts of the Chopper around the school` };
       return { text: 'Press [F] to build the Chopper', cost: null };
     }
-    if (p && chopperSlot(p) >= 0) return { text: 'Press [F] to refill the Chopper', cost: null };
-    return { text: 'Press [F] to take the Chopper', cost: null };
+    if (C.holder) return { text: 'Press [F] to refill the Chopper', cost: null };
+    return { text: 'Press [F] to take the Chopper', cost: null, sub: 'there\'s only the one' };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
-    const q = sim.quest;
-    if (!q.chopper.built) {
-      if (q.chopper.parts.length < q.need.parts) { sim.emit('useDenied', { playerId: p.id }); return; }
-      q.chopper.built = true;
+    const q = sim.quest, C = q.chopper;
+    if (!C.built) {
+      if (C.parts.length < q.need.parts) { sim.emit('useDenied', { playerId: p.id }); return; }
+      C.built = true;
       sim.emit('chopperBuilt', { playerId: p.id, pos: { x: this.t.x, y: this.t.h, z: this.t.z } });
-      advance(sim, 'boss');
-    }
-    // the builder walks away with it; everyone else can come and take one
+      if (!sim.madDog || !sim.cfg.weapons[CHOPPER + '+']) advance(sim, 'boss');   // (no machine to put it through)
+    } else if (C.holder && C.holder !== p.id) return;
     const have = chopperSlot(p);
     giveWeapon(sim, p, have >= 0 ? p.loadout.slots[have].id : CHOPPER);
+    C.holder = p.id;
     sim.emit('chopperTaken', { playerId: p.id, refill: have >= 0 });
+  }
+}
+
+// The built Chopper goes back on the bench if whoever had it doesn't any more
+// (swapped it for a box gun, left the game).
+function updateChopper(sim) {
+  const q = sim.quest, C = q.chopper;
+  if (!C.built || !C.holder) return;
+  const h = sim.playerById(C.holder);
+  if (!h || chopperSlot(h, true) < 0) {
+    C.holder = null;
+    sim.emit('chopperReturned', {});
   }
 }
 
@@ -600,8 +621,9 @@ export class TowerInteractable {
 }
 
 // A Chopper blast (wind.js calls this for every shot). In phase 3, a blast
-// that takes in the Press Box cracks the glass; enough of them and he's out.
-export function questWind(sim, p, origin, dir, W) {
+// from the Mad Dog'd Chopper that takes in the Press Box cracks the glass;
+// enough of them and he's out.
+export function questWind(sim, p, origin, dir, W, weapon) {
   const q = sim.quest;
   if (!q || !q.boss || q.boss.phase !== 3 || q.boss.over) return false;
   const P = sim.world.quest.pressBox;
@@ -615,6 +637,8 @@ export function questWind(sim, p, origin, dir, W) {
   if (off > W.angle * DEG + Math.atan2(P.r, d)) return false;
   // and not through a wall (from another room)
   if (sim.raycastWorld(origin, { x: dx / d, y: dy / d, z: dz / d }, Math.max(0.1, d - P.r), true)) return false;
+  // only the Mad Dog'd Chopper is strong enough: the plain one just rattles it
+  if (!weapon || !sim.cfg.weapons[weapon] || !sim.cfg.weapons[weapon].upgraded) { sim.emit('pressBoxShrug', { playerId: p ? p.id : null }); return false; }
   const b = q.boss, need = sim.cfg.quest.boss.chopperHits;
   b.blasts++;
   sim.emit('pressBoxBlast', { hits: b.blasts, of: need, playerId: p ? p.id : null });
@@ -642,6 +666,12 @@ function advance(sim, step) {
 export function questOnEvent(sim, e) {
   const q = sim.quest;
   if (!q) return;
+  // the built Chopper through the Mad Dog Machine: now it can bring Erik down
+  if (e.type === 'madDogTaken' && baseWeaponId(e.weapon) === CHOPPER && q.chopper.built && q.step === 'chopper') {
+    q.chopper.upgraded = true;
+    sim.emit('chopperUpgraded', { playerId: e.playerId });
+    advance(sim, 'boss');
+  }
   if (e.type === 'zombieKilled' && q.boss && q.boss.elites.has(e.id) && e.pos) {
     q.boss.elites.delete(e.id);
     dropAmp(sim, e.id, e.pos);
@@ -709,6 +739,7 @@ export function updateQuest(sim, dt) {
     }
   }
   if (q.step === 'ritual') updateRitual(sim, dt);
+  if (q.chopper) updateChopper(sim);
   if (q.step === 'boss') updateBoss(sim, dt);
   // whoever's holding the coin and bleeds out drops it back where it came from
   if (q.coin === 'held') {
@@ -733,7 +764,8 @@ export function questObjective(sim) {
     case 'cladding': return 'The cladding is coming up...';
     case 'chopper': {
       const n = q.chopper.parts.length, t = q.need.parts;
-      if (q.chopper.built) return 'Take the Chopper from the workbench in the Boiler Room';
+      if (q.chopper.built && !q.chopper.holder) return 'Take the Chopper from the workbench in the Boiler Room';
+      if (q.chopper.built) return 'Upgrade the Chopper in the Mad Dog Machine';
       if (n < t) return `Build the Chopper: find its parts around the school (${n}/${t})`;
       return 'Build the Chopper on the workbench in the Boiler Room';
     }
@@ -748,10 +780,10 @@ export function questObjective(sim) {
     }
     case 'boss': {
       const b = q.boss;
-      if (!b) return 'Call Erik out at the altar under the Press Box (bring the Chopper)';
+      if (!b) return 'Call Erik out at the altar under the Press Box (bring the upgraded Chopper)';
       if (b.phase === 1) return `Intercom Lockdown: clear Erik's Zombie Defenders (wave ${b.wave} of ${sim.cfg.quest.boss.waves}) · stay out of the red plays`;
       if (b.phase === 2) return `Overcharge the system: take the Sound Amplifiers off the elites and plug them into the speaker towers (${b.towers.filter(Boolean).length}/4)`;
-      return `Blast Erik out of the Press Box with the Chopper! (${b.blasts}/${sim.cfg.quest.boss.chopperHits})`;
+      return `Blast Erik out of the Press Box with the upgraded Chopper! (${b.blasts}/${sim.cfg.quest.boss.chopperHits})`;
     }
     case 'ending': return null;
     default: return null;

@@ -163,19 +163,34 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   place(tb.x - 1.2, tb.z, tb.x, tb.z);
   check(/build the Chopper/.test(me.prompt && me.prompt.text), 'workbench: ' + (me.prompt && me.prompt.text));
   use();
-  check(q.chopper.built && q.step === 'boss', 'built: on to the showdown');
-  check(me.loadout.slots.some((s) => s.id === 'The Chopper'), 'the builder has the Chopper');
+  check(q.chopper.built && q.step === 'chopper', 'built (still needs the Mad Dog)');
+  check(me.loadout.slots.some((s) => s.id === 'The Chopper') && q.chopper.holder === 'p1', 'the builder has the Chopper');
   check(/refill/.test(me.prompt && me.prompt.text), 'then the bench refills it: ' + (me.prompt && me.prompt.text));
-  // a teammate can take their own
+  check(/Mad Dog/.test(questObjective(sim)), 'objective: ' + questObjective(sim));
+  // there's only the one
   const p2 = sim.addPlayer('p2', 'Two');
   p2.pos.x = tb.x - 1.2; p2.pos.z = tb.z; p2.yaw = Math.PI / 2;
   sim.setInput('p2', { ...emptyCommand(), usePressed: true, use: true }); step({}, 1);
-  check(p2.loadout.slots.some((s) => s.id === 'The Chopper'), 'a teammate takes one from the bench');
-  // and the box never gives it out on this map
-  const box = sim.interactables.find((i) => i.kind === 'box' || (i.pick && i.canMove));
+  sim.setInput('p2', emptyCommand());
+  check(!p2.loadout.slots.some((s) => s.id.startsWith('The Chopper')), 'a teammate can\'t take a second one');
+  // the box can still give one out
+  const box = sim.box;
   let pulled = false;
-  if (box) for (let i = 0; i < 400; i++) if (box.pick(sim, p2) === 'The Chopper') pulled = true;
-  check(box && !pulled, 'the Mystery Box doesn\'t give the Chopper on this map');
+  for (let i = 0; i < 400; i++) if (box.pick(sim, p2) === 'The Chopper') pulled = true;
+  check(pulled, 'the Mystery Box can still give a Chopper');
+  // lose it and it goes back on the bench
+  const ci = me.loadout.slots.findIndex((s) => s.id === 'The Chopper');
+  me.loadout.slots[ci].id = 'M15'; me.loadout.current = 0;
+  step({}, 2);
+  check(q.chopper.holder === null && log.some((e) => e.type === 'chopperReturned'), 'swap it away: it goes back on the bench');
+  sim.setInput('p2', { ...emptyCommand(), usePressed: true, use: true }); step({}, 1);
+  check(p2.loadout.slots.some((s) => s.id === 'The Chopper') && q.chopper.holder === 'p2', 'then a teammate can take it');
+  // through the Mad Dog Machine: on to the showdown
+  const s2 = p2.loadout.slots.find((s) => s.id === 'The Chopper');
+  s2.id = 'The Chopper+';
+  sim.emit('madDogTaken', { playerId: 'p2', weapon: 'The Chopper+' });
+  step({}, 1);
+  check(q.chopper.upgraded && q.step === 'boss', 'the Mad Dog\'d Chopper: on to the showdown');
 }
 
 // 6. the Intercom Showdown
@@ -227,6 +242,7 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   // phase 3: blast the Press Box with the Chopper
   const { giveWeapon } = await import('../src/sim/weapons.js');
   giveWeapon(sim, me, 'The Chopper');
+  const blastOnce = () => { step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 60); };
   const P = SCHOOL.quest.pressBox;
   const aim = (x, z) => {
     me.pos.x = x; me.pos.z = z; me.vel.x = me.vel.z = 0;
@@ -241,6 +257,10 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   aim(0, 7); me.yaw += Math.PI;
   step({ fire: true, firePressed: true, yaw: me.yaw, pitch: me.pitch }, 1); step({ yaw: me.yaw, pitch: me.pitch }, 60);
   check(q.boss.blasts === 0, 'no blast facing away');
+  aim(0, 7);
+  blastOnce();
+  check(q.boss.blasts === 0 && log.some((e) => e.type === 'pressBoxShrug'), 'the plain Chopper just rattles the glass');
+  giveWeapon(sim, me, 'The Chopper+');
   aim(0, 7);
   for (let i = 0; i < 12 && !q.boss.over; i++) {
     const s = me.loadout.slots[me.loadout.current];
