@@ -184,5 +184,6 @@ export const VOICE_LINES = {
     "Where are you even hiding?": ["kearns_intercom_06", 1.22],
     "You could still call this off, you know.": ["kearns_intercom_07", 1.68],
     "We're getting out of here, Erik.": ["kearns_intercom_08", 1.51],
+    "Erik? Hello?": ["kearns_intercom_09", 0.86],
   },
 };
