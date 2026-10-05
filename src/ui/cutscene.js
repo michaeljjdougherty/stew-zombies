@@ -3,7 +3,7 @@
 // and title cards. Driven by the cues of the ending (src/render/ending.js) and
 // the intro (src/render/intro.js).
 // =============================================================================
-import { SCHNITZ_LINE, BRIAN_LINE } from '../render/ending.js';
+import { SCHNITZ_LINE, BRIAN_LINE, SCHNITZ_FAREWELL, FAREWELL_SECS } from '../render/ending.js';
 import { INTRO_CARDS } from '../render/intro.js';
 
 const MAP2_CARD = '<small>Stew Zombies</small><b>Map 2</b><span>The season isn\'t over</span>';
@@ -56,6 +56,7 @@ export class CutsceneUI {
   }
   cue(name) {
     if (name === 'schnitz') this.say('The Schnitz', SCHNITZ_LINE, 3.4);
+    else if (name === 'schnitzFarewell') this.say('The Schnitz', SCHNITZ_FAREWELL, FAREWELL_SECS + 0.4);
     else if (name === 'brian') this.say('Brian Luke', BRIAN_LINE, 2.6);
     else if (name === 'black') { this.sub.textContent = ''; this.blackEl.classList.add('on'); }
     else if (name === 'card') this.cardEl.classList.add('on');

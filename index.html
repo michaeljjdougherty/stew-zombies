@@ -175,6 +175,12 @@
   .cs-card span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
   .cs-card[aria-selected="true"] { border-color: var(--brass); background: rgba(217,180,90,.1); }
   .cs-card.locked { opacity: .35; cursor: default; }
+  .cs-card.missing { border-style: dashed; border-color: rgba(224,74,58,.55); background: rgba(224,74,58,.05); }
+  .cs-card.missing b { opacity: .7; }
+  .cs-card.missing span { color: #e5503e; font-weight: 700; letter-spacing: 3px; }
+  #charselect.cs-missing #cs-name { color: #e5503e; }
+  #charselect.cs-missing #cs-blurb { color: #e8c9c2; }
+  #btn-cs-select:disabled { opacity: .45; cursor: default; }
   /* online lobby */
   .online { max-width: 560px; }
   .online .on-name { grid-template-columns: 120px 1fr; }

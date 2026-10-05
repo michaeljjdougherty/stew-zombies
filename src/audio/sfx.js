@@ -1692,6 +1692,29 @@ export function crewVoice(A, out, t, p = {}) {
 }
 
 // A Cheddar talking: a wet, snarling growl that somehow forms words.
+// A recorded "Wanna play 2K?" (CONFIG.cheddar.lineAudio), with a little of the
+// growl under it so it still sounds like it came out of a hound.
+export function cheddarClip(A, out, t, p = {}) {
+  const buf = A.pickSample(p.key);
+  if (!buf) return 0;
+  const src = A.ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = p.rate || 1;
+  const dur = buf.duration / (p.rate || 1);
+  const g = A.gain(p.gain ?? 1);
+  src.connect(g); g.connect(out);
+  src.start(t);
+  if (p.growl) {
+    const n = A.noiseSource('brown', t, dur + 0.2);
+    const bp = A.filter('bandpass', 260, 1.5);
+    const ng = A.gain(0); A.env(ng, t, 0.05, dur, 0.3, 0, 0.1);
+    const trem = A.ctx.createOscillator(); trem.frequency.value = 28; trem.start(t); trem.stop(t + dur + 0.3);
+    const tg = A.gain(0.2); trem.connect(tg); tg.connect(ng.gain);
+    n.connect(bp); bp.connect(ng); ng.connect(out);
+  }
+  return dur + 0.3;
+}
+
 export function cheddarVoice(A, out, t, p = {}) {
   const dur = p.dur || 1.3;
   const drive = A.shaper(0.9);

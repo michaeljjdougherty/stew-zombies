@@ -200,6 +200,8 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
     for (const z of [...sim.zombies]) if (z.infused && z.state === 'chase') killZombie(sim, z, { kind: 'bullet', part: 'torso', playerId: 'p1' });
   }
   check(q.infused.kills === 50, 'fifty infused down (' + q.infused.kills + ')');
+  step({}, 2);
+  check(log.some((e) => e.type === 'schnitzSays' && e.shock && /How did you do that/.test(e.text)), 'The Schnitz reacts to the fiftieth');
   check(q.step === 'infused' && /Mad Dog/.test(questObjective(sim)), 'still needs the Mad Dog: ' + questObjective(sim));
   // there's only the one
   const p2 = sim.addPlayer('p2', 'Two');

@@ -15,12 +15,12 @@ export class CharSelect {
     const list = $('cs-list');
     this.cards = [];
     for (const [id, c] of Object.entries(CHARACTERS)) {
-      if (!c.playable && !c.unlock) continue;
+      if (!c.playable && !c.unlock && !c.missing) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'cs-card'; b.setAttribute('role', 'option'); b.dataset.id = id;
       b.innerHTML = '<b></b><span>Stew</span>';
       b.querySelector('b').textContent = c.name;
-      b.addEventListener('click', () => { if (this.unlocked(id)) { this.pick = id; this.refresh(); } });
+      b.addEventListener('click', () => { if (this.unlocked(id) || this.isMissing(id)) { this.pick = id; this.refresh(); } });
       list.appendChild(b);
       this.cards.push(b);
     }
@@ -42,13 +42,27 @@ export class CharSelect {
 
   unlocked(id) {
     const c = CHARACTERS[id];
-    return !!(c && (c.playable || (c.unlock === 'quest' && this.h.questDone && this.h.questDone())));
+    return !!(c && (c.playable || (c.unlock === 'quest' && this.questDone())));
   }
+
+  questDone() { return !!(this.h.questDone && this.h.questDone()); }
+
+  // Zach: after The Final Whistle he's on the list, but you can't pick him
+  isMissing(id) { const c = CHARACTERS[id]; return !!(c && c.missing === 'quest' && this.questDone()); }
 
   open() {
     // Brian: locked until you've finished The Final Whistle
     for (const b of this.cards) {
       const id = b.dataset.id, ok = this.unlocked(id);
+      if (CHARACTERS[id].missing) {
+        // not even a hint he exists until the quest is done
+        const m = this.isMissing(id);
+        b.hidden = !m;
+        b.classList.toggle('missing', m);
+        b.querySelector('b').textContent = CHARACTERS[id].name;
+        b.querySelector('span').textContent = 'Missing';
+        continue;
+      }
       b.classList.toggle('locked', !ok);
       b.querySelector('b').textContent = ok ? CHARACTERS[id].name : '???';
       b.querySelector('span').textContent = ok ? 'Stew' : 'Finish The Final Whistle';
@@ -61,9 +75,12 @@ export class CharSelect {
 
   refresh() {
     const c = CHARACTERS[this.pick];
+    const missing = this.isMissing(this.pick);
     $('cs-name').textContent = c.name;
-    $('cs-blurb').textContent = c.blurb;
-    $('btn-cs-select').textContent = `Play as ${c.name}`;
+    $('cs-blurb').textContent = missing ? c.missingBlurb : c.blurb;
+    $('btn-cs-select').textContent = missing ? `${c.name} is missing` : `Play as ${c.name}`;
+    $('btn-cs-select').disabled = missing;
+    $('charselect').classList.toggle('cs-missing', missing);
     // only Kearns's T-shirt changes colour
     const sh = $('cs-swatches').parentElement;
     if (sh) sh.hidden = c.top.color !== 'shirt';

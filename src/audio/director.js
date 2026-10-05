@@ -9,6 +9,7 @@ import { GUN_VOICES, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
 import { CREW } from '../lore/crew.js';
 import { voiceKey } from '../lore/voice.js';
+import { SCHNITZ_LINES, FAREWELL_SECS } from '../lore/erik.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -65,7 +66,9 @@ export class SoundDirector {
       case 'smoke': A.play(S.boxWhoosh, {}, { gain: 1.2, reverb: 0.8 }); A.play(S.smallBoom, {}, { gain: 1, reverb: 0.8 }); break;
       case 'lightsBack': A.play(S.powerOn, {}, { gain: 1, reverb: 0.8 }); break;
       case 'doors': A.play(S.creak, {}, { gain: 1.2, reverb: 0.8 }); A.play(S.bang, {}, { gain: 0.9, reverb: 0.9, delay: 1.2 }); break;
-      case 'space': A.play(S.spaceWind, { dur: 12 }, { gain: 0.9, reverb: 0.5 }); break;
+      case 'space': A.play(S.spaceWind, { dur: 22 }, { gain: 0.9, reverb: 0.5 }); break;
+      case 'schnitzEyes': A.play(S.thunder, { near: 0.15 }, { gain: 0.9, reverb: 0.9 }); A.play(S.powerDown, {}, { gain: 0.6, reverb: 0.9 }); break;
+      case 'schnitzFarewell': A.play(S.schnitzVoice, { text: SCHNITZ_LINES.farewell, dur: FAREWELL_SECS }, { gain: 1.5, reverb: 1, bus: 'voice' }); break;
       case 'portal': A.play(S.thunder, { near: 0.4 }, { gain: 0.9, reverb: 0.8 }); A.play(S.electrocute, {}, { gain: 0.9, reverb: 0.6, delay: 0.3 }); break;
       case 'brian': A.play(S.stewTalk, { text: 'You guys coming?', dur: 1.6 }, { gain: 1.1, reverb: 0.3, bus: 'voice' }); break;
       case 'black': A.play(S.bang, {}, { gain: 1.3, reverb: 0.2 }); break;
@@ -367,7 +370,10 @@ export class SoundDirector {
         A.play(S.thunder, { near: 0.15 }, { gain: 0.8, reverb: 0.9, delay: 1.2 });
         this.talkUntil = A.now() + (e.dur || 15);
         break;
-      case 'schnitzSays': A.play(S.schnitzVoice, { text: e.text, dur: e.dur }, { gain: 1.4, reverb: 1, bus: 'voice' }); break;
+      case 'schnitzSays':
+        if (e.shock) A.play(S.thunder, { near: 0.2 }, { gain: 0.8, reverb: 0.9 });   // the fiftieth infused one: it didn't see that coming
+        A.play(S.schnitzVoice, { text: e.text, dur: e.dur }, { gain: 1.4, reverb: 1, bus: 'voice', delay: e.shock ? 0.5 : 0 });
+        break;
       case 'schnitzGone': A.play(S.boxWhoosh, {}, { gain: 0.8, reverb: 0.9 }); break;
       case 'zombieBanished':
         // (a whole circle's worth go at once: one sigh is enough)
@@ -452,7 +458,13 @@ export class SoundDirector {
       case 'jukeboxPlay': case 'jukeboxStop': A.play(S.purchase, {}, { pos: { x: sim.mapData.jukebox.x, y: 1, z: sim.mapData.jukebox.z }, ref: 2, gain: 0.5 }); break;
       case 'valveTurned': A.play(S.steamHiss, { dur: 2.2 }, { pos: e.pos, ref: 3, reverb: 0.5, gain: 0.9 }); break;
       case 'cauldronBoil': A.play(S.cauldronBoil, {}, { pos: e.pos, ref: 5, reverb: 0.6, gain: 1.1 }); break;
-      case 'cheddarTalk': A.play(S.cheddarVoice, { text: e.text, dur: e.dur }, { pos: e.pos, ref: 4, rolloff: 1.2, reverb: 0.35, bus: 'voice', gain: 1.1 }); break;
+      case 'cheddarTalk': {
+        const ch = this.cfg.cheddar, opts = { pos: e.pos, ref: 4, rolloff: 1.2, reverb: 0.35, bus: 'voice', gain: 1.1 };
+        // your recording (assets/voice/cheddar/…) if it's there, else the built-in voice
+        if (A.hasSample('cheddarLine')) A.play(S.cheddarClip, { key: 'cheddarLine', rate: ch.lineAudioPitch ?? 1, gain: ch.lineAudioGain ?? 1, growl: ch.lineAudioGrowl !== false }, opts);
+        else A.play(S.cheddarVoice, { text: e.text, dur: e.dur }, opts);
+        break;
+      }
       case 'saleBoxArrive': A.play(S.boxThud, {}, { pos: sim.boxById(e.boxId).pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;
       case 'saleBoxVanish': A.play(S.boxWhoosh, {}, { pos: sim.boxById(e.boxId).pos, ref: 4, reverb: 0.5 }); break;
       case 'boxMoved': A.play(S.boxThud, {}, { pos: sim.boxById(e.boxId).pos, ref: 5, reverb: 0.5, delay: this.cfg.box.arriveTime * 0.6 }); break;

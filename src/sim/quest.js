@@ -784,7 +784,12 @@ export function questOnEvent(sim, e) {
   if (e.type === 'zombieKilled' && e.infused && q.step === 'infused' && q.infused.kills < q.need.infused) {
     q.infused.kills++;
     sim.emit('infusedKill', { count: q.infused.kills, total: q.need.infused, pos: e.pos });
-    if (q.infused.kills >= q.need.infused) { sim.emit('infusedDone', {}); maybeShowdown(sim); }
+    if (q.infused.kills >= q.need.infused) {
+      sim.emit('infusedDone', {});
+      const text = SCHNITZ_LINES.infusedDone;
+      sim.emit('schnitzSays', { text, dur: lineDuration(text) * 1.25, shock: true });
+      maybeShowdown(sim);
+    }
   }
   if (e.type === 'zombieKilled' && q.boss && q.boss.elites.has(e.id) && e.pos) {
     q.boss.elites.delete(e.id);

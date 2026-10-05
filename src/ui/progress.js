@@ -5,7 +5,9 @@ const KEY = 'stew-zombies-progress-v1';
 export function loadProgress() {
   let p = {};
   try { p = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { p = {}; }
-  return { notes: Array.isArray(p.notes) ? p.notes : [], song: !!p.song, bestRound: p.bestRound | 0 };
+  // (questDone and introSeen were being dropped here, so Brian re-locked and
+  // the intro played again after every reload)
+  return { notes: Array.isArray(p.notes) ? p.notes : [], song: !!p.song, bestRound: p.bestRound | 0, questDone: !!p.questDone, introSeen: !!p.introSeen };
 }
 
 export function saveProgress(p) {

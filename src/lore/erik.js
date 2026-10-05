@@ -162,7 +162,12 @@ export const SCHNITZ_LINES = {
     { at: 8.2, text: 'That little toy was put together in my house. Over my stew.' },
     { at: 12.6, text: 'My children walk among the dead now. Fifty of them. Put them down... and we will see.' },
   ],
+  // the fiftieth infused zombie goes down (the only cue on Hardcore that the step's done)
+  infusedDone: 'What the fuck!? How did you do that?',
+  // the end of the ending cutscene, out in space, right before the portal opens
+  farewell: "You've defeated Erik, but at what cost? I'll just move on to my next victim. Say goodbye to crust! Mwahahaha!",
 };
+export const FAREWELL_SECS = 8.6;   // how long The Schnitz takes over the farewell (the ending's timing hangs off it)
 
 // --- Talking back on the intercom (teachers' lounge) ---------------------------
 // Stew presses the button on the PA handset and says something; Erik answers.

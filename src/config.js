@@ -956,7 +956,14 @@ export const CONFIG = {
     attackDamage: 35,
     haze: 0.32,              // strength of the yellow screen tint
     preRoundTime: 4,         // haze and thunder before the first strike
-    line: 'Wanna play 2K?',  // what they snarl at you
+    line: 'Wanna play 2K?',  // what they snarl at you (the subtitle / speech bubble)
+    // A recording of the line. Drop an .mp3 at this path (in the project folder)
+    // and the Cheddars use it instead of the built-in growl-voice. Until the
+    // file is there, they keep the built-in voice.
+    lineAudio: 'assets/voice/cheddar/wanna-play-2k.mp3',
+    lineAudioGain: 1.0,      // louder/quieter for your recording
+    lineAudioPitch: 1.0,     // < 1 makes it deeper and slower (0.85 = growlier), > 1 higher
+    lineAudioGrowl: true,    // keep a bit of the throat-rattle growl under your recording
     talkEvery: [3.5, 7],     // seconds between one of them saying it
     talkRange: 14,           // only ones this close to a player talk
   },

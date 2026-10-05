@@ -124,6 +124,10 @@ export const CHARACTERS = {
   },
   zach: {
     name: 'Zach', blurb: 'Cheerful and friendly. Always genuinely happy to be there.',
+    // once The Final Whistle is done he shows up on Character Select as missing
+    // (The Schnitz said it was moving on to its next victim)
+    missing: 'quest',
+    missingBlurb: 'MISSING. Nobody has seen Zach since the night Erik fell. Last seen smiling. If you have any information, tell the Stew.',
     height: 1.0, headScale: 1.08,
     body: { shoulders: 0.212, chest: 0.172, waist: 0.163, hips: 0.168, depth: 0.122, build: 0.3, belly: 0.25 }, limbs: 1.08, armsOut: 0.14,
     skin: 'rosy',

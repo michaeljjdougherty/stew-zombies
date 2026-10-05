@@ -5,14 +5,14 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05g',
+  version: '2026-10-05h',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
     text: [
       "Thank you for playing Stew Zombies. We made this one for the Stew crew: for every late night, every terrible shot and every \"one more round.\"",
-      "Today was a big one. There's a whole story now, a quest to finish, real guns, real hands, online co-op so you can play together, and a lot of Erik. Go squad up, hold the circles, and drag him out of that Press Box.",
+      "Today was a big one. There's a whole story now, a quest to finish, real guns, real hands, online co-op so you can play together, and a lot of Erik. Go squad up and take him down.",
       "See you at center court.",
     ],
     from: 'Michael & James',
@@ -23,11 +23,9 @@ export const PATCH = {
     ] },
     { title: 'Just added', items: [
       'More graphics settings for slower computers: a quality preset (Low, Medium, High, Ultra), auto resolution that drops the resolution when the frame rate dips, a frame rate cap, sharpness for high-res screens, how many real lights there are, an effects level (particles, snow, blood marks, how long bodies stay), and simple zombie and gun models. Render scale now goes down to 35%.',
-      'Walkthrough or Hardcore: pick on the map screen. Walkthrough shows each step of the Easter egg like before. Hardcore is classic zombies: no objective, no hints, figure it out.',
+      'Easter egg expanded.',
+      'Walkthrough or Hardcore: pick on the map screen. Walkthrough shows each step of the Easter egg. Hardcore is classic zombies: no objective, no hints, figure it out.',
       'Explore has a menu now (B, or View on a controller): spawn in any gun (plain or Mad Dog\'d), start any round, switch the zombies on or off, and jump to any part of the Easter egg.',
-      'The Final Whistle has a new step: after you take back all four talents, build the Chopper (four parts around the school, a workbench in the boiler room), then put it through the Mad Dog Machine. Only the upgraded Chopper can knock Erik out of the Press Box at the end of the Intercom Showdown.',
-      'When you first lift the Chopper, the lights go down and The Schnitz speaks from the dark, its green eyes over the stew. Nothing attacks you while it talks. Then its infused zombies come: twice as tall, slower, much tougher and glowing green. Kill fifty of them.',
-      'The blue spirit zombies only exist while a circle is being held: when it goes out or fills, they fade away.',
       'Easier: fewer zombies per round (especially with four players) and every gun hits 20% harder.',
       'The Chopper\'s blast is a narrower, shorter cone.',
       'Lighting: no more blinding glare. Shiny surfaces (steel counters, table tops, the cows) don\'t mirror the lights any more, and the glow around bright things is softer.',
@@ -36,23 +34,14 @@ export const PATCH = {
       'Kearns and Ryan are voiced too: their reactions, walkie-talkie calls, story lines, banter, their lines in the intro, and what they say into the intercom when you play them. Pit, Rocco and Brian still use the placeholder voices for now.',
       'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
       'Map select: press Play to open a star chart you can drag and zoom. Stew Leonard High sits on its asteroid (the real level, drawn to scale), and the maps still to come are planets with a hint each.',
-      'The Chopper is a real wonder weapon now: every shot is a wall of wind that kills and throws every zombie in a wide cone. It hits like one, with a deep boom and a howling roar.',
+      'The Chopper is a real wonder weapon now: every shot is a wall of wind that kills and throws every zombie in its path, with a deep boom and a howling roar.',
       'Lighting: white things (like the papers all over the floors) no longer glow like light bulbs.',
       'Brian is pickable online the moment you finish The Final Whistle, even if you\'re still in the same lobby.',
     ] },
     { title: 'Out of Bounds: the story', items: [
       'A whole new story by James Amarante. The undefeated Stew Leonards cut Erik Madsen (#8) right before the championship. He sold his soul to The Schnitz for revenge, and at tip-off he struck.',
-      'Erik talks to you all night over the PA. Pick up the handset in the Teachers\' Lounge to talk back. There are eight notes to find (new: The Bargain).',
+      'Erik talks to you all night over the PA. There are eight notes to find (new: The Bargain).',
       'Championship night around the school: the Press Box over center court, a blood-streaked court, fiberglass dairy cows, an animatronic cow band and the Rule #1 rock. The principal\'s office is now the Teachers\' Lounge.',
-    ] },
-    { title: 'The Final Whistle (the quest)', items: [
-      'Throw the two main breakers (cafeteria and science lab) to bring the power back.',
-      'Find the three pieces of the championship trophy and rebuild it at center court. The Mad Dog Machine rises through a trapdoor.',
-      'Wake the mascot statue in the Quad for the Dark Schnitz Coin, then put it in the altar under the Press Box to expose Erik.',
-      'The half-court ritual: hold each of the four circles for 45 seconds to win back a lost talent (Speed, Jump, Power, Defense). The circles are much bigger now. Regular zombies leave whoever is in the circle alone, and blue spirit zombies with glowing eyes rise instead, then float away when you kill them.',
-      'Build the Chopper: after the four circles, find its motor, saw blade, housing and grip around the school and put it together on the workbench in the boiler room, by the stew cauldron. There\'s only the one (it goes back on the bench if you lose it), and it has to be upgraded in the Mad Dog Machine. The Mystery Box can still give you a Chopper of your own.',
-      'The Intercom Showdown, in three phases: Zombie Defenders and burning playbook diagrams, then elites that drop Sound Amplifiers for the speaker towers, then blasting Erik out of the Press Box with the upgraded Chopper.',
-      'An ending cutscene. Watch it again any time from Extras.',
     ] },
     { title: 'The crew and online co-op', items: [
       'Kearns, Ryan, Pit and Rocco are playable, with walkie-talkie banter and Erik roasting each of you. Brian unlocks after the quest.',

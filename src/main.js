@@ -69,6 +69,8 @@ input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 audio.preload(GUN_SAMPLES, SAMPLE_BASE);
 for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)
+// the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
+if (CONFIG.cheddar.lineAudio) audio.preload({ cheddarLine: [CONFIG.cheddar.lineAudio] }, '', '');
 const sound = new SoundDirector(audio, sim, CONFIG);
 sound.localId = localId;
 const hud = new HUD(CONFIG);

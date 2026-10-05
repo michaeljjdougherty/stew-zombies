@@ -8,6 +8,8 @@
 //                       and the doors at the far end of the gym swing open into fog
 //   The Reveal          past the doors there's no parking lot: the campus has been
 //                       ripped out of Earth and anchored to an asteroid in deep space
+//   The Schnitz again   over the asteroid, two huge green eyes open in space:
+//                       "You've defeated Erik, but at what cost?…"
 //   The Arrival         a portal crackles open and Brian Luke steps through:
 //                       "You guys coming?"
 //   Slam to Black       title card for Map 2
@@ -19,6 +21,7 @@ import * as T from './textures.js';
 import { buildCharacter, idleCharacter, LINEUP, CHARACTERS } from './characters.js';
 import { buildGun } from './gunModels.js';
 import { PRESS_BOX } from './storyProps.js';
+import { SCHNITZ_LINES, FAREWELL_SECS } from '../lore/erik.js';
 
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -27,8 +30,13 @@ const lerpV = (a, b, k) => a.clone().lerp(b, k);
 // When things happen (seconds from the start).
 export const BEATS = {
   fall: 0, land: 1.7, confront: 4, flicker: 9, dark: 10.2, schnitz: 10.8, smoke: 14, lightsBack: 15.6,
-  doors: 16.6, walk: 18.5, space: 21.5, pullback: 23, portal: 27, brian: 28.6, line: 30.6, black: 33.2, card: 34, end: 39.5,
+  doors: 16.6, walk: 18.5, space: 21.5, pullback: 23, sEyes: 27, sLine: 28,
 };
+// after The Schnitz's farewell: the portal, Brian, then black
+{
+  const B = BEATS, p = B.sLine + FAREWELL_SECS + 0.9;
+  Object.assign(B, { portal: p, brian: p + 1.6, line: p + 3.6, black: p + 6.2, card: p + 7, end: p + 12.5 });
+}
 const ERIK_LAND = V(0, 0, 3.6);
 const DOORS = { x: -12, z: 13 };   // the gym's exit doors (south wall, far end)
 
@@ -167,6 +175,7 @@ export class Ending {
     this.group.add(this.scorch);
     // The Schnitz: two eyes in the dark
     const eyeTex = T.softDotTexture('rgba(160,255,140,1)', 'rgba(40,255,60,0)');
+    this.eyeTex = eyeTex;
     this.eyes = [-1, 1].map((s) => {
       const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: eyeTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false }));
       e.scale.set(0.9, 0.36, 1); e.position.set(ERIK_LAND.x + s * 0.7, 3.0, ERIK_LAND.z - 1.2); this.group.add(e); return e;
@@ -255,7 +264,17 @@ export class Ending {
     const brian = buildCharacter('brian', { detail: 0.8 });
     brian.root.position.set(DOORS.x + 0.5, 0, 24.6); brian.root.rotation.y = Math.PI; brian.root.visible = false;
     sc.add(brian.root);
-    this.space = { sc, portal, ring, plight, brian };
+    // The Schnitz, one last time: two huge green eyes in the sky over the asteroid
+    const wideP = V(DOORS.x + 150, 38, DOORS.z + 175), wideT = V(5, -12, -28);
+    const dir = wideT.clone().sub(wideP).normalize();
+    const right = new THREE.Vector3().crossVectors(dir, V(0, 1, 0)).normalize();
+    const mid = wideP.clone().addScaledVector(dir, 165).add(V(0, 30, 0));
+    const eyeMat = () => new THREE.SpriteMaterial({ map: this.eyeTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false });
+    const sEyes = [-1, 1].map((s) => { const e = new THREE.Sprite(eyeMat()); e.scale.set(36, 16, 1); e.position.copy(mid).addScaledVector(right, s * 20); sc.add(e); return e; });
+    const haze = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.eyeTex, color: new THREE.Color(0.25, 0.9, 0.35), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false }));
+    haze.scale.set(190, 110, 1); haze.position.copy(mid).addScaledVector(dir, 10); sc.add(haze);
+    const glow = new THREE.PointLight(0x40ff60, 0, 400, 0.8); glow.position.copy(mid); sc.add(glow);
+    this.space = { sc, portal, ring, plight, brian, sEyes, haze, glow, wideP, wideT };
     // the squad moves over
     for (const m of this.squad) sc.add(m.k.root);
   }
@@ -394,15 +413,32 @@ export class Ending {
         // over their shoulders: the stone, then nothing but space
         cam.position.set(DOORS.x - 0.2, 1.8, DOORS.z + 0.2);
         cam.lookAt(DOORS.x + 1, 1.0 + (t - B.space) * 0.4, DOORS.z + 30);
-      } else if (t < B.portal) {
+      } else if (t < B.sEyes) {
         // pull up and back: the whole campus, anchored to an asteroid
-        const k = sm(B.pullback, B.portal, t);
-        cam.position.copy(lerpV(V(DOORS.x - 0.2, 1.8, DOORS.z + 0.2), V(DOORS.x + 150, 38, DOORS.z + 175), k));
-        cam.lookAt(lerpV(V(DOORS.x + 1, 2.4, DOORS.z + 30), V(5, -12, -28), k));
+        const k = sm(B.pullback, B.sEyes, t);
+        cam.position.copy(lerpV(V(DOORS.x - 0.2, 1.8, DOORS.z + 0.2), S.wideP, k));
+        cam.lookAt(lerpV(V(DOORS.x + 1, 2.4, DOORS.z + 30), S.wideT, k));
+      } else if (t < B.portal) {
+        // The Schnitz: its eyes open over the asteroid, and it says goodbye
+        this.cue('schnitzEyes');
+        if (t >= B.sLine) this.cue('schnitzFarewell');
+        const on = sm(B.sEyes, B.sEyes + 1.4, t) * (1 - sm(B.portal - 1.1, B.portal - 0.3, t));
+        // a slow push in, eased back out before the cut to the portal
+        const push = sm(B.sEyes, B.sLine + 4, t) * 0.07 * (1 - sm(B.portal - 1.4, B.portal - 0.3, t));
+        cam.position.copy(lerpV(S.wideP, S.wideT, push));
+        cam.lookAt(S.wideT.x, S.wideT.y + on * 6, S.wideT.z);
+        // (a slow blink partway through, and they narrow on the laugh)
+        const blink = Math.abs(t - (B.sLine + 3.2)) < 0.12 ? 0.08 : 1;
+        const laugh = sm(B.sLine + FAREWELL_SECS - 2, B.sLine + FAREWELL_SECS - 1.2, t);
+        for (const e of S.sEyes) { e.material.opacity = on * (0.85 + Math.sin(time * 9) * 0.1); e.scale.set(36, 16 * blink * (1 - laugh * 0.45), 1); }
+        S.haze.material.opacity = on * 0.22;
+        S.glow.intensity = on * 40;
       } else {
+        for (const e of S.sEyes) e.material.opacity = 0;
+        S.haze.material.opacity = 0; S.glow.intensity = 0;
         // the portal and Brian
         const k = sm(B.portal, B.portal + 1.2, t);
-        cam.position.copy(lerpV(V(DOORS.x + 150, 38, DOORS.z + 175), V(DOORS.x + 3.4, 1.65, DOORS.z + 2.2), sm(B.portal - 0.2, B.portal + 0.6, t)));
+        cam.position.copy(lerpV(S.wideP, V(DOORS.x + 3.4, 1.65, DOORS.z + 2.2), sm(B.portal - 0.2, B.portal + 0.6, t)));
         cam.lookAt(DOORS.x + 0.2, 1.5, 22.5);
         if (t >= B.portal) this.cue('portal');
         S.portal.material.opacity = k;
@@ -440,4 +476,6 @@ export class Ending {
 
 export const SCHNITZ_LINE = 'This season isn\'t over yet.';
 export const BRIAN_LINE = 'You guys coming?';
+export const SCHNITZ_FAREWELL = SCHNITZ_LINES.farewell;
+export { FAREWELL_SECS };
 export { CHARACTERS };
