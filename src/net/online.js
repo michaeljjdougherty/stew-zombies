@@ -78,6 +78,10 @@ export class OnlineSession {
     }
     const member = this.members.find((x) => x.peer === from);
     if (!member) return;
+    if (m.t === 'brian') {   // they just finished The Final Whistle
+      if (!member.brian) { member.brian = true; this.lobbyChanged(); }
+      return;
+    }
     if (m.t === 'pick') {
       if (!this.inGame && this.canPlay(m.character, member)) { member.character = m.character; this.lobbyChanged(); }
       return;
@@ -124,6 +128,16 @@ export class OnlineSession {
       const me = this.members[0];
       if (!this.inGame && this.canPlay(character, me)) { me.character = character; this.lobbyChanged(); }
     } else if (this.ep) this.ep.send(this.ep.host, { t: 'pick', character });
+  }
+
+  // Brian just got unlocked on this browser (The Final Whistle is done): let
+  // the lobby know, so he can be picked without leaving and coming back.
+  unlockBrian() {
+    this.o.brian = true;
+    if (this.isHost) {
+      const me = this.members[0];
+      if (me && !me.brian) { me.brian = true; this.lobbyChanged(); }
+    } else if (this.ep) this.ep.send(this.ep.host, { t: 'brian' });
   }
 
   start(seed = (Math.random() * 0xffffffff) >>> 0) {

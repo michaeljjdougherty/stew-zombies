@@ -285,8 +285,23 @@ function torsoTexture(def, shirtHex, seed = 4) {
     g.beginPath(); g.ellipse(W, vy(1.0), 60, H * 0.16, 0, 0, 7); g.fill();
     for (const u of [0.25, 0.75]) { g.beginPath(); g.ellipse(u * W, vy(0.95), 64, H * 0.13, 0, 0, 7); g.fill(); }
     // ribbed edges
-    g.strokeStyle = shade(color, 0.85); g.lineWidth = 4;
+    g.strokeStyle = top.trim || shade(color, 0.85); g.lineWidth = top.trim ? 7 : 4;
     g.beginPath(); g.ellipse(cx, vy(1.0), 58, H * 0.125, 0, 0, 7); g.stroke();
+    if (top.trim) for (const x of [0, W]) { g.beginPath(); g.ellipse(x, vy(1.0), 62, H * 0.165, 0, 0, 7); g.stroke(); }
+    if (top.number) {
+      // STEW across the chest, the number under it, and big on the back
+      const num = (x, y, size) => {
+        g.font = `900 ${size}px Impact, "Arial Black", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = size * 0.12; g.strokeStyle = '#f2ead6'; g.strokeText(top.number, x, y);
+        g.fillStyle = top.trim; g.fillText(top.number, x, y);
+      };
+      g.save(); g.translate(W, 0); g.scale(-1, 1);   // the front is mirrored (see the tee)
+      g.font = '900 40px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#f2ead6'; g.fillText('STEW', cx, vy(0.74));
+      num(cx, vy(0.52), 92);
+      g.restore();
+      for (const x of [0, W]) { g.save(); g.translate(x, 0); g.scale(-1, 1); num(0, vy(0.6), 150); g.restore(); }
+    }
   } else {
     // crew-neck tee
     g.fillStyle = color; g.fillRect(0, 0, W, H);
@@ -512,8 +527,10 @@ function braceletMesh(r, { colors, chunky }) {
 // --- body building ------------------------------------------------------------------
 const cache = new Map();
 
-export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1 } = {}) {
-  const def = CHARACTERS[id] || CHARACTERS.kearns;
+export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jersey = null } = {}) {
+  let def = CHARACTERS[id] || CHARACTERS.kearns;
+  // the team's green-and-gold game jersey with a number (the intro cutscene)
+  if (jersey != null) def = { ...def, top: { type: 'tank', color: '#1d5a2e', trim: '#d8b84a', number: String(jersey) }, layer: undefined, idle: def.idle === 'manic' ? 'relaxed' : def.idle };
   const skin = SKIN[def.skin] || SKIN.light;
   const shirtHex = (SHIRT_COLORS[shirt] || SHIRT_COLORS.sage).hex;
   const Lk = def.limbs || 1;

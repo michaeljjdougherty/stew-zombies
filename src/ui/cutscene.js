@@ -1,8 +1,13 @@
 // =============================================================================
-// The ending's overlay: letterbox bars, subtitles, the hard cut to black and
-// the Map 2 title card. Driven by the cutscene's cues (src/render/ending.js).
+// The cutscenes' overlay: letterbox bars, subtitles, cuts and fades to black,
+// and title cards. Driven by the cues of the ending (src/render/ending.js) and
+// the intro (src/render/intro.js).
 // =============================================================================
 import { SCHNITZ_LINE, BRIAN_LINE } from '../render/ending.js';
+import { INTRO_CARDS } from '../render/intro.js';
+
+const MAP2_CARD = '<small>Stew Zombies</small><b>Map 2</b><span>The season isn\'t over</span>';
+const NAMES = { kearns: 'Kearns', ryan: 'Ryan', pit: 'Pit', rocco: 'Rocco', erik: 'Erik', erikPA: 'Erik · PA', schnitz: 'The Schnitz' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,7 +23,8 @@ export class CutsceneUI {
   show(skipHtml = '') {
     this.root.hidden = false;
     this.root.classList.remove('on'); void this.root.offsetWidth; this.root.classList.add('on');
-    this.blackEl.classList.remove('on'); this.cardEl.classList.remove('on');
+    this.blackEl.classList.remove('on', 'fade'); this.cardEl.classList.remove('on');
+    this.cardEl.innerHTML = MAP2_CARD;
     this.sub.textContent = '';
     this.skipEl.innerHTML = skipHtml;
   }
@@ -27,6 +33,26 @@ export class CutsceneUI {
     this.sub.innerHTML = `<b>${who}</b>${text}`;
     clearTimeout(this.timer);
     this.timer = setTimeout(() => { this.sub.textContent = ''; }, secs * 1000);
+  }
+  // black: true = cut (or fade) to black, false = fade back in
+  black(on, fade = false) {
+    this.blackEl.classList.toggle('fade', fade);
+    this.blackEl.classList.toggle('on', on);
+  }
+  card(html) {
+    if (html == null) { this.cardEl.classList.remove('on'); return; }
+    this.cardEl.innerHTML = html;
+    this.cardEl.classList.remove('on'); void this.cardEl.offsetWidth; this.cardEl.classList.add('on');
+  }
+  // A line from the intro.
+  line(who, text, secs) { this.say(NAMES[who] || who, text, secs + 0.4); }
+  introCue(name) {
+    const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    if (INTRO_CARDS[name]) { const [a, b] = INTRO_CARDS[name]; this.black(true); this.card(`<small>${esc(b)}</small><b class="place">${esc(a)}</b>`); }
+    else if (name.startsWith('fadeIn')) { this.card(null); this.black(false, true); }
+    else if (name === 'black1' || name === 'black2') { this.sub.textContent = ''; this.black(true, true); }
+    else if (name === 'black3') { this.sub.textContent = ''; this.black(true); }
+    else if (name === 'title') this.card('<small>Story by James Amarante</small><b>Stew Zombies</b><span>Out of Bounds</span>');
   }
   cue(name) {
     if (name === 'schnitz') this.say('The Schnitz', SCHNITZ_LINE, 3.4);

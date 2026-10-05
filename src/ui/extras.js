@@ -28,6 +28,8 @@ export class Extras {
     if (tab === 'jukebox') this.bindJukebox();
     const eb = $('x-ending');
     if (eb) eb.addEventListener('click', () => this.h.watchEnding());
+    const ib = $('x-intro');
+    if (ib) ib.addEventListener('click', () => this.h.watchIntro());
   }
 
   story() {
@@ -42,7 +44,7 @@ export class Extras {
       <p>He'll talk to you the whole night. There's a PA handset in the teachers' lounge if you want to talk back.</p>
       <h4>The ending</h4>
       <p>Spoilers: this plays the "Out of Bounds" cutscene from the end of The Final Whistle.</p>
-      <p><button class="sm" id="x-ending" type="button">Watch the ending</button></p>`;
+      <p><button class="sm" id="x-intro" type="button">Watch the intro</button> <button class="sm" id="x-ending" type="button">Watch the ending</button></p>`;
   }
 
   notes() {

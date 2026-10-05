@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-04',
+  version: '2026-10-04b',
   date: 'October 4, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -18,6 +18,11 @@ export const PATCH = {
     from: 'Michael & James',
   },
   sections: [
+    { title: 'Just added', items: [
+      'An intro cutscene: Erik getting cut in the locker room, his bargain with The Schnitz in the boiler room, and championship night going very wrong. It plays the first time you start Stew Leonard High. Watch it again from the map screen or Extras.',
+      'Map select: press Play to open a town map you can drag and zoom, with Stew Leonard High drawn from the real level. A few pins on it are marked "coming soon".',
+      'Brian is pickable online the moment you finish The Final Whistle, even if you\'re still in the same lobby.',
+    ] },
     { title: 'Out of Bounds: the story', items: [
       'A whole new story by James Amarante. The undefeated Stew Leonards cut Erik Madsen (#8) right before the championship. He sold his soul to The Schnitz for revenge, and at tip-off he struck.',
       'Erik talks to you all night over the PA. Pick up the handset in the Teachers\' Lounge to talk back. There are eight notes to find (new: The Bargain).',

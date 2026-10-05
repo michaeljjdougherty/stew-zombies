@@ -22,6 +22,7 @@ import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
 import { QuestView } from './questView.js';
 import { Ending } from './ending.js';
+import { Intro } from './intro.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 import { TeammateViews } from './teammates.js';
@@ -381,6 +382,13 @@ export class GameRenderer {
   // --- the ending cutscene -------------------------------------------------
   startEnding(settings) {
     this.ending = new Ending(this, this.sim, { character: settings.character, shirt: settings.shirt });
+    this.endingScene = this.scene;
+    return this.ending;
+  }
+
+  // The intro plays through the same slot as the ending (one cutscene at a time).
+  startIntro(settings) {
+    this.ending = new Intro(this, this.sim, { character: settings.character });
     this.endingScene = this.scene;
     return this.ending;
   }

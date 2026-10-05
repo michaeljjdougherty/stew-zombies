@@ -1673,3 +1673,54 @@ export function cauldronBoil(A, out, t) {
   });
   return 4.2;
 }
+
+// A packed gym: a roar that swells and settles, with whoops and whistles on top.
+export function crowdCheer(A, out, t, p = {}) {
+  const dur = p.dur || 8;
+  for (const [f, q, lvl] of [[700, 0.7, 0.5], [1600, 0.9, 0.32], [3200, 1.2, 0.14]]) {
+    const n = A.noiseSource('pink', t, dur + 0.5);
+    const bp = A.filter('bandpass', f, q);
+    const g = A.gain(0.0001);
+    // roar in, then rolling swells
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(lvl, t + 1.2);
+    for (let s = 1.2; s < dur - 1; s += 0.9 + Math.random() * 0.8) g.gain.linearRampToValueAtTime(lvl * (0.6 + Math.random() * 0.5), t + s);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp); bp.connect(g); g.connect(out);
+  }
+  // whoops and whistles
+  for (let i = 0; i < Math.floor(dur * 1.6); i++) {
+    const s = t + 0.6 + Math.random() * (dur - 1.5);
+    const f0 = 600 + Math.random() * 900;
+    const o = A.osc(Math.random() < 0.5 ? 'sine' : 'triangle', f0, s, 0.5);
+    o.frequency.linearRampToValueAtTime(f0 * (1.3 + Math.random() * 0.6), s + 0.25);
+    o.frequency.linearRampToValueAtTime(f0 * 0.9, s + 0.45);
+    const g = A.gain(0); A.env(g, s, 0.04, 0.4, 0.05 + Math.random() * 0.05);
+    o.connect(g); g.connect(out);
+  }
+  return dur + 0.5;
+}
+
+// The same crowd, terrified: a high ragged scream that tears and falls away.
+export function crowdScream(A, out, t, p = {}) {
+  const dur = p.dur || 4;
+  const n = A.noiseSource('white', t, dur);
+  const bp = A.filter('bandpass', 2400, 1.4);
+  bp.frequency.linearRampToValueAtTime(1500, t + dur);
+  const trem = A.osc('sine', 9, t, dur); const tg = A.gain(0.35); trem.connect(tg);
+  const g = A.gain(0.0001); tg.connect(g.gain);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.45, t + 0.25); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  return dur;
+}
+
+// A referee's whistle: two sharp blasts.
+export function refWhistle(A, out, t) {
+  for (const [s, d] of [[0, 0.22], [0.32, 0.5]]) {
+    const o = A.osc('sine', 3100, t + s, d);
+    const lfo = A.osc('sine', 48, t + s, d); const lg = A.gain(70); lfo.connect(lg); lg.connect(o.frequency);
+    const g = A.gain(0); A.env(g, t + s, 0.01, d, 0.25, 0, d - 0.08);
+    o.connect(g); g.connect(out);
+  }
+  return 1;
+}

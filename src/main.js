@@ -28,6 +28,7 @@ import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
 import { PatchNotes } from './ui/patchNotes.js';
+import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
@@ -125,7 +126,7 @@ function applySettings(s) {
 }
 
 const menus = new Menus(settings, {
-  play: () => { if (sim.mode !== 'zombies') restart('zombies'); startPlaying(); },
+  play: () => openMapSelect(),
   range: () => { if (sim.mode !== 'range') restart('range'); startPlaying(); },
   explore: () => { if (sim.mode !== 'explore') restart('explore'); startPlaying(); },
   resume: () => startPlaying(),
@@ -160,6 +161,7 @@ const lineupUI = new LineupUI({
 const extras = new Extras(CONFIG, {
   progress: () => progress,
   watchEnding: () => watchEnding(),
+  watchIntro: () => startIntro('extras'),
   playSong: () => { audio.init(); audio.applyVolumes(); titleMusic.stop(0.6); jukebox.start('music', 0.75); },
   stopSong: () => { jukebox.stop(0.5); startTitleMusic(); },
   songLyric: () => jukebox.lyric(),
@@ -366,6 +368,56 @@ function watchEnding() {
   startEnding();
 }
 
+// Play → the map screen.
+const mapSelect = new MapSelect({
+  play: (id, withIntro) => {
+    mapSelect.close();
+    if (withIntro) { startIntro('play'); return; }
+    if (sim.mode !== 'zombies') restart('zombies');
+    startPlaying();
+  },
+  watchIntro: () => { mapSelect.close(); startIntro('maps'); },
+  back: () => { mapSelect.close(); menus.show('title'); },
+  introSeen: () => !!progress.introSeen,
+});
+function openMapSelect() {
+  menus.show('mapselect');
+  mapSelect.open();
+}
+
+// The intro: Erik getting cut, the bargain, tip-off. Then the game starts
+// (or, watched from Extras / the map screen, back to where you were).
+let introThen = null;
+function startIntro(then = 'play') {
+  audio.init(); audio.applyVolumes();
+  titleMusic.stop(0.6);
+  if (jukebox.playing) jukebox.stop(0.3);
+  restart('zombies');
+  menus.hideAll();
+  introThen = then;
+  mode = 'intro';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  hud.show(false);
+  const I = renderer.startIntro({ ...settings, character: playableCharacter() });
+  I.onCue = (n) => { sound.cue(n); cutsceneUI.introCue(n); };
+  I.onLine = (who, text, secs) => { if (settings.subtitles !== false) cutsceneUI.line(who, text, secs); sound.voiceLine(who, text, secs); };
+  cutsceneUI.show(`${glyph('skip')} skip`);
+}
+
+function finishIntro() {
+  renderer.endEnding();
+  cutsceneUI.hide();
+  if (!progress.introSeen) { progress.introSeen = true; saveProgress(progress); }
+  restart('zombies');
+  const then = introThen; introThen = null;
+  if (then === 'play') { startPlaying(); return; }
+  mode = 'title';
+  if (then === 'maps') openMapSelect(); else if (then === 'extras') { menus.show('extras'); extras.open('story'); } else menus.show('title');
+  startTitleMusic();
+}
+
 function finishEnding() {
   renderer.endEnding();
   cutsceneUI.hide();
@@ -381,6 +433,7 @@ function finishEnding() {
   input.enabled = false;
   const firstTime = !progress.questDone;
   if (firstTime) { progress.questDone = true; saveProgress(progress); }
+  if (online) online.unlockBrian();   // pickable back in the lobby
   menus.showVictory(sim.rounds.round, player, firstTime);
   onlineOverButtons();
   startTitleMusic();
@@ -467,7 +520,7 @@ window.addEventListener('keydown', (e) => {
     if (mode === 'play') openRangePanel();
     else if (mode === 'panel') closeRangePanel();
   }
-  if (mode === 'ending' && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
+  if ((mode === 'ending' || mode === 'intro') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
   if (e.code === 'Escape' && mode === 'panel') { closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
@@ -619,7 +672,7 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
+const BACK_BUTTON = { mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 const patchNotes = new PatchNotes();
 const nav = new MenuNav({
@@ -628,7 +681,8 @@ const nav = new MenuNav({
   start: (id) => { if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel') $id(BACK_BUTTON[id]).click(); },
   view: (id) => { if (id === 'rangepanel') closeRangePanel(); },
   bumper: (id, dir) => {
-    if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
+    if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
+    else if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
     else if (id === 'charselect') { const ids = Object.keys(SHIRT_COLORS); charSelect.shirt = ids[(ids.indexOf(charSelect.shirt) + dir + ids.length) % ids.length]; charSelect.refresh(); }
     else if (id === 'lineup') { const L = renderer.getLineup(); const n = LINEUP.length + 1; L.setFocus(((L.focus + 1 + dir + n) % n) - 1); lineupUI.refresh(); }
   },
@@ -656,7 +710,7 @@ function padFrame(fdt) {
     if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
   }
   const playing = mode === 'play';
-  if (mode === 'ending' && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
+  if ((mode === 'ending' || mode === 'intro') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
   // menus first (no menu is up while playing, so this only tracks the screen)
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
@@ -694,6 +748,7 @@ function frame(now) {
   // the ending cutscene: Erik's booth is in pieces
   if (mode === 'play' && endingAt != null && time >= endingAt) startEnding();
   if (mode === 'ending' && renderer.ending && renderer.ending.done) finishEnding();
+  if (mode === 'intro' && renderer.ending && renderer.ending.done) finishIntro();
 
   if (mode === 'dying') {
     dyingT += fdt;
@@ -711,7 +766,7 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
-  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' ? 'ending' : 'play'));
+  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
@@ -755,6 +810,8 @@ window.STEW = {
     hold: debugHold, // e.g. STEW.debug.hold.ads = true
     // jump into the ending cutscene at `at` seconds (for testing)
     ending(at = 0) { if (mode !== 'ending') startEnding(); renderer.ending.t = at; },
+    // jump into the intro at `at` seconds (for testing)
+    intro(at = 0) { if (mode !== 'intro') startIntro('title'); renderer.ending.t = at; },
 
   },
 };

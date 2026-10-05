@@ -129,6 +129,16 @@ Phase 8 (built): Erik's on the PA.
      falls, The Schnitz speaks, Erik vanishes, and past the gym doors the
      campus is anchored to an asteroid in deep space. Brian Luke steps out of
      a portal: "You guys coming?" Title card for Map 2 (`src/render/ending.js`).
+- **The intro** (`src/render/intro.js`, skippable): *The Cut*, the night
+  before the championship in the locker room, where the team (in their
+  green-and-gold jerseys) tells Erik, #8, they took a vote; *The Bargain*,
+  later that night in the boiler room, with Erik in a circle of candles and
+  The Schnitz's eyes in the steam ("Talent has a price, Number Eight"); and
+  *Tip-off*, a packed gym, where Erik on the PA welcomes the undefeated Stew
+  Leonards ("...Not anymore"), the lights go green, the team's talent drains
+  up to the Press Box, the balls go dead, the court splits open, and the
+  shutter slams down over the booth. It plays the first time you start the
+  map; the map screen and Extras can play it again.
 - **Set dressing:** the Press Box hanging over a blood-streaked court,
   fiberglass dairy cows, a rotting animatronic cow band on the cafeteria stage,
   the store-style cafeteria marquee and the Rule #1 rock in the Quad
@@ -345,6 +355,15 @@ the built-in gun's was, so `REAL_GUNS` also says where it is: `rh` / `rk`
 When aiming, a gun is pushed out until the shooting hand is at least 19 cm in
 front of your eye.
 
+## Map select
+
+**Play** opens a town map (`src/ui/mapselect.js`): drag it, scroll or pinch
+to zoom, and Stew Leonard High is drawn from the real level, with its rooms
+named when you zoom in close. The list on the left (or the pins) picks a map.
+Three more pins are "coming soon" with a hint each, and the corner of the
+map has burned through to stars. "Play the intro first" is ticked until
+you've seen it. On a controller the bumpers switch maps.
+
 ## Patch notes
 
 The first time the game opens after an update, a "What's new" pop-up lists
@@ -409,8 +428,9 @@ Every few seconds the nearest one asks you if you wanna play 2K.
 gets a four-letter room code (and a **Copy invite link** button). Everyone
 else types the code and presses **Join**, or just opens the invite link. In
 the lobby each of you claims a character (Kearns, Ryan, Pit or Rocco, and
-Brian if you've finished The Final Whistle in that browser), and the host
-presses **Start the game**. Up to four players.
+Brian if you've finished The Final Whistle in that browser; finish it in an
+online game and he's pickable as soon as you're back in the lobby), and the
+host presses **Start the game**. Up to four players.
 
 - It runs browser to browser (WebRTC through PeerJS, loaded only when you go
   online). PeerJS's free public server just introduces the browsers; the game

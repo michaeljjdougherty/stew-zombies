@@ -308,12 +308,103 @@
   #cutscene .csub b { display: block; font-size: .62em; letter-spacing: 4px; text-transform: uppercase; color: #7fe08a; margin-bottom: 4px; }
   #cutscene .black { position: absolute; inset: 0; background: #000; opacity: 0; }
   #cutscene .black.on { opacity: 1; }
+  #cutscene .black.fade { transition: opacity .9s ease; }
+  #cutscene .card b.place { font-size: clamp(34px, 5vw, 64px); }
   #cutscene .card { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; opacity: 0; transition: opacity 1.6s ease; }
   #cutscene .card.on { opacity: 1; }
   #cutscene .card small { font-size: 13px; letter-spacing: 8px; text-transform: uppercase; color: var(--muted); }
   #cutscene .card b { font-family: var(--display); font-weight: 400; font-size: clamp(64px, 12vw, 150px); line-height: .9; color: var(--blood); text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 40px rgba(156,14,11,.4); }
   #cutscene .card span { font-size: 14px; letter-spacing: 5px; text-transform: uppercase; color: var(--ink); }
   #cutscene .skip { position: absolute; right: 18px; bottom: 14px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: rgba(221,211,192,.55); }
+
+  /* ---------------- Map select ---------------- */
+  .screen.mapscreen { display: grid; grid-template-columns: minmax(300px, 390px) 1fr; padding: 0; background: #0c0b09; align-content: stretch; overflow: hidden; }
+  .ms-side { display: flex; flex-direction: column; gap: 14px; padding: 28px 24px 20px max(16px, 3vw); overflow-y: auto; border-right: 1px solid var(--line); background: linear-gradient(180deg, rgba(20,17,13,.98), rgba(10,9,7,.98)); z-index: 2; }
+  .ms-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(38px, 4.6vw, 58px); line-height: .9; text-transform: uppercase; letter-spacing: 1.5px; color: var(--blood-hi); }
+  .ms-list { display: grid; gap: 6px; }
+  .ms-item { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); background: rgba(255,255,255,.02); position: relative; }
+  .ms-item b { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink); }
+  .ms-item span { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .ms-item.soon b { color: #7b7466; }
+  .ms-item.soon::after { content: "🔒"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: .6; }
+  .ms-item[aria-current="true"] { border-color: var(--blood-hi); background: rgba(156,14,11,.16); }
+  .ms-item[aria-current="true"] b { color: #fff; }
+  .ms-item:focus-visible { outline: 1px dashed var(--muted); outline-offset: 3px; }
+  .ms-card { display: grid; gap: 8px; padding: 14px; border: 1px solid rgba(217,180,90,.3); background: rgba(217,180,90,.05); margin-top: auto; }
+  .ms-card .ms-tag { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--brass); }
+  .ms-card h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+  .ms-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .ms-card.soon p { font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; color: #cfc2a2; font-size: 16px; }
+  .ms-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ms-card li { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); padding: 3px 7px; }
+  .ms-introrow { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .ms-introrow[hidden] { display: none; }
+  .ms-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ms-actions button { all: unset; cursor: pointer; font-family: var(--display); font-size: 22px; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 22px; color: #fff; background: var(--blood); }
+  .ms-actions button:hover, .ms-actions button:focus-visible { background: var(--blood-hi); outline: 1px dashed var(--muted); outline-offset: 3px; }
+  .ms-actions button[disabled] { background: #2a2722; color: #7b7466; cursor: default; }
+  .ms-actions button.ms-sec { font: 700 12px var(--body); letter-spacing: 1.5px; padding: 9px 12px; background: none; border: 1px solid var(--line); color: var(--ink); }
+  .ms-actions button.ms-sec:hover, .ms-actions button.ms-sec:focus-visible { border-color: var(--blood-hi); background: none; }
+  .ms-view { position: relative; overflow: hidden; cursor: grab; touch-action: none; background: #1b1d19; }
+  .ms-view.drag { cursor: grabbing; }
+  #ms-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; }
+  .ms-land { fill: #1b1d19; }
+  .ms-topo path { fill: none; stroke: rgba(217,180,90,.08); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  .ms-park { fill: #1f2a1b; }
+  .ms-tree { fill: #28391f; }
+  .ms-water { fill: #15303b; }
+  .ms-water-line { fill: none; stroke: #15303b; stroke-width: 26; stroke-linecap: round; stroke-linejoin: round; }
+  .ms-bld { fill: #272822; }
+  .ms-road-case, .ms-road { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .ms-road-case { stroke: #10110e; }
+  .ms-road { stroke: #3b3a32; }
+  .ms-road.highway { stroke: #6a5426; } .ms-road-case.highway { stroke: #2a200d; }
+  .ms-grounds { fill: #20251b; stroke: rgba(217,180,90,.35); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+  .ms-track { fill: #5a2a20; } .ms-field { fill: #2b4a25; } .ms-yard { stroke: rgba(255,255,255,.3); stroke-width: .5; }
+  .ms-lot { fill: #2a2a27; } .ms-stall { stroke: #55544c; stroke-width: .4; }
+  .ms-room { fill: #4b4134; stroke: rgba(217,180,90,.7); stroke-width: .6; }
+  .ms-room.out { fill: #2a3322; stroke: rgba(217,180,90,.35); }
+  .ms-label { fill: #a39a86; text-anchor: middle; dominant-baseline: middle; font-family: var(--body); paint-order: stroke; stroke: #11120f; stroke-width: .3em; stroke-linejoin: round; pointer-events: none; }
+  .ms-label.road { fill: #8a8372; letter-spacing: .06em; }
+  .ms-label.hood { fill: rgba(221,211,192,.32); letter-spacing: .32em; text-transform: uppercase; font-weight: 700; }
+  .ms-label.campus { fill: #f0dfb4; font-weight: 700; letter-spacing: .06em; }
+  .ms-label.room { fill: #f2e8cf; }
+  .ms-label.water { fill: #5b93a8; font-style: italic; }
+  .ms-label.park { fill: #7d9a69; font-style: italic; }
+  .ms-label.small { fill: #8a8372; }
+  #ms-svg.far .ms-label.road, #ms-svg.far .ms-label.small { display: none; }
+  .ms-roomlabels { transition: opacity .2s; }
+  .ms-hole { fill: #02030a; } .ms-char { fill: none; stroke: #3a1d0c; stroke-width: 7; stroke-linejoin: round; } .ms-star { fill: #fff; }
+  .ms-pins { position: absolute; inset: 0; pointer-events: none; }
+  .ms-pin { all: unset; pointer-events: auto; cursor: pointer; position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  .ms-pin i { position: absolute; left: -15px; top: -38px; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--blood-hi); box-shadow: 0 4px 10px rgba(0,0,0,.6); display: grid; place-items: center; font-style: normal; }
+  .ms-pin i::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  .ms-pin.soon i { background: #4a463e; border: 1px dashed #9a927f; }
+  .ms-pin.soon i::after { content: none; }
+  .ms-pin.soon i { color: #e8dcc0; font: 700 15px var(--body); }
+  .ms-pin.soon i > * { transform: rotate(45deg); }
+  .ms-pin em { position: absolute; left: 0; top: 2px; transform: translateX(-50%); white-space: nowrap; font: 700 11px var(--body); letter-spacing: 1.5px; text-transform: uppercase; color: #f2e8cf; background: rgba(10,9,7,.85); padding: 3px 7px; border: 1px solid var(--line); }
+  .ms-pin.soon em { color: #9a927f; }
+  .ms-pin.ready::before { content: ""; position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--blood-hi); animation: mspulse 1.8s ease-out infinite; }
+  @keyframes mspulse { from { transform: scale(.4); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
+  .ms-pin.on em { border-color: var(--blood-hi); color: #fff; }
+  .ms-pin.soon.on em { border-color: var(--brass); color: var(--brass); }
+  .ms-pin:focus-visible em { outline: 1px dashed var(--muted); }
+  .ms-tools { position: absolute; right: 14px; top: 14px; display: grid; gap: 4px; }
+  .ms-tools button { all: unset; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center; background: rgba(10,9,7,.85); border: 1px solid var(--line); color: var(--ink); font: 700 18px var(--body); }
+  .ms-tools button:hover { border-color: var(--blood-hi); color: #fff; }
+  .ms-compass { position: absolute; right: 14px; bottom: 44px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: rgba(10,9,7,.8); display: grid; place-items: center; font: 700 12px var(--body); color: var(--blood-hi); pointer-events: none; }
+  .ms-compass::before { content: ""; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-bottom: 8px solid var(--blood-hi); border-top: 0; }
+  .ms-scale { position: absolute; left: 14px; bottom: 14px; display: flex; align-items: flex-end; gap: 6px; font-size: 11px; color: var(--ink); pointer-events: none; }
+  .ms-scale i { width: 100px; height: 6px; border: 1px solid var(--ink); border-top: 0; }
+  .ms-coord { position: absolute; right: 14px; bottom: 14px; font: 11px var(--mono); color: var(--muted); pointer-events: none; }
+  .ms-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); font-size: 12px; color: var(--muted); background: rgba(10,9,7,.7); padding: 4px 10px; pointer-events: none; white-space: nowrap; }
+  @media (max-width: 820px) {
+    .screen.mapscreen { grid-template-columns: 1fr; grid-template-rows: 46vh 1fr; }
+    .ms-view { grid-row: 1; } .ms-side { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); padding: 16px; }
+    .ms-title { display: none; }
+    .ms-coord { display: none; }
+  }
 
   /* ---------------- Patch notes ---------------- */
   .pn-overlay { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 16px; background: rgba(4,3,2,.72); backdrop-filter: blur(3px); }
@@ -504,6 +595,35 @@
     <footer><button id="pn-close" type="button" data-nav-first>Let's go</button></footer>
   </div>
 </div>
+
+<section id="mapselect" class="screen mapscreen" hidden>
+  <div class="ms-side">
+    <span class="eyebrow">Choose where to make your stand</span>
+    <h2 class="ms-title">Map select</h2>
+    <div class="ms-list" id="ms-list"></div>
+    <div class="ms-card" id="ms-card">
+      <span class="ms-tag" id="ms-tag"></span>
+      <h3 id="ms-name"></h3>
+      <p id="ms-blurb"></p>
+      <ul id="ms-facts"></ul>
+      <label class="ms-introrow" id="ms-introrow"><input type="checkbox" id="ms-intro"> Play the intro first</label>
+      <div class="ms-actions">
+        <button id="ms-play" type="button" data-nav-first>Play</button>
+        <button id="ms-watch" type="button" class="ms-sec">Watch the intro</button>
+        <button id="ms-back" type="button" class="ms-sec">Back</button>
+      </div>
+    </div>
+  </div>
+  <div class="ms-view" id="ms-view">
+    <svg id="ms-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Town map"></svg>
+    <div class="ms-pins" id="ms-pins"></div>
+    <div class="ms-tools"><button type="button" id="ms-zin" aria-label="Zoom in" tabindex="-1">+</button><button type="button" id="ms-zout" aria-label="Zoom out" tabindex="-1">&minus;</button><button type="button" id="ms-home" aria-label="Back to the selected map" tabindex="-1">&#8982;</button></div>
+    <div class="ms-compass">N</div>
+    <div class="ms-scale"><i></i><span id="ms-scale-txt"></span></div>
+    <div class="ms-coord" id="ms-coord"></div>
+    <div class="ms-hint">Drag to move · scroll or pinch to zoom</div>
+  </div>
+</section>
 
 <section id="title" class="screen">
   <div class="stack">

@@ -69,6 +69,32 @@ export class SoundDirector {
       case 'brian': A.play(S.stewTalk, { text: 'You guys coming?', dur: 1.6 }, { gain: 1.1, reverb: 0.3, bus: 'voice' }); break;
       case 'black': A.play(S.bang, {}, { gain: 1.3, reverb: 0.2 }); break;
       case 'card': A.play(S.roundStartSting, {}, { gain: 1, reverb: 0.8 }); break;
+      // --- the intro (src/render/intro.js)
+      case 'card1': case 'card2': case 'card3': A.play(S.paChime, {}, { gain: 0.35, reverb: 0.9, bus: 'music' }); break;
+      case 'slam': A.play(S.bang, {}, { gain: 1.3, reverb: 0.7 }); break;
+      case 'eyes': A.play(S.thunder, { near: 0.15 }, { gain: 0.8, reverb: 0.9 }); break;
+      case 'fire': A.play(S.boxWhoosh, {}, { gain: 1.3, reverb: 0.8 }); A.play(S.explosion, {}, { gain: 0.7, reverb: 0.9 }); break;
+      case 'laugh': A.play(S.erikLaugh, {}, { gain: 1.1, reverb: 0.6, bus: 'voice', delay: 0.4 }); break;
+      case 'crowd': A.play(S.crowdCheer, { dur: 9 }, { gain: 0.9, reverb: 0.7 }); A.play(S.refWhistle, {}, { gain: 0.7, reverb: 0.6, delay: 0.6 }); break;
+      case 'green': A.play(S.powerDown, {}, { gain: 1.2, reverb: 0.9 }); A.play(S.crowdScream, { dur: 4.5 }, { gain: 0.8, reverb: 0.8, delay: 0.5 }); break;
+      case 'drain': A.play(S.electrocute, {}, { gain: 0.9, reverb: 0.7 }); A.play(S.powerOn, {}, { gain: 0.6, reverb: 0.8 }); break;
+      case 'rise': for (let i = 0; i < 5; i++) A.play(S.dirtRise, {}, { gain: 0.9, reverb: 0.6, delay: i * 0.25 }); A.play(S.zombieScream, {}, { gain: 0.8, reverb: 0.7, delay: 1.2 }); break;
+      case 'shutter': A.play(S.bang, {}, { gain: 1.1, reverb: 0.8, delay: 0.5 }); A.play(S.creak, {}, { gain: 0.9, reverb: 0.8 }); break;
+      case 'black3': A.play(S.bang, {}, { gain: 1.3, reverb: 0.3 }); break;
+      case 'title': A.play(S.roundStartSting, {}, { gain: 1.1, reverb: 0.8, bus: 'music' }); break;
+    }
+  }
+
+  // One line of a cutscene, in the speaker's voice.
+  voiceLine(who, text, dur) {
+    const A = this.A;
+    if (!A.ready) return;
+    if (who === 'schnitz') A.play(S.schnitzVoice, { text, dur }, { gain: 1.4, reverb: 1, bus: 'voice' });
+    else if (who === 'erikPA') A.play(S.erikPA, { text, dur, chime: false }, { bus: 'voice', reverb: 0.7, gain: 1 });
+    else if (who === 'erik') A.play(S.crewVoice, { text, dur, f0: 142, grit: 0.4 }, { bus: 'voice', reverb: 0.25, gain: 0.95 });
+    else {
+      const v = (CREW[who] && CREW[who].voice) || {};
+      A.play(S.crewVoice, { text, dur, f0: v.f0, grit: v.grit }, { bus: 'voice', reverb: 0.25, gain: 0.95 });
     }
   }
 
