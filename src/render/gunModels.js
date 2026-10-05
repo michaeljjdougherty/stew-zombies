@@ -9,8 +9,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import * as T from './textures.js';
 import { limb, rng, taperedTube } from './human.js';
 import { buildHand } from './hands.js';
+import { handModel } from './handModel.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { gltfLoader, fetchGlb as fetchModel } from './gltfLite.js';
 
 // --- real gun models ----------------------------------------------------------
 // Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
@@ -21,32 +22,36 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // hide: parts of the download that aren't the gun (spare mags, loose rounds).
 // mag: parts that should drop out with the magazine on a reload.
 // off: a final nudge [x, y, z] in metres; len: scale on top of the length match.
+// rh: where the real grip is, relative to the built-in one, in the grip's own
+// frame (metres; the hands move, the gun doesn't); rk: extra grip rake (radians).
+// lh: the same for the support hand (gun frame); lk: 'vgrip' to hold a vertical
+// foregrip instead of cupping the handguard, lr: that foregrip's rake.
 export const REAL_GUNS = {
-  pistol: { file: 'm1912', rot: [0, 180, 0], hide: /^Object_(42|43|47|48)$/ },
-  rifle: { file: 'm14_rifle', rot: [0, 180, 0] },
-  doubleBarrel: { file: 'olympus', rot: [0, -90, 0] },
-  smg: { file: 'mp41', rot: [0, 180, 0], hide: /^(Mag_MP40_0|bullet_MP40_0)$/ },
-  revolver: { file: 'pyton', rot: [0, 90, 0] },
-  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0)$/, mag: /^mag1_/ },
-  pump: { file: 'staykout', rot: [0, 180, 0] },
-  mp6k: { file: 'mp5k', rot: [0, 0, 0] },
-  mpk: { file: '3d_gun_model', rot: [0, 90, 0] },
-  ak75u: { file: 'ak-74u', rot: [0, 90, 0] },
-  m17: { file: 'm15', rot: [0, -90, 0], hide: /^Object_(76|140)$/ },
-  cz76: { file: 'low-poly_cz_75_b', rot: [0, 90, 0], hide: /^Object_(7|8|10|12|13|14)$/ },
-  spectur: { file: 'sites_spectre_hc_9mm_low_poly', rot: [0, 180, 0] },
-  famos: { file: 'famas', rot: [0, 180, 0] },
-  awg: { file: 'aug_a3', rot: [0, 90, 0] },
-  spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0] },
-  hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0] },
-  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/ },
-  rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], mag: /RPK_Mag/ },
-  dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/ },
-  l97: { file: 'l96a1_sniper', rot: [0, 90, 0] },
-  chinapond: { file: 'china_lake_colored', rot: [0, 0, 0] },
-  krossbow: { file: 'crossbow', rot: [0, -90, 0], tint: '#4a4c50' },
+  pistol: { file: 'm1912', rot: [0, 180, 0], hide: /^Object_(42|43|47|48)$/, rh: [0, 0.008, 0.007] },
+  rifle: { file: 'm14_rifle', rot: [0, 180, 0], rh: [0, 0.005, 0.065], rk: -0.35, lh: [0, 0.047, 0] },
+  doubleBarrel: { file: 'olympus', rot: [0, -90, 0], rh: [0, 0, 0.037], rk: -0.3, lh: [0, 0.035, 0] },
+  smg: { file: 'mp41', rot: [0, 180, 0], hide: /^(Mag_MP40_0|bullet_MP40_0)$/, rh: [0, -0.02, 0.07], rk: -0.3, lh: [0, 0.074, 0] },
+  revolver: { file: 'pyton', rot: [0, 90, 0], rh: [0, 0.008, 0] },
+  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0)$/, mag: /^mag1_/, rh: [0, -0.005, -0.075], lh: [0, -0.012, -0.02] },
+  pump: { file: 'staykout', rot: [0, 180, 0], rh: [0, -0.005, 0.09], rk: -0.4, lh: [0, 0.03, 0] },
+  mp6k: { file: 'mp5k', rot: [0, 0, 0], rh: [0, -0.015, 0], lh: [0, 0, -0.025], lk: 'vgrip', lr: -0.15 },
+  mpk: { file: '3d_gun_model', rot: [0, 90, 0], rh: [0, -0.02, 0.087], lh: [0, 0.012, 0] },
+  ak75u: { file: 'ak-74u', rot: [0, 90, 0], rh: [0, 0, 0.015], lh: [0, 0.02, 0] },
+  m17: { file: 'm15', rot: [0, -90, 0], hide: /^Object_(76|140)$/, rh: [0, -0.02, 0.015], rk: -0.2, lh: [0, 0.011, 0] },
+  cz76: { file: 'low-poly_cz_75_b', rot: [0, 90, 0], hide: /^Object_(7|8|10|12|13|14)$/, rh: [0, 0.015, 0.005] },
+  spectur: { file: 'sites_spectre_hc_9mm_low_poly', rot: [0, 180, 0], rh: [0, -0.005, 0.09], lh: [0, 0.005, -0.02], lk: 'vgrip', lr: -0.1 },
+  famos: { file: 'famas', rot: [0, 180, 0], rh: [0, 0.008, 0.095], rk: -0.15, lh: [0, 0.012, 0.045] },
+  awg: { file: 'aug_a3', rot: [0, 90, 0], rh: [0, 0.005, -0.01], lh: [0, 0.025, 0.01], lk: 'vgrip', lr: -0.6 },
+  spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0], rh: [0, 0.012, 0.015], lh: [0, 0.037, 0] },
+  hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0], rh: [0, 0.04, 0.097], lh: [0, 0.056, 0.03] },
+  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/, rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
+  rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], mag: /RPK_Mag/, rh: [0, -0.015, 0.075], lh: [0, 0.02, 0] },
+  dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/, rh: [0, 0.015, -0.03], lh: [0, 0.018, -0.03] },
+  l97: { file: 'l96a1_sniper', rot: [0, 90, 0], rh: [0, -0.005, -0.07], lh: [0, 0.005, 0] },
+  chinapond: { file: 'china_lake_colored', rot: [0, 0, 0], rh: [0, 0.035, 0.04], rk: -0.35, lh: [0, 0.04, 0] },
+  krossbow: { file: 'crossbow', rot: [0, -90, 0], tint: '#4a4c50', rh: [0, 0.01, -0.005], lh: [0, 0.055, 0] },
   bknife: { file: 'combat_knife', rot: [0, -90, 0] },
-  fucci: { file: 'retro_ray-gun', rot: [0, 90, 0] },
+  fucci: { file: 'retro_ray-gun', rot: [0, 90, 0], rh: [0, 0.005, 0] },
   chopper: { file: 'saw-gun', rot: [0, -90, 0] },
 };
 export const realGunMaterials = new Set();   // the viewmodel dims these in the dark
@@ -66,56 +71,12 @@ export function setRealGuns(on) { realGunsOn = on !== false; }
 
 const GUN_BASE = 'assets/guns/';
 const gunCache = new Map();
-let gltf = null;
-async function fetchGlb(file) {
-  try {
-    const r = await fetch(GUN_BASE + file + '.glb');
-    if (r.ok) return await r.arrayBuffer();
-  } catch { /* try the other form */ }
-  // hosts that won't serve .glb get a base64 copy
-  const r = await fetch(GUN_BASE + file + '.glb.json');
-  if (!r.ok) throw new Error(file + '.glb ' + r.status);
-  const s = atob((await r.json()).b64);
-  const u = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
-  return u.buffer;
-}
-// The GLTF loader normally shows embedded textures through blob: URLs, which
-// the artifact page's security rules block (the guns came out plain white, and
-// emissive ones glowed). Decode them straight from the bytes instead.
-const WRAP = { 33071: THREE.ClampToEdgeWrapping, 33648: THREE.MirroredRepeatWrapping, 10497: THREE.RepeatWrapping };
-const FILT = { 9728: THREE.NearestFilter, 9729: THREE.LinearFilter, 9984: THREE.NearestMipmapNearestFilter, 9985: THREE.LinearMipmapNearestFilter, 9986: THREE.NearestMipmapLinearFilter, 9987: THREE.LinearMipmapLinearFilter };
-class BitmapTextures {
-  constructor(parser) { this.parser = parser; this.name = 'stew_bitmap_textures'; this.cache = new Map(); }
-  loadTexture(index) {
-    const json = this.parser.json, def = json.textures[index], img = json.images[def.source];
-    if (!img || img.bufferView === undefined || typeof createImageBitmap !== 'function') return null;
-    if (!this.cache.has(def.source)) {
-      this.cache.set(def.source, this.parser.getDependency('bufferView', img.bufferView)
-        .then((buf) => createImageBitmap(new Blob([buf], { type: img.mimeType || 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })));
-    }
-    return this.cache.get(def.source).then((bmp) => {
-      const t = new THREE.Texture(bmp);
-      t.flipY = false;
-      const sm = (json.samplers || [])[def.sampler] || {};
-      t.magFilter = FILT[sm.magFilter] || THREE.LinearFilter;
-      t.minFilter = FILT[sm.minFilter] || THREE.LinearMipmapLinearFilter;
-      t.wrapS = WRAP[sm.wrapS] || THREE.RepeatWrapping;
-      t.wrapT = WRAP[sm.wrapT] || THREE.RepeatWrapping;
-      t.anisotropy = 4;
-      t.needsUpdate = true;
-      return t;
-    }).catch(() => null);
-  }
-}
-
 // One normalized copy per file: pointing down -Z, centered, unwanted parts gone.
 function loadRealGun(model) {
   const R = REAL_GUNS[model];
   if (gunCache.has(model)) return gunCache.get(model);
   const job = (async () => {
-    if (!gltf) { gltf = new GLTFLoader(); gltf.register((parser) => new BitmapTextures(parser)); }
-    const g = await gltf.parseAsync(await fetchGlb(R.file), '');
+    const g = await gltfLoader().parseAsync(await fetchModel(GUN_BASE + R.file + '.glb'), '');
     const root = g.scene;
     if (R.hide) { const gone = []; root.traverse((o) => { if (R.hide.test(o.name)) gone.push(o); }); for (const o of gone) o.parent.remove(o); }
     root.traverse((o) => {
@@ -168,6 +129,34 @@ function attachRealGun(spec, model) {
     }
     // the muzzle flash comes out of the real barrel
     spec.muzzle.position.z = (own.min.z + own.max.z) / 2 + off[2] - real.size.z * k / 2;
+    // move the hands onto the real gun's grip (the pistol support hand goes with the other)
+    if (spec.rightHand && (R.rh || R.rk)) {
+      const rh = spec.rightHand;
+      const d = new THREE.Vector3(...(R.rh || [0, 0, 0])).applyEuler(rh.rotation);
+      rh.position.add(d);
+      if (R.rk) {
+        rh.rotation.x += R.rk;
+        const holder = rh.children[0];
+        if (holder && holder.userData.rebuild) { holder.userData.armQ = rh.quaternion.clone(); holder.userData.rebuild(); }
+      }
+      if (spec.leftHand && spec.left.kind !== 'under') { spec.leftHand.position.add(d); spec.leftHome.add(d); }
+    }
+    // aiming, the eye sits on the stock: keep the shooting hand at least
+    // 19 cm out in front of it (a real gun's grip is further back than the
+    // built-in one's, which put the wrist in your face)
+    if (spec.rightHand && spec.aim) {
+      const gz = spec.aim.z + spec.rightHand.position.z;
+      if (gz > -0.19) spec.aim = { ...spec.aim, z: spec.aim.z - (gz + 0.19) };
+    }
+    // and the support hand onto its handguard (or foregrip)
+    if (spec.leftHand && spec.left.kind === 'under' && (R.lh || R.lr)) {
+      if (R.lh) { spec.leftHand.position.add(new THREE.Vector3(...R.lh)); spec.leftHome.add(new THREE.Vector3(...R.lh)); }
+      if (R.lr) {
+        spec.leftHand.rotation.x = R.lr;
+        const holder = spec.leftHand.children[0];
+        if (holder && holder.userData.rebuild) { holder.userData.armQ = spec.leftHand.quaternion.clone(); holder.userData.rebuild(); }
+      }
+    }
     spec.real = obj;
   });
 }
@@ -1216,7 +1205,7 @@ export function buildGun(model, { withHands = false, rightOnly = false, camo = n
     const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
     spec.procBox.union(b);
   }
-  if (withHands) addHands(spec, m, rightOnly);
+  if (withHands) addHands(spec, m, rightOnly, model);
   spec.fp = withHands;
   if (REAL_GUNS[model] && realGunsOn) attachRealGun(spec, model);
   return spec;
@@ -1309,71 +1298,128 @@ function forearm(m, from, dir) {
 export const FP_HANDS = {
   // right hand round a pistol grip (grip axis = Y, barrel = -Z)
   grip: { wrist: [0.036, -0.016, 0.07], fwd: [0, 0.32, -1], palm: [-1, 0, 0], roll: 0, mirror: false,
-    pose: { curl: [0.55, 1.2, 1.22, 1.25], spread: [0.05, 0, -0.02, -0.06], thumb: { flex: 0.35, curl: 0.15, out: -0.05 } } },
+    pose: { curl: [0.55, 1.2, 1.22, 1.25], spread: [0.05, 0, -0.02, -0.06], thumb: { flex: 0.35, curl: 0.15, out: -0.05 } },
+    // sculpted hand: palm on the right panel with the back strap in the web of
+    // the hand, three fingers wrapped round the front strap onto the left
+    // panel, the index finger's pad on the trigger, the thumb forward along
+    // the left side of the frame
+    real: { wrist: [0.03, -0.013, 0.055], fwd: [0, 0, -1], palm: [-1, 0, -0.3], arm: [0.5, -0.9, 0.6],
+      pose: { f: [[0.35, 0.75, 0.45], [1.25, 1.5, 0.6], [1.3, 1.5, 0.6], [1.35, 1.45, 0.6]], s: [0, 0, 0, 0], t: [0, 0, 0.25, 0.15], td: [0, -0.3, 0.95] } } },
   // left hand cupping the right one on a pistol
   cup: { wrist: [-0.044, -0.03, 0.058], fwd: [0.1, 0.3, -1], palm: [1, 0, 0], roll: 0, mirror: true,
-    pose: { curl: [1.0, 1.05, 1.1, 1.15], spread: [0, 0, 0, -0.04], thumb: { flex: 0.1, curl: 0.1, out: 0.1 } } },
+    pose: { curl: [1.0, 1.05, 1.1, 1.15], spread: [0, 0, 0, -0.04], thumb: { flex: 0.1, curl: 0.1, out: 0.1 } },
+    // sculpted hand (in the GRIP's frame): palm filling the left panel, fingers
+    // wrapped over the shooting hand's, thumb forward under the other thumb
+    real: { wrist: [-0.042, -0.021, 0.055], fwd: [0, -0.3, -1], palm: [1, 0, 0.2],
+      pose: { f: [[1.0, 1.2, 0.5], [1.05, 1.25, 0.5], [1.1, 1.25, 0.5], [1.15, 1.2, 0.5]], s: [0, 0, 0, 0], t: [0, 0, 0.15, 0.1], td: [-0.4, -0.9, 0.3] } } },
   // left hand under a handguard, fingers up the right side, thumb up the left
   under: { wrist: [-0.072, -0.002, 0.0], fwd: [1, 0.1, 0], palm: [0, 1, 0], roll: 0, mirror: true,
-    pose: { curl: [0.95, 1.0, 1.05, 1.1], spread: [0.04, 0, -0.03, -0.06], thumb: { flex: 0.45, curl: 0.35, out: -0.25 } } },
+    pose: { curl: [0.95, 1.0, 1.05, 1.1], spread: [0.04, 0, -0.03, -0.06], thumb: { flex: 0.45, curl: 0.35, out: -0.25 } },
+    // sculpted hand: a C-clamp from below - the handguard sits in the palm,
+    // fingers up and over the far side, thumb up the near side
+    real: { wrist: [-0.075, -0.024, 0.0], fwd: [1, 0.1, 0], palm: [0, 1, 0],
+      pose: { f: [[1.0, 1.25, 0.7], [1.05, 1.3, 0.7], [1.1, 1.3, 0.7], [1.15, 1.25, 0.7]], s: [0, 0, 0, 0], t: [0, 0, 0.2, 0.2], td: [0.3, -0.2, 0.9] } } },
+  // left hand round a vertical foregrip (the right-hand grip, mirrored, every finger wrapped)
+  vgrip: { wrist: [-0.072, -0.002, 0.0], fwd: [1, 0.1, 0], palm: [0, 1, 0], roll: 0, mirror: true,
+    pose: { curl: [0.95, 1.0, 1.05, 1.1], spread: [0.04, 0, -0.03, -0.06], thumb: { flex: 0.45, curl: 0.35, out: -0.25 } },
+    real: { wrist: [-0.03, -0.013, 0.055], fwd: [0, 0, -1], palm: [1, 0, -0.3], mirror: true, arm: [-0.45, -0.85, 0.7],
+      pose: { f: [[1.2, 1.45, 0.6], [1.25, 1.5, 0.6], [1.3, 1.5, 0.6], [1.35, 1.45, 0.6]], s: [0, 0, 0, 0], t: [0, 0, 0.25, 0.15], td: [0, -0.3, 0.95] } } },
+  // left hand round a perk bottle (bottle axis = Y, centred on the origin)
+  bottle: { wrist: [-0.072, -0.002, 0.0], fwd: [1, 0.1, 0], palm: [0, 1, 0], roll: 0, mirror: true,
+    pose: { curl: [0.95, 1.0, 1.05, 1.1], spread: [0.04, 0, -0.03, -0.06], thumb: { flex: 0.45, curl: 0.35, out: -0.25 } },
+    real: { wrist: [-0.052, -0.02, 0.06], fwd: [0, 0.15, -1], palm: [1, 0, -0.2], mirror: true, arm: [-0.3, -0.6, 1],
+      pose: { f: [[0.85, 1.0, 0.4], [0.9, 1.05, 0.4], [0.95, 1.05, 0.4], [1.0, 1.0, 0.4]], s: [0, 0, 0, 0], t: [0, 0, 0.2, 0.1], td: [0, 0.3, 0.95] } } },
 };
 const HT = () => (typeof window !== 'undefined' && window.__HANDTUNE) || {};
 
 let nailMatShared = null;
-function fpHand(m, kind) {
-  const P = { ...FP_HANDS[kind], ...(HT()[kind] || {}) };
-  if (!nailMatShared) nailMatShared = new THREE.MeshStandardMaterial({ color: '#e2b9a4', roughness: 0.35 });
-  const hand = buildHand(m.skin, nailMatShared, { size: 0.96 });
-  hand.set(P.pose);
-  // hand space: fingers along -Y, palm +Z. Build the rotation from fwd/palm.
-  const y = new THREE.Vector3(...P.fwd).normalize().negate();
-  const z = new THREE.Vector3(...P.palm);
-  z.addScaledVector(y, -z.dot(y)).normalize();
-  const x = new THREE.Vector3().crossVectors(y, z).normalize();
-  const g = new THREE.Group();
-  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
-  if (P.roll) g.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), P.roll));
-  g.position.set(...P.wrist);
-  const inner = new THREE.Group();
-  if (P.mirror) inner.scale.x = -1;
-  inner.add(hand.group);
-  g.add(inner);
-  g.userData.hand = hand;
-  g.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
-  return { group: g, wrist: new THREE.Vector3(...P.wrist), fwd: new THREE.Vector3(...P.fwd).normalize() };
+// The numbers for one hand kind: the sculpted hand has its own (it's built
+// differently from the old one), and window.__HANDTUNE can override either.
+function handParams(kind, real) {
+  const T = HT()[kind] || {};
+  const base = { ...FP_HANDS[kind], ...T };
+  return real && (FP_HANDS[kind].real || T.real) ? { ...base, ...(FP_HANDS[kind].real || {}), ...(T.real || {}) } : base;
 }
 
-function addHands(spec, m, rightOnly = false) {
+// One first-person hand with its forearm (and, on the left, a watch), placed
+// in the gun's grip frame. Starts as the built-in hand if the sculpted one
+// hasn't loaded yet, and swaps (re-placing everything) when it has.
+// gripFrame { pos, rot }: the sculpted hand's numbers for this kind are in the
+// grip's frame (pos/rot relative to the holder's parent) - the pistol support
+// hand is posed against the grip itself.
+export function fpHand(m, kind, armDir, watch = false, gripFrame = null) {
+  if (!nailMatShared) nailMatShared = new THREE.MeshStandardMaterial({ color: '#e2b9a4', roughness: 0.35 });
+  const holder = new THREE.Group();
+  const build = (real) => {
+    holder.clear();
+    const P = handParams(kind, real);
+    if (real && gripFrame) { holder.position.set(...gripFrame.pos); holder.rotation.set(...gripFrame.rot); }
+    else { holder.position.set(0, 0, 0); holder.rotation.set(0, 0, 0); }
+    const hand = real ? handModel.build(m.skin) : buildHand(m.skin, nailMatShared, { size: 0.96 });
+    hand.set(P.pose);
+    // hand space: fingers along -Y, palm +Z. Build the rotation from fwd/palm.
+    const y = new THREE.Vector3(...P.fwd).normalize().negate();
+    const z = new THREE.Vector3(...P.palm);
+    z.addScaledVector(y, -z.dot(y)).normalize();
+    const x = new THREE.Vector3().crossVectors(y, z).normalize();
+    const g = new THREE.Group();
+    g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+    if (P.roll) g.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), P.roll));
+    g.position.set(...P.wrist);
+    const inner = new THREE.Group();
+    if (P.mirror) inner.scale.x = -1;
+    inner.add(hand.group);
+    g.add(inner);
+    g.userData.hand = hand;
+    holder.add(g);
+    // the sculpted hand's forearm direction is given in the GUN's frame (a raked
+    // grip tips the hand, not the arm): undo the grip frame's turn
+    const dir = new THREE.Vector3(...(P.arm || armDir));
+    if (real && P.arm && holder.userData.armQ) dir.applyQuaternion(holder.userData.armQ.clone().invert());
+    dir.normalize();
+    const fa = forearm(m, P.wrist, dir.toArray());
+    holder.add(fa);
+    if (watch) {
+      // a cheap wristwatch on the left wrist
+      const w = new THREE.Group();
+      w.position.copy(fa.position).addScaledVector(dir, 0.03);
+      w.quaternion.copy(fa.quaternion);
+      w.add(new THREE.Mesh(hands().watch.band, watchMats().band));
+      const face = new THREE.Mesh(hands().watch.face, watchMats().face); face.rotation.y = -0.6; w.add(face);
+      holder.add(w);
+    }
+    holder.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+    holder.userData.hand = hand;
+  };
+  build(handModel.ready);
+  holder.userData.rebuild = () => build(handModel.ready);
+  if (!handModel.ready && !handModel.failed) handModel.load().then(() => { if (handModel.ready) build(true); });
+  return holder;
+}
+
+function addHands(spec, m, rightOnly = false, model = null) {
   const g = spec.group;
   // right hand round the grip
   const rh = new THREE.Group();
   rh.position.set(...spec.right.pos); rh.rotation.set(...spec.right.rot);
   g.add(rh);
-  const R = fpHand(m, 'grip');
-  rh.add(R.group);
-  rh.add(forearm(m, R.wrist.toArray(), [0.32, -0.5, 1]));
+  const rhand = fpHand(m, 'grip', [0.32, -0.5, 1]);
+  rhand.userData.armQ = rh.quaternion.clone();
+  rhand.userData.rebuild();
+  rh.add(rhand);
+  spec.rightHand = rh;
   if (rightOnly) return;
   // support hand
   const lh = new THREE.Group();
   lh.position.set(...spec.left.pos);
   g.add(lh);
-  if (spec.left.kind === 'under') {
-    const L = fpHand(m, 'under');
-    lh.add(L.group);
-    const fdir = [-0.6, -0.42, 1];
-    const fa = forearm(m, L.wrist.toArray(), fdir);
-    lh.add(fa);
-    // a cheap wristwatch on the left wrist
-    const watch = new THREE.Group();
-    watch.position.copy(fa.position).addScaledVector(new THREE.Vector3(...fdir).normalize(), 0.03);
-    watch.quaternion.copy(fa.quaternion);
-    watch.add(new THREE.Mesh(hands().watch.band, watchMats().band));
-    const face = new THREE.Mesh(hands().watch.face, watchMats().face); face.rotation.y = -0.6; watch.add(face);
-    lh.add(watch);
-  } else {
-    const L = fpHand(m, 'cup');
-    lh.add(L.group);
-    lh.add(forearm(m, L.wrist.toArray(), [-0.5, -0.6, 1]));
+  // a real gun with a vertical foregrip gets a hand wrapped round it
+  const lk = realGunsOn && REAL_GUNS[model] && REAL_GUNS[model].lk;
+  if (lk === 'vgrip') lh.add(fpHand(m, 'vgrip', [-0.3, -0.5, 1], true));
+  else if (spec.left.kind === 'under') lh.add(fpHand(m, 'under', [-0.6, -0.42, 1], true));
+  else {
+    const R0 = spec.right.pos, L0 = spec.left.pos;
+    lh.add(fpHand(m, 'cup', [-0.5, -0.6, 1], false, { pos: [R0[0] - L0[0], R0[1] - L0[1], R0[2] - L0[2]], rot: spec.right.rot }));
   }
   spec.leftHand = lh;
   spec.leftHome = lh.position.clone();

@@ -7,7 +7,9 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { realGunMaterials, setFpClip, buildGun, gunMaterials, animateCamo, setArmLook } from './gunModels.js';
+import { perkBottleModel } from './propModels.js';
+import { handModel } from './handModel.js';
+import { realGunMaterials, setFpClip, buildGun, gunMaterials, animateCamo, setArmLook, fpHand } from './gunModels.js';
 import { CHARACTERS } from './characters.js';
 import { SKIN } from './human.js';
 
@@ -32,6 +34,7 @@ class Spring {
 export class Viewmodel {
   constructor(cfg) {
     this.cfg = cfg;
+    handModel.load();   // the sculpted first-person hands
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(cfg.graphics.viewmodelFov, 1, 0.01, 10);
     this.scene.add(this.camera);
@@ -181,8 +184,10 @@ export class Viewmodel {
     this.drinkArm = new THREE.Group();
     this.drinkArm.visible = false;
     this.root.add(this.drinkArm);
-    const b = (w, h, d, mat, x, y, z) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); q.position.set(x, y, z); this.drinkArm.add(q); return q; };
-    b(0.05, 0.06, 0.07, m.glove, 0, -0.04, 0.01);
+    // the left hand wrapped round the bottle (the sculpted hand once loaded)
+    const hand = fpHand(gunMaterials(), 'bottle', [-0.3, -0.6, 1]);
+    hand.userData.armQ = new THREE.Quaternion();
+    this.drinkArm.add(hand);
     this.bottleMat = new THREE.MeshStandardMaterial({ color: '#c0392b', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85, emissive: new THREE.Color('#c0392b'), emissiveIntensity: 0.25 });
     const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.033, 0.13, 12), this.bottleMat);
     bottle.position.set(0, 0.03, -0.01); this.drinkArm.add(bottle);
@@ -194,14 +199,27 @@ export class Viewmodel {
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 8), m.metal);
     cap.position.set(0, 0.165, -0.01); this.drinkArm.add(cap);
     this.bottleCap = cap;
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.42, 10), m.sleeve);
-    arm.position.set(-0.07, -0.15, 0.16); arm.rotation.set(1.0, 0, 0.5);
-    this.drinkArm.add(arm);
+    this.procBottle = [bottle, neck, label, cap];
+
   }
 
-  setBottle(color) {
+  setBottle(color, perk = null) {
     this.bottleMat.color.set(color);
     this.bottleMat.emissive.set(color);
+    // the real glass bottle, in this perk's color
+    if (!perk) return;
+    if (this.realBottle) { this.drinkArm.remove(this.realBottle); this.realBottle = null; this.realCork = null; }
+    const want = perk;
+    this.bottlePerk = perk;
+    perkBottleModel(perk, this.cfg.perks.list[perk]).then((b) => {
+      if (!b || this.bottlePerk !== want) return;
+      b.scale.setScalar(0.075 / b.userData.size.x);   // a flask a hand can get round
+      b.position.set(0, -0.06, -0.01);
+      b.rotation.y = -0.5;
+      this.drinkArm.add(b);
+      this.realBottle = b;
+      for (const o of this.procBottle) o.visible = false;
+    });
   }
 
   initEnvironment(renderer) {
@@ -276,7 +294,7 @@ export class Viewmodel {
       case 'perkDrink':
         this.drinkT = 0;
         this.drinkDur = this.cfg.perks.drinkTime;
-        this.setBottle(this.cfg.perks.list[e.perk].color);
+        this.setBottle(this.cfg.perks.list[e.perk].color, e.perk);
         break;
       case 'playerLand':
         this.landY.v -= Math.min(1.2, e.impact * 0.12);
@@ -510,7 +528,8 @@ export class Viewmodel {
         const tip = seg(t, 0.35, 0.55) * (1 - seg(t, 0.75, 0.85));
         this.drinkArm.position.set(lerp(-0.22, -0.1, up) + tip * 0.03, lerp(-0.38, -0.13, up) + tip * 0.02, lerp(-0.34, -0.36, up) + tip * 0.06);
         this.drinkArm.rotation.set(0.1 + tip * 1.25, 0.15, 0.35 - up * 0.15 - tip * 0.2);
-        this.bottleCap.visible = t < 0.3;
+        this.bottleCap.visible = t < 0.3 && !this.realBottle;
+        if (this.realBottle) { if (!this.realCork) this.realBottle.traverse((o) => { if (o.name === 'cork') this.realCork = o; }); if (this.realCork) this.realCork.visible = t < 0.3; }
       }
     } else this.drinkArm.visible = false;
 

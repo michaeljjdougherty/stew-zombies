@@ -7,6 +7,7 @@
 // Reads sim.quest; never changes it.
 // =============================================================================
 import * as THREE from 'three';
+import { trophyParts } from './propModels.js';
 import * as T from './textures.js';
 import { buildCharacter, idleCharacter } from './characters.js';
 import { PRESS_BOX } from './storyProps.js';
@@ -197,6 +198,19 @@ export class QuestView {
     this.trophy.scale.setScalar(1.6);
     this.trophy.visible = false;
     this.stand.add(this.trophy);
+    // the real trophy model: the pieces and the rebuilt one
+    trophyParts().then((T) => {
+      if (!T) return;
+      for (const pc of this.pieces) {
+        const m = T[pc.t.id].clone(true);
+        for (const c of [...pc.g.children]) c.visible = false;
+        m.scale.setScalar(1 / pc.g.scale.x);   // the model is already life size
+        pc.g.add(m);
+      }
+      for (const c of [...this.trophy.children]) c.visible = false;
+      const all = T.all.clone(true); all.scale.setScalar(1.45 / this.trophy.scale.x);
+      this.trophy.position.y = 1.06; this.trophy.add(all);
+    });
     this.stand.position.set(ts.x, 0, ts.z);
     // the trapdoor: two steel leaves set in the floor
     const md = sim.world.madDog;

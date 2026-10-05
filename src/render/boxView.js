@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { buildGun } from './gunModels.js';
+import { mysteryBoxModel } from './propModels.js';
 
 const W = 1.05, H = 0.55, D = 0.52;
 
@@ -68,6 +69,29 @@ export class BoxView {
     this.display.add(this.bobble);
     this.guns.set('bobble', this.bobble);
 
+    // the real Mystery Box model, when it arrives: same spot, its own hinged lid
+    const proc = [body, inside, lidMesh, ...this.group.children.filter((o) => o.isMesh && o.geometry && o.geometry.parameters && o.geometry.parameters.width === 0.08)];
+    mysteryBoxModel().then((M) => {
+      if (!M) return;
+      const k = 1.2 / M.size.x;
+      const m = M.group; m.scale.setScalar(k);
+      this.group.add(m);
+      m.updateMatrixWorld(true);
+      // hinge the lid along its back edge (worked out in the box's own space)
+      this.group.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(this.group.matrixWorld).invert();
+      const lb = new THREE.Box3();
+      for (const o of M.lidParts) { o.geometry.computeBoundingBox(); lb.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); }
+      const hinge = new THREE.Group();
+      hinge.position.set((lb.min.x + lb.max.x) / 2, lb.min.y, lb.min.z);
+      this.group.add(hinge); hinge.updateMatrixWorld(true);
+      for (const o of M.lidParts) hinge.attach(o);
+      this.modelLid = hinge;
+      this.modelGlow = M.glows.map((o) => { o.material = o.material.clone(); o.material.emissive = o.material.color.clone().multiplyScalar(0.6); return o.material; });
+      for (const o of proc) o.visible = false;
+      this.light.intensity = 2.5;   // the model's pale wood would blow out under the old light
+      this.display.position.y = Math.max(this.display.position.y, 0.3);
+    });
     this.phase = boxId ? 'gone' : 'idle';
     this.t = 0;
     this.cycleT = 0;
@@ -153,6 +177,7 @@ export class BoxView {
     const target = open ? -1.95 : 0;
     this.lidAngle += (target - this.lidAngle) * Math.min(1, dt * (open ? 9 : 5));
     this.lid.rotation.x = this.lidAngle;
+    if (this.modelLid) this.modelLid.rotation.x = this.lidAngle;
 
     if (this.phase === 'spinning') {
       // rise, then cycle faster-to-slower through the pool
@@ -178,6 +203,7 @@ export class BoxView {
     // question marks pulse, brighter while in use
     const pulse = 0.9 + Math.sin(time * 2.4) * 0.25 + (open ? 0.8 : 0);
     this.glowMat.emissiveIntensity = pulse;
+    if (this.modelGlow) for (const m of this.modelGlow) m.emissiveIntensity = pulse;
     this.beam.material.opacity = 0.06 + Math.sin(time * 1.3) * 0.015;
     this.light.level = 0.8 + (open ? 0.9 : 0) + Math.sin(time * 5) * 0.05;
   }
@@ -185,7 +211,7 @@ export class BoxView {
   // The bobblehead pops up and nods at you, then the box lifts off and is gone.
   updateLeaving(dt, time) {
     const T = this.cfg.box.leaveTime;
-    this.lid.rotation.x += (-1.95 - this.lid.rotation.x) * Math.min(1, dt * 9);
+    this.lid.rotation.x += (-1.95 - this.lid.rotation.x) * Math.min(1, dt * 9); if (this.modelLid) this.modelLid.rotation.x = this.lid.rotation.x;
     this.display.position.y = 0.45 + Math.min(1, this.t / 0.5) * 0.65;
     this.display.rotation.y = Math.sin(time * 1.5) * 0.4;
     this.bobble.userData.head.rotation.x = Math.sin(time * 11) * 0.25;
@@ -205,7 +231,7 @@ export class BoxView {
   updateVanishing(dt, time) {
     const k = Math.min(1, this.t / 1.1);
     const s = this.box.spot;
-    this.lid.rotation.x += (0 - this.lid.rotation.x) * Math.min(1, dt * 8);
+    this.lid.rotation.x += (0 - this.lid.rotation.x) * Math.min(1, dt * 8); if (this.modelLid) this.modelLid.rotation.x = this.lid.rotation.x;
     this.group.position.set(s.x, k * k * 0.6, s.z);
     this.group.rotation.y = s.yaw + k * k * 10;
     this.group.scale.setScalar(Math.max(0.01, 1 - k * k));
@@ -223,7 +249,7 @@ export class BoxView {
     this.group.position.set(s.x, (1 - k * k) * 7, s.z);
     this.group.rotation.y = s.yaw + (1 - k) * 3;
     this.group.scale.setScalar(1);
-    this.lid.rotation.x = 0;
+    this.lid.rotation.x = 0; if (this.modelLid) this.modelLid.rotation.x = this.lid.rotation.x;
     if (k >= 1 && !this.landed) {
       this.landed = true;
       if (this.onLand) this.onLand(s);

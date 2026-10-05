@@ -11,6 +11,7 @@ import { applySurface } from './surfaces.js';
 import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS } from './bake.js';
 import { buildStoryProps, updateStoryProps } from './storyProps.js';
 import { campusBounds } from '../map/school.js';
+import { jukeboxModel } from './propModels.js';
 
 // Rough, sooty bricks for the cauldron's firebox.
 function cauldronBrickTexture() {
@@ -795,6 +796,17 @@ export class MapView {
       bar.position.set(-0.24 + i * 0.08, H * 0.24, D / 2 + 0.025); g.add(bar);
     }
     const trim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.04, D + 0.02), chrome); trim.position.y = 0.02; g.add(trim);
+    // the real jukebox model replaces the built-in one when it arrives
+    const proc = [...g.children];
+    jukeboxModel().then((model) => {
+      if (!model) return;
+      const sz = model.userData.size;
+      model.scale.setScalar(Math.min(H / sz.y, (W + 0.12) / sz.x));
+      model.position.z = D / 2 - sz.z * model.scale.x / 2;   // back against the wall
+      g.add(model);
+      for (const o of proc) o.visible = false;
+      this.jukeboxModelMat = model.userData.mat;
+    });
     this.addVirtualLight({ x: cx, y: 1.2, z: cz + 0.6 }, 0xff8a40, 0.8, 2.5, 2);
   }
 
@@ -1396,6 +1408,7 @@ export class MapView {
       const on = !!(this.sim.jukebox && this.sim.jukebox.song != null);
       this.jukeboxTubes.forEach((m, i) => { m.emissiveIntensity = on ? 0.55 + Math.sin(this.time * 3 + i * 2.1) * 0.3 : 0.18; });
       if (on) this.jukeboxDisc.rotation.z -= dt * 4.7;
+      if (this.jukeboxModelMat) this.jukeboxModelMat.emissiveIntensity = on ? 1.1 + Math.sin(this.time * 3) * 0.35 : 0.25;
     }
     if (!this.baker) this.startBake();
     if (this.baker && !this.baker.done) this.baker.step(this.cfg.graphics.bakeBudgetMs ?? 5);

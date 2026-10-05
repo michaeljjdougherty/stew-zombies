@@ -331,6 +331,40 @@ says which file each gun uses, which way it has to be turned, and which parts
 of the download to leave out (spare magazines, loose rounds). The PM64,
 Galill and G12 have no model yet.
 
+**Hands on the guns.** The first-person hands are a sculpted, rigged hand
+(`tools/hands/build_hand.py` re-rigs it into `assets/hands/`;
+`src/render/handModel.js` poses it). Each joint bends about its own hinge
+the way real knuckles do. The grips in `FP_HANDS` (`gunModels.js`, the `real`
+entries) are posed like a real shooter: the back strap in the web of the
+hand, three fingers round the front strap onto the far panel, the index pad
+on the trigger, the thumb forward along the left side; the support hand cups
+the other one on a pistol, clamps the handguard from below on a long gun, or
+wraps a vertical foregrip (MP6K, Spectur, AWG). A real gun's grip isn't where
+the built-in gun's was, so `REAL_GUNS` also says where it is: `rh` / `rk`
+(shooting hand offset and grip rake) and `lh` / `lk` / `lr` (support hand).
+When aiming, a gun is pushed out until the shooting hand is at least 19 cm in
+front of your eye.
+
+## Props (models)
+
+`tools/props/build_props.py` shrinks the downloaded props into
+`assets/props/` (`tools/props/blend.py` reads the trophy's .blend file).
+`src/render/propModels.js` turns them into the game's versions at load time:
+
+- **Perk machines:** one Juggernog machine, repainted per perk: its red is
+  swapped for the perk's color, and the signs are redrawn with the perk's
+  name and symbol (they glow when the power's on).
+- **Perk drinks:** a glass flask with the drink inside in the perk's color and
+  a label with its name and symbol. It spins in the machine's window, and
+  it's what you drink (the cork pops off first).
+- **Mad Dog Machine:** a Pack-a-Punch machine in dark gunmetal and blood red,
+  with a "MAD DOG" sign and a dog's head on the badge.
+- **Jukebox, trophy, Mystery Box:** the jukebox in the teachers' lounge, the
+  championship trophy (and the three pieces of it the quest scatters), and
+  the Mystery Box, whose lid swings open on a hinge.
+
+Each one stands in for a built-in version, which you'd see if it can't load.
+
 ## The Cheddars (hounds)
 
 The hounds are a skinless beast model, recolored cheddar yellow, thinned out
@@ -462,6 +496,9 @@ src/sim/              GAME LOGIC — no three.js, no DOM, no audio
 src/lore/erik.js      every line of story text: PA lines, intercom, notes, lyrics
 src/map/              map data (school.js, range.js: rooms, windows, doors, props, nav) + builder
 src/render/           three.js views: map, zombies (zombieKit.js), viewmodel, camera, effects,
+                      gunModels.js (guns, first-person grips), handModel.js (the sculpted hand),
+                      propModels.js (perk machines, drinks, Mad Dog, jukebox, trophy, box),
+                      gltfLite.js (loads the downloaded models),
                       post, characters (human.js sculpts heads/bodies; showcase.js = select screen)
                       bake.js (baked light and shadows), puddles.js (wet floors, reflections)
 src/audio/            Web Audio engine, synthesized sounds, event → sound director,

@@ -5,11 +5,14 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { BoxBatch, bx } from './geometry.js';
+import { perkMachineModel, perkBottleModel, madDogModel } from './propModels.js';
 import { buildGun } from './gunModels.js';
 
 const yawOf = (n) => Math.atan2(n.x, n.z);
 
 // --- textures ----------------------------------------------------------------
+function findMat(obj) { let m = null; obj.traverse((o) => { if (!m && o.isMesh) m = o.material; }); return m; }
+
 function perkFrontTexture(def) {
   const W = 256, H = 448;
   const [c, g] = T.makeCanvas(W, H);
@@ -119,7 +122,29 @@ export class MachinesView {
     const lightPos = { x: m.center.x + m.normal.x * 1.2, y: 1.6, z: m.center.z + m.normal.z * 1.2 };
     const v = this.mapView.addVirtualLight(lightPos, new THREE.Color(def.color).getHex(), 10, 6, 1.6);
     v.level = 0;
-    this.perks.push({ m, def, front, bottleMat, g, v, shake: 0, level: 0, flick: 0 });
+    const pv = { m, def, front, bottleMat, g, v, shake: 0, level: 0, flick: 0 };
+    this.perks.push(pv);
+    // swap in the real machine (a Juggernog repainted for this perk) and its bottle
+    const proc = [box, marquee, lip, kick, bottle];
+    perkMachineModel(m.perk, def).then((model) => {
+      if (!model) return;
+      const sz = model.userData.size;
+      const k = Math.min((pm.width + 0.05) / sz.x, (pm.height + 0.3) / sz.y);
+      model.scale.setScalar(k);
+      g.add(model);
+      for (const o of proc) o.visible = false;
+      v.intensity = 3;   // the real machine's pale paint takes the light much more than the old dark box did
+      pv.front = model.children[0] && findMat(model) || pv.front;
+      pv.modelH = sz.y * k; pv.modelD = sz.z * k;
+      perkBottleModel(m.perk, def).then((b) => {
+        if (!b) return;
+        b.scale.setScalar(0.42);
+        b.position.set(0, pv.modelH * 0.36, pv.modelD / 2 + 0.06);
+        b.rotation.y = 0.3;
+        g.add(b);
+        pv.bottle = b;
+      });
+    });
   }
 
   perkOn(pv) {
@@ -277,6 +302,16 @@ export class MachinesView {
     v.level = 0;
     if (md.hidden) v.live = true; // it comes up out of the floor later: lit live, not baked
     this.md = { g, head, jaw, eyes, eyeMat, gears, rollers, slot, chimney, plate, v, display: null, displayId: null, chew: 0, puff: 0, t: 0 };
+    // swap in the real machine: a Pack-a-Punch repainted as the Mad Dog
+    const proc = [...g.children];
+    madDogModel().then((model) => {
+      if (!model) return;
+      const sz = model.userData.size;
+      model.scale.setScalar(2.45 / sz.x);
+      g.add(model);
+      for (const o of proc) o.visible = false;
+      this.md.modelMat = findMat(model);
+    });
   }
 
   // Show a gun (base or upgraded) floating in the feed slot.
@@ -335,7 +370,8 @@ export class MachinesView {
       pv.level += (target - pv.level) * Math.min(1, dt * 3);
       let lv = pv.level;
       if (pv.flick > 0) { pv.flick -= dt; lv *= Math.random() < 0.5 ? 0.2 : 1; }
-      pv.front.emissiveIntensity = lv * (1.3 + Math.sin(t * 2 + pv.m.center.x) * 0.15);
+      pv.front.emissiveIntensity = lv * (pv.front.emissiveMap && pv.front.map && pv.front.map.isCanvasTexture ? 0.45 : 1.3) * (1 + Math.sin(t * 2 + pv.m.center.x) * 0.12);
+      if (pv.bottle) pv.bottle.rotation.y += dt * 0.6;
       pv.bottleMat.emissiveIntensity = lv * 1.2;
       pv.v.level = lv;
       if (pv.shake > 0) { pv.shake -= dt; pv.g.position.y = Math.sin(t * 60) * 0.01 * pv.shake; } else pv.g.position.y = 0;
@@ -393,6 +429,7 @@ export class MachinesView {
       const eyeGlow = powered ? (working ? 3 + Math.sin(t * 20) * 1.5 : 2.2 + Math.sin(t * 2) * 0.4) : 0.12;
       md.eyeMat.color.setRGB(eyeGlow, eyeGlow * 0.08, eyeGlow * 0.04);
       md.plate.material.emissiveIntensity = powered ? 0.9 : 0;
+      if (md.modelMat) md.modelMat.emissiveIntensity = powered ? (working ? 0.9 + Math.sin(t * 20) * 0.3 : 0.7) : 0.05;
       md.v.level = powered ? (working ? 0.8 + Math.random() * 0.4 : 0.45) : 0;
       // jaw: idle snarl twitch, chomping while working
       const chomp = working ? Math.max(0, Math.sin(t * 9)) * 0.45 : powered ? 0.08 + Math.max(0, Math.sin(t * 0.7)) * 0.06 : 0.02;
