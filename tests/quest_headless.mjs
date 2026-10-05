@@ -261,6 +261,7 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   while (q.boss.phase === 1 && guard++ < 60 * 120) {
     step({}, 1);
     for (const z of sim.zombies) if (z.state === 'rising' && !z.counted) { z.counted = true; kinds[z.ritual ? 'spirit' : z.infused ? 'infused' : 'plain']++; }
+    for (const z of sim.zombies) if (z.type === 'cheddar' && !z.counted) { z.counted = true; (kinds.cheddarWaves ||= new Set()).add(q.boss.wave); }
     for (const z of [...sim.zombies]) if (z.state !== 'rising' && z.state !== 'dead') killZombie(sim, z, { kind: 'bullet', part: 'torso', dir: { x: 0, y: 0, z: 1 }, playerId: 'p1' });
   }
   check(q.boss.phase === 2, 'waves cleared: phase 2 (' + log.filter((e) => e.type === 'bossWave').length + ' waves)');
@@ -269,7 +270,10 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
     const ids = new Set(log.filter((e) => e.type === 'zombieSpawn').map((e) => e.id));
     const spawned = log.filter((e) => e.type === 'zombieSpawn');
     check(spawned.some((e) => e.infused), 'the fight brings The Schnitz\'s giants (' + spawned.filter((e) => e.infused).length + ')');
-    check(kinds.spirit > 0 && kinds.infused > 0 && kinds.plain > 0, 'all three kinds in the fight: ' + JSON.stringify(kinds));
+    check(kinds.spirit > 0 && kinds.infused > 0 && kinds.plain > 0, 'all three kinds in the fight: ' + JSON.stringify({ ...kinds, cheddarWaves: [...(kinds.cheddarWaves || [])] }));
+    const cw = [...(kinds.cheddarWaves || [])];
+    check(cw.length > 0 && Math.min(...cw) >= 4, 'Cheddars only after wave 3 (waves ' + cw.join(', ') + ')');
+    check(log.filter((e) => e.type === 'bossWave').length === 5, 'five waves');
   }
   // elites drop amps; plug them into the towers
   guard = 0;

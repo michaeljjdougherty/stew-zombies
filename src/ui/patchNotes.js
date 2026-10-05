@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05j',
+  version: '2026-10-05k',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -22,6 +22,8 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Just added', items: [
+      'Usernames have a 4-digit PIN now: make one the first time you use a name, and only you can sign in as it from then on.',
+      'The Easter egg\'s final fight is a lot tougher.',
       'Careers: sign in with a username when the game starts (use the same one every time). Your kills, revives, rounds survived and more are saved to it. See them under Career & Achievements on the title screen.',
       'Achievements: ten to start, 500G in all, with a pop-up the moment you earn one.',
       'A Tiger Fish Interactive logo (and some company) when the game starts up.',

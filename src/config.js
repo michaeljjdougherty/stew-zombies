@@ -979,7 +979,7 @@ export const CONFIG = {
     // The project's Web API key (Firebase console: Project settings > General).
     // With it, every username gets a 4-digit PIN (src/career/auth.js); empty:
     // no PINs, a username is just a name.
-    firebaseApiKey: '',
+    firebaseApiKey: 'AIzaSyBWcSZYw4ggten1rslVhvi89zxEoBgZgvs',
     flushEvery: 15,          // seconds between saves during a game
     timeout: 6,              // give up on the database after this long (and save locally)
   },
@@ -1055,9 +1055,13 @@ export const CONFIG = {
     boosts: { speed: 1.12, jump: 1.45, power: 1.25, defense: 0.75 },
     // the Intercom Showdown
     boss: {
-      waves: 3,             // phase 1: waves of Zombie Defenders
-      waveSize: 9,          // per wave (solo; +3 per extra player)
-      spawnEvery: 0.8,
+      waves: 5,             // phase 1: waves of Zombie Defenders, each harder than the last
+      // one entry per wave:
+      waveSize: [10, 12, 15, 18, 22],          // zombies (solo)
+      waveSizePerPlayer: [3, 3, 4, 5, 6],      // + this many per extra player
+      waveHealth: [1, 1.15, 1.35, 1.6, 1.9],   // x their health
+      waveSpawnEvery: [0.85, 0.75, 0.65, 0.55, 0.45],   // s between spawns
+      spawnEvery: 0.8,      // (phase 2's stream runs off this)
       maxAlive: 24,
       defenderHealth: 1.3,  // x the round's zombie health
       eliteHealth: 7,       // phase 2 elites
@@ -1068,11 +1072,15 @@ export const CONFIG = {
       zoneDps: 55,
       chopperHits: 3,       // phase 3: Chopper blasts on the Press Box to bring Erik down
       // what climbs out of the court during the fight: the rest are Zombie Defenders
+      // (one entry per wave; phases 2 and 3 use the last wave's)
       mix: {
-        spirit: 0.3,        // share that are blue ritual spirits
-        infused: 0.15,      // share that are The Schnitz's green giants...
-        infusedMax: 2,      // ...but never more than this many up at once
+        spirit: [0.3, 0.34, 0.38, 0.4, 0.42],       // share that are blue ritual spirits
+        infused: [0.18, 0.22, 0.25, 0.27, 0.3],     // share that are The Schnitz's green giants...
+        infusedMax: [2, 3, 3, 4, 5],                // ...but never more than this many up at once
         infusedPerPlayer: 1,
+        cheddar: [0, 0, 0, 0.14, 0.2],              // Cheddars join after wave 3, down in lightning
+        cheddarMax: [0, 0, 0, 3, 4],
+        cheddarPerPlayer: 1,
       },
       phase3Every: 2.4,     // s between spawns while you blast the Press Box
       phase3MaxAlive: 8,

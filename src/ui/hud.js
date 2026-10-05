@@ -164,7 +164,7 @@ export class HUD {
         this.toast('The Intercom Showdown', 'Erik is calling the plays', '#ff4030', 4);
         break;
       case 'bossWave':
-        if (e.wave > 1) this.toast(`Wave ${e.wave} of ${e.of}`, 'Zombie Defenders', '#ff4030', 2.4);
+        if (e.wave > 1) this.toast(`Wave ${e.wave} of ${e.of}`, e.wave === 4 ? 'the Cheddars are loose' : e.wave === e.of ? 'the last wave' : 'Zombie Defenders', '#ff4030', 2.4);
         break;
       case 'bossPhase':
         if (e.phase === 2) this.toast('Overcharge the system', this.hint('take the amplifiers off his elites'), '#7fe08a', 3.5);

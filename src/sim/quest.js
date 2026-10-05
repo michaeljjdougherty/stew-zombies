@@ -20,7 +20,8 @@
 // the HUD and the sound director read it.
 // =============================================================================
 import { paSay } from './pa.js';
-import { makeZombie, pickZombieType, killZombie } from './zombies.js';
+import { makeZombie, pickZombieType, killZombie, spawnCheddar } from './zombies.js';
+import { cheddarHealth } from './rounds.js';
 import { zombieHealthForRound, baseWeaponId } from '../config.js';
 import { giveWeapon } from './weapons.js';
 import { SCHNITZ_LINES, lineDuration } from '../lore/erik.js';
@@ -564,17 +565,30 @@ const Q_TOWERS = (sim) => sim.world.quest.towers;
 
 // Erik's fight brings all three kinds: his Zombie Defenders, the blue spirits
 // from the ritual, and The Schnitz's green giants. (CONFIG.quest.boss.mix)
+// Each wave is harder: more of them, tougher, faster, and a bigger share of
+// the specials; Cheddars come down in lightning from wave 4 on.
+const waveVal = (v, i) => (Array.isArray(v) ? v[Math.max(0, Math.min(v.length - 1, i))] : v);
 function spawnBossMix(sim, hp) {
   const b = sim.quest.boss, c = sim.cfg.quest.boss, m = c.mix;
-  const infusedUp = sim.zombies.filter((z) => z.infused && z.state !== 'dead').length;
-  const infusedMax = m.infusedMax + Math.max(0, sim.players.length - 1) * m.infusedPerPlayer;
+  const wi = Math.max(0, Math.min(c.waves, b.wave || 1) - 1);   // phases 2 and 3: the last wave's mix
+  const extra = Math.max(0, sim.players.length - 1);
+  const up = (k) => sim.zombies.filter((z) => z[k] && z.state !== 'dead').length;
+  const infusedMax = waveVal(m.infusedMax, wi) + extra * m.infusedPerPlayer;
+  const cheddarMax = waveVal(m.cheddarMax || 0, wi) ? waveVal(m.cheddarMax, wi) + extra * (m.cheddarPerPlayer || 0) : 0;
+  const pInf = waveVal(m.infused, wi), pSpirit = waveVal(m.spirit, wi), pCh = waveVal(m.cheddar || 0, wi);
+  hp *= waveVal(c.waveHealth || 1, wi);
   const roll = sim.rng.next();
   let z = null;
-  if (roll < m.infused && infusedUp < infusedMax) {
+  if (roll < pCh && sim.zombies.filter((q) => q.type === 'cheddar' && q.state !== 'dead').length < cheddarMax) {
+    // a hound out of a lightning strike, somewhere on the court
+    const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(5, 10);
+    z = spawnCheddar(sim, { x: Math.max(-14.5, Math.min(14.5, Math.cos(a) * d)), y: 0, z: Math.max(-10.5, Math.min(10.5, Math.sin(a) * d)) }, cheddarHealth(sim, 2 + wi));
+    z.bossCheddar = true;
+  } else if (roll >= pCh && roll < pCh + pInf && up('infused') < infusedMax) {
     // up out of the court, somewhere on the floor
     const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(6, 11);
     z = spawnInfused(sim, { x: Math.max(-14.5, Math.min(14.5, Math.cos(a) * d)), y: 0, z: Math.max(-10.5, Math.min(10.5, Math.sin(a) * d)) });
-  } else if (roll < m.infused + m.spirit) {
+  } else if (roll >= pCh + pInf && roll < pCh + pInf + pSpirit) {
     z = spawnFromCourt(sim, { type: sim.rng.chance(0.6) ? 'sprinter' : 'runner', health: hp, spirit: true });
   }
   // the rest: ordinary ones, half of them in Erik's Defender jerseys
@@ -659,14 +673,14 @@ function updateBoss(sim, dt) {
     if (b.waveLeft <= 0 && alive === 0) {
       if (b.wave >= c.waves) { b.phase = 2; b.eliteT = 2; sim.emit('bossPhase', { phase: 2 }); paSay(sim, 'bossPhase2', { delay: 0.5, force: true }); return; }
       b.wave++;
-      b.waveLeft = c.waveSize + (sim.players.length - 1) * 3;
+      b.waveLeft = waveVal(c.waveSize, b.wave - 1) + (sim.players.length - 1) * waveVal(c.waveSizePerPlayer ?? 3, b.wave - 1);
       b.spawnT = 2;
       sim.emit('bossWave', { wave: b.wave, of: c.waves });
     }
     if (b.waveLeft > 0) {
       b.spawnT -= dt;
       if (b.spawnT <= 0 && sim.zombies.length < c.maxAlive) {
-        b.spawnT = c.spawnEvery * sim.rng.range(0.7, 1.3);
+        b.spawnT = waveVal(c.waveSpawnEvery || c.spawnEvery, b.wave - 1) * sim.rng.range(0.7, 1.3);
         spawnBossMix(sim, hp);
         b.waveLeft--;
       }
