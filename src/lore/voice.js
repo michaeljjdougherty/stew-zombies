@@ -20,9 +20,12 @@ export const recordedDuration = (who, text) => { const r = recording(who, text);
 // the sample key the audio engine knows it by
 export const voiceKey = (who, text) => { const r = recording(who, text); return r ? 'vo:' + r[0] : null; };
 
-// for AudioEngine.preload: { key: [path without .mp3] }
-export function voiceManifest() {
-  const m = {};
-  for (const [who, by] of Object.entries(VOICE_LINES)) for (const [file] of Object.values(by)) m['vo:' + file] = [who + '/' + file];
-  return m;
+// For AudioEngine.preloadSprite: each speaker's lines live in one file,
+// assets/voice/<speaker>.mp3. -> [{ url, segs: { key: [start, seconds] } }]
+export function voiceSprites() {
+  return Object.entries(VOICE_LINES).map(([who, by]) => {
+    const segs = {};
+    for (const [file, dur, start] of Object.values(by)) segs['vo:' + file] = [start, dur];
+    return { url: VOICE_BASE + who + '.mp3', segs };
+  });
 }

@@ -109,13 +109,41 @@ export class AudioEngine {
     }
   }
 
+  // One file holding many short sounds (a speaker's voice lines), cut up after
+  // decoding. segs: { key: [startSeconds, seconds] }
+  preloadSprite(url, segs) {
+    this.samples = this.samples || {};
+    this.pending = this.pending || [];
+    const job = { key: url, segs, data: null };
+    this.pending.push(job);
+    fetch(url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((ab) => { job.data = ab; this.decodePending(); }).catch(() => { job.failed = true; });
+  }
+
   decodePending() {
     if (!this.ctx || !this.pending) return;
     for (const job of this.pending) {
       if (!job.data || job.decoding) continue;
       job.decoding = true;
       const ab = job.data; job.data = null;
-      this.ctx.decodeAudioData(ab).then((buf) => { (this.samples[job.key] ||= []).push(buf); }).catch(() => { job.failed = true; });
+      this.ctx.decodeAudioData(ab).then((buf) => {
+        if (job.segs) this.cutSprite(buf, job.segs);
+        else (this.samples[job.key] ||= []).push(buf);
+      }).catch(() => { job.failed = true; });
+    }
+  }
+
+  cutSprite(buf, segs) {
+    const sr = buf.sampleRate, src = buf.getChannelData(0);
+    // a little slack either side: the lines sit in 0.35 s of silence, and the
+    // decoder may shift everything by a few ms of encoder padding
+    const pre = 0.04, post = 0.08;
+    for (const [key, [start, dur]] of Object.entries(segs)) {
+      const a = Math.max(0, Math.floor((start - pre) * sr));
+      const b = Math.min(src.length, Math.ceil((start + dur + post) * sr));
+      if (b <= a) continue;
+      const out = this.ctx.createBuffer(1, b - a, sr);
+      out.copyToChannel(src.subarray(a, b), 0);
+      this.samples[key] = [out];
     }
   }
 

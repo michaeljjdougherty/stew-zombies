@@ -24,7 +24,7 @@ import { CharSelect } from './ui/charselect.js';
 import { LineupUI } from './ui/lineupui.js';
 import { TitleMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
-import { voiceManifest, VOICE_BASE } from './lore/voice.js';
+import { voiceSprites } from './lore/voice.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
@@ -62,7 +62,7 @@ input.zoomScale = () => {
 input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 audio.preload(GUN_SAMPLES, SAMPLE_BASE);
-audio.preload(voiceManifest(), VOICE_BASE);   // recorded voice lines (src/lore/voiceLines.js)
+for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)
 const sound = new SoundDirector(audio, sim, CONFIG);
 sound.localId = localId;
 const hud = new HUD(CONFIG);

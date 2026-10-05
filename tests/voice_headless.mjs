@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { PA_LINES, INTERCOM, INTERCOM_REPEAT } from '../src/lore/erik.js';
 import { ERIK_ROASTS, TALKS, BANTER, REACT, RADIO } from '../src/lore/crew.js';
 import { VOICE_LINES } from '../src/lore/voiceLines.js';
-import { recording, voiceManifest, VOICE_BASE } from '../src/lore/voice.js';
+import { recording, voiceSprites } from '../src/lore/voice.js';
 
 let fail = 0;
 const check = (ok, msg) => { if (!ok) { fail++; console.error('FAIL', msg); } };
@@ -35,9 +35,15 @@ for (const [who, by] of Object.entries(VOICE_LINES)) {
   const missing = all.filter((t) => !by[t]);
   console.log(`voice: ${who} ${Object.keys(by).length}/${all.length} lines recorded` + (missing.length ? ` (still synth: ${missing.map((t) => JSON.stringify(t)).join(', ')})` : ''));
 }
-const m = voiceManifest();
-for (const [key, [path]] of Object.entries(m)) check(fs.existsSync(new URL('../' + VOICE_BASE + path + '.mp3', import.meta.url)), 'missing file ' + path);
+const sprites = voiceSprites();
+let nrec = 0;
+for (const { url, segs } of sprites) {
+  check(fs.existsSync(new URL('../' + url, import.meta.url)), 'missing sprite ' + url);
+  const list = Object.values(segs).sort((a, b) => a[0] - b[0]);
+  for (let i = 1; i < list.length; i++) check(list[i][0] - (list[i - 1][0] + list[i - 1][1]) >= 0.3, url + ' lines too close together');
+  nrec += list.length;
+}
 for (const [who, by] of Object.entries(VOICE_LINES)) for (const [t, [f, d]] of Object.entries(by)) check(d > 0.3 && d < 12, `odd length ${f} ${d}`);
-console.log(`voice: ${erik.length} Erik lines checked, ${Object.keys(m).length} recordings`);
+console.log(`voice: ${erik.length} Erik lines checked, ${nrec} recordings`);
 if (fail) { console.error(fail, 'failures'); process.exit(1); }
 console.log('voice OK');
