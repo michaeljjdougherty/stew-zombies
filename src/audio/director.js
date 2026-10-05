@@ -133,6 +133,18 @@ export class SoundDirector {
       const wlg = A.gain(0.05); wlfo.connect(wlg); wlg.connect(whg.gain);
       wh.connect(whf); whf.connect(whg); whg.connect(out.input);
     }
+    // the snow world: a cold wind moaning across the field, gusting
+    if (this.sim.mapData.snow) {
+      const wout = A.output({ bus: 'ambient', reverb: 0.3 });
+      const w = keep(ctx.createBufferSource()); w.buffer = A.noise.pink; w.loop = true; w.start();
+      const wbp = A.filter('bandpass', 380, 0.5);
+      const wl = keep(ctx.createOscillator()); wl.frequency.value = 0.07; wl.start();
+      const wlg = A.gain(220); wl.connect(wlg); wlg.connect(wbp.frequency);
+      const wg = A.gain(0.16);
+      const gust = keep(ctx.createOscillator()); gust.frequency.value = 0.11; gust.start();
+      const gg = A.gain(0.09); gust.connect(gg); gg.connect(wg.gain);
+      w.connect(wbp); wbp.connect(wg); wg.connect(wout.input);
+    }
     // faint distant machinery rumble (it will grow once the power is on)
     const rumbleOut = A.output({ bus: 'ambient', reverb: 0.4 });
     const r = keep(ctx.createBufferSource()); r.buffer = A.noise.brown; r.loop = true; r.start();

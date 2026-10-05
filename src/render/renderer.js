@@ -68,9 +68,10 @@ export class GameRenderer {
     const fresh = !w;
     if (fresh) {
       const scene = new THREE.Scene();
-      const fog = new THREE.Color(cfg.graphics.fogColor);
+      const mf = sim.mapData.fog;
+      const fog = new THREE.Color(mf ? mf.color : cfg.graphics.fogColor);
       scene.background = fog;
-      scene.fog = new THREE.FogExp2(fog, cfg.graphics.fogDensity);
+      scene.fog = new THREE.FogExp2(fog, mf ? mf.density : cfg.graphics.fogDensity);
       const map = new MapView(scene, sim, cfg);
       const effects = new Effects(scene, sim, cfg);
       const puddles = new Puddles(scene, sim, cfg, effects);
@@ -107,7 +108,8 @@ export class GameRenderer {
     w.scene.add(this.camera);
     Object.assign(this, { scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
-    this.fogBase = new THREE.Color(cfg.graphics.fogColor);
+    this.fogBase = new THREE.Color(sim.mapData.fog ? sim.mapData.fog.color : cfg.graphics.fogColor);
+    this.fogDensity = sim.mapData.fog ? sim.mapData.fog.density : cfg.graphics.fogDensity;
     this.hazeColor = new THREE.Color('#5a4410');
     this.zombies.onFootstep = footstep;
     this.mapData = sim.mapData;
@@ -254,8 +256,9 @@ export class GameRenderer {
           break;
         case 'zombieRise': {
           const pos = new THREE.Vector3(e.pos.x, 0.05, e.pos.z);
-          for (let i = 0; i < 4; i++) this.effects.puff(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.1, (Math.random() - 0.5) * 0.8)), { color: 0x3a3024, size: 0.5, grow: 2.2, life: 1.4, alpha: 0.5, vel: new THREE.Vector3(0, 0.6, 0) });
-          for (let i = 0; i < 14; i++) this.effects.spawnParticle(pos, new THREE.Vector3((Math.random() - 0.5) * 3, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 3), { life: 0.9, size: 0.04, color: [0.12, 0.09, 0.06] });
+          const snow = !!this.mapData.snow;   // (clawing up out of snow throws up powder, not dirt)
+          for (let i = 0; i < 4; i++) this.effects.puff(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.1, (Math.random() - 0.5) * 0.8)), { color: snow ? 0xc8d2e0 : 0x3a3024, size: 0.5, grow: 2.2, life: 1.4, alpha: 0.5, vel: new THREE.Vector3(0, 0.6, 0) });
+          for (let i = 0; i < 14; i++) this.effects.spawnParticle(pos, new THREE.Vector3((Math.random() - 0.5) * 3, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 3), { life: 0.9, size: 0.04, color: snow ? [0.8, 0.85, 0.95] : [0.12, 0.09, 0.06] });
           break;
         }
         case 'zombieKilled':
@@ -504,7 +507,7 @@ export class GameRenderer {
     this.haze = (this.haze || 0) + (hazeTarget - (this.haze || 0)) * Math.min(1, dt * 0.8);
     this.scene.fog.color.copy(this.fogBase).lerp(this.hazeColor, this.haze * 0.8);
     this.scene.background = this.scene.fog.color;
-    this.scene.fog.density = this.cfg.graphics.fogDensity * (1 + this.haze * 0.9);
+    this.scene.fog.density = (this.fogDensity ?? this.cfg.graphics.fogDensity) * (1 + this.haze * 0.9);
     if (sim.rounds.cheddar && Math.random() < dt * 0.25) this.flash = Math.max(this.flash || 0, 0.18 + Math.random() * 0.2);
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
     this.effects.update(dt);

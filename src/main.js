@@ -7,6 +7,9 @@
 // =============================================================================
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
+import { CRUST } from './map/crust.js';
+// zombies maps by id (the map screen's ids). The firing range is its own mode.
+const ZOMBIE_MAPS = { lastbell: SCHOOL, crust: CRUST };
 import { RANGE } from './map/range.js';
 import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
@@ -132,8 +135,8 @@ function playableCharacter() {
   return ok ? id : 'kearns';
 }
 
-function makeSim(gameMode) {
-  const s = new GameSim({ map: gameMode === 'range' ? RANGE : SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
+function makeSim(gameMode, mapId = 'lastbell') {
+  const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
   s.addPlayer(localId, 'Stew', { character: playableCharacter() });
   return s;
 }
@@ -154,7 +157,7 @@ const menus = new Menus(settings, {
   resume: () => startPlaying(),
   restart: () => {
     if (online) { if (online.isHost) { online.backToLobby(); showOnlineLobby(); } return; }
-    restart(sim.mode === 'range' ? 'range' : sim.mode); startPlaying();
+    restart(sim.mode === 'range' ? 'range' : sim.mode, sim.mapData.id); startPlaying();
   },
   online: () => openOnline(),
   quit: () => { if (online) leaveOnline(); restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
@@ -395,8 +398,10 @@ function watchEnding() {
 const mapSelect = new MapSelect({
   play: (id, withIntro) => {
     mapSelect.close();
+    // Map 2 (in development): straight in, no intro yet
+    if (id === 'crust') { restart('zombies', 'crust'); startPlaying(); return; }
     if (withIntro) { startIntro('play'); return; }
-    if (sim.mode !== 'zombies') restart('zombies');
+    if (sim.mode !== 'zombies' || sim.mapData.id !== 'lastbell') restart('zombies');
     startPlaying();
   },
   watchIntro: () => { mapSelect.close(); startIntro('maps'); },
@@ -515,12 +520,13 @@ function pause() {
   menus.show('pause');
 }
 
-function restart(gameMode = sim.mode) { installSim(makeSim(gameMode)); }
+function restart(gameMode = sim.mode, mapId = 'lastbell') { installSim(makeSim(gameMode, mapId)); }
 
 // Swap in a new game (a fresh solo one, or the one an online game starts with).
 function installSim(s) {
   const mapChanged = s.mapData !== sim.mapData;
   sim = s;
+  sound.sim = sim;   // (before the ambience restarts below: it reads the new map)
   player = sim.playerById(localId);
   renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
   hud.localCharacter = sound.localCharacter = player.character;

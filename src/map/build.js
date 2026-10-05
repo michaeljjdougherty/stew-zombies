@@ -40,6 +40,7 @@ function buildSide(room, side, spec, openings, T, pieces) {
   const H = spec.height ?? room.height;
   const ranges = spec.ranges ?? [[si.from, si.to]];
   const tag = { room: room.id, side, style: spec.style || room.style };
+  if (tag.style === 'invisible') tag.ghost = true;   // blocks walking, not bullets or sight lines
   for (const [ra, rb] of ranges) {
     const ops = openings.filter((o) => o.center > ra && o.center < rb).sort((a, b) => a.center - b.center);
     let cursor = ra;

@@ -230,6 +230,7 @@ export class GameSim {
   raycastWorld(o, d, maxT, any = false) {
     let best = null;
     for (const b of this.world.solids) {
+      if (b.ghost) continue;
       const h = rayAABB(o, d, b, best ? best.t : maxT);
       if (h && h.t <= maxT && (!best || h.t < best.t)) {
         best = { t: h.t, normal: h.normal, box: b };

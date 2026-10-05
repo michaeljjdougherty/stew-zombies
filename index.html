@@ -281,6 +281,15 @@
   #ep-egg { display: flex; flex-wrap: wrap; gap: 8px; }
   #ep-egg button.sm.done { color: var(--muted); border-color: rgba(255,255,255,.08); }
   #ep-egg button.sm.on { border-color: var(--brass); color: var(--brass); }
+  .ms-coderow { display: grid; gap: 6px; }
+  .ms-coderow[hidden] { display: none; }
+  .ms-coderow label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .ms-coderow input { font: 16px var(--mono); padding: 9px 10px; background: rgba(0,0,0,.4); border: 1px solid var(--line); color: var(--ink); letter-spacing: 3px; }
+  .ms-coderow input:focus { outline: none; border-color: var(--blood-hi); }
+  .ms-coderow small { min-height: 1.2em; font-size: 12px; color: var(--blood-hi); }
+  .ms-coderow.shake { animation: msShake .35s; }
+  @keyframes msShake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+  .ms-item.locked::after { content: "🔒"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: .6; }
   .ms-moderow { display: grid; gap: 6px; font-size: 13px; color: var(--ink); }
   .ms-moderow[hidden] { display: none; }
   .ms-moderow .ms-modes { display: flex; gap: 6px; }
@@ -657,6 +666,11 @@
         </div>
       </div>
       <label class="ms-introrow" id="ms-introrow"><input type="checkbox" id="ms-intro"> Play the intro first</label>
+      <div class="ms-coderow" id="ms-coderow" hidden>
+        <label for="ms-code">Developer code</label>
+        <input id="ms-code" type="password" autocomplete="off" spellcheck="false" placeholder="••••••••">
+        <small id="ms-codemsg" aria-live="polite"></small>
+      </div>
       <div class="ms-actions">
         <button id="ms-play" type="button" data-nav-first>Play</button>
         <button id="ms-watch" type="button" class="ms-sec">Watch the intro</button>

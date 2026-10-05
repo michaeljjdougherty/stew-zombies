@@ -15,6 +15,7 @@ const MAX_RIPPLES = 3;
 const WET = {
   hall: [3, 0.4], lockerroom: [5, 0.6], boiler: [5, 0.7], kitchen: [3, 0.5], cafe: [2, 0.5], gym: [2, 0.5],
   lab: [2, 0.3], exterior: [6, 0], auditorium: [1, 1], band: [1, 1], office: [0, 0], principal: [0, 0], library: [0, 0],
+  cliff: [0, 0],   // (Call of the Crust: it's all frozen)
 };
 
 export class Puddles {

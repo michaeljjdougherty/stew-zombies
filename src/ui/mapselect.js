@@ -11,7 +11,10 @@ const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// The maps. Only the first one is playable for now.
+// Map 2 is in development: only Michael and James get in.
+const DEV_CODE = 'fuck-kurn';
+
+// The maps.
 export const MAPS = [
   {
     id: 'lastbell', name: 'Stew Leonard High', tag: 'Out of Bounds', ready: true, at: [4, -27], world: 'The asteroid',
@@ -19,9 +22,9 @@ export const MAPS = [
     facts: ['Map 1', '1–4 players', 'Story by James Amarante'],
   },
   {
-    id: 'map2', name: 'Map 2', tag: 'Coming soon', ready: false, at: [820, -430], r: 170,
-    blurb: 'The season isn\'t over.',
-    facts: ['Through the portal', 'Brian knows the way'],
+    id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
+    blurb: 'Snow falling out of a sky full of planets, and four smokestacks across the ice. Through the portal. The season isn\'t over.',
+    facts: ['Map 2', 'Solo for now', 'Developers only'],
   },
   {
     id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,
@@ -82,25 +85,28 @@ function buildWorld(svg) {
 
   // --- the planets (coming soon)
   for (const m of MAPS) {
-    if (m.ready) continue;
+    if (m.id === 'lastbell') continue;   // (drawn below: the asteroid)
     const [x, y] = m.at, r = m.r;
     const L = lit(x, y);
     const g = el('g', { class: 'ms-planet' }, world);
     const id = 'ms-p-' + m.id;
-    const pal = m.id === 'map2' ? ['#d7b6ff', '#8b5cc8', '#3a1f6a'] : m.id === 'ice' ? ['#f2fbff', '#a9d6ea', '#3c6a88'] : ['#ffb08a', '#c4502c', '#4a160c'];
+    const pal = m.id === 'crust' ? ['#ffffff', '#b8d2ea', '#2c4a6e'] : m.id === 'ice' ? ['#f2fbff', '#a9d6ea', '#3c6a88'] : ['#ffb08a', '#c4502c', '#4a160c'];
     grad(defs, id, [['0%', pal[0]], ['45%', pal[1]], ['100%', pal[2]]], { fx: L.fx, fy: L.fy, cx: L.fx, cy: L.fy, r: '75%' });
     const clip = el('clipPath', { id: id + '-c' }, defs); el('circle', { cx: x, cy: y, r }, clip);
-    if (m.id === 'map2') {
+    if (m.id === 'crust') {
       // rings behind
       el('ellipse', { cx: x, cy: y, rx: r * 2.0, ry: r * 0.42, class: 'ms-ring back', transform: `rotate(-14 ${x} ${y})` }, g);
     }
-    el('circle', { cx: x, cy: y, r: r * 1.12, fill: m.id === 'ice' ? 'rgba(200,240,255,.12)' : m.id === 'map2' ? 'rgba(180,140,255,.12)' : 'rgba(255,120,80,.1)' }, g);   // atmosphere
+    el('circle', { cx: x, cy: y, r: r * 1.12, fill: m.id === 'ice' ? 'rgba(200,240,255,.12)' : m.id === 'crust' ? 'rgba(200,230,255,.16)' : 'rgba(255,120,80,.1)' }, g);   // atmosphere
     el('circle', { cx: x, cy: y, r, fill: `url(#${id})` }, g);
     const surf = el('g', { 'clip-path': `url(#${id}-c)` }, g);
     const PR = rng(x + y);
-    if (m.id === 'map2') {
-      for (let i = -6; i <= 6; i++) el('rect', { x: x - r, y: y + i * r / 6 - 6, width: r * 2, height: 6 + PR() * 14, fill: PR() < 0.5 ? 'rgba(255,255,255,.08)' : 'rgba(40,10,80,.18)', transform: `rotate(-14 ${x} ${y})` }, surf);
-      el('ellipse', { cx: x + r * 0.3, cy: y + r * 0.25, rx: r * 0.22, ry: r * 0.12, fill: 'rgba(255,190,220,.35)', transform: `rotate(-14 ${x} ${y})` }, surf);
+    if (m.id === 'crust') {
+      // a snowball world: drifting storm bands, ice caps, four tiny stacks on a shore
+      for (let i = -6; i <= 6; i++) el('rect', { x: x - r, y: y + i * r / 6 - 6, width: r * 2, height: 6 + PR() * 14, fill: PR() < 0.5 ? 'rgba(255,255,255,.22)' : 'rgba(60,90,140,.2)', transform: `rotate(-14 ${x} ${y})` }, surf);
+      el('ellipse', { cx: x, cy: y - r * 0.86, rx: r * 0.7, ry: r * 0.24, fill: 'rgba(255,255,255,.7)' }, surf);
+      el('ellipse', { cx: x, cy: y + r * 0.9, rx: r * 0.6, ry: r * 0.2, fill: 'rgba(255,255,255,.55)' }, surf);
+      for (let k = 0; k < 4; k++) el('rect', { x: x - r * 0.3 + k * r * 0.08, y: y + r * 0.05 - r * 0.22, width: r * 0.025, height: r * 0.22, fill: k % 2 ? '#c4303a' : '#f4f4f0' }, surf);
     } else if (m.id === 'ice') {
       for (let i = 0; i < 9; i++) { const a = PR() * 6.28, d = PR() * r; el('path', { d: `M${x + Math.cos(a) * d},${y + Math.sin(a) * d} l${(PR() - 0.5) * r},${(PR() - 0.5) * r * 0.6}`, class: 'ms-crack' }, surf); }
       el('ellipse', { cx: x, cy: y - r * 0.82, rx: r * 0.6, ry: r * 0.22, fill: 'rgba(255,255,255,.45)' }, surf);
@@ -112,7 +118,7 @@ function buildWorld(svg) {
     const sh = id + '-s';
     grad(defs, sh, [['0%', '#000', 0], ['50%', '#000', 0.05], ['100%', '#02010a', 0.88]], { cx: L.fx, cy: L.fy, fx: L.fx, fy: L.fy, r: '85%' });
     el('circle', { cx: x, cy: y, r, fill: `url(#${sh})` }, g);
-    if (m.id === 'map2') el('path', { d: ringFront(x, y, r), class: 'ms-ring', transform: `rotate(-14 ${x} ${y})` }, g);
+    if (m.id === 'crust') el('path', { d: ringFront(x, y, r), class: 'ms-ring', transform: `rotate(-14 ${x} ${y})` }, g);
   }
 
   // --- Brian's portal, and the way through it
@@ -196,7 +202,8 @@ export class MapSelect {
     $('ms-zin').addEventListener('click', () => this.zoomBy(1.6));
     $('ms-zout').addEventListener('click', () => this.zoomBy(1 / 1.6));
     $('ms-home').addEventListener('click', () => this.flyTo(MAPS.find((m) => m.id === this.sel), true));
-    $('ms-play').addEventListener('click', () => { const m = this.current(); if (m.ready) this.h.play(m.id, $('ms-intro').checked); });
+    $('ms-play').addEventListener('click', () => this.tryPlay());
+    $('ms-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.tryPlay(); } e.stopPropagation(); });
     for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.addEventListener('change', () => { if (r.checked && this.h.setHints) this.h.setHints(r.value); });
     $('ms-watch').addEventListener('click', () => this.h.watchIntro());
     $('ms-back').addEventListener('click', () => this.h.back());
@@ -204,6 +211,23 @@ export class MapSelect {
   }
 
   current() { return MAPS.find((m) => m.id === this.sel); }
+
+  // Play. A map still in development wants the developer code, every time.
+  tryPlay() {
+    const m = this.current();
+    if (!m.ready) return;
+    if (m.locked) {
+      const code = $('ms-code').value.trim().toLowerCase();
+      if (code !== DEV_CODE) {
+        $('ms-codemsg').textContent = code ? 'Wrong code.' : 'Developers only: enter the code.';
+        $('ms-coderow').classList.remove('shake'); void $('ms-coderow').offsetWidth; $('ms-coderow').classList.add('shake');
+        $('ms-code').focus();
+        return;
+      }
+      $('ms-code').value = '';
+    }
+    this.h.play(m.id, m.id === 'lastbell' && $('ms-intro').checked);
+  }
 
   open() {
     $('ms-intro').checked = !this.h.introSeen();
@@ -231,7 +255,7 @@ export class MapSelect {
     list.textContent = '';
     for (const m of MAPS) {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'ms-item' + (m.ready ? '' : ' soon'); b.dataset.map = m.id;
+      b.type = 'button'; b.className = 'ms-item' + (m.ready ? '' : ' soon') + (m.locked ? ' locked' : ''); b.dataset.map = m.id;
       b.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.tag)}</span>`;
       b.addEventListener('click', () => this.select(m.id));
       b.addEventListener('focus', () => this.select(m.id));
@@ -244,9 +268,9 @@ export class MapSelect {
       const p = document.createElement('button');
       p.type = 'button'; p.className = 'ms-pin' + (m.ready ? ' ready' : ' soon'); p.dataset.map = m.id;
       p.setAttribute('aria-label', m.ready ? m.name : `${m.name} (coming soon)`);
-      p.innerHTML = m.ready
-        ? '<i></i><em>Map 1</em>'
-        : `<i><b>?</b></i><em>${m.id === 'map2' ? '???' : 'Coming soon'}</em>`;
+      p.innerHTML = m.id === 'lastbell' ? '<i></i><em>Map 1</em>'
+        : m.ready ? '<i></i><em>Map 2 🔒</em>'
+        : '<i><b>?</b></i><em>Coming soon</em>';
       p.addEventListener('click', (e) => { e.stopPropagation(); this.select(m.id); });
       p.tabIndex = -1;   // the list is the keyboard / controller way in
       this.pinsEl.appendChild(p);
@@ -267,14 +291,16 @@ export class MapSelect {
     $('ms-card').classList.toggle('soon', !m.ready);
     $('ms-play').disabled = !m.ready;
     $('ms-play').textContent = m.ready ? 'Play' : 'Coming soon';
-    $('ms-introrow').hidden = !m.ready;
-    $('ms-moderow').hidden = !m.ready;
+    $('ms-introrow').hidden = m.id !== 'lastbell';
+    $('ms-moderow').hidden = m.id !== 'lastbell';
+    $('ms-coderow').hidden = !m.locked;
+    $('ms-code').value = ''; $('ms-codemsg').textContent = '';
     if (fly) this.flyTo(m);
   }
 
   flyTo(m, home = false) {
     const fit = this.fitK();
-    const k = m.ready ? fit * (home ? 1 : 1.1) : Math.min(fit, Math.min(this.vw || 800, this.vh || 600) / (m.r * (m.id === 'map2' ? 5.2 : 3.4)));
+    const k = m.id === 'lastbell' ? fit * (home ? 1 : 1.1) : Math.min(fit, Math.min(this.vw || 800, this.vh || 600) / (m.r * (m.id === 'crust' ? 5.2 : 3.4)));
     this.goal = { x: m.at[0], y: m.at[1], k };
   }
 

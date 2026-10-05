@@ -166,6 +166,15 @@ Phase 8 (built): Erik's on the PA.
   Erik's last word on the game-over screen, voice volume and subtitle settings.
 - **Polish:** posters, banners and graffiti painted in code all over the
   school, a red damage-direction indicator, and a hit tick sound.
+- **Map 2, Call of the Crust** (in development, `src/map/crust.js` +
+  `src/render/crustWorld.js`): just the start, a snowy field under an open
+  sky (galaxy band, a ringed planet, a red world, a moon) with snow always
+  falling, rock cliffs east and west, and across the frozen water to the north
+  four red-and-white smokestacks on a lit power plant (after Northport). Full
+  rounds: zombies rise out of the snow; the box and an MP41 are in the field.
+  Solo only; on the map screen it asks for the developer code every time.
+  Map data can now set `fog`, `snow` and `pa: false`; walls with style
+  `invisible` block walking but not bullets (`ghost`).
 - **Walkthrough / Hardcore** (map screen, saved per browser): Walkthrough shows
   the Easter egg's objective line and how-to hints; Hardcore hides them (the
   HUD's `hardcore` flag; quest prompts mark their hint lines with `hint`).

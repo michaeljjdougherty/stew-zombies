@@ -12,6 +12,7 @@ import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS 
 import { buildStoryProps, updateStoryProps } from './storyProps.js';
 import { campusBounds } from '../map/school.js';
 import { jukeboxModel } from './propModels.js';
+import { crustMaterials, buildCrust } from './crustWorld.js';
 
 // Rough, sooty bricks for the cauldron's firebox.
 function cauldronBrickTexture() {
@@ -64,7 +65,8 @@ export class MapView {
     this.buildDoors();
     this.buildWallBuys();
     for (const c of this.group.children.slice(n0)) c.userData.noBake = true;
-    this.buildExterior();
+    // the school's grounds, or (Call of the Crust) the snow world
+    if (this.map.snow) this.crust = buildCrust(this); else this.buildExterior();
     // the story's set dressing (school only): Press Box, cows, signage, blood
     if (this.map.id === 'lastbell') this.story = buildStoryProps(this);
     this.tameGloss();
@@ -248,11 +250,12 @@ export class MapView {
     // floors, walls and ceilings get baked shadows and corner shading
     for (const k of ['gymFloor', 'tile', 'tile_big', 'concrete', 'grass', 'asphalt', 'woodFloor', 'carpet', 'drop', 'trussCeiling']) applyBake(this.mats[k]);
     for (const m of Object.values(this.wallMats)) applyBake(m);
+    if (this.map.snow) crustMaterials(this.mats, this.wallMats, applyBake);
   }
 
   floorMat(type) {
     const M = this.mats;
-    return { gym: M.gymFloor, tile: M.tile, tile_big: M.tile_big, carpet: M.carpet, concrete: M.concrete, asphalt: M.asphalt, wood: M.woodFloor, grass: M.grass }[type] || M.tile;
+    return { gym: M.gymFloor, tile: M.tile, tile_big: M.tile_big, carpet: M.carpet, concrete: M.concrete, asphalt: M.asphalt, wood: M.woodFloor, grass: M.grass, snow: M.snow }[type] || M.tile;
   }
 
   roomAtPoint(x, z) {
@@ -335,6 +338,7 @@ export class MapView {
         fences.set(k, f);
         continue;
       }
+      if (b.style === 'invisible') continue;   // (a wall you can't see: the snowbanks show where it is)
       const [inF, outF] = SIDE_FACES[b.side];
       const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
       const room = this.world.roomById.get(b.room);
@@ -926,11 +930,13 @@ export class MapView {
       const geo = new THREE.CircleGeometry(1.4, 18).rotateX(-Math.PI / 2);
       const pos = geo.attributes.position;
       for (let i = 1; i < pos.count; i++) { const k = 0.75 + Math.random() * 0.4; pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }
-      const dirt = new THREE.Mesh(geo, M.soil);
+      const dirt = new THREE.Mesh(geo, this.map.snow ? (M.dugSnow ||= applyBake(new THREE.MeshStandardMaterial({ color: '#9aa3b0', roughness: 1 }))) : M.soil);
       dirt.position.set(gs.x, 0.012, gs.z); this.group.add(dirt);
+      if (this.map.snow) this.bakeReceivers.push(dirt);   // (unbaked, it showed up as a black hole in the moonlit snow)
       for (let i = 0; i < 7; i++) {
         const clod = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.1), M.soil);
         const a = Math.random() * 6.28, r = 0.5 + Math.random() * 0.9;
+        if (this.map.snow) clod.material = M.dugSnow;
         clod.position.set(gs.x + Math.cos(a) * r, 0.04, gs.z + Math.sin(a) * r); this.group.add(clod);
       }
     }
@@ -1480,6 +1486,7 @@ export class MapView {
       setLightLevel(i, this.blackout ? 0 : v.fixture ? v.fixture.level : v.level);
     }
     if (eye) this.streamLights(eye);
+    if (this.crust) this.crust.update(dt, eye, this.time);
     if (this.paLed) this.paLed.visible = Math.sin(this.time * 3) > -0.2;
 
     if (this.scoreTex && roundInfo && (roundInfo.round !== this.lastScore.round || roundInfo.kills !== this.lastScore.kills)) {

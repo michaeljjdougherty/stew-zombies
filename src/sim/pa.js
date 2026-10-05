@@ -27,7 +27,7 @@ export function createPA(sim) {
   const c = sim.cfg.pa;
   const rng = new RNG((sim.seed ^ 0x51ed270b) >>> 0);
   return {
-    enabled: c.enabled && (sim.mode === 'zombies' || sim.mode === 'explore'),
+    enabled: c.enabled && (sim.mode === 'zombies' || sim.mode === 'explore') && sim.mapData.pa !== false,
     rng,
     speaking: null,          // { cat, text, until }
     queue: [],               // [{ cat, text, at }]
