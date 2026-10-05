@@ -54,6 +54,14 @@ export class SoundDirector {
   }
 
   // The ending cutscene's sounds (src/render/ending.js cues).
+  // The boot splash: the Tiger Fish logo flickers on while the dead moan.
+  splash(moans) {
+    const A = this.A;
+    if (!A.ready) return;
+    A.play(S.thunder, { near: 0.08 }, { gain: 0.45, reverb: 0.9 });   // a low roll under it
+    for (const [delay, f0, dur, loud] of moans) A.play(S.zombieGroan, { f0, dur, gain: loud }, { delay, reverb: 0.85, gain: 1.15 });
+  }
+
   cue(name) {
     const A = this.A;
     if (!A.ready) return;

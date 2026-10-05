@@ -26,6 +26,28 @@
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
   #tally { position: absolute; left: max(16px, 2.2vw); bottom: max(12px, 2vh); width: min(300px, 40vw); height: auto; aspect-ratio: 360 / 150; filter: drop-shadow(0 2px 3px rgba(0,0,0,.8)); }
+  /* --- boot splash: the Tiger Fish Interactive logo --- */
+  #splash { position: fixed; inset: 0; z-index: 9999; background: #000; display: grid; place-items: center; cursor: pointer; outline: none; transition: opacity .9s ease; }
+  #splash.out { opacity: 0; pointer-events: none; }
+  #splash .sp-logo { width: min(52vw, 60vh, 430px); transform: scale(.96); }
+  #splash .sp-logo img { display: block; width: 100%; height: auto; opacity: .06; filter: drop-shadow(0 0 22px rgba(60,225,215,.28)); user-select: none; -webkit-user-drag: none; }
+  #splash .sp-hint { position: absolute; bottom: 11%; left: 0; right: 0; text-align: center; font: 600 12px var(--body); letter-spacing: 4px; text-transform: uppercase; color: rgba(225,240,240,.62); animation: sp-pulse 1.8s ease-in-out infinite; }
+  #splash.go .sp-hint { display: none; }
+  #splash.go .sp-logo { animation: sp-push 4.2s ease-out forwards; }
+  #splash.go .sp-logo img { animation: sp-flicker 4.2s linear forwards; }
+  @keyframes sp-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+  @keyframes sp-push { from { transform: scale(.96); } to { transform: scale(1.02); } }
+  /* a dead tube catching: flashes, drops out, then holds (one more stutter halfway) */
+  @keyframes sp-flicker {
+    0% { opacity: .06; } 4% { opacity: .9; } 6% { opacity: .05; } 9% { opacity: 1; } 11% { opacity: .15; }
+    14% { opacity: 1; filter: drop-shadow(0 0 34px rgba(60,225,215,.55)); } 30% { opacity: 1; filter: drop-shadow(0 0 22px rgba(60,225,215,.3)); }
+    54% { opacity: 1; } 55% { opacity: .25; } 56.5% { opacity: 1; } 58% { opacity: .5; } 59% { opacity: 1; }
+    100% { opacity: 1; filter: drop-shadow(0 0 26px rgba(60,225,215,.4)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #splash.go .sp-logo img { animation: none; opacity: 1; }
+    #splash.go .sp-logo { animation: none; transform: none; }
+  }
   #sound-hint { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; padding: 6px 14px; font-size: 13px; color: #f2e6c9; background: rgba(8,7,6,.78); border: 1px solid rgba(217,180,90,.4); border-radius: 3px; pointer-events: none; animation: snd 1.6s ease-in-out infinite; }
   @keyframes snd { 50% { opacity: .55; } }
   #spectate { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); text-align: center; pointer-events: none; text-shadow: 0 2px 6px #000; }
@@ -537,6 +559,11 @@
 </script>
 </head>
 <body>
+<!-- boot splash (src/ui/splash.js): up from the first moment, while the game loads -->
+<div id="splash" tabindex="0" role="button" aria-label="Tiger Fish Interactive. Click or press any key">
+  <div class="sp-logo"><img src="assets/ui/tigerfish.png" alt="Tiger Fish Interactive" width="446" height="430" decoding="sync"></div>
+  <span class="sp-hint">Loading…</span>
+</div>
 <canvas id="game"></canvas>
 
 <div id="scope" hidden><span class="dot"></span></div>

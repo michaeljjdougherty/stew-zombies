@@ -969,6 +969,17 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // Boot splash: the Tiger Fish Interactive logo (src/ui/splash.js)
+  // ---------------------------------------------------------------------------
+  splash: {
+    hold: 4.0,               // seconds from the press to the fade
+    fade: 0.9,               // fade into the title
+    skipAfter: 0.8,          // a second press after this long skips the rest
+    // the moans: [delay s, pitch Hz, length s, loudness]
+    moans: [[0.1, 68, 2.4, 1.1], [0.55, 96, 1.7, 0.85], [1.2, 58, 2.8, 1.2], [1.9, 108, 1.5, 0.75], [2.5, 76, 2.1, 1.0]],
+  },
+
+  // ---------------------------------------------------------------------------
   // Last stand
   // ---------------------------------------------------------------------------
   lastStand: {

@@ -35,6 +35,7 @@ import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
 import { PatchNotes } from './ui/patchNotes.js';
+import { Splash } from './ui/splash.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { LINEUP } from './render/characters.js';
@@ -320,8 +321,10 @@ function onlineEnded(reason) {
   startTitleMusic();
 }
 
+let splash = null;   // the boot logo (made below, once the menus are wired up)
 // Title theme: browsers only allow sound after the first click or key press.
 function startTitleMusic() {
+  if (splash && splash.active) return;   // (it starts once the logo's gone)
   if (!audio.ready || (mode !== 'title' && mode !== 'over' && mode !== 'online') || jukebox.playing) return;
   titleMusic.start('music', 0.9);
 }
@@ -723,10 +726,16 @@ input.assist = () => {
 const BACK_BUTTON = { mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 const patchNotes = new PatchNotes();
+const bootParams = new URLSearchParams(location.search);
+splash = new Splash(CONFIG.splash, {
+  // (inside the click / key press, so the browser lets the sound out)
+  sound: () => { audio.init(); audio.applyVolumes(); sound.splash(CONFIG.splash.moans); },
+  done: () => { startTitleMusic(); if (!bootParams.get('join')) patchNotes.maybeShow(); },
+});
 const nav = new MenuNav({
-  root: () => (patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id(exploreUI.isOpen ? 'explorepanel' : 'rangepanel') : menus.current ? $id(menus.current) : null),
-  back: (id) => { if (id === 'patchnotes') { patchNotes.close(); return; } const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
-  start: (id) => { if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel' || id === 'explorepanel') $id(BACK_BUTTON[id]).click(); },
+  root: () => (splash.active ? $id('splash') : patchNotes.isOpen ? $id('patchnotes') : mode === 'panel' ? $id(exploreUI.isOpen ? 'explorepanel' : 'rangepanel') : menus.current ? $id(menus.current) : null),
+  back: (id) => { if (id === 'splash') { splash.press(); return; } if (id === 'patchnotes') { patchNotes.close(); return; } const b = id === 'online' && !$id('on-lobby').hidden ? 'btn-on-leave' : BACK_BUTTON[id]; if (b) $id(b).click(); },
+  start: (id) => { if (id === 'splash') splash.press(); else if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel' || id === 'explorepanel') $id(BACK_BUTTON[id]).click(); },
   view: (id) => { if (id === 'rangepanel') closeRangePanel(); else if (id === 'explorepanel') closeExplorePanel(); },
   bumper: (id, dir) => {
     if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
@@ -874,7 +883,12 @@ window.STEW = {
 };
 refreshGlyphs();
 // an invite link (?join=CODE) opens the online screen with the code filled in
-{ const code = new URLSearchParams(location.search).get('join'); if (code) openOnline(code); else patchNotes.maybeShow(); }
+// the boot splash first (skipped for invite links and ?nosplash), then the patch notes
+{
+  const code = bootParams.get('join');
+  if (code) { splash.finish(true); openOnline(code); }
+  else if (bootParams.has('nosplash')) splash.finish(true);
+}
 document.body.dataset.ready = '1';
 // paint the zombie heads and outfits while the player is still on the title screen
 setTimeout(() => renderer.zombies.kit.build(), 400);
