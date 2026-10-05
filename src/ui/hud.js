@@ -119,13 +119,25 @@ export class HUD {
         this.toast(`Chopper part ${e.count} of ${e.total}`, e.name, '#ff7050', 2.8);
         break;
       case 'chopperBuilt':
-        this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours · now feed it to the Mad Dog' : 'built · a teammate has it', '#ff7050', 3.5);
+        this.toast('The Chopper', e.playerId === this.localId ? 'built · it\'s yours' : 'built · a teammate has it', '#ff7050', 3.5);
         break;
       case 'chopperReturned':
         this.toast('The Chopper is back on the workbench', 'in the Boiler Room', '#ff7050', 3);
         break;
       case 'chopperUpgraded':
         this.toast('The Meat Grinder', 'strong enough to bring Erik down', '#ff3b1f', 3.5);
+        break;
+      case 'schnitzSays':
+        this.say('schnitz', 'The Schnitz', e.text, 0, e.dur);
+        break;
+      case 'schnitzGone':
+        this.toast('Infused zombies', `kill ${this.cfg.quest.infused.kills} of The Schnitz's giants`, '#6dff7a', 3.5);
+        break;
+      case 'infusedKill':
+        if (e.count % 10 === 0 && e.count < e.total) this.toast(`Infused ${e.count} of ${e.total}`, '', '#6dff7a', 2);
+        break;
+      case 'infusedDone':
+        this.toast('The infused are down', 'now the Chopper', '#6dff7a', 3);
         break;
       case 'pressBoxShrug':
         if (e.playerId === this.localId) this.toast('It barely rattles the glass', 'upgrade the Chopper in the Mad Dog Machine', '#c04040', 2.6);

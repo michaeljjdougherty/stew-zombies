@@ -51,6 +51,7 @@ export class ZombieViews {
       aura.scale.set(1.6, 2.4, 1); aura.position.set(0, 1.0, 0);
       parts.root.add(aura);
     }
+    if (z.infused) this.makeInfused(null, [], parts.root, 1);   // (the kit already built it at its scale)
     this.scene.add(parts.root);
     return {
       id: z.id, ...parts, glow,
@@ -95,6 +96,7 @@ export class ZombieViews {
       inst.root.add(aura);
     }
     if (z.ritual) this.makeSpirit(inst.meshes, glow, inst.root, size);
+    if (z.infused) this.makeInfused(inst.meshes, glow, inst.root, z.scale);
     this.scene.add(inst.root);
     const mixer = new THREE.AnimationMixer(inst.model);
     const clips = this.models.clipsFor(t);
@@ -115,6 +117,22 @@ export class ZombieViews {
     };
     this.play(v, 'idle', 0);
     return v;
+  }
+
+  // The Schnitz's infused zombies: twice the size, a sickly green cast and a
+  // green glow all round them.
+  makeInfused(meshes, glows, root, s) {
+    if (!this.infusedAura) this.infusedAura = new THREE.SpriteMaterial({ map: this.glowMat.map, color: new THREE.Color(0.25, 2.2, 0.4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.3 });
+    for (const m of meshes || []) {
+      const mat = m.material.clone();
+      mat.color = mat.color.clone().multiply(new THREE.Color(0.8, 1.05, 0.75));
+      if (!mat.emissiveMap) mat.emissive = new THREE.Color(0.02, 0.09, 0.02);
+      m.material = mat;
+    }
+    for (const g of glows) g.scale.multiplyScalar(1.4);
+    const aura = new THREE.Sprite(this.infusedAura);
+    aura.scale.set(1.3 * s, 2.0 * s, 1); aura.position.set(0, 0.95 * s, 0);
+    root.add(aura);
   }
 
   // The half-court ritual's zombies: tinted ghostly blue, eyes blazing blue.
@@ -336,6 +354,12 @@ export class ZombieViews {
       this.views.delete(e.id);
       this.prev.delete(e.id);
       this.makeCorpse(v, e);
+    } else if (e.type === 'zombieBanished' && v) {
+      // a ritual spirit whose circle went out (or filled): it just floats away
+      this.views.delete(e.id);
+      this.prev.delete(e.id);
+      this.eyesOut(v);
+      if (v.spirit) this.ascend(v); else this.scene.remove(v.root);
     }
   }
 

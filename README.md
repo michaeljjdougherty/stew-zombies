@@ -120,13 +120,19 @@ Phase 8 (built): Erik's on the PA.
      the steel cladding grinds up and Erik is there behind the glass.
   4. *The half-court sacrifice:* four drained basketballs; hold each glowing
      circle for 45 s while sprinters claw up out of the court. Each restores a
-     talent (Speed, Jump, Power, Defense); solo you get all four.
+     talent (Speed, Jump, Power, Defense); solo you get all four. The blue
+     spirits only exist while a circle is held and fade when it goes out or fills.
   5. *Building the Chopper:* its motor (kitchen counter), saw blade
      (auditorium stage), housing (art room table) and grip (loading dock
      dumpster) appear once the circles are done; put it together on the
      workbench in the boiler room. There's only the one: the builder carries
      it (the bench refills it) and it goes back on the bench if they lose it.
-     Then upgrade it in the Mad Dog Machine. (The box still gives Choppers.)
+     Lifting it the first time brings The Schnitz: the lights go down for
+     ~19 s, its green eyes open over the stew and it speaks (synth voice);
+     nothing can attack in the dark. Then kill 50 of its infused zombies
+     (twice as tall, slower, 2.5x health, green glow, rising from the floor
+     near the team) and upgrade the Chopper in the Mad Dog Machine.
+     (The box still gives Choppers.)
   6. *The Intercom Showdown:* call Erik out at the altar. Waves of Zombie
      Defenders in Stew Leonards jerseys while he paints red playbook diagrams
      on the floor; then elites drop Sound Amplifiers for the four speaker

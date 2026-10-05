@@ -1363,7 +1363,7 @@ export class MapView {
       l.decay = e.v.decay;
       // (these only light things without baked light: props, people, zombies.
       // Unshadowed at full strength they came out brighter than the room.)
-      l.intensity = e.v.intensity * e.lvl * fade * (this.cfg.graphics.liveLightScale ?? 1);
+      l.intensity = e.v.intensity * e.lvl * fade * (this.cfg.graphics.liveLightScale ?? 1) * (e.v.noDim ? 1 : this.dimLevel ?? 1);
     }
     if (this.blackout) { for (const sp of this.spotPool) sp.intensity = 0; return; }
     const spots = this.vspots.map((s) => ({ s, d: s.target.distanceTo(eye) })).sort((a, b) => a.d - b.d);
@@ -1442,6 +1442,9 @@ export class MapView {
     if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
     if (this.story) updateStoryProps(this.story, dt, this.time);
     // fluorescent flicker
+    // The Schnitz's dark (questView sets dimTarget): the whole building sinks low for a while
+    this.dimLevel = this.dimLevel ?? 1;
+    this.dimLevel += ((this.dimTarget ?? 1) - this.dimLevel) * Math.min(1, dt * ((this.dimTarget ?? 1) < this.dimLevel ? 2.2 : 0.8));
     for (const f of this.fixtures) {
       if (!f.on) {
         if (f.onAt != null && this.time >= f.onAt) { f.on = true; f.burst = 0.5 + Math.random() * 0.6; f.timer = 0; f.target = 1; }
@@ -1461,16 +1464,16 @@ export class MapView {
         if (f.target === 0 && Math.random() < 0.6) f.target = 1;
       }
       f.level += (f.target - f.level) * Math.min(1, dt * 40);
-      const tg = this.cfg.graphics.tubeGlow ?? 2.6;
+      const tg = (this.cfg.graphics.tubeGlow ?? 2.6) * this.dimLevel;
       f.tubeMat.color.setRGB(tg * f.level + 0.06, tg * 0.94 * f.level + 0.06, tg * 0.81 * f.level + 0.05);
-      if (f.beam) { f.beam.material.opacity = (this.cfg.graphics.beamOpacity ?? 0.045) * f.level; f.beam.visible = f.level > 0.02; }
+      if (f.beam) { f.beam.material.opacity = (this.cfg.graphics.beamOpacity ?? 0.045) * f.level * this.dimLevel; f.beam.visible = f.level * this.dimLevel > 0.02; }
     }
     // the ending: every light in the building dies at once
     if (this.blackout) {
       for (const f of this.fixtures) { f.level = 0; f.tubeMat.color.setRGB(0.04, 0.04, 0.035); if (f.beam) f.beam.visible = false; }
     }
-    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : 1.35 - 0.35 * bp.value);
-    bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : 1) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
+    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : (1.35 - 0.35 * bp.value) * Math.max(0.25, this.dimLevel));
+    bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : this.dimLevel) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
     // baked surfaces follow each light's live brightness
     for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {
       const v = this.vlights[i];

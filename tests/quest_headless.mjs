@@ -114,6 +114,8 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   check(q.ritual.active === balls[0].b.id, 'circle lit');
   me.pos.x += 6; step({}, Math.round((CONFIG.quest.ritualLeaveTime + 0.5) / dt));
   check(!q.ritual.active && log.some((e) => e.type === 'ritualFailed'), 'leaving the circle puts it out');
+  step({}, 2);
+  check(log.some((e) => e.type === 'zombieRise') && !sim.zombies.some((z) => z.ritual) && log.some((e) => e.type === 'zombieBanished'), 'and its blue spirits fade away (' + log.filter((e) => e.type === 'zombieBanished').length + ')');
   // hold all four
   sim.godMode = true;
   const baseSpeed = 1;
@@ -122,6 +124,8 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
     let n = 0;
     while (q.ritual.active && n++ < 60 * 60) { me.pos.x = b.pos.x; me.pos.z = b.pos.z; me.vel.x = me.vel.z = 0; step({}, 1); }
     check(q.ritual.balls.find((x) => x.id === b.b.id).done, `${b.b.stat} restored`);
+    step({}, 2);
+    check(!sim.zombies.some((z) => z.ritual), `${b.b.stat}: the blue spirits fade when the circle fills`);
   }
   check(me.boosts && me.boosts.speed > 1 && me.boosts.jump > 1 && me.boosts.power > 1 && me.boosts.defense < 1, 'solo: all four boosts ' + JSON.stringify(me.boosts));
   check(q.step === 'chopper', 'on to building the Chopper');
@@ -166,7 +170,37 @@ export function makeQuestGame(seed = 11, mode = 'zombies') {
   check(q.chopper.built && q.step === 'chopper', 'built (still needs the Mad Dog)');
   check(me.loadout.slots.some((s) => s.id === 'The Chopper') && q.chopper.holder === 'p1', 'the builder has the Chopper');
   check(/refill/.test(me.prompt && me.prompt.text), 'then the bench refills it: ' + (me.prompt && me.prompt.text));
-  check(/Mad Dog/.test(questObjective(sim)), 'objective: ' + questObjective(sim));
+  // lifting it: the dark, The Schnitz, and nothing can hurt you
+  check(log.some((e) => e.type === 'schnitzVisit') && q.darkUntil > sim.time, 'the lights go down: The Schnitz');
+  const { makeZombie, killZombie } = await import('../src/sim/zombies.js');
+  const lurker = makeZombie(sim, { type: 'sprinter', pos: { x: me.pos.x - 1.0, y: 0, z: me.pos.z }, yaw: Math.PI / 2, health: 1e6, state: 'chase' });
+  sim.zombies.push(lurker);
+  me.health = me.maxHealth;
+  step({}, 60 * 4);
+  check(me.health === me.maxHealth, 'nothing attacks you in the dark');
+  killZombie(sim, lurker, { kind: 'bullet' });
+  step({}, 60 * (CONFIG.quest.schnitz.duration - 3));
+  const said = log.filter((e) => e.type === 'schnitzSays');
+  check(said.length === 3 && /powerless against The Schnitz/.test(said[0].text), 'The Schnitz speaks (' + said.length + ' lines)');
+  check(q.step === 'infused' && q.darkUntil <= sim.time, 'the lights come back: on to the infused');
+  check(!log.some((e) => e.type === 'erikSays' && e.t > q.schnitz.at && e.t < q.darkUntil), 'Erik keeps quiet while The Schnitz talks');
+  // the infused: twice as tall, slower, 2.5x the health, clawing up near you
+  step({}, 60 * 8);
+  const inf = sim.zombies.filter((z) => z.infused);
+  check(inf.length > 0, 'infused zombies rise (' + inf.length + ')');
+  if (inf.length) {
+    const z0 = inf[0], hp = (await import('../src/config.js')).zombieHealthForRound(Math.max(1, sim.rounds.round), CONFIG.zombie);
+    check(z0.scale > 1.8 && Math.abs(z0.maxHealth / hp - 2.5) < 0.01 && z0.speed < CONFIG.zombie.walkSpeed[1], `scale ${z0.scale.toFixed(2)}, health x${(z0.maxHealth / hp).toFixed(2)}, speed ${z0.speed.toFixed(2)}`);
+  }
+  check(/infused zombies \(0\/50\)/.test(questObjective(sim)), 'objective: ' + questObjective(sim));
+  // kill fifty of them
+  let guard = 0;
+  while (q.infused.kills < CONFIG.quest.infused.kills && guard++ < 60 * 600) {
+    step({}, 1);
+    for (const z of [...sim.zombies]) if (z.infused && z.state === 'chase') killZombie(sim, z, { kind: 'bullet', part: 'torso', playerId: 'p1' });
+  }
+  check(q.infused.kills === 50, 'fifty infused down (' + q.infused.kills + ')');
+  check(q.step === 'infused' && /Mad Dog/.test(questObjective(sim)), 'still needs the Mad Dog: ' + questObjective(sim));
   // there's only the one
   const p2 = sim.addPlayer('p2', 'Two');
   p2.pos.x = tb.x - 1.2; p2.pos.z = tb.z; p2.yaw = Math.PI / 2;

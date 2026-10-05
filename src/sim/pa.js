@@ -174,6 +174,7 @@ export function updatePA(sim, dt) {
   pa.inbox = [];
   for (const e of events) onEvent(sim, e);
   if (sim.gameOver) return;
+  if (sim.quest && sim.quest.darkUntil > sim.time) return;   // nobody talks over The Schnitz
 
   if (pa.speaking && sim.time >= pa.speaking.until) {
     pa.speaking = null;

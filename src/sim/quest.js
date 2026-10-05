@@ -23,6 +23,7 @@ import { paSay } from './pa.js';
 import { makeZombie, pickZombieType, killZombie } from './zombies.js';
 import { zombieHealthForRound, baseWeaponId } from '../config.js';
 import { giveWeapon } from './weapons.js';
+import { SCHNITZ_LINES, lineDuration } from '../lore/erik.js';
 import { DEG } from '../core/math.js';
 
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -30,7 +31,7 @@ const up = (p) => p.alive && !p.downed;
 const solid = (x0, y0, z0, x1, y1, z1, kind) => ({ minX: x0, minY: y0, minZ: z0, maxX: x1, maxY: y1, maxZ: z1, kind });
 
 // The steps, in order. `step` on the quest state is one of these.
-export const QUEST_STEPS = ['power', 'trophy', 'statue', 'coin', 'altar', 'cladding', 'ritual', 'chopper', 'boss', 'ending', 'done'];
+export const QUEST_STEPS = ['power', 'trophy', 'statue', 'coin', 'altar', 'cladding', 'ritual', 'chopper', 'infused', 'boss', 'ending', 'done'];
 const reached = (q, step) => QUEST_STEPS.indexOf(q.step) >= QUEST_STEPS.indexOf(step);
 export const CHOPPER = 'The Chopper';
 
@@ -68,7 +69,10 @@ export function createQuest(sim) {
   const tb = Q.chopperTable;
   if (tb) sim.world.solids.push(solid(tb.x - tb.w / 2, 0, tb.z - tb.d / 2, tb.x + tb.w / 2, tb.h, tb.z + tb.d / 2, 'workbench'));
   st.chopper = { parts: [], built: false, holder: null, upgraded: false };
-  st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls, parts: (Q.chopperParts || []).length };
+  st.schnitz = null;          // the dark moment when the Chopper's first lifted
+  st.darkUntil = 0;           // (sim.time) zombies can't find you until then
+  st.infused = { kills: 0, spawnT: 0 };
+  st.need = { breakers: Q.breakers.length, pieces: Q.trophyPieces.length, souls: c.statueSouls, parts: (Q.chopperParts || []).length, infused: c.infused.kills };
   // 4. the half-court ritual: four drained basketballs
   st.ritual = {
     balls: Q.ritualBalls.map((b) => ({ ...b, progress: 0, done: false })),
@@ -279,6 +283,16 @@ export class RitualBallInteractable {
   }
 }
 
+// The blue spirit zombies only exist while a circle is being held: when it goes
+// out, or fills, the rest of them fade away.
+function banishSpirits(sim) {
+  for (const z of sim.zombies) {
+    if (!z.ritual || z.state === 'dead') continue;
+    z.state = 'dead';
+    sim.emit('zombieBanished', { id: z.id, pos: { ...z.pos } });
+  }
+}
+
 // A player's restored talent, as a multiplier (1 = none).
 export function boost(p, stat) { return (p.boosts && p.boosts[stat]) || 1; }
 
@@ -298,6 +312,7 @@ function updateRitual(sim, dt) {
       ball.progress = 0;
       r.active = null;
       sim.emit('ritualFailed', { id: ball.id, stat: ball.stat });
+      banishSpirits(sim);
       return;
     }
   }
@@ -320,6 +335,7 @@ function updateRitual(sim, dt) {
   if (ball.progress >= c.ritualTime) {
     ball.done = true;
     r.active = null;
+    banishSpirits(sim);
     // whoever held the circle gets the talent back (solo: you hold every circle)
     const k = c.boosts[ball.stat];
     for (const id of r.stood) {
@@ -397,13 +413,106 @@ export class ChopperTableInteractable {
       if (C.parts.length < q.need.parts) { sim.emit('useDenied', { playerId: p.id }); return; }
       C.built = true;
       sim.emit('chopperBuilt', { playerId: p.id, pos: { x: this.t.x, y: this.t.h, z: this.t.z } });
-      if (!sim.madDog || !sim.cfg.weapons[CHOPPER + '+']) advance(sim, 'boss');   // (no machine to put it through)
+      if (!sim.madDog || !sim.cfg.weapons[CHOPPER + '+']) C.upgraded = true;   // (no machine to put it through)
     } else if (C.holder && C.holder !== p.id) return;
     const have = chopperSlot(p);
     giveWeapon(sim, p, have >= 0 ? p.loadout.slots[have].id : CHOPPER);
     C.holder = p.id;
     sim.emit('chopperTaken', { playerId: p.id, refill: have >= 0 });
+    if (!q.schnitz) startSchnitz(sim, p);
   }
+}
+
+// ---------------------------------------------------------------------------
+// The first time the Chopper is lifted: the lights go down, two green eyes
+// open over the stew, and The Schnitz speaks. Nothing attacks in the dark.
+// Then its infused zombies come.
+// ---------------------------------------------------------------------------
+function startSchnitz(sim, p) {
+  const q = sim.quest, c = sim.cfg.quest.schnitz;
+  q.schnitz = { at: sim.time, next: 0, done: false, by: p.id };
+  q.darkUntil = sim.time + c.duration;
+  sim.emit('schnitzVisit', { playerId: p.id, dur: c.duration });
+}
+
+function updateSchnitz(sim) {
+  const q = sim.quest, S = q.schnitz;
+  if (!S || S.done) return;
+  const lines = SCHNITZ_LINES.chopper;
+  const t = sim.time - S.at;
+  while (S.next < lines.length && t >= lines[S.next].at) {
+    const L = lines[S.next++];
+    sim.emit('schnitzSays', { text: L.text, dur: lineDuration(L.text) * 1.25 });
+  }
+  if (sim.time >= q.darkUntil) {
+    S.done = true;
+    sim.emit('schnitzGone', {});
+    advance(sim, 'infused');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The Schnitz's infused zombies: twice as tall, slow, 2.5x the health, glowing
+// green. They claw up out of the floor near the team until fifty are down.
+// ---------------------------------------------------------------------------
+function infusedSpot(sim) {
+  const ps = sim.players.filter(up);
+  if (!ps.length) return null;
+  const I = sim.cfg.quest.infused, act = sim.activeZones();
+  for (let tries = 0; tries < 20; tries++) {
+    const p = ps[Math.floor(sim.rng.next() * ps.length)];
+    const a = sim.rng.range(0, Math.PI * 2), d = sim.rng.range(I.spawnDist[0], I.spawnDist[1]);
+    const pos = { x: p.pos.x + Math.cos(a) * d, y: 0, z: p.pos.z + Math.sin(a) * d };
+    const region = sim.nav.regionAt(pos);
+    if (!region) continue;
+    const zone = sim.zoneOf(pos, region);
+    if (!zone || !act.has(zone)) continue;
+    // clear floor: nothing solid within a metre
+    let clear = true;
+    for (const b of sim.world.solids) {
+      if (b.maxY < 0.2 || b.minY > 2) continue;
+      if (pos.x > b.minX - 1 && pos.x < b.maxX + 1 && pos.z > b.minZ - 1 && pos.z < b.maxZ + 1) { clear = false; break; }
+    }
+    if (clear) return pos;
+  }
+  return null;
+}
+
+function spawnInfused(sim) {
+  const pos = infusedSpot(sim);
+  if (!pos) return null;
+  const I = sim.cfg.quest.infused, zc = sim.cfg.zombie;
+  const round = Math.max(1, sim.rounds.round);
+  const hp = zombieHealthForRound(round, zc) * I.health;
+  pos.y = -zc.riseDepth * I.scale;
+  const z = makeZombie(sim, { type: 'walker', pos, yaw: sim.rng.range(-Math.PI, Math.PI), health: hp, state: 'rising' });
+  z.riseFrom = z.pos.y;
+  z.infused = true;
+  z.scale *= I.scale;
+  z.radius = zc.radius * 1.3;                       // (collision height stays: they still fit through doors)
+  z.speed = zc.walkSpeed[1] * I.speed;
+  sim.zombies.push(z);
+  sim.emit('zombieSpawn', { id: z.id, zombieType: 'walker', pos: { ...z.pos }, windowId: null, rising: true, infused: true });
+  sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });
+  return z;
+}
+
+function updateInfused(sim, dt) {
+  const q = sim.quest, I = q.infused, c = sim.cfg.quest.infused;
+  if (I.kills >= c.kills) return;
+  const alive = sim.zombies.filter((z) => z.infused && z.state !== 'dead').length;
+  const max = c.maxAlive + Math.max(0, sim.players.length - 1) * c.perPlayer;
+  I.spawnT -= dt;
+  if (I.spawnT <= 0 && alive < max) {
+    spawnInfused(sim);
+    I.spawnT = c.spawnEvery * sim.rng.range(0.7, 1.3);
+  }
+}
+
+// On to the showdown once the fifty are down and the Chopper's been through the Mad Dog.
+function maybeShowdown(sim) {
+  const q = sim.quest;
+  if (q.step === 'infused' && q.infused.kills >= q.need.infused && q.chopper.upgraded) advance(sim, 'boss');
 }
 
 // The built Chopper goes back on the bench if whoever had it doesn't any more
@@ -667,10 +776,15 @@ export function questOnEvent(sim, e) {
   const q = sim.quest;
   if (!q) return;
   // the built Chopper through the Mad Dog Machine: now it can bring Erik down
-  if (e.type === 'madDogTaken' && baseWeaponId(e.weapon) === CHOPPER && q.chopper.built && q.step === 'chopper') {
+  if (e.type === 'madDogTaken' && baseWeaponId(e.weapon) === CHOPPER && q.chopper.built && !q.chopper.upgraded && (q.step === 'chopper' || q.step === 'infused')) {
     q.chopper.upgraded = true;
     sim.emit('chopperUpgraded', { playerId: e.playerId });
-    advance(sim, 'boss');
+    maybeShowdown(sim);
+  }
+  if (e.type === 'zombieKilled' && e.infused && q.step === 'infused' && q.infused.kills < q.need.infused) {
+    q.infused.kills++;
+    sim.emit('infusedKill', { count: q.infused.kills, total: q.need.infused, pos: e.pos });
+    if (q.infused.kills >= q.need.infused) { sim.emit('infusedDone', {}); maybeShowdown(sim); }
   }
   if (e.type === 'zombieKilled' && q.boss && q.boss.elites.has(e.id) && e.pos) {
     q.boss.elites.delete(e.id);
@@ -740,6 +854,8 @@ export function updateQuest(sim, dt) {
   }
   if (q.step === 'ritual') updateRitual(sim, dt);
   if (q.chopper) updateChopper(sim);
+  updateSchnitz(sim);
+  if (q.step === 'infused') updateInfused(sim, dt);
   if (q.step === 'boss') updateBoss(sim, dt);
   // whoever's holding the coin and bleeds out drops it back where it came from
   if (q.coin === 'held') {
@@ -764,10 +880,16 @@ export function questObjective(sim) {
     case 'cladding': return 'The cladding is coming up...';
     case 'chopper': {
       const n = q.chopper.parts.length, t = q.need.parts;
+      if (q.schnitz && !q.schnitz.done) return '...';
       if (q.chopper.built && !q.chopper.holder) return 'Take the Chopper from the workbench in the Boiler Room';
-      if (q.chopper.built) return 'Upgrade the Chopper in the Mad Dog Machine';
       if (n < t) return `Build the Chopper: find its parts around the school (${n}/${t})`;
       return 'Build the Chopper on the workbench in the Boiler Room';
+    }
+    case 'infused': {
+      const k = q.infused.kills, t = q.need.infused;
+      if (k < t) return `Kill The Schnitz's infused zombies (${k}/${t})` + (q.chopper.upgraded ? '' : ' · upgrade the Chopper in the Mad Dog Machine');
+      if (!q.chopper.holder && !q.chopper.upgraded) return 'Take the Chopper from the workbench in the Boiler Room';
+      return 'Upgrade the Chopper in the Mad Dog Machine';
     }
     case 'ritual': {
       const r = q.ritual;

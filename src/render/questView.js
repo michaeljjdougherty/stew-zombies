@@ -458,6 +458,16 @@ export class QuestView {
       }
     }
     this.crackLevel = 0;
+    // --- The Schnitz: two green eyes over the stew when the Chopper's first lifted
+    const eyeTex = T.softDotTexture('rgba(160,255,140,1)', 'rgba(40,255,60,0)');
+    this.schnitzEyes = [-1, 1].map(() => {
+      const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: eyeTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false }));
+      e.scale.set(0.55, 0.17, 1); e.visible = false; this.group.add(e); return e;
+    });
+    const C0 = sim.mapData.cauldron;
+    this.schnitzAt = C0 ? new THREE.Vector3(C0.x, 2.25, C0.z) : new THREE.Vector3(0, 2.25, 0);
+    this.schnitzLight = mapView.addVirtualLight({ x: this.schnitzAt.x, y: 1.6, z: this.schnitzAt.z }, 0x50ff70, 10, 7, 1.6);
+    this.schnitzLight.live = true; this.schnitzLight.noDim = true; this.schnitzLight.level = 0;
     this.groundAmps = new Map();
     this.plays = new Map();
   }
@@ -490,6 +500,14 @@ export class QuestView {
 
   onEvent(e) {
     if (!this.Q) return;
+    if (e.type === 'schnitzVisit') {
+      // the eyes open over the stew, side by side as seen by whoever lifted it
+      const p = this.sim.playerById(e.playerId);
+      const at = this.schnitzAt;
+      const dx = p ? p.pos.x - at.x : 1, dz = p ? p.pos.z - at.z : 0;
+      const l = Math.hypot(dx, dz) || 1;
+      this.schnitzSide = new THREE.Vector3(-dz / l, 0, dx / l);
+    }
     if (e.type === 'pressBoxBlast') {
       this.boothShake = 1;
       // glass bits rain down from the booth
@@ -614,6 +632,25 @@ export class QuestView {
       this.builtChopper.visible = built;
       if (built) this.builtChopper.rotation.y = Math.sin(t * 0.7) * 0.3;
       this.benchHalo.material.opacity = built ? 0.3 + Math.sin(t * 2.2) * 0.08 : (q.step === 'chopper' && !CH.built && CH.parts.length >= q.need.parts ? 0.35 + Math.sin(t * 4) * 0.12 : 0);
+    }
+    // The Schnitz's dark: the building sinks low, its eyes open over the stew
+    const S = q.schnitz, dark = S && !S.done && q.darkUntil > sim.time;
+    this.map.dimTarget = dark ? this.cfg.quest.schnitz.dim : 1;
+    if (dark) {
+      const k = sim.time - S.at, left = q.darkUntil - sim.time;
+      const o = Math.min(1, Math.max(0, (k - 1.2) / 1.5)) * Math.min(1, left / 1.5);
+      const side = this.schnitzSide || new THREE.Vector3(0, 0, 1);
+      const blink = Math.sin(k * 0.9) > 0.985 ? 0.1 : 1;
+      this.schnitzEyes.forEach((e, i) => {
+        e.visible = true;
+        e.position.copy(this.schnitzAt).addScaledVector(side, (i ? 1 : -1) * 0.34);
+        e.position.y += Math.sin(k * 0.7) * 0.06;
+        e.material.opacity = o * blink * (0.85 + Math.sin(t * 9 + i) * 0.1);
+      });
+      this.schnitzLight.level = o * (0.7 + Math.sin(t * 5) * 0.15);
+    } else {
+      for (const e of this.schnitzEyes) e.visible = false;
+      this.schnitzLight.level = 0;
     }
     // the booth's glass cracks a little more with every blast, and the booth shudders
     const blasts = B ? B.blasts || 0 : 0;

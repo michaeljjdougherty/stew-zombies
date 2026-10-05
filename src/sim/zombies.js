@@ -166,7 +166,11 @@ function inRitual(sim, p) {
   return !!b && Math.hypot(p.pos.x - b.x, p.pos.z - b.z) <= sim.cfg.quest.ritualCircle + 1.0;
 }
 
+// The Schnitz's dark (quest.js): nobody can be found, nobody gets hurt.
+const schnitzDark = (sim) => !!(sim.quest && sim.quest.darkUntil > sim.time);
+
 function nearestPlayer(sim, pos, z = null) {
+  if (schnitzDark(sim)) return null;
   let best = null, bd = Infinity;
   for (const p of sim.players) {
     if (!p.alive || p.downed) continue;
@@ -401,6 +405,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
           if ((dx * fx + dz * fz) / (d || 1) > 0.2) { victim = p; break; }
         }
       }
+      if (schnitzDark(sim)) victim = null;
       sim.emit('zombieSwingEnd', { id: z.id, hit: !!victim });
       if (victim) sim.damagePlayer(victim, c.attackDamage, z);
       a.phase = 'recover';
@@ -415,7 +420,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
   }
   // start a swing?
   let victim = null;
-  if (throughWindow) {
+  if (schnitzDark(sim)) { /* lost you in the dark */ } else if (throughWindow) {
     for (const p of sim.players) {
       if (!p.alive || p.downed) continue;
       if (dist2D(p.pos, win.center) < c.windowAttackRange + 0.4) { victim = p; break; }
@@ -530,7 +535,7 @@ export function killZombie(sim, z, info = {}) {
   sim.emit('zombieKilled', {
     id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind, zombieType: z.type,
     dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId, force: info.force || 0, crawler: !!z.crawler,
-    fling: info.fling || null,
+    fling: info.fling || null, infused: !!z.infused,
   });
   maybeDrop(sim, z, { ...info, wasState });
 }

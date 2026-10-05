@@ -350,6 +350,17 @@ export class SoundDirector {
         A.play(S.glassShatter, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.7, reverb: 0.8 });
         A.play(S.electrocute, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 8, gain: 0.9, reverb: 0.6, delay: 0.1 });
         break;
+      case 'schnitzVisit':
+        A.play(S.powerDown, {}, { gain: 1.1, reverb: 0.9 });
+        A.play(S.thunder, { near: 0.15 }, { gain: 0.8, reverb: 0.9, delay: 1.2 });
+        this.talkUntil = A.now() + (e.dur || 15);
+        break;
+      case 'schnitzSays': A.play(S.schnitzVoice, { text: e.text, dur: e.dur }, { gain: 1.4, reverb: 1, bus: 'voice' }); break;
+      case 'schnitzGone': A.play(S.boxWhoosh, {}, { gain: 0.8, reverb: 0.9 }); break;
+      case 'zombieBanished':
+        // (a whole circle's worth go at once: one sigh is enough)
+        if (A.now() - (this.banishAt || -9) > 0.4) { this.banishAt = A.now(); A.play(S.boxWhoosh, {}, { pos: e.pos, ref: 6, gain: 0.45, reverb: 0.7 }); }
+        break;
       case 'chopperPart': A.play(S.stewItemGet, { count: e.count }, { gain: 0.8, reverb: 0.3, bus: 'music' }); break;
       case 'chopperBuilt':
         A.play(S.boardRepair, {}, { pos: e.pos, ref: 4, gain: 1, reverb: 0.5 });

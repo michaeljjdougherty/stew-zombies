@@ -152,9 +152,16 @@ export const PA_LINES = {
   ],
 };
 
-// The Schnitz itself: it only speaks once.
+// The Schnitz itself. It speaks when you first lift the Chopper (the lights
+// go down and its eyes open over the stew), and once more at the very end.
+// at: seconds into the dark.
 export const SCHNITZ_LINES = {
   ending: 'This season isn\'t over yet.',
+  chopper: [
+    { at: 2.6, text: 'You got your powers back. But you are still powerless against The Schnitz.' },
+    { at: 8.2, text: 'That little toy was put together in my house. Over my stew.' },
+    { at: 12.6, text: 'My children walk among the dead now. Fifty of them. Put them down... and we will see.' },
+  ],
 };
 
 // --- Talking back on the intercom (teachers' lounge) ---------------------------

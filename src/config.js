@@ -226,12 +226,12 @@ export const CONFIG = {
   rounds: {
     firstRoundDelay: 4.0,
     intermission: 10.0,      // break between rounds
-    earlyCounts: [6, 8, 13, 18, 24], // solo zombie counts, rounds 1-5
-    baseCount: 24,           // used from round 6 on
-    hordePerPlayer: 6,
-    lateRoundScale: 0.15,    // round >= 10 multiplier per round
-    extraPlayerMult: 0.5,    // each extra player adds this fraction of base
-    maxAlive: 24,            // cap of zombies on the map at once
+    earlyCounts: [5, 7, 11, 15, 20], // solo zombie counts, rounds 1-5
+    baseCount: 21,           // used from round 6 on
+    hordePerPlayer: 5,
+    lateRoundScale: 0.14,    // round >= 10 multiplier per round
+    extraPlayerMult: 0.3,    // each extra player adds this fraction of base (4 players: x1.9)
+    maxAlive: 20,            // cap of zombies on the map at once
     spawnIntervalStart: 2.0,
     spawnIntervalDecay: 0.95, // multiplied each round
     spawnIntervalMin: 0.35,
@@ -715,12 +715,12 @@ export const CONFIG = {
       name: 'The Chopper', boxOnly: true, wonder: true,
       fireMode: 'semi', rpm: 75, damage: 0, magSize: 2, reserve: 12,
       reloadStyle: 'mag', reloadTime: 2.6, reloadEmptyTime: 2.8, drawTime: 0.7,
-      wind: { range: 13, angle: 30, near: 1.8, maxKills: 30 },
+      wind: { range: 11, angle: 22, near: 1.6, maxKills: 24 },
       spread: { hipBase: 0, hipMax: 0, perShot: 0, ads: 0 },
       recoil: { pitch: 5.5, yaw: 1.2, recovery: 5, adsMult: 0.9, viewKick: 3.2 },
       sound: { kind: 'wind', body: 0, thump: 0, crack: 0, tail: 1, pitch: 1 },
       view: { model: 'chopper', flash: 0 },
-      upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 4, wind: { range: 17, angle: 36, near: 2.2, maxKills: 45 } },
+      upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 4, wind: { range: 14, angle: 27, near: 2.0, maxKills: 36 } },
     }),
   },
 
@@ -1011,6 +1011,12 @@ export const CONFIG = {
     ritualLeaveTime: 4,   // s with nobody in the circle before it goes out
     ritualSpawnEvery: 1.3, // s between zombies clawing up during a ritual
     ritualMaxAlive: 22,
+    // lifting the built Chopper: the lights go down and The Schnitz speaks.
+    // Nothing attacks you in the dark.
+    schnitz: { duration: 19, dim: 0.14 },
+    // then: kill its infused zombies. Twice as tall, slower, 2.5x the health,
+    // glowing green, clawing up out of the floor near you.
+    infused: { kills: 50, scale: 2, health: 2.5, speed: 0.75, maxAlive: 4, perPlayer: 1, spawnEvery: 3.2, spawnDist: [6, 11] },
     // the talent each ball gives back (multipliers)
     boosts: { speed: 1.12, jump: 1.45, power: 1.25, defense: 0.75 },
     // the Intercom Showdown
@@ -1135,6 +1141,17 @@ export const CONFIG = {
     lowAmmoFraction: 0.25,
   },
 };
+
+// -----------------------------------------------------------------------------
+// A buff across every gun (it was a bit too hard, especially with four):
+// bullet damage and projectile impacts x GUN_BUFF, before the Mad Dog twins
+// are made so the upgraded guns get it too.
+// -----------------------------------------------------------------------------
+export const GUN_BUFF = 1.2;
+for (const d of Object.values(CONFIG.weapons)) {
+  if (d.damage > 0) d.damage = Math.round(d.damage * GUN_BUFF);
+  if (d.projectile && d.projectile.impactDamage) d.projectile.impactDamage = Math.round(d.projectile.impactDamage * GUN_BUFF);
+}
 
 // -----------------------------------------------------------------------------
 // Mad Dog upgrades: every weapon gets an upgraded twin under the id "<id>+".

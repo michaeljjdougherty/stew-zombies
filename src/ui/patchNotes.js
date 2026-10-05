@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05c',
+  version: '2026-10-05d',
   date: 'October 5, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -20,6 +20,10 @@ export const PATCH = {
   sections: [
     { title: 'Just added', items: [
       'The Final Whistle has a new step: after you take back all four talents, build the Chopper (four parts around the school, a workbench in the boiler room), then put it through the Mad Dog Machine. Only the upgraded Chopper can knock Erik out of the Press Box at the end of the Intercom Showdown.',
+      'When you first lift the Chopper, the lights go down and The Schnitz speaks from the dark, its green eyes over the stew. Nothing attacks you while it talks. Then its infused zombies come: twice as tall, slower, much tougher and glowing green. Kill fifty of them.',
+      'The blue spirit zombies only exist while a circle is being held: when it goes out or fills, they fade away.',
+      'Easier: fewer zombies per round (especially with four players) and every gun hits 20% harder.',
+      'The Chopper\'s blast is a narrower, shorter cone.',
       'Lighting: no more blinding glare. Shiny surfaces (steel counters, table tops, the cows) don\'t mirror the lights any more, and the glow around bright things is softer.',
       'A zombie\'s green eyes go dark the instant it dies.',
       'Erik has a real voice now. All 115 of his lines are recorded: every taunt over the PA, every intercom reply, his roasts, and his scenes in the intro.',

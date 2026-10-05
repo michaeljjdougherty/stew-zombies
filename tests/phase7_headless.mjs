@@ -53,7 +53,7 @@ const fire = (step) => { step({ firePressed: true, fire: true }); step({}, 8); }
   place(6, 8, 0, -0.04);
   giveWeapon(sim, me, 'The Chopper'); step({}, 60);
   const front = [];
-  for (let i = 0; i < 6; i++) front.push(addZ(sim, 6 + (i % 3 - 1) * 1.6, 5 - i * 1.1, 2000));
+  for (let i = 0; i < 6; i++) front.push(addZ(sim, 6 + (i % 3 - 1) * 1.0, 5 - i * 1.1, 2000));
   const behind = addZ(sim, 6, 11, 2000);
   const far = addZ(sim, 6, -6.5, 2000);
   const side = addZ(sim, 12, 8, 2000);
