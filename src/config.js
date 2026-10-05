@@ -975,7 +975,7 @@ export const CONFIG = {
     // The Firebase Realtime Database that keeps everyone's careers online, e.g.
     // 'https://stew-zombies-default-rtdb.firebaseio.com'. Empty: careers are
     // saved in each browser only.
-    firebaseUrl: '',
+    firebaseUrl: 'https://stew-zombies-default-rtdb.firebaseio.com',
     flushEvery: 15,          // seconds between saves during a game
     timeout: 6,              // give up on the database after this long (and save locally)
   },
