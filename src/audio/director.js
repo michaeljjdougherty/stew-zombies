@@ -251,7 +251,7 @@ export class SoundDirector {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
         const voice = GUN_VOICES[baseWeaponId(e.weapon)];
-        A.play(S.gunshot, { ...def.sound, voice, upgraded: !!def.upgraded }, local ? { reverb: 0.3, gain: 0.85 } : { pos: e.origin, reverb: 0.45, ref: 4 });
+        A.play(S.gunshot, { ...def.sound, voice, upgraded: !!def.upgraded }, local ? { reverb: voice?.reverb ?? 0.3, gain: 0.85 } : { pos: e.origin, reverb: voice?.reverb ?? 0.45, ref: 4 });
         if (local && e.action) {
           const delay = 0.08 + (e.action === 'bolt' ? 0.12 : 0.04);
           if (e.clip > 0 || e.action === 'pump') this.mech(e.weapon, e.action === 'bolt' ? 'bolt' : 'pump', delay, e.action === 'bolt' ? S.boltCycle : S.pumpRack, 0.9);

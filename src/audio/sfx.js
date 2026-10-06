@@ -188,6 +188,7 @@ export function slideRelease(A, out, t) {
 // Knife & hits
 // ---------------------------------------------------------------------------
 export function knifeSwing(A, out, t) {
+  if (A.hasSample('g_knife_swing')) return sample(A, out, t, { key: 'g_knife_swing', gain: 0.5 });
   const n = A.noiseSource('white', t, 0.3);
   const bp = A.filter('bandpass', 500, 1.4);
   bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(2800, t + 0.16);
@@ -197,6 +198,7 @@ export function knifeSwing(A, out, t) {
 }
 
 export function knifeHit(A, out, t) {
+  if (A.hasSample('g_knife_hit')) return sample(A, out, t, { key: 'g_knife_hit', gain: 0.55 });
   // the slash
   const n = A.noiseSource('white', t, 0.12);
   const hp = A.filter('highpass', 2600, 0.8);
@@ -750,6 +752,7 @@ export function boxShut(A, out, t) {
 // --- Phase 3: launchers, crossbow, ballistic knife, actions, grenades -------
 
 function launcherFire(A, out, t) {
+  if (A.hasSample('g_launcher')) return Math.max(sample(A, out, t, { key: 'g_launcher', gain: 0.5 }), 0.8);
   // hollow "thoomp" plus a hiss
   const o = A.osc('sine', 120, t, 0.35);
   o.frequency.exponentialRampToValueAtTime(45, t + 0.25);
@@ -844,6 +847,7 @@ export function grenadeBounce(A, out, t, p = {}) {
 
 export function explosion(A, out, t, p = {}) {
   const big = p.big ?? 1;
+  if (A.hasSample('g_boom')) return Math.max(sample(A, out, t, { key: 'g_boom', gain: Math.min(0.7, 0.4 * big + 0.2), rate: big > 1.2 ? 0.9 : 1 }), 1.2);
   const mix = A.gain(1);
   const drive = A.shaper(0.6);
   mix.connect(drive); drive.connect(out);
@@ -1070,6 +1074,7 @@ export function dirtRise(A, out, t) {
 }
 
 export function smallBoom(A, out, t) {
+  if (A.hasSample('g_boom_small')) return Math.max(sample(A, out, t, { key: 'g_boom_small', gain: 0.45 }), 0.8);
   const n = A.noiseSource('brown', t, 0.4);
   const lp = A.filter('lowpass', 1200, 0.8);
   lp.frequency.exponentialRampToValueAtTime(200, t + 0.3);
@@ -1214,6 +1219,8 @@ export function cheddarSting(A, out, t) {
 
 function fucciFire(A, out, t, p = {}) {
   const up = p.upgraded ? 1.35 : 1;
+  // a recorded phaser blast (upgraded: a touch lower and louder)
+  if (A.hasSample('g_ray')) return Math.max(sample(A, out, t, { key: 'g_ray', gain: p.upgraded ? 0.6 : 0.5, rate: p.upgraded ? 0.9 : 1 }), 0.8);
   // a bright "pew" sweeping down, with a shimmering harmonic on top
   const o = A.osc('square', 1500 * up, t, 0.25);
   o.frequency.exponentialRampToValueAtTime(260 * up, t + 0.18);
@@ -1283,6 +1290,15 @@ function windFire(A, out, t, p = {}) {
 }
 
 function sawFire(A, out, t) {
+  // the thunder gun: a recorded blast with a low thump under it
+  if (A.hasSample('g_thunder')) {
+    const d = sample(A, out, t, { key: 'g_thunder', gain: 0.65, rate: 0.95 });
+    const o = A.osc('sine', 90, t, 0.5);
+    o.frequency.exponentialRampToValueAtTime(35, t + 0.3);
+    const g = A.gain(0); A.env(g, t, 0.002, 0.35, 0.4);
+    o.connect(g); g.connect(out);
+    return Math.max(d, 0.8);
+  }
   // motor rev up, then the launch thunk, then the blade's whine flying off
   const o = A.osc('sawtooth', 90, t, 0.6);
   o.frequency.exponentialRampToValueAtTime(420, t + 0.15);
