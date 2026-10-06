@@ -1220,7 +1220,7 @@ export function cheddarSting(A, out, t) {
 function fucciFire(A, out, t, p = {}) {
   const up = p.upgraded ? 1.35 : 1;
   // a recorded phaser blast (upgraded: a touch lower and louder)
-  if (A.hasSample('g_ray')) return Math.max(sample(A, out, t, { key: 'g_ray', gain: p.upgraded ? 0.6 : 0.5, rate: p.upgraded ? 0.9 : 1 }), 0.8);
+  if (A.hasSample('g_ray')) return Math.max(sample(A, out, t, { key: 'g_ray', gain: p.upgraded ? 0.3 : 0.24, rate: p.upgraded ? 0.9 : 1 }), 0.8);
   // a bright "pew" sweeping down, with a shimmering harmonic on top
   const o = A.osc('square', 1500 * up, t, 0.25);
   o.frequency.exponentialRampToValueAtTime(260 * up, t + 0.18);
