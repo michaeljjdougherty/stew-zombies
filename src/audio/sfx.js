@@ -34,18 +34,37 @@ function recordedShot(A, out, t, p) {
     const g = A.gain(0); A.env(g, t, 0.001, 0.16, 0.55 * sub);
     o.connect(g); g.connect(out);
   }
-  if (p.upgraded) {
-    // Mad Dog guns: an extra electric snarl under the shot
-    const z = A.osc('sawtooth', 900, t, 0.25);
-    z.frequency.exponentialRampToValueAtTime(140, t + 0.2);
-    const bp = A.filter('bandpass', 1400, 2.5);
-    const g = A.gain(0); A.env(g, t, 0.002, 0.2, 0.18);
-    z.connect(bp); bp.connect(g); g.connect(out);
-  }
   return Math.max(dur, 0.6);
 }
 
+// Mad Dog (Pack-a-Punch) guns, the classic way: the gun's own shot, higher
+// pitched and brighter, with a short electric sizzle on top.
+const PACK_SKIP = ['fucci', 'wind', 'saw'];   // these have their own upgraded sounds
+function packSizzle(A, out, t, p) {
+  const big = p.kind === 'shotgun' || p.kind === 'sniper' || p.kind === 'revolver';
+  // a bright electric crackle
+  const n = A.noiseSource('white', t, 0.12);
+  const hp = A.filter('highpass', 5200, 0.8);
+  const ng = A.gain(0); A.env(ng, t, 0.001, big ? 0.12 : 0.08, 0.2);
+  n.connect(hp); hp.connect(ng); ng.connect(out);
+  // a quick zap rising through the shot
+  const z = A.osc('sawtooth', 1400, t, 0.16);
+  z.frequency.exponentialRampToValueAtTime(3400, t + 0.1);
+  const zbp = A.filter('bandpass', 3000, 4);
+  const zg = A.gain(0); A.env(zg, t, 0.002, big ? 0.14 : 0.09, 0.1);
+  z.connect(zbp); zbp.connect(zg); zg.connect(out);
+}
+
 export function gunshot(A, out, t, p = {}) {
+  if (p.upgraded && !p.packed && !PACK_SKIP.includes(p.kind)) {
+    const v = p.voice;
+    const dur = gunshot(A, out, t, {
+      ...p, packed: true, pitch: (p.pitch || 1) * 1.2,
+      voice: v && { ...v, rate: (v.rate || 1) * 1.2, sub: (v.sub ?? 0.5) * 0.5 },
+    });
+    packSizzle(A, out, t, p);
+    return dur;
+  }
   if (p.voice && A.hasSample(Array.isArray(p.voice.s) ? p.voice.s[0] : p.voice.s)) return recordedShot(A, out, t, p);
   if (p.kind === 'launcher') return launcherFire(A, out, t, p);
   if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);
