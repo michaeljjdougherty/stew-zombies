@@ -12,6 +12,7 @@ import { buildHand } from './hands.js';
 import { handModel } from './handModel.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { gltfLoader, fetchGlb as fetchModel } from './gltfLite.js';
+import { addShaderPatch } from './shaderPatch.js';
 
 // --- real gun models ----------------------------------------------------------
 // Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
@@ -60,10 +61,21 @@ export const realGunMaterials = new Set();   // the viewmodel dims these in the 
 const FP_CLIP = [new THREE.Plane(new THREE.Vector3(0, 0, -1), -0.05)];
 const fpMats = new Map();
 // Aiming down the sights the eye sits right on the stock: clip further out.
-export function setFpClip(ads) { FP_CLIP[0].constant = -(0.05 + 0.13 * ads); }
+// (it reaches full distance a sixth of the way into the raise, before the gun's rear sweeps past the eye)
+export function setFpClip(ads) { FP_CLIP[0].constant = -(0.05 + 0.13 * Math.min(1, ads * 6)); }
+// Where the clip slices a gun open you would see straight through it: draw the
+// inside faces as dark solid metal instead, so the cut reads as the gun's body.
+function darkInside(shader) {
+  shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  if (!gl_FrontFacing) gl_FragColor = vec4(vec3(0.03), gl_FragColor.a);');
+}
 function fpMaterial(m) {
   let c = fpMats.get(m);
-  if (!c) { c = m.clone(); c.clippingPlanes = FP_CLIP; fpMats.set(m, c); realGunMaterials.add(c); }
+  if (!c) {
+    c = m.clone(); c.clippingPlanes = FP_CLIP;
+    // (a part that was already two-sided, like a thin sheet, keeps its own back face)
+    if (m.side === THREE.FrontSide && !m.transparent) { c.side = THREE.DoubleSide; addShaderPatch(c, 'fpinside', darkInside); }
+    fpMats.set(m, c); realGunMaterials.add(c);
+  }
   return c;
 }
 let realGunsOn = true;
