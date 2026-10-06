@@ -32,7 +32,7 @@ export const REAL_GUNS = {
   doubleBarrel: { file: 'olympus', rot: [0, -90, 0], rh: [0, 0, 0.037], rk: -0.3, lh: [0, 0.035, 0] },
   smg: { file: 'mp41', rot: [0, 180, 0], hide: /^(Mag_MP40_0|bullet_MP40_0)$/, rh: [0, -0.02, 0.07], rk: -0.3, lh: [0, 0.074, 0] },
   revolver: { file: 'pyton', rot: [0, 90, 0], rh: [0, 0.008, 0] },
-  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0|polySurface509_scope1_0)$/, mag: /^mag1_/, iron: { rear: /^m4_re_/, front: /^M4_handguard/ }, rh: [0, -0.005, -0.075], lh: [0, -0.012, -0.02] },
+  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0|polySurface509_scope1_0)$/, mag: /^mag1_/, iron: { rear: /^m4_re_/, front: /^M4_handguard/, post: true }, rh: [0, -0.005, -0.075], lh: [0, -0.012, -0.02] },
   pump: { file: 'staykout', rot: [0, 180, 0], rh: [0, -0.005, 0.09], rk: -0.4, lh: [0, 0.03, 0] },
   mp6k: { file: 'mp5k', rot: [0, 0, 0], rh: [0, -0.015, 0], lh: [0, 0, -0.025], lk: 'vgrip', lr: -0.15 },
   mpk: { file: '3d_gun_model', rot: [0, 90, 0], rh: [0, -0.02, 0.087], lh: [0, 0.012, 0] },
@@ -44,8 +44,8 @@ export const REAL_GUNS = {
   awg: { file: 'aug_a3', rot: [0, 90, 0], rh: [0, 0.005, -0.01], lh: [0, 0.025, 0.01], lk: 'vgrip', lr: -0.6 },
   spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0], rh: [0, 0.012, 0.015], lh: [0, 0.037, 0] },
   hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0], rh: [0, 0.04, 0.097], lh: [0, 0.056, 0.03] },
-  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/, off: [0.037, 0, 0], rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
-  rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], mag: /RPK_Mag/, rh: [0, -0.015, 0.075], lh: [0, 0.02, 0] },
+  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(82|86|91|95)$/, off: [0.015, 0, 0], iron: { rear: /^Object_83$/, front: /^Object_89$/, post: true }, rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
+  rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], hide: /^RPK_Sight_0$/, mag: /RPK_Mag/, off: [-0.003, 0, 0], iron: { rear: /^RPK_Toprail_0$/, front: /^RPK_Barrel_0$/, post: true, back: 0.1 }, rh: [0, -0.015, 0.075], lh: [0, 0.02, 0] },
   dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/, rh: [0, 0.015, -0.03], lh: [0, 0.018, -0.03] },
   l97: { file: 'l96a1_sniper', rot: [0, 90, 0], rh: [0, -0.005, -0.07], lh: [0, 0.005, 0] },
   chinapond: { file: 'china_lake_colored', rot: [0, 0, 0], rh: [0, 0.035, 0.04], rk: -0.35, lh: [0, 0.04, 0] },
@@ -115,39 +115,48 @@ function attachRealGun(spec, model) {
     const k = (len / real.size.z) * (R.len || 1);
     const obj = real.template.clone(true);
     obj.scale.setScalar(k);
+    if (R.yaw) obj.rotation.y = THREE.MathUtils.degToRad(R.yaw);   // a model whose barrel isn't dead straight
     const off = R.off || [0, 0, 0];
     obj.position.set((own.min.x + own.max.x) / 2 + off[0], own.max.y - real.size.y * k / 2 + off[1], (own.min.z + own.max.z) / 2 + off[2]);
     if (spec.camo) obj.traverse((o) => { if (o.isMesh) o.material = camoMaterial(o.material, spec.camo); });
     if (spec.fp) obj.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fpMaterial) : fpMaterial(o.material); });
     spec.group.add(obj);
     for (const m of spec.procMeshes) m.visible = false;
-    // iron sights built on the real receiver and handguard (the download's own optic is gone)
+    // iron sights on the real receiver: a ring rear sight, and a front post if the model has none
+    // (R.iron.rear / front: names of the parts to measure; R.iron.post: the model's front post is kept)
     if (R.iron) {
       spec.group.updateMatrixWorld(true);
+      obj.updateMatrixWorld(true);
+      // measured in the gun's own frame (the group may be tilted by the draw pose right now)
       const toGun = spec.group.matrixWorld.clone().invert();
       const boxOf = (re) => {
         const b = new THREE.Box3();
-        obj.traverse((o) => { if (o.isMesh && re.test(o.name)) b.expandByObject(o); });
-        return b.isEmpty() ? null : b.applyMatrix4(toGun);
+        obj.traverse((o) => {
+          if (!o.isMesh || !re.test(o.name)) return;
+          o.geometry.computeBoundingBox();
+          b.union(o.geometry.boundingBox.clone().applyMatrix4(toGun.clone().multiply(o.matrixWorld)));
+        });
+        return b.isEmpty() ? null : b;
       };
       const rb = boxOf(R.iron.rear), fb = boxOf(R.iron.front);
       if (rb && fb) {
-        const sightY = Math.max(rb.max.y, fb.max.y) + 0.016;
         let mat = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.55, metalness: 0.4 });
         if (spec.fp) mat = fpMaterial(mat);
-        const add = (w, h, d, x, y, z) => {
-          const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-          mesh.position.set(x, y, z); spec.group.add(mesh);
-        };
-        const rz = rb.max.z - 0.035, fz = fb.min.z + 0.03;
-        const rTop = rb.max.y;
-        add(0.03, 0.006, 0.016, 0, rTop + 0.003, rz);                                  // rear base
-        add(0.005, sightY + 0.007 - rTop, 0.012, -0.0095, (rTop + sightY + 0.007) / 2, rz);   // rear ears
-        add(0.005, sightY + 0.007 - rTop, 0.012, 0.0095, (rTop + sightY + 0.007) / 2, rz);
-        add(0.026, 0.005, 0.012, 0, rTop + 0.0085, rz);                                // ...with a notch between
-        const fTop = fb.max.y;
-        add(0.012, 0.008, 0.02, 0, fTop + 0.004, fz);                                  // front base
-        add(0.004, sightY + 0.004 - fTop, 0.006, 0, (fTop + sightY + 0.004) / 2, fz);  // front post
+        const add = (geo, x, y, z) => { const mesh = new THREE.Mesh(geo, mat); mesh.position.set(x, y, z); spec.group.add(mesh); return mesh; };
+        const box = (w, h, d, x, y, z) => add(new THREE.BoxGeometry(w, h, d), x, y, z);
+        const rTop = rb.max.y, rz = rb.max.z - (R.iron.back ?? 0.035);
+        const fTop = fb.max.y, fz = fb.min.z + 0.03;
+        // the front post (the model's own, or one built) sets the sight line
+        const sightY = R.iron.post ? fTop - 0.002 : fTop + 0.02;
+        if (!R.iron.post) {
+          box(0.012, 0.008, 0.02, 0, fTop + 0.004, fz);
+          box(0.004, sightY + 0.003 - fTop, 0.006, 0, (fTop + sightY + 0.003) / 2, fz);
+        }
+        // rear: a peep ring on a thin post
+        const ringR = 0.0075;
+        box(0.022, 0.005, 0.016, 0, rTop + 0.0025, rz);
+        box(0.006, Math.max(0.004, sightY - ringR - rTop - 0.005), 0.01, 0, rTop + 0.005 + Math.max(0.004, sightY - ringR - rTop - 0.005) / 2, rz);
+        add(new THREE.TorusGeometry(ringR, 0.0025, 8, 20), 0, sightY, rz);
         if (spec.aim) spec.aim = { ...spec.aim, y: -sightY };
       }
     }
