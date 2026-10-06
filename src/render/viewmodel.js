@@ -18,6 +18,19 @@ const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const ease = (t) => t * t * (3 - 2 * t);
 const seg = (p, a, b) => ease(clamp01((p - a) / (b - a)));
 const bump = (p, a, b) => Math.sin(clamp01((p - a) / (b - a)) * Math.PI);
+// Rifle reloads, one flavour per gun (Call of Duty style). Others fall back to 'std'.
+const RIFLE_RELOADS = { Komando: 'flick', 'AK-75u': 'flip', Galill: 'flip', M17: 'tap', FAMOS: 'bullpup', AWG: 'toss', G12: 'twirl', M15: 'rack' };
+// Piecewise path through keyframes [[t, value], ...]; each leg eases. value is a number or [x, y, z].
+const keyPath = (p, keys) => {
+  if (p <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (p < keys[i][0]) {
+      const a = keys[i - 1], b = keys[i], k = ease((p - a[0]) / (b[0] - a[0]));
+      return Array.isArray(a[1]) ? a[1].map((v, j) => v + (b[1][j] - v) * k) : a[1] + (b[1] - a[1]) * k;
+    }
+  }
+  return keys[keys.length - 1][1];
+};
 
 class Spring {
   constructor(k = 180, d = 18) { this.k = k; this.d = d; this.x = 0; this.v = 0; }
@@ -421,7 +434,105 @@ export class Viewmodel {
         const pull = bump(pr, 0.82, 0.92);
         if (parts.bolt) parts.bolt.position.z += pull * (M.boltTravel || 0.03);
         if (pr > 0.66 && pr < 0.7) r.y -= 0.008;
-      } else {
+      } else if ((RIFLE_RELOADS[(this.currentId || '').replace(/\+$/, '')] || def.class === 'ar' || def.class === 'rifle') && !small && !dual) {
+        // Rifle magazine changes, one flavour per gun. All are timed to the sounds: the old mag
+        // leaves at ~0.13, the new one seats at ~0.7, the bolt is released at ~0.77.
+        //   std      cant the gun, pull the mag and let it fall, fetch a fresh one from the hip,
+        //            bring it up under the well, seat it with a slap
+        //   flick    (Komando) tactical speed reload: mag flicked out with a spin, quick hip
+        //            fetch, slammed home with the palm, bolt release slapped
+        //   flip     (AK-75u, Galill) the "Iraqi" reload: two taped mags; pull the one in the gun,
+        //            turn the pair over in the hand, seat the other, no trip to the hip
+        //   tap      (M17) seat the mag, tap its base to check it, then slap the forward assist
+        //   bullpup  (FAMOS) roll the gun right over, the mag drops out sideways, reach round the back
+        //   toss     (AWG) toss the fresh mag up, let it tumble, catch it into the well
+        //   twirl    (G12) spin the gun a full turn while the other hand fetches the mag
+        //   rack     (M15) twist the mag in, then a hard double yank on the charging handle
+        const variant = RIFLE_RELOADS[(this.currentId || '').replace(/\+$/, '')] || 'std';
+        const tiltAmt = variant === 'flick' ? seg(pr, 0.0, 0.1) : seg(pr, 0.0, 0.12);
+        const tilt = tiltAmt * (1 - seg(pr, 0.9, 1.0));
+        const k = { flick: 1.2, flip: 0.75, bullpup: 1.9, rack: 1.15 }[variant] || 1;
+        r.rz += tilt * 0.42 * k; r.rx += tilt * 0.26 * (variant === 'bullpup' ? 0.6 : k); r.x -= tilt * 0.03; r.y += tilt * 0.02; r.z += tilt * 0.015;
+        if (variant === 'twirl') r.rz += seg(pr, 0.28, 0.58) * Math.PI * 2 * (1 - seg(pr, 0.58, 0.6));
+        if (variant === 'bullpup') { r.z += tilt * 0.03; r.ry -= tilt * 0.12; }
+        const toMag = parts.mag ? parts.mag.userData.home.z - (M.leftHome ? M.leftHome.z : 0) : 0;
+        const H0 = [0, 0, 0], Hm = [-0.02, -0.04, toMag], Hw = [-0.02, -0.08, toMag];
+        let hand;
+        if (variant === 'flip') {
+          const Hf = [-0.03, -0.1, toMag];
+          hand = keyPath(pr, [[0.06, H0], [0.13, Hm], [0.24, Hf], [0.46, Hf], [0.66, Hw], [0.72, Hm], [0.84, H0]]);
+          const turn = bump(pr, 0.24, 0.46);
+          hand = [hand[0] + turn * 0.02, hand[1] + turn * 0.03, hand[2]];
+        } else if (variant === 'flick') {
+          const Hd = [-0.04, -0.22, toMag * 0.4];
+          hand = keyPath(pr, [[0.05, H0], [0.12, Hm], [0.2, Hd], [0.42, Hd], [0.62, Hw], [0.68, Hm], [0.8, H0]]);
+        } else if (variant === 'bullpup') {
+          const Hd = [-0.12, -0.2, toMag * 0.8];
+          hand = keyPath(pr, [[0.06, H0], [0.13, Hm], [0.34, Hd], [0.42, Hd], [0.64, Hw], [0.7, Hm], [0.82, H0]]);
+        } else if (variant === 'toss') {
+          const Hd = [-0.03, -0.2, toMag * 0.5];
+          hand = keyPath(pr, [[0.06, H0], [0.13, Hm], [0.34, Hd], [0.42, Hd], [0.52, [-0.03, -0.12, toMag * 0.5]], [0.62, Hw], [0.7, Hm], [0.82, H0]]);
+        } else {
+          const Hd = [-0.03, -0.2, toMag * 0.5];
+          hand = keyPath(pr, [[0.06, H0], [0.13, Hm], [0.34, Hd], [0.4, Hd], [0.64, Hw], [0.7, Hm], [0.82, H0]]);
+        }
+        leftOff.set(hand[0], hand[1], hand[2]);
+        if (parts.mag) {
+          let magY = 0;
+          if (variant === 'flip') {
+            // pull the mag, turn it over end for end in the hand, slide the other one up into the well
+            magY = pr < 0.13 ? 0 : pr < 0.24 ? -0.14 * seg(pr, 0.13, 0.24) : pr < 0.46 ? -0.1 - 0.02 * bump(pr, 0.24, 0.46) : -0.12 * (1 - seg(pr, 0.46, 0.68));
+            parts.mag.rotation.x = keyPath(pr, [[0.24, 0], [0.46, Math.PI], [0.62, Math.PI * 2]]);
+          } else if (variant === 'flick') {
+            const tau = Math.max(0, pr - 0.13);
+            if (pr < 0.13) magY = 0;
+            else if (pr < 0.25) { magY = -(6 * tau + 80 * tau * tau); parts.mag.rotation.x = tau * 28; parts.mag.position.z -= tau * 0.8; }
+            else if (pr < 0.42) parts.mag.visible = false;
+            else magY = keyPath(pr, [[0.42, -0.22], [0.62, -0.08], [0.68, 0]]);
+          } else {
+            if (pr < 0.34) {
+              const dropT = Math.max(0, pr - 0.26);
+              magY = pr < 0.13 ? 0 : -0.22 * seg(pr, 0.13, 0.26) - dropT * dropT * 40;
+              if (variant === 'bullpup') parts.mag.position.x -= seg(pr, 0.13, 0.34) * 0.12;
+            } else if (pr < 0.4) parts.mag.visible = false;
+            else if (variant === 'toss') {
+              // thrown up from the hip, tumbling, caught just under the well
+              magY = keyPath(pr, [[0.4, -0.2], [0.52, 0.14], [0.62, 0.07], [0.7, 0]]);
+              parts.mag.rotation.x = keyPath(pr, [[0.42, 0], [0.62, Math.PI * 2]]);
+            } else magY = keyPath(pr, [[0.4, -0.2], [0.64, -0.08], [0.7, 0]]);
+            if (variant === 'rack' && pr > 0.56 && pr < 0.72) parts.mag.rotation.z = Math.sin((pr - 0.56) * 70) * 0.18 * (1 - seg(pr, 0.64, 0.72));
+          }
+          parts.mag.position.y += magY;
+        }
+        const slap = bump(pr, 0.68, 0.76);
+        const slam = variant === 'flick' ? 2 : 1;
+        r.y += slap * 0.012 * slam; r.rx -= slap * 0.07 * slam; r.z += slap * 0.012 * (slam - 1);
+        if (variant === 'tap') {
+          // two taps on the base of the mag, then a slap on the forward assist
+          leftOff.y += Math.max(0, Math.sin((pr - 0.72) * 90)) * 0.02 * bump(pr, 0.72, 0.8);
+          const fa = bump(pr, 0.82, 0.9);
+          leftOff.x += fa * 0.06; leftOff.y += fa * 0.08; leftOff.z -= fa * 0.05;
+        }
+        if (this.reload.empty) {
+          if (pr > 0.76) this.slideLocked = false;
+          if (variant === 'flick') {
+            // slap the bolt release with the flat of the hand
+            const hit = bump(pr, 0.76, 0.84);
+            if (parts.bolt) parts.bolt.position.z += hit * (M.boltTravel || 0.03) * 0.6;
+            leftOff.z -= hit * 0.08; leftOff.y += hit * 0.06;
+          } else if (variant === 'rack') {
+            // two hard yanks on the charging handle
+            const pull = Math.max(bump(pr, 0.76, 0.84), bump(pr, 0.84, 0.92));
+            if (parts.bolt) parts.bolt.position.z += pull * (M.boltTravel || 0.03) * 1.4;
+            leftOff.z -= pull * 0.08; leftOff.y += pull * 0.03;
+            r.rz -= pull * 0.16; r.ry += pull * 0.06;
+          } else {
+            const pull = bump(pr, 0.76, 0.9);
+            if (parts.bolt) parts.bolt.position.z += pull * (M.boltTravel || 0.03);
+            leftOff.z -= pull * 0.06; leftOff.y += pull * 0.03;
+            r.rz -= pull * 0.1;
+          }
+        }      } else {
         // magazine (both guns at once when dual wielding)
         const tilt = seg(pr, 0.0, 0.14) * (1 - seg(pr, 0.86, 1.0));
         r.rz += tilt * (small ? 0.55 : 0.4); r.rx += tilt * 0.18; r.x -= tilt * 0.03; r.y += tilt * 0.02;
