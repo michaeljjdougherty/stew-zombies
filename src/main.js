@@ -73,8 +73,8 @@ input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 audio.preload(GUN_SAMPLES, SAMPLE_BASE);
 // Gear sounds (thunder gun, knife, launcher, blasts); each falls back to its built-in synth sound until loaded
-audio.preload({ g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'] }, 'assets/sfx/gear/');
-audio.preload({ g_boom: ['g_boom'], g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
+audio.preload({ g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
+audio.preload({ g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
 for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)
 // the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
 if (CONFIG.cheddar.lineAudio) audio.preload({ cheddarLine: [CONFIG.cheddar.lineAudio] }, '', '');
