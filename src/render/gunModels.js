@@ -32,7 +32,7 @@ export const REAL_GUNS = {
   doubleBarrel: { file: 'olympus', rot: [0, -90, 0], rh: [0, 0, 0.037], rk: -0.3, lh: [0, 0.035, 0] },
   smg: { file: 'mp41', rot: [0, 180, 0], hide: /^(Mag_MP40_0|bullet_MP40_0)$/, rh: [0, -0.02, 0.07], rk: -0.3, lh: [0, 0.074, 0] },
   revolver: { file: 'pyton', rot: [0, 90, 0], rh: [0, 0.008, 0] },
-  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0)$/, mag: /^mag1_/, rh: [0, -0.005, -0.075], lh: [0, -0.012, -0.02] },
+  carbine: { file: 'komando', rot: [0, 0, 0], hide: /^(mag_mag3_0|mag4_mag3_0|polySurface509_scope1_0)$/, mag: /^mag1_/, iron: { rear: /^m4_re_/, front: /^M4_handguard/ }, rh: [0, -0.005, -0.075], lh: [0, -0.012, -0.02] },
   pump: { file: 'staykout', rot: [0, 180, 0], rh: [0, -0.005, 0.09], rk: -0.4, lh: [0, 0.03, 0] },
   mp6k: { file: 'mp5k', rot: [0, 0, 0], rh: [0, -0.015, 0], lh: [0, 0, -0.025], lk: 'vgrip', lr: -0.15 },
   mpk: { file: '3d_gun_model', rot: [0, 90, 0], rh: [0, -0.02, 0.087], lh: [0, 0.012, 0] },
@@ -44,7 +44,7 @@ export const REAL_GUNS = {
   awg: { file: 'aug_a3', rot: [0, 90, 0], rh: [0, 0.005, -0.01], lh: [0, 0.025, 0.01], lk: 'vgrip', lr: -0.6 },
   spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0], rh: [0, 0.012, 0.015], lh: [0, 0.037, 0] },
   hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0], rh: [0, 0.04, 0.097], lh: [0, 0.056, 0.03] },
-  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/, rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
+  hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(91|95)$/, off: [0.037, 0, 0], rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
   rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], mag: /RPK_Mag/, rh: [0, -0.015, 0.075], lh: [0, 0.02, 0] },
   dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/, rh: [0, 0.015, -0.03], lh: [0, 0.018, -0.03] },
   l97: { file: 'l96a1_sniper', rot: [0, 90, 0], rh: [0, -0.005, -0.07], lh: [0, 0.005, 0] },
@@ -121,6 +121,36 @@ function attachRealGun(spec, model) {
     if (spec.fp) obj.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fpMaterial) : fpMaterial(o.material); });
     spec.group.add(obj);
     for (const m of spec.procMeshes) m.visible = false;
+    // iron sights built on the real receiver and handguard (the download's own optic is gone)
+    if (R.iron) {
+      spec.group.updateMatrixWorld(true);
+      const toGun = spec.group.matrixWorld.clone().invert();
+      const boxOf = (re) => {
+        const b = new THREE.Box3();
+        obj.traverse((o) => { if (o.isMesh && re.test(o.name)) b.expandByObject(o); });
+        return b.isEmpty() ? null : b.applyMatrix4(toGun);
+      };
+      const rb = boxOf(R.iron.rear), fb = boxOf(R.iron.front);
+      if (rb && fb) {
+        const sightY = Math.max(rb.max.y, fb.max.y) + 0.016;
+        let mat = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.55, metalness: 0.4 });
+        if (spec.fp) mat = fpMaterial(mat);
+        const add = (w, h, d, x, y, z) => {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+          mesh.position.set(x, y, z); spec.group.add(mesh);
+        };
+        const rz = rb.max.z - 0.035, fz = fb.min.z + 0.03;
+        const rTop = rb.max.y;
+        add(0.03, 0.006, 0.016, 0, rTop + 0.003, rz);                                  // rear base
+        add(0.005, sightY + 0.007 - rTop, 0.012, -0.0095, (rTop + sightY + 0.007) / 2, rz);   // rear ears
+        add(0.005, sightY + 0.007 - rTop, 0.012, 0.0095, (rTop + sightY + 0.007) / 2, rz);
+        add(0.026, 0.005, 0.012, 0, rTop + 0.0085, rz);                                // ...with a notch between
+        const fTop = fb.max.y;
+        add(0.012, 0.008, 0.02, 0, fTop + 0.004, fz);                                  // front base
+        add(0.004, sightY + 0.004 - fTop, 0.006, 0, (fTop + sightY + 0.004) / 2, fz);  // front post
+        if (spec.aim) spec.aim = { ...spec.aim, y: -sightY };
+      }
+    }
     // magazine parts ride along with the reload animation
     if (R.mag && spec.parts.mag) {
       spec.group.updateMatrixWorld(true);
