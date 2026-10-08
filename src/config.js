@@ -941,7 +941,7 @@ export const CONFIG = {
     maxCount: 32,
     maxAlive: 8,
     health: [400, 900, 1600, 2200], // by Cheddar Round number (last value repeats +600)
-    speed: [5.2, 6.0],
+    speed: [4.2, 4.9],       // a little slower than they were (5.2-6.0) so you can see them coming
     spawnInterval: [0.9, 1.8],
     spawnDist: [7, 15],      // lightning strikes this far from a player
     spawnTime: 0.9,          // seconds from the strike until it attacks
@@ -949,10 +949,12 @@ export const CONFIG = {
     height: 0.95,
     turnRate: 9,
     accel: 16,
-    attackRange: 1.15,
-    attackHitRange: 1.5,
-    attackWindup: 0.22,
-    attackRecover: 0.45,
+    // A bite is a visible lunge: the hound stops short, coils back with its jaws open
+    // (the windup), then springs at you. The bite only lands when the spring ends.
+    attackRange: 1.6,
+    attackHitRange: 1.9,
+    attackWindup: 0.6,
+    attackRecover: 0.6,
     attackDamage: 35,
     haze: 0.32,              // strength of the yellow screen tint
     preRoundTime: 4,         // haze and thunder before the first strike

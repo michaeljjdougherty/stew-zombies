@@ -219,7 +219,8 @@ export class CheddarViews {
     // talking: the jaw flaps along with the words
     v.talkT = Math.max(0, (v.talkT || 0) - dt);
     const talk = v.talkT > 0 ? Math.max(0, Math.sin(time * 22)) * 0.5 : 0;
-    const jawOpen = attacking ? 0.75 : 0.18 + Math.max(0, Math.sin(time * 7 + z.id)) * 0.25 + talk;
+    // jaws wide through the windup, then snapped shut in the recover
+    const jawOpen = z.attack.phase === 'windup' ? 0.95 : z.attack.phase === 'recover' ? 0.05 : 0.18 + Math.max(0, Math.sin(time * 7 + z.id)) * 0.25 + talk;
     if (v.hound) {
       // the model's mouth is already open in a snarl: close it a little at rest
       v.jaw.rotation.x = (jawOpen - 0.5) * 0.7;
@@ -240,7 +241,28 @@ export class CheddarViews {
       v.bubble.position.y = 1.45 + Math.sin(time * 9) * 0.015;
       if (v.bubbleT <= 0) { v.root.remove(v.bubble); v.bubble.material.map.dispose(); v.bubble.material.dispose(); v.bubble = null; }
     }
-    if (attacking && z.attack.phase === 'windup') v.body.rotation.x -= 0.2; // lunge
+    // The bite, in three beats: it stops and coils back with its jaws wide, snarling and
+    // shaking (the windup); springs at you (the last of the windup, where the sim lands the
+    // bite); then snaps its jaws shut and settles (the recover).
+    if (v.bz0 === undefined) v.bz0 = v.body.position.z;
+    let coil = 0, pounce = 0, settle = 0;
+    const cc = this.cfg.cheddar;
+    if (z.attack.phase === 'windup') {
+      const wp = 1 - Math.max(0, z.attack.t) / cc.attackWindup;
+      coil = Math.min(1, wp / 0.62);
+      pounce = wp > 0.62 ? Math.min(1, (wp - 0.62) / 0.38) : 0;
+    } else if (z.attack.phase === 'recover') {
+      settle = Math.max(0, z.attack.t / cc.attackRecover);
+    }
+    const gather = coil * (1 - pounce);
+    if (coil > 0 || settle > 0) {
+      v.body.position.y -= 0.06 * gather;
+      v.body.rotation.x += -0.3 * gather + 0.32 * pounce + 0.32 * settle;     // rear back, then nose down onto you
+      v.body.rotation.z += Math.sin(time * 52) * 0.05 * gather;               // shuddering growl
+      v.neck.rotation.x += -0.45 * gather + 0.4 * pounce + 0.4 * settle;      // head pulled back, then thrust out
+      v.legs.forEach((l) => { l.hip.rotation.x += l.front ? -0.7 * gather + 0.5 * pounce : 0.45 * gather; });
+    }
+    v.body.position.z = v.bz0 + 0.38 * pounce + 0.38 * settle;                // the leap carries it forward
     v.glow.material.opacity = 0.4 + Math.sin(time * 9 + z.id) * 0.12;
     // embers drifting off
     v.emberT -= dt;

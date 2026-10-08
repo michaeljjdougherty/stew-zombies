@@ -44,6 +44,13 @@ const GradeShader = {
     uniform vec2 resolution;
     varying vec2 vUv;
     float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    // smooth value noise, for the blood on the screen edges
+    float vnoise(vec2 p) {
+      vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      float a = hash(i), b = hash(i + vec2(1.0, 0.0)), c2 = hash(i + vec2(0.0, 1.0)), d2 = hash(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c2, d2, f.x), f.y);
+    }
+    float fbm(vec2 p) { return vnoise(p) * 0.55 + vnoise(p * 2.1 + 7.3) * 0.3 + vnoise(p * 4.3 + 3.1) * 0.15; }
     vec3 fetch(vec2 uv, vec2 dc, float ca) {
       return vec3(texture2D(tDiffuse, uv + dc * ca).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - dc * ca).b);
     }
@@ -85,8 +92,24 @@ const GradeShader = {
       c = mix(c, vec3(0.25, 0.0, 0.0), rim * lowHealth * 0.55 * (0.75 + 0.25 * sin(time * 6.0)));
       // one hit from going down: a thick red border that throbs like a heartbeat
       float beat = pow(0.5 + 0.5 * sin(time * 7.5), 6.0) + pow(0.5 + 0.5 * sin(time * 7.5 - 0.9), 10.0) * 0.6;
-      float brinkEdge = smoothstep(0.32, 0.82, d);
-      c = mix(c, vec3(0.55, 0.0, 0.0), clamp(brinkEdge * brink * (0.62 + 0.3 * beat), 0.0, 0.92));
+      float brinkEdge = smoothstep(0.24, 0.74, d);
+      if (brink > 0.001) {
+        // blood on the lens: splotchy clots creeping in from the edges, wet streaks running
+        // down from the top, all pulsing with the heartbeat
+        float pulse = 0.62 + 0.38 * beat;
+        float edgeReach = brinkEdge * (0.85 + 0.15 * beat);
+        float blot = fbm(uv * vec2(4.2, 3.0) + 5.0);
+        float clots = smoothstep(0.42, 0.58, blot + edgeReach * 0.85);
+        float fine = fbm(uv * vec2(14.0, 10.0) + 11.0);
+        float spatter = smoothstep(0.58, 0.72, fine + edgeReach * 0.55) * edgeReach;
+        float drip = vnoise(vec2(uv.x * 22.0, 3.0));
+        float run = smoothstep(0.55, 0.78, drip) * smoothstep(0.55, 1.0, uv.y) * smoothstep(0.55, 0.95, uv.y + (drip - 0.5) * 0.5 + beat * 0.03);
+        float blood = clamp(clots * edgeReach * 1.35 + spatter * 0.6 + run * 0.6 * brinkEdge, 0.0, 1.0) * brink;
+        float wet = smoothstep(0.62, 0.9, fbm(uv * vec2(9.0, 6.0) + 21.0));   // glossy highlights on the clots
+        vec3 bloodCol = mix(vec3(0.34, 0.0, 0.01), vec3(0.62, 0.03, 0.03), pulse * 0.6) + wet * vec3(0.18, 0.04, 0.04);
+        c = mix(c, bloodCol, clamp(blood * (0.7 + 0.3 * pulse), 0.0, 0.95));
+        c = mix(c, vec3(0.45, 0.0, 0.0), brinkEdge * brink * 0.18 * pulse);   // a faint red haze over the rest
+      }
 
       // flash (Pressure Cooker etc.)
       c = mix(c, vec3(1.0, 0.97, 0.9), flash);

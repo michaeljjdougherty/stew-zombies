@@ -307,14 +307,27 @@ export class ZombieViews {
     else if (fromFront) name = ['death1', 'deathBack', 'death1'][Math.floor(Math.random() * 3)];
     else name = Math.random() < 0.5 ? 'death2' : 'deathFront';
     v.mixer.stopAllAction();
-    if (name && v.actions[name]) {
+    // A legless crawler is already on the ground: hold a crawling pose and let it slump flat.
+    // (With no clip playing the rig falls back to its bind pose: arms straight out, a T-pose.)
+    let crawlHold = false;
+    if (v.crawler && v.actions.crawl) {
+      const a = v.actions.crawl;
+      a.reset(); a.setLoop(THREE.LoopRepeat, Infinity);
+      a.time = Math.random() * a.getClip().duration;
+      a.play(); a.paused = true;
+      crawlHold = true;
+    } else if (!name || !v.actions[name]) {
+      // never leave a corpse without a death clip
+      name = ['deathFront', 'death1', 'death2', 'deathBack'].find((n) => v.actions[n]) || null;
+    }
+    if (!crawlHold && name && v.actions[name]) {
       const a = v.actions[name];
       a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
       a.timeScale = e.kind === 'knife' ? 1.35 : 1.6;
       a.play();
       a.time = a.getClip().duration * 0.12;   // skip the wind-up: they drop
     }
-    this.corpses.push({ v, t: 0, rig: true, kd: { x: d.x, z: d.z }, knockback: e.kind === 'knife' ? 0.15 : 0.25, fling: this.flingOf(v, e) });
+    this.corpses.push({ v, t: 0, rig: true, crawlHold, kd: { x: d.x, z: d.z }, knockback: e.kind === 'knife' ? 0.15 : 0.25, fling: this.flingOf(v, e) });
     if (e.fling) return;   // the blood comes when it lands
     const p = v.root.position;
     const off = (fromFront ? 1 : -1) * 0.7;
@@ -698,6 +711,13 @@ export class ZombieViews {
       if (c.rig) {
         // the death clip does the falling; slide back a touch, then sink and go
         v.mixer.update(dt);
+        if (c.crawlHold) {
+          // slump: the spine and neck fold forward, the body settles onto the floor
+          const k = Math.min(1, c.t * 2.5), dk = k - (c.slumped || 0); c.slumped = k;
+          for (const n of ['Spine', 'Spine1', 'Spine2']) if (v.bones[n]) v.bones[n].rotateX(0.2 * k);
+          if (v.bones.Neck) v.bones.Neck.rotateX(0.35 * k);
+          if (v.bones.Hips) v.bones.Hips.position.y -= 0.05 * k;
+        }
         this.applyLostLimbs(v);
         if (c.fling && !this.fly(c, v, dt)) continue;
         if (c.t < 0.3 && !c.fling) { v.root.position.x += c.kd.x * c.knockback * dt * 3; v.root.position.z += c.kd.z * c.knockback * dt * 3; }
