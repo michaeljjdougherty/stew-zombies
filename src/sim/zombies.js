@@ -172,13 +172,24 @@ const schnitzDark = (sim) => !!(sim.quest && sim.quest.darkUntil > sim.time);
 function nearestPlayer(sim, pos, z = null) {
   if (schnitzDark(sim)) return null;
   let best = null, bd = Infinity;
+  // islands (Call of the Crust): someone you can actually walk to beats someone across the ice
+  const islands = z && sim.mapData.islands;
   for (const p of sim.players) {
     if (!p.alive || p.downed) continue;
     if (z && !z.ritual && inRitual(sim, p)) continue;
-    const d = dist2D(p.pos, pos);
+    let d = dist2D(p.pos, pos);
+    if (islands && !reachable(sim, z, p)) d += 1e6;
     if (d < bd) { bd = d; best = p; }
   }
   return best;
+}
+
+// Can this zombie walk to that player? (no: they're on another island, or in the air)
+function reachable(sim, z, p) {
+  if (p.launch) return false;
+  const pr = p.region || sim.nav.regionAt(p.pos);
+  if (!pr || !z.region) return false;
+  return pr === z.region || !!sim.nav.firstPortal(z.region, pr);
 }
 
 function faceToward(z, dx, dz, rate, dt) {
@@ -293,6 +304,19 @@ export function updateZombies(sim, dt) {
         z.targetId = target ? target.id : null;
         z.lured = !!lure;
         z.region = sim.nav.regionAt(z.pos, z.region);
+        // nobody it can reach (they've launched off to another island): before
+        // long it's recycled, to come up again somewhere near the players
+        if (sim.mapData.islands && !lure) {
+          if (!target || !reachable(sim, z, target)) {
+            z.strandedT = (z.strandedT || 0) + dt;
+            if (z.strandedT > sim.cfg.crust.strandedTime) {
+              setState(sim, z, 'dead');
+              sim.emit('zombieRemoved', { id: z.id });
+              if (sim.rounds.phase === 'active' && !sim.rounds.cheddar) sim.rounds.toSpawn++;
+              break;
+            }
+          } else z.strandedT = 0;
+        }
         let dirX = 0, dirZ = 0;
         if (goTo) {
           const goal = sim.nav.nextPoint(z.pos, z.region, goTo.pos, goTo.region);

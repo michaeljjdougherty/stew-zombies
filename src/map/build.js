@@ -37,11 +37,17 @@ function slab(si, T, a, b, y0, y1, kind, extra) {
 
 function buildSide(room, side, spec, openings, T, pieces) {
   const si = sideInfo(room.rect, side, T);
-  const H = spec.height ?? room.height;
   const ranges = spec.ranges ?? [[si.from, si.to]];
-  const tag = { room: room.id, side, style: spec.style || room.style };
-  if (tag.style === 'invisible') tag.ghost = true;   // blocks walking, not bullets or sight lines
-  for (const [ra, rb] of ranges) {
+  for (const rg of ranges) {
+    // a range is [from, to] or { from, to, style, outStyle, height } (a side
+    // can change style part way along: a cliff, then the sea's edge)
+    const [ra, rb] = Array.isArray(rg) ? rg : [rg.from, rg.to];
+    const o = Array.isArray(rg) ? {} : rg;
+    const H = o.height ?? spec.height ?? room.height;
+    const tag = { room: room.id, side, style: o.style || spec.style || room.style };
+    const out = o.outStyle || spec.outStyle || room.outStyle;
+    if (out) tag.outStyle = out;
+    if (tag.style === 'invisible') tag.ghost = true;   // blocks walking, not bullets or sight lines
     const ops = openings.filter((o) => o.center > ra && o.center < rb).sort((a, b) => a.center - b.center);
     let cursor = ra;
     for (const o of ops) {

@@ -23,7 +23,7 @@ export const MAPS = [
   },
   {
     id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
-    blurb: 'Snow falling out of a sky full of planets, a ship frozen in the ice, a lighthouse on the point, and four smokestacks out across the sea. Through the portal. The season isn\'t over.',
+    blurb: 'A frozen sea on a snow planet. Five islands: the Anvil in the middle, and launchers out to a ship graveyard, a research base, the trench front and the ice caves. Four War Hammers to forge. Through the portal. The season isn\'t over.',
     facts: ['Map 2 · early build', 'Solo for now', 'Developers only'],
   },
   {

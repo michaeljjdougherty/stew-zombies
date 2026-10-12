@@ -143,7 +143,7 @@ export function updateRounds(sim, dt) {
       R.spawnTimer = R.spawnInterval * sim.rng.range(0.7, 1.3);
     }
   }
-  if (R.toSpawn <= 0 && alive === 0) {
+  if (R.toSpawn <= 0 && sim.zombies.length === 0) {   // (count again: one may have just risen)
     R.phase = 'intermission';
     R.timer = c.intermission;
     sim.emit('roundEnd', { round: R.round });

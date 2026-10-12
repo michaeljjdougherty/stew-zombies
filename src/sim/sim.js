@@ -28,6 +28,7 @@ import { createQuest, questInteractables, questOnEvent, updateQuest } from './qu
 import { createCauldron, cauldronTargets } from './cauldron.js';
 import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js';
 import { createCrew } from './crew.js';
+import { LaunchInteractable } from './launchers.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -78,6 +79,7 @@ export class GameSim {
       ...(map.notes || []).map((n) => new NoteInteractable(n)),
       ...(map.stewItems || []).map((s) => new StewItemInteractable(s)),
       ...questInteractables(this),
+      ...(map.launchers || []).map((pad) => new LaunchInteractable(pad, map.launchers.find((q) => q.id === pad.to))),
     ];
     this.pa = createPA(this);
     this.crew = map.quest ? createCrew() : null;   // the crew's walkie-talkies (the school)

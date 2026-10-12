@@ -7,6 +7,7 @@ import { createLoadout, updateWeapons } from './weapons.js';
 import { clamp } from '../core/math.js';
 import { perkMult, updateDrinking } from './perks.js';
 import { goDown } from './laststand.js';
+import { updateLaunch } from './launchers.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -75,6 +76,8 @@ export function updatePlayer(sim, p, cmd, dt) {
   const cfg = sim.cfg.player;
   p.yaw = cmd.yaw;
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
+  // flying between islands (a launcher): nothing else happens till you land
+  if (p.launch) { updateLaunch(sim, p, dt); p.prompt = null; p.useTarget = null; return; }
 
   if (!sim.replica) updateDrinking(sim, p, dt);   // (online: the host owns perks)
   const downed = !!p.downed;
@@ -244,6 +247,7 @@ export function damagePlayer(sim, p, amount, source) {
   }
   // just picked back up: a few seconds where nothing touches you
   if (p.invulnUntil && sim.time < p.invulnUntil) return;
+  if (p.launch) return;   // in the air over the ice
   if (p.boosts && p.boosts.defense) amount *= p.boosts.defense;
   p.health -= amount;
   p.lastDamageTime = sim.time;

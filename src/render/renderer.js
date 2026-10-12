@@ -145,6 +145,9 @@ export class GameRenderer {
   }
 
   setSim(sim) {
+    // a big map sees further (Call of the Crust: the other islands across the ice)
+    const far = sim.mapData.farPlane || 220;
+    if (this.camera.far !== far) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
     if (sim.mapData !== this.mapData) this.buildWorld(sim);
     else this.resetWorld(sim);
     this.prevPlayer = null;

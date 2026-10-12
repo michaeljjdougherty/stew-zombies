@@ -273,7 +273,9 @@ export class MapView {
   buildRoom(room) {
     const [x0, z0, x1, z1] = room.rect;
     const w = x1 - x0, d = z1 - z0;
-    const geo = new THREE.PlaneGeometry(w, d, Math.ceil(w / 0.5), Math.ceil(d / 0.5)).rotateX(-Math.PI / 2);
+    // (the snow world's big outdoor floors: 1 m quads are plenty for the baked light)
+    const fc = this.map.snow && room.outdoor ? 1 : 0.5;
+    const geo = new THREE.PlaneGeometry(w, d, Math.ceil(w / fc), Math.ceil(d / fc)).rotateX(-Math.PI / 2);
     const uv = geo.attributes.uv, pos = geo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) + (x0 + x1) / 2, -(pos.getZ(i) + (z0 + z1) / 2));
     const floor = new THREE.Mesh(geo, this.floorMat(room.floor));
@@ -350,7 +352,7 @@ export class MapView {
       let outStyle = other ? other.style : 'exterior';
       // the snow world: a hut or a ship's side looks the same from outside;
       // only a room next door paints the other face
-      if (this.map.snow && (!other || other.outdoor)) outStyle = b.style || room.style;
+      if (this.map.snow && (!other || other.outdoor)) outStyle = b.outStyle || b.style || room.style;
       const all = [0, 1, 2, 3, 4, 5];
       get(b.style || room.style).add(b, { skip: new Set([outF]), cell: 0.6 });
       get(outStyle).add(b, { skip: new Set(all.filter((f) => f !== outF)), cell: 0.6 });
@@ -1297,7 +1299,7 @@ export class MapView {
         const lamp = f.kind === 'lamp';
         const fx = { data: f, orig: f, grp, tubeMat, beam: null, on: !!f.lit, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, onAt: null, lamp };
         const tall = f.y > 6;
-        fx.v = this.addVirtualLight({ x: f.x, y: f.y - 0.3, z: f.z }, lamp ? 0xffb86a : 0xffe7c0, tall ? 120 : lamp ? 40 : 26, tall ? 22 : lamp ? 16 : 11, tall ? 1.8 : 1.7, fx);
+        fx.v = this.addVirtualLight({ x: f.x, y: f.y - 0.3, z: f.z }, lamp ? 0xffb86a : 0xffe7c0, (tall ? 120 : lamp ? 40 : 26) * (this.map.lampScale ?? 1), tall ? 22 : lamp ? 16 : 11, tall ? 1.8 : 1.7, fx);
         const h = tall ? 6.5 : f.y - 0.1;
         const beam = new THREE.Mesh(
           new THREE.CylinderGeometry(tall ? 0.5 : lamp ? 0.2 : 0.4, tall ? 2.6 : lamp ? 1.8 : 1.3, h, 20, 1, true),

@@ -1,11 +1,11 @@
 // =============================================================================
-// Call of the Crust: the snow world round the map. An open night sky full of
-// stars, a galaxy band and planets; snow falling all the time; snowy cliffs,
-// hills and pine forest; the frozen sea to the north with a ship stuck in it;
-// the lighthouse on its point; and, out across the ice, four red-and-white
-// smokestacks on a lit-up power plant. Also dresses the rooms: snow on the
-// cliff tops, sandbags and wire along the trenches, roofs on the huts, and
-// the props (the truck, crates, fire barrels, rocks, pines, the boat...).
+// Call of the Crust: the snow world. An open night sky full of stars, a galaxy
+// band and planets; snow falling all the time; the frozen sea with five islands
+// in it, their land rising behind the rooms' walls; the Anvil in the middle of
+// the hub; launcher pads glowing in the colour of where they send you; ships
+// frozen in the ice, a lighthouse, a research base's radio tower and tesla
+// coils, trenches with sandbags and wire, glowing ice caves; and far off to the
+// north, four red-and-white smokestacks on a lit-up power plant.
 //
 // mapView calls crustMaterials() while it builds its materials and
 // buildCrust() in place of the school's exterior; update() runs every frame.
@@ -48,12 +48,12 @@ function cliffTexture() {
   // snow caught on the ledges
   for (let i = 0; i < 90; i++) {
     const x = r() * W, y = r() * H, w = 20 + r() * 70;
-    g.fillStyle = `rgba(225,232,242,${0.2 + r() * 0.3})`;
-    g.beginPath(); g.ellipse(x, y, w, 2 + r() * 4, (r() - 0.5) * 0.3, 0, 7); g.fill();
+    g.fillStyle = `rgba(225,232,242,${0.1 + r() * 0.18})`;
+    g.beginPath(); g.ellipse(x, y, w * 0.7, 1.5 + r() * 3, (r() - 0.5) * 0.3, 0, 7); g.fill();
   }
   // frost at the top
   const grd = g.createLinearGradient(0, 0, 0, H * 0.25);
-  grd.addColorStop(0, 'rgba(230,236,246,0.9)'); grd.addColorStop(1, 'rgba(230,236,246,0)');
+  grd.addColorStop(0, 'rgba(230,236,246,0.55)'); grd.addColorStop(1, 'rgba(230,236,246,0)');
   g.fillStyle = grd; g.fillRect(0, 0, W, H * 0.25);
   const t = T.toTexture(c); t.repeat.set(1 / 7, 1 / 7);
   return t;
@@ -230,9 +230,52 @@ function signTexture(lines) {
   return T.toTexture(c, { repeat: false });
 }
 
+// More surfaces for the islands: ancient dressed stone (the Anvil, the
+// observatory), corrugated tin (the depot, the research base), poured concrete
+// (bunkers), canvas (the field hospital), flagstones underfoot.
+function tinTexture() {
+  const S = 256, [c, g] = T.makeCanvas(S, S), r = R(83);
+  g.fillStyle = '#5c6066'; g.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += 8) { const gr = g.createLinearGradient(x, 0, x + 8, 0); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(0.5, 'rgba(0,0,0,0.12)'); gr.addColorStop(1, 'rgba(255,255,255,0.10)'); g.fillStyle = gr; g.fillRect(x, 0, 8, S); }
+  for (let i = 0; i < 50; i++) { const x = r() * S, y = r() * S; const gr = g.createLinearGradient(0, y, 0, y + 80); gr.addColorStop(0, 'rgba(120,60,30,0.3)'); gr.addColorStop(1, 'rgba(120,60,30,0)'); g.fillStyle = gr; g.fillRect(x, y, 2 + r() * 4, 80); }
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 126, S, 3);
+  for (let x = 0; x < S; x += 3) { g.fillStyle = `rgba(230,236,244,${r() * 0.5})`; g.fillRect(x, 0, 3, 2 + r() * 3); }
+  return T.toTexture(c);
+}
+function concreteTexture(seed = 91) {
+  const S = 256, [c, g] = T.makeCanvas(S, S), r = R(seed);
+  g.fillStyle = '#6a6862'; g.fillRect(0, 0, S, S);
+  const n = T.noiseCanvas(S, 6, 5); g.globalAlpha = 0.4; g.drawImage(n, 0, 0); g.globalAlpha = 1;
+  g.fillStyle = 'rgba(0,0,0,0.25)'; for (const y of [64, 128, 192]) g.fillRect(0, y, S, 2);
+  for (let i = 0; i < 30; i++) { const x = r() * S, y = r() * S; const gr = g.createLinearGradient(0, y, 0, y + 60); gr.addColorStop(0, 'rgba(30,30,28,0.25)'); gr.addColorStop(1, 'rgba(30,30,28,0)'); g.fillStyle = gr; g.fillRect(x, y, 3 + r() * 6, 60); }
+  return T.toTexture(c);
+}
+function canvasTexture() {
+  const S = 256, [c, g] = T.makeCanvas(S, S), r = R(17);
+  g.fillStyle = '#7a7458'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < S; i += 2) { g.fillStyle = `rgba(0,0,0,${0.03 + r() * 0.04})`; g.fillRect(0, i, S, 1); g.fillRect(i, 0, 1, S); }
+  for (let i = 0; i < 20; i++) { g.fillStyle = `rgba(60,50,30,${0.1 + r() * 0.15})`; g.beginPath(); g.ellipse(r() * S, r() * S, 10 + r() * 30, 6 + r() * 14, r() * 3, 0, 7); g.fill(); }
+  // a red cross on it
+  g.fillStyle = 'rgba(150,30,30,0.85)'; g.fillRect(S / 2 - 12, S / 2 - 40, 24, 80); g.fillRect(S / 2 - 40, S / 2 - 12, 80, 24);
+  return T.toTexture(c);
+}
+function flagstoneTexture() {
+  const S = 256, [c, g] = T.makeCanvas(S, S), r = R(29);
+  g.fillStyle = '#2c2c2e'; g.fillRect(0, 0, S, S);
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+    const k = 0.75 + r() * 0.3;
+    g.fillStyle = `rgb(${92 * k},${92 * k},${96 * k})`;
+    g.fillRect(i * 64 + 2 + r() * 3, j * 64 + 2 + r() * 3, 60 - r() * 4, 60 - r() * 4);
+  }
+  const n = T.noiseCanvas(S, 5, 6); g.globalAlpha = 0.3; g.globalCompositeOperation = 'multiply'; g.drawImage(n, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(230,236,244,${r() * 0.3})`; g.fillRect(r() * S, r() * S, 1 + r() * 2, 1); }
+  return T.toTexture(c);
+}
+
 // --- materials (called from mapView.buildMaterials) --------------------------------------
-// Floors: snow, ice (the lagoon), duckboards (trenches), deck plate (the hold).
-// Walls: cliff, trench (plank revetment), cabin (logs), hull (riveted steel).
+// Floors: snow, ice, duckboards, deck plate, planks, flagstones.
+// Walls: cliff (rock), trench (plank revetment), cabin (logs), hull (riveted
+// steel), stone (dressed blocks), tin (corrugated), bunker (concrete), canvas.
 export function crustMaterials(M, wallMats, applyBake) {
   const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.95, ...o });
   const rep = (t, s) => { t.repeat.set(s, s); return t; };
@@ -243,57 +286,78 @@ export function crustMaterials(M, wallMats, applyBake) {
   M.duckboard = applyBake(std({ map: rep(CT.boardsTexture({ seed: 6, base: [84, 66, 46] }), 1 / 1.6) }));
   M.deck = applyBake(std({ map: rep(hullTexture(), 1 / 2.5), roughness: 0.8, metalness: 0.3 }));
   M.planks = applyBake(std({ map: rep(CT.boardsTexture({ seed: 9, base: [58, 44, 30] }), 1 / 2) }));
+  M.flagstone = applyBake(std({ map: rep(flagstoneTexture(), 1 / 4) }));
   M.hullCeil = applyBake(std({ map: rep(hullTexture(), 1 / 3), roughness: 0.85, metalness: 0.3, color: '#8a8480' }));
-  const cliff = std({ map: cliffTexture(), roughness: 1 });
+  M.rock = applyBake(std({ map: cliffTexture(), roughness: 1, color: '#9aa2ae' }));
+  M.stoneCeil = applyBake(std({ map: rep(CT.stoneTexture({ dressed: true, base: [84, 82, 80], seed: 66 }), 1 / 3) }));
+  M.bunkerCeil = applyBake(std({ map: rep(concreteTexture(95), 1 / 3), color: '#8a8880' }));
+  const cliff = std({ map: cliffTexture(), roughness: 1, color: '#848c98' });
   cliff.bumpMap = cliff.map; cliff.bumpScale = 3;
   wallMats.cliff = applyBake(cliff);
   wallMats.trench = applyBake(std({ map: rep(CT.boardsTexture({ seed: 4, base: [76, 60, 42] }), 1 / 2.4) }));
   wallMats.cabin = applyBake(std({ map: rep(logTexture(), 1 / 2.2) }));
   wallMats.hull = applyBake(std({ map: rep(hullTexture(), 1 / 3), roughness: 0.8, metalness: 0.35 }));
+  wallMats.stone = applyBake(std({ map: rep(CT.stoneTexture({ dressed: true, base: [104, 100, 96], seed: 61 }), 1 / 2.5) }));
+  wallMats.tin = applyBake(std({ map: rep(tinTexture(), 1 / 3), roughness: 0.7, metalness: 0.4 }));
+  wallMats.bunker = applyBake(std({ map: rep(concreteTexture(), 1 / 3) }));
+  wallMats.canvas = applyBake(std({ map: rep(canvasTexture(), 1 / 4), side: THREE.DoubleSide }));
 }
+
+// The element colours: Fire, Ice, Wind, Lightning.
+export const ELEMENT = {
+  fire: { color: new THREE.Color(3.0, 1.1, 0.25), light: 0xff7a30, name: 'Fire' },
+  ice: { color: new THREE.Color(0.5, 1.6, 3.0), light: 0x7ad0ff, name: 'Ice' },
+  wind: { color: new THREE.Color(1.4, 2.6, 1.6), light: 0xb8ffd0, name: 'Wind' },
+  lightning: { color: new THREE.Color(2.0, 0.9, 3.2), light: 0xc49aff, name: 'Lightning' },
+};
 
 // --- the world --------------------------------------------------------------------------
 export function buildCrust(mv) {
   const map = mv.map, group = mv.group, world = mv.world;
   const fog = map.fog ? map.fog.color : '#1c2534';
-  const out = { mv, fires: [], beams: [], smoke: [] };
+  const out = { mv, fires: [], beams: [], smoke: [], glows: [], spin: [] };
   const r = R(9);
   const mats = {
     snow: new THREE.MeshStandardMaterial({ color: '#d8e0ec', roughness: 0.95, emissive: new THREE.Color('#202a3c'), emissiveIntensity: 1 }),
+    terrain: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, emissive: new THREE.Color('#121a28'), flatShading: false }),
     snowCap: new THREE.MeshStandardMaterial({ color: '#eef2f8', roughness: 0.9, emissive: new THREE.Color('#141a26') }),
     rock: new THREE.MeshStandardMaterial({ color: '#4c525a', roughness: 1, flatShading: true }),
+    stone: new THREE.MeshStandardMaterial({ map: CT.stoneTexture({ dressed: true, base: [96, 94, 92], seed: 71 }), roughness: 1 }),
+    darkStone: new THREE.MeshStandardMaterial({ color: '#2e3036', roughness: 1 }),
     pine: new THREE.MeshStandardMaterial({ color: '#1e3326', roughness: 1, emissive: new THREE.Color('#05080a') }),
     bark: new THREE.MeshStandardMaterial({ color: '#2c2118', roughness: 1 }),
     wood: new THREE.MeshStandardMaterial({ color: '#4a3524', roughness: 0.95 }),
     darkWood: new THREE.MeshStandardMaterial({ color: '#2a1e14', roughness: 1 }),
     sandbag: new THREE.MeshStandardMaterial({ map: CT.sandbagTexture(), roughness: 1 }),
     iron: new THREE.MeshStandardMaterial({ color: '#2a2a2c', roughness: 0.6, metalness: 0.6 }),
+    steel: new THREE.MeshStandardMaterial({ color: '#6a6e74', roughness: 0.5, metalness: 0.6 }),
     hull: new THREE.MeshStandardMaterial({ map: hullTexture(), roughness: 0.8, metalness: 0.35 }),
     hullRed: new THREE.MeshStandardMaterial({ color: '#5a1c18', roughness: 0.85, metalness: 0.2 }),
     paint: new THREE.MeshStandardMaterial({ color: '#c8c4b8', roughness: 0.85 }),
+    olive: new THREE.MeshStandardMaterial({ color: '#4a4c32', roughness: 0.9, metalness: 0.2 }),
+    white: new THREE.MeshStandardMaterial({ color: '#d8d8d4', roughness: 0.6, metalness: 0.2 }),
     wire: new THREE.LineBasicMaterial({ color: '#16161a' }),
     ice: new THREE.MeshStandardMaterial({ color: '#9ec4dc', roughness: 0.25, metalness: 0.05, emissive: new THREE.Color('#123048'), transparent: true, opacity: 0.92, flatShading: true }),
     window: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.1, 0.55) }),
+    canvas: new THREE.MeshStandardMaterial({ map: canvasTexture(), roughness: 1, side: THREE.DoubleSide }),
+    screen: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 1.2, 0.8) }),
   };
   out.mats = mats;
-
-  // the footprint of the map (everything inside it is flat)
-  const B = { x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
-  for (const rm of map.rooms) { const [a, b, c, d] = rm.rect; B.x0 = Math.min(B.x0, a); B.z0 = Math.min(B.z0, b); B.x1 = Math.max(B.x1, c); B.z1 = Math.max(B.z1, d); }
-  const sea = map.seaEdge ?? -84;
-  const inRoom = (x, z, pad = 0) => map.rooms.some((rm) => x > rm.rect[0] - pad && x < rm.rect[2] + pad && z > rm.rect[1] - pad && z < rm.rect[3] + pad);
+  const isl = islandsOf(map);
 
   buildSky(out, group, fog);
-  buildGround(out, group, B, sea, mats);
-  buildCliffs(out, group, world, map, r, mats);
+  buildSea(out, group, isl);
+  for (const I of isl) buildTerrain(out, group, I, map, mats, R(I.rooms.length * 31 + 7));
+  buildEdges(out, group, world, mats, r);
   buildTrenches(group, world, map, r, mats);
   buildRoofs(out, group, map, mats);
-  buildShip(out, group, map, r, mats);
-  buildForest(out, group, B, sea, r, mats, inRoom);
+  for (const s of map.ships || []) buildShip(out, group, map, s, r, mats);
+  buildForest(out, group, isl, map, r, mats);
   buildFar(out, group, map, r);
   buildProps(out, group, world, r, mats, mv);
+  for (const L of map.launchers || []) buildPad(out, group, L, map, mats, mv);
   buildSnow(out, group, r);
-  // slush on the lagoon (it slows you down): dark wet patches on the ice
+  // slush (it slows you down): dark wet patches on the ice
   if (map.mud) {
     const slush = new THREE.MeshStandardMaterial({ color: '#3c4650', roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     for (const m of map.mud) {
@@ -303,9 +367,28 @@ export function buildCrust(mv) {
       const mesh = new THREE.Mesh(g, slush); mesh.position.set(m.x, 0.012, m.z); group.add(mesh);
     }
   }
+  // shell craters (looks only)
+  for (const c of map.craters || []) {
+    const g = new THREE.CircleGeometry(c.r, 20).rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 1, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    m.position.set(c.x, 0.012, c.z); group.add(m);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(c.r, 0.25, 6, 20).rotateX(Math.PI / 2), mats.snowCap);
+    rim.scale.y = 0.6; rim.position.set(c.x, 0.05, c.z); group.add(rim);
+  }
 
   out.update = (dt, eye, time) => updateCrust(out, dt, eye, time);
   return out;
+}
+
+// The islands: which rooms are on which, their bounds, how mountainous.
+function islandsOf(map) {
+  const list = map.islands || [{ id: 'all', rooms: map.rooms.map((r) => r.id) }];
+  return list.map((I) => {
+    const rooms = map.rooms.filter((r) => I.rooms.includes(r.id));
+    const B = { x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+    for (const rm of rooms) { const [a, b, c, d] = rm.rect; B.x0 = Math.min(B.x0, a); B.z0 = Math.min(B.z0, b); B.x1 = Math.max(B.x1, c); B.z1 = Math.max(B.z1, d); }
+    return { ...I, rooms, B, mountain: I.id === 'caves' ? 1 : I.id === 'hub' ? 0.35 : 0.3 };
+  });
 }
 
 // --- the sky: a dome that follows the camera, with planets in it ---------------------------
@@ -330,49 +413,163 @@ function buildSky(out, group, fog) {
       sky.add(rg);
     }
   };
-  planet('ringed', [0.75, 0.42, -0.6], 26, true);      // big ringed ice giant over the north-east
-  planet('red', [-0.6, 0.7, -0.35], 9);                // a small red world high in the west
-  planet('moon', [-0.35, 0.3, 0.88], 14);              // a cratered moon behind you
+  planet('ringed', [0.75, 0.42, -0.6], 26, true);
+  planet('red', [-0.6, 0.7, -0.35], 9);
+  planet('moon', [-0.35, 0.3, 0.88], 14);
   group.add(sky);
   out.sky = sky;
-  // moonlight for the things that aren't baked (zombies, props)
   const moon = new THREE.DirectionalLight(0x9fb4e0, 0.55);
   moon.position.set(-0.35, 0.6, 0.7).multiplyScalar(50);
   group.add(moon); group.add(moon.target);
 }
 
-// --- the ground: flat under the map, rolling into hills round it; the frozen sea north ----
-function buildGround(out, group, B, sea, mats) {
-  const cx = (B.x0 + B.x1) / 2, cz = (B.z0 + B.z1) / 2;
-  const size = 600, seg = 120;
-  const ground = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(-Math.PI / 2);
-  const gp = ground.attributes.position;
-  for (let i = 0; i < gp.count; i++) {
-    const x = gp.getX(i) + cx, z = gp.getZ(i) + cz;
-    gp.setX(i, x); gp.setZ(i, z);
-    const dx = Math.max(B.x0 - 4 - x, x - B.x1 - 4, 0), dz = Math.max(z - B.z1 - 4, 0);
-    const edge = Math.hypot(dx, dz);
-    let h = 0;
-    if (z > sea + 2 && edge > 0) {
-      h = (Math.sin(x * 0.05) * Math.cos(z * 0.043) * 0.5 + 0.5) * 12 + Math.sin(x * 0.13 + z * 0.07) * 1.5 + 4;
-      h *= Math.min(1, edge / 22);
-      h *= Math.min(1, (z - sea - 2) / 18);   // down to the shore
-    }
-    gp.setY(i, Math.max(0, h) - 0.04);
-  }
-  ground.computeVertexNormals();
-  group.add(new THREE.Mesh(ground, mats.snow));
-  out.groundAt = (x, z) => {
-    const step = size / seg;
-    const ix = Math.round((x - cx + size / 2) / step), iz = Math.round((z - cz + size / 2) / step);
-    if (ix < 0 || iz < 0 || ix > seg || iz > seg) return 0;
-    return gp.getY(iz * (seg + 1) + ix);
-  };
-  // the frozen sea
-  const it = iceTexture(); it.repeat.set(20, 10);
-  const ice = new THREE.Mesh(new THREE.PlaneGeometry(600, 300).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: it, roughness: 0.6, metalness: 0.1, emissive: new THREE.Color('#0e1622') }));
-  ice.position.set(cx, -0.02, sea - 150);
+// --- the frozen sea, out to the horizon, cracked between the islands -------------------------
+function buildSea(out, group, isl) {
+  const it = iceTexture(); it.repeat.set(36, 36);
+  const ice = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: it, roughness: 0.6, metalness: 0.1, emissive: new THREE.Color('#0e1622') }));
+  ice.position.set(0, -0.03, -40);
   group.add(ice);
+  // dark open-water cracks running between the islands (looks only)
+  const crack = new THREE.MeshBasicMaterial({ color: '#06090e', transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
+  const r = R(404);
+  const hub = isl.find((i) => i.id === 'hub');
+  for (const I of isl) {
+    if (I === hub || !hub) continue;
+    const a = { x: (hub.B.x0 + hub.B.x1) / 2, z: (hub.B.z0 + hub.B.z1) / 2 }, b = { x: (I.B.x0 + I.B.x1) / 2, z: (I.B.z0 + I.B.z1) / 2 };
+    // a jagged lead of open water alongside the line between them
+    const side = { x: -(b.z - a.z), z: b.x - a.x }; const sl = Math.hypot(side.x, side.z); side.x /= sl; side.z /= sl;
+    let px = a.x + side.x * 22, pz = a.z + side.z * 22;
+    for (let k = 0; k < 14; k++) {
+      const t = (k + 1) / 14;
+      const nx = a.x + (b.x - a.x) * t + side.x * (22 + (r() - 0.5) * 16), nz = a.z + (b.z - a.z) * t + side.z * (22 + (r() - 0.5) * 16);
+      const len = Math.hypot(nx - px, nz - pz);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6 + r() * 1.4, len).rotateX(-Math.PI / 2), crack);
+      m.position.set((px + nx) / 2, -0.02, (pz + nz) / 2); m.rotation.y = Math.atan2(nx - px, nz - pz);
+      group.add(m);
+      px = nx; pz = nz;
+    }
+  }
+}
+
+// --- each island's land: flat where the rooms are, rising behind their walls,
+//     sloping down into the sea at the edges; mountains over the caves -------------------------
+function wallAt(room, side, a) {
+  const spec = room.walls && room.walls[side];
+  if (!spec || !spec.ranges) return { style: null, height: room.height };
+  for (const rg of spec.ranges) {
+    const [f, t] = Array.isArray(rg) ? rg : [rg.from, rg.to];
+    if (a >= f - 0.01 && a <= t + 0.01) return { style: rg.style || room.style, height: rg.height ?? room.height };
+  }
+  return { style: null, height: room.height };
+}
+function buildTerrain(out, group, I, map, mats, r) {
+  const M = 16, step = 0.5;
+  const x0 = I.B.x0 - M, z0 = I.B.z0 - M, x1 = I.B.x1 + M, z1 = I.B.z1 + M;
+  const nx = Math.ceil((x1 - x0) / step), nz = Math.ceil((z1 - z0) / step);
+  const geo = new THREE.PlaneGeometry(nx * step, nz * step, nx, nz).rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const cx = x0 + nx * step / 2, cz = z0 + nz * step / 2;
+  const rooms = I.rooms;
+  const carve = (rm) => (rm.cave ? rm.height + 0.7 : -0.08);
+  const noise = (x, z) => Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.093) * 0.5 + Math.sin(x * 0.31 + z * 0.27) * 0.25 + Math.sin(x * 0.7 - z * 0.53) * 0.12;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + cx, z = pos.getZ(i) + cz;
+    pos.setX(i, x); pos.setZ(i, z);
+    let h;
+    const inside = rooms.find((rm) => x >= rm.rect[0] && x <= rm.rect[2] && z >= rm.rect[1] && z <= rm.rect[3]);
+    if (inside) h = carve(inside);
+    else {
+      // nearest room, and the wall facing this way
+      let best = null, bd = Infinity, wall = null;
+      let lowNear = Infinity;
+      for (const rm of rooms) {
+        const [a0, b0, a1, b1] = rm.rect;
+        const dx = Math.max(a0 - x, 0, x - a1), dz = Math.max(b0 - z, 0, z - b1);
+        const d = Math.hypot(dx, dz);
+        if (d <= 0.55) lowNear = Math.min(lowNear, carve(rm));
+        if (d < bd) {
+          bd = d; best = rm;
+          const side = dx >= dz ? (x < a0 ? 'w' : 'e') : (z < b0 ? 'n' : 's');
+          wall = wallAt(rm, side, side === 'n' || side === 's' ? x : z);
+        }
+      }
+      if (lowNear < Infinity) h = lowNear;                        // inside a wall
+      else {
+        const shore = wall.style === 'invisible';
+        const Hn = shore ? 0.35 : best.cave ? best.height + 0.7 : (wall.height ?? best.height);
+        h = Hn + (shore ? 0 : I.mountain * Math.min(bd, 26) * 0.55) + noise(x, z) * (shore ? 0.3 : 1.2 + I.mountain * 3);
+        // close in behind a low wall (a trench, a hut): don't tower over it
+        if (!shore && bd < 3) h = Math.min(h, Hn + bd * 1.2);
+        if (shore) h = 0.35 - Math.min(bd, 10) * 0.08 + noise(x, z) * 0.25;
+      }
+      // down into the sea past the edge of the island
+      const ex = Math.max(I.B.x0 - x, 0, x - I.B.x1), ez = Math.max(I.B.z0 - z, 0, z - I.B.z1);
+      const e = Math.hypot(ex, ez);
+      if (e > 0) h = h * Math.max(0, 1 - e / (M - 2)) - e * 0.12;
+    }
+    pos.setY(i, h < -0.05 && !inside ? Math.min(h, -0.6) : h);
+  }
+  geo.computeVertexNormals();
+  // snow on the flats, grey rock on the steep bits
+  const nrm = geo.attributes.normal, col = new Float32Array(pos.count * 3);
+  const snow = new THREE.Color('#dfe6f0'), rock = new THREE.Color('#545a64'), tmp = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const k = Math.min(1, Math.max(0, (nrm.getY(i) - 0.55) / 0.3));
+    tmp.copy(rock).lerp(snow, k);
+    col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(geo, mats.terrain);
+  group.add(mesh);
+  I.heightAt = (x, z) => {
+    const ix = Math.round((x - x0) / step), iz = Math.round((z - z0) / step);
+    if (ix < 0 || iz < 0 || ix > nx || iz > nz) return -1;
+    return pos.getY(iz * (nx + 1) + ix);
+  };
+}
+
+// --- snowbanks along the sea edges; a few boulders at the foot of the cliffs ------------------
+function buildEdges(out, group, world, mats, r) {
+  const caps = [], rocks = [];
+  const boulder = (x, y, z, s) => {
+    const geo = new THREE.DodecahedronGeometry(1, 1);
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) { const k = 0.75 + r() * 0.5; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.8, p.getZ(i) * k); }
+    geo.computeVertexNormals();
+    geo.rotateY(r() * 3); geo.scale(s, s, s); geo.translate(x, y, z);
+    rocks.push(flat(geo));
+    const cap = new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4);
+    cap.scale(s * 0.95, s * 0.4, s * 0.95); cap.translate(x, y + s * 0.45, z);
+    caps.push(flat(cap));
+  };
+  out.boulder = boulder;
+  for (const b of world.walls) {
+    const rm = world.roomById.get(b.room);
+    const st = b.style || rm.style;
+    const [ox, oz] = OUTWARD[b.side];
+    const along = ox === 0;
+    const a0 = along ? b.minX : b.minZ, a1 = along ? b.maxX : b.maxZ;
+    if (st === 'invisible') {
+      for (let a = a0; a <= a1; a += 2.6) {
+        const g = new THREE.SphereGeometry(1, 14, 8);
+        g.scale(2.2 + r() * 1.2, 1.0 + r() * 0.7, 1.6 + r() * 0.6);
+        const cx = along ? a + (r() - 0.5) * 1.2 : (b.minX + b.maxX) / 2 + ox * (0.9 + r() * 0.8);
+        const cz = along ? (b.minZ + b.maxZ) / 2 + oz * (0.9 + r() * 0.8) : a + (r() - 0.5) * 1.2;
+        g.translate(cx, -0.25, cz);
+        caps.push(flat(g));
+      }
+      continue;
+    }
+    if (st !== 'cliff' || b.kind !== 'wall' || rm.cave) continue;
+    for (let a = a0 + 1.5; a < a1 - 1.5; a += 5 + r() * 6) {
+      if (r() > 0.4) continue;
+      const ix = along ? a : (ox > 0 ? b.minX : b.maxX) + ox * 0.05;
+      const iz = along ? (oz > 0 ? b.minZ : b.maxZ) + oz * 0.05 : a;
+      boulder(ix, 0.15, iz, 0.45 + r() * 0.45);
+    }
+  }
+  if (caps.length) group.add(new THREE.Mesh(mergeAll(caps), mats.snowCap));
+  if (rocks.length) group.add(new THREE.Mesh(mergeAll(rocks), mats.rock));
 }
 
 // Merge a list of non-indexed geometries (position + normal + uv).
@@ -399,93 +596,13 @@ function mergeAll(list) {
 const flat = (g) => (g.index ? g.toNonIndexed() : g);
 const OUTWARD = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] };
 
-// --- cliffs: snow on top, boulders along them; snowbanks along the sea edge ---------------
-function buildCliffs(out, group, world, map, r, mats) {
-  const caps = [], rocks = [];
-  // how far the snowy top can run out from a wall before it would hang over another room
-  const reach = (b) => {
-    const [ox, oz] = OUTWARD[b.side];
-    let e = 7;
-    for (const rm of map.rooms) {
-      if (rm.id === b.room) continue;
-      const [x0, z0, x1, z1] = rm.rect;
-      if (ox) {
-        if (z1 <= b.minZ || z0 >= b.maxZ) continue;
-        const d = ox > 0 ? x0 - b.maxX : b.minX - x1;
-        if (d >= -0.01) e = Math.min(e, d - 0.55);
-      } else {
-        if (x1 <= b.minX || x0 >= b.maxX) continue;
-        const d = oz > 0 ? z0 - b.maxZ : b.minZ - z1;
-        if (d >= -0.01) e = Math.min(e, d - 0.55);
-      }
-    }
-    return Math.max(0, e);
-  };
-  const boulder = (x, y, z, s) => {
-    const geo = new THREE.DodecahedronGeometry(1, 1);
-    const p = geo.attributes.position;
-    for (let i = 0; i < p.count; i++) { const k = 0.75 + r() * 0.5; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.8, p.getZ(i) * k); }
-    geo.computeVertexNormals();
-    geo.rotateY(r() * 3); geo.scale(s, s, s); geo.translate(x, y, z);
-    rocks.push(flat(geo));
-    const cap = new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4);
-    cap.scale(s * 0.95, s * 0.4, s * 0.95); cap.translate(x, y + s * 0.45, z);
-    caps.push(flat(cap));
-  };
-  out.boulder = boulder;
-  for (const b of world.walls) {
-    const rm = world.roomById.get(b.room);
-    const st = b.style || rm.style;
-    const [ox, oz] = OUTWARD[b.side];
-    const along = ox === 0;
-    const a0 = along ? b.minX : b.minZ, a1 = along ? b.maxX : b.maxZ;
-    if (st === 'invisible') {
-      for (let a = a0; a <= a1; a += 2.6) {
-        const g = new THREE.SphereGeometry(1, 14, 8);
-        g.scale(2.2 + r() * 1.2, 1.1 + r() * 0.7, 1.6 + r() * 0.6);
-        const cx = along ? a + (r() - 0.5) * 1.2 : (b.minX + b.maxX) / 2 + ox * (0.8 + r() * 0.8);
-        const cz = along ? (b.minZ + b.maxZ) / 2 + oz * (0.8 + r() * 0.8) : a + (r() - 0.5) * 1.2;
-        g.translate(cx, -0.2, cz);
-        caps.push(flat(g));
-      }
-      continue;
-    }
-    if (st !== 'cliff') continue;
-    // the snowy top: over the wall and back from it
-    const e = b.maxY >= 6 ? reach(b) : 0;
-    let x0 = b.minX, x1 = b.maxX, z0 = b.minZ, z1 = b.maxZ;
-    if (ox > 0) x1 += e; else if (ox < 0) x0 -= e;
-    if (oz > 0) z1 += e; else if (oz < 0) z0 -= e;
-    if (ox > 0) x0 -= 0.15; else if (ox < 0) x1 += 0.15;   // a lip over the inside face
-    if (oz > 0) z0 -= 0.15; else if (oz < 0) z1 += 0.15;
-    const g = new THREE.BoxGeometry(x1 - x0, 0.45, z1 - z0);
-    g.translate((x0 + x1) / 2, b.maxY + 0.18, (z0 + z1) / 2);
-    caps.push(flat(g));
-    if (b.kind !== 'wall') continue;   // (not over the doorways)
-    for (let a = a0 + 1; a < a1 - 1; a += 4 + r() * 4) {
-      if (b.maxY >= 6) {
-        const fx = along ? a : (ox > 0 ? b.maxX : b.minX) + ox * (0.4 + r() * 1.2);
-        const fz = along ? (oz > 0 ? b.maxZ : b.minZ) + oz * (0.4 + r() * 1.2) : a;
-        boulder(fx, b.maxY + 0.2, fz, 1.0 + r() * 1.4);
-      }
-      if (r() < 0.3) {
-        const ix = along ? a : (ox > 0 ? b.minX : b.maxX) + ox * 0.05;
-        const iz = along ? (oz > 0 ? b.minZ : b.maxZ) + oz * 0.05 : a;
-        boulder(ix, 0.15, iz, 0.45 + r() * 0.4);
-      }
-    }
-  }
-  if (caps.length) group.add(new THREE.Mesh(mergeAll(caps), mats.snowCap));
-  if (rocks.length) group.add(new THREE.Mesh(mergeAll(rocks), mats.rock));
-}
-
 // --- the trenches: posts, sandbags along the lip, wire on stakes, snow ----------------------
 function buildTrenches(group, world, map, r, mats) {
   const posts = [], bags = [], snow = [], wire = [];
   const box = (list, x0, y0, z0, x1, y1, z1) => { const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); list.push(flat(g)); };
   for (const b of world.walls) {
     const rm = world.roomById.get(b.room);
-    if ((b.style || rm.style) !== 'trench') continue;
+    if ((b.style || rm.style) !== 'trench' || b.maxY > 3) continue;
     const [ox, oz] = OUTWARD[b.side];
     const along = ox === 0;
     const a0 = along ? b.minX : b.minZ, a1 = along ? b.maxX : b.maxZ;
@@ -494,14 +611,13 @@ function buildTrenches(group, world, map, r, mats) {
     box(bags, b.minX - px, top, b.minZ - pz, b.maxX + px, top + 0.36, b.maxZ + pz);
     box(snow, b.minX - px * 0.8, top + 0.36, b.minZ - pz * 0.8, b.maxX + px * 0.8, top + 0.44, b.maxZ + pz * 0.8);
     if (b.kind !== 'wall') continue;
-    // upright posts on the inside face
     const fx = ox > 0 ? b.minX : b.maxX, fz = oz > 0 ? b.minZ : b.maxZ;
     for (let a = a0 + 0.6; a < a1 - 0.3; a += 2.2) {
       if (along) box(posts, a - 0.08, 0, fz - oz * 0.06 - 0.05, a + 0.08, top + 0.1, fz - oz * 0.06 + 0.05);
       else box(posts, fx - ox * 0.06 - 0.05, 0, a - 0.08, fx - ox * 0.06 + 0.05, top + 0.1, a + 0.08);
     }
-    // barbed wire on stakes, just back from the lip
-    const ex = ox > 0 ? b.maxX + 0.5 : b.minX - 0.5, ez = oz > 0 ? b.maxZ + 0.5 : b.minZ - 0.5;
+    if (!rm.outdoor) continue;   // (no wire on a dugout's walls)
+    const ex = ox > 0 ? b.maxX + 0.6 : b.minX - 0.6, ez = oz > 0 ? b.maxZ + 0.6 : b.minZ - 0.6;
     let prev = null;
     for (let a = a0; a <= a1 + 0.01; a += 2.5) {
       const x = along ? a : ex, z = along ? ez : a;
@@ -518,73 +634,83 @@ function buildTrenches(group, world, map, r, mats) {
     wg.setAttribute('position', new THREE.Float32BufferAttribute(wire, 3));
     group.add(new THREE.LineSegments(wg, mats.wire));
   }
-  // dugouts: sandbags piled on the roof, snow on them
+  // dugouts and bunkers: sandbags piled on the roof, snow on them
   for (const rm of map.rooms) {
-    if (rm.style !== 'trench' || rm.outdoor) continue;
+    if (!(rm.kind === 'dugout' || rm.kind === 'bunker')) continue;
     const [x0, z0, x1, z1] = rm.rect;
-    const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, 0.4, z1 - z0 + 1), mats.sandbag);
-    g.position.set((x0 + x1) / 2, rm.height + 0.45, (z0 + z1) / 2); group.add(g);
-    const s = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 0.9, 0.08, z1 - z0 + 0.9), mats.snowCap);
-    s.position.set((x0 + x1) / 2, rm.height + 0.69, (z0 + z1) / 2); group.add(s);
+    const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, 0.5, z1 - z0 + 1), mats.sandbag);
+    g.position.set((x0 + x1) / 2, rm.height + 0.5, (z0 + z1) / 2); group.add(g);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 0.9, 0.1, z1 - z0 + 0.9), mats.snowCap);
+    s.position.set((x0 + x1) / 2, rm.height + 0.8, (z0 + z1) / 2); group.add(s);
   }
 }
 
-// --- roofs on the huts (gabled, snowed on) and a smoking stone chimney -----------------------
+// --- roofs: gabled and snowed-on over the huts (canvas over the hospital), a
+//     snowy cap on every other building, a smoking chimney on the huts --------------------------
 function buildRoofs(out, group, map, mats) {
   const roofMat = new THREE.MeshStandardMaterial({ map: CT.boardsTexture({ seed: 21, base: [52, 40, 30] }), roughness: 1 });
   const gableMat = new THREE.MeshStandardMaterial({ map: CT.boardsTexture({ seed: 33, base: [70, 52, 36], vertical: true }), roughness: 1, side: THREE.DoubleSide });
   const stone = new THREE.MeshStandardMaterial({ map: CT.stoneTexture({ seed: 12 }), roughness: 1 });
   for (const rm of map.rooms) {
-    if (rm.style !== 'cabin') continue;
     const [x0, z0, x1, z1] = rm.rect;
-    const o = 0.7, H = rm.height + 0.25, rise = 1.8;
-    const alongX = x1 - x0 >= z1 - z0;
-    const L = (alongX ? x1 - x0 : z1 - z0) + 1 + 2 * o;     // ridge length (walls are 0.5 thick)
-    const W = (alongX ? z1 - z0 : x1 - x0) + 1 + 2 * o;     // eave to eave
-    const slope = Math.hypot(W / 2, rise), ang = Math.atan2(rise, W / 2);
-    const g = new THREE.Group();
-    for (const s of [-1, 1]) {
-      const pl = new THREE.Mesh(new THREE.BoxGeometry(L, 0.14, slope), roofMat);
-      pl.position.set(0, H + rise / 2, s * W / 4); pl.rotation.x = s * ang;
-      g.add(pl);
-      const sn = new THREE.Mesh(new THREE.BoxGeometry(L * 0.98, 0.1, slope * 0.95), mats.snowCap);
-      sn.position.set(0, H + rise / 2 + 0.12, s * W / 4); sn.rotation.x = s * ang;
-      g.add(sn);
+    if (rm.style === 'cabin' || rm.style === 'canvas') {
+      const canvas = rm.style === 'canvas';
+      const o = 0.7, H = rm.height + 0.25, rise = canvas ? 2.2 : 1.8;
+      const alongX = x1 - x0 >= z1 - z0;
+      const L = (alongX ? x1 - x0 : z1 - z0) + 1 + 2 * o;
+      const W = (alongX ? z1 - z0 : x1 - x0) + 1 + 2 * o;
+      const slope = Math.hypot(W / 2, rise), ang = Math.atan2(rise, W / 2);
+      const g = new THREE.Group();
+      for (const s of [-1, 1]) {
+        const pl = new THREE.Mesh(new THREE.BoxGeometry(L, 0.14, slope), canvas ? mats.canvas : roofMat);
+        pl.position.set(0, H + rise / 2, s * W / 4); pl.rotation.x = s * ang;
+        g.add(pl);
+        const sn = new THREE.Mesh(new THREE.BoxGeometry(L * 0.98, 0.1, slope * 0.95), mats.snowCap);
+        sn.position.set(0, H + rise / 2 + 0.12, s * W / 4); sn.rotation.x = s * ang;
+        g.add(sn);
+      }
+      const hw = W / 2 - o;
+      const tri = new THREE.Shape([new THREE.Vector2(-hw, 0), new THREE.Vector2(hw, 0), new THREE.Vector2(0, rise * hw / (W / 2))]);
+      for (const s of [-1, 1]) {
+        const ge = new THREE.Mesh(new THREE.ShapeGeometry(tri), canvas ? mats.canvas : gableMat);
+        ge.rotation.y = Math.PI / 2; ge.position.set(s * (L / 2 - o), H, 0);
+        g.add(ge);
+      }
+      g.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+      if (!alongX) g.rotation.y = Math.PI / 2;
+      group.add(g);
+      if (!canvas) {
+        const chx = x1 - 1.4, chz = (z0 + z1) / 2 + 1.2;
+        const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.8, 0.9), stone);
+        ch.position.set(chx, H + 1.4, chz); group.add(ch);
+        out.smoke.push({ x: chx, y: H + 2.9, z: chz, puffs: null });
+      }
+    } else if (!rm.outdoor && !rm.cave && rm.style !== 'hull' && rm.kind !== 'dugout' && rm.kind !== 'bunker') {
+      // a flat roof with snow on it (over the ceiling slab)
+      const s = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, 0.12, z1 - z0 + 1), mats.snowCap);
+      s.position.set((x0 + x1) / 2, rm.height + (rm.ceiling === 'trusses' ? 0.36 : 0.31), (z0 + z1) / 2); group.add(s);
     }
-    // the gable ends (triangles of boards)
-    const hw = W / 2 - o;
-    const tri = new THREE.Shape([new THREE.Vector2(-hw, 0), new THREE.Vector2(hw, 0), new THREE.Vector2(0, rise * hw / (W / 2))]);
-    for (const s of [-1, 1]) {
-      const ge = new THREE.Mesh(new THREE.ShapeGeometry(tri), gableMat);
-      ge.rotation.y = Math.PI / 2; ge.position.set(s * (L / 2 - o), H, 0);
-      g.add(ge);
-    }
-    g.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
-    if (!alongX) g.rotation.y = Math.PI / 2;
-    group.add(g);
-    const chx = x1 - 1.4, chz = (z0 + z1) / 2 + 1.2;
-    const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.8, 0.9), stone);
-    ch.position.set(chx, H + 1.4, chz); group.add(ch);
-    out.smoke.push({ x: chx, y: H + 2.9, z: chz, puffs: null });
   }
 }
 
-// --- the ship, frozen into the sea ice round its hold ---------------------------------------
-function buildShip(out, group, map, r, mats) {
-  const hold = map.rooms.find((q) => q.style === 'hull');
-  if (!hold) return;
-  const [x0, z0, x1, z1] = hold.rect;
+// --- a ship frozen into the sea ice round its rooms -----------------------------------------
+function buildShip(out, group, map, S, r, mats) {
+  const rooms = S.rooms.map((id) => map.rooms.find((q) => q.id === id)).filter(Boolean);
+  if (!rooms.length) return;
+  const x0 = Math.min(...rooms.map((q) => q.rect[0])), z0 = Math.min(...rooms.map((q) => q.rect[1]));
+  const x1 = Math.max(...rooms.map((q) => q.rect[2])), z1 = Math.max(...rooms.map((q) => q.rect[3]));
   const Tw = map.wallThickness;
-  const H = hold.height + 0.3;            // deck level (over the hold's ceiling)
+  const Hh = Math.max(...rooms.map((q) => q.height));
+  const H = Hh + 0.3;
   const ship = new THREE.Group();
   const zc = (z0 + z1) / 2, half = (z1 - z0) / 2 + Tw;
-  const stern = x0 - 9, bowStart = x1 + 3, bow = x1 + 15;
+  const big = x1 - x0 > 30;
+  const stern = x0 - (big ? 9 : 4), bowStart = x1 + Tw, bow = x1 + (big ? 14 : 9);
   const plate = (xa, xb, ya, yb, zs) => { const m = new THREE.Mesh(new THREE.BoxGeometry(xb - xa, yb - ya, 0.4), mats.hull); m.position.set((xa + xb) / 2, (ya + yb) / 2, zs); ship.add(m); };
   for (const s of [-1, 1]) {
     const zs = zc + s * (half + 0.2);
-    plate(stern, x0 - Tw, -0.5, H + 1.1, zs);          // past the hold: full height
-    plate(x1 + Tw, bowStart, -0.5, H + 1.1, zs);
-    plate(x0 - Tw, x1 + Tw, hold.height, H + 1.1, zs);  // the bulwark above the hold's own walls
+    plate(stern, x0 - Tw, -0.5, H + 1.1, zs);
+    plate(x0 - Tw, x1 + Tw, Hh, H + 1.1, zs);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(bowStart - stern, 0.5, 0.06), mats.hullRed);
     stripe.position.set((stern + bowStart) / 2, 0.35, zs + s * 0.23); ship.add(stripe);
   }
@@ -597,7 +723,6 @@ function buildShip(out, group, map, r, mats) {
     m.rotation.y = s * Math.atan2(dz, dx);
     ship.add(m);
   }
-  // the deck (a flat outline: squared stern, pointed bow)
   const shape = new THREE.Shape([
     new THREE.Vector2(stern, -(zc - half)), new THREE.Vector2(bowStart, -(zc - half)), new THREE.Vector2(bow, -zc),
     new THREE.Vector2(bowStart, -(zc + half)), new THREE.Vector2(stern, -(zc + half)),
@@ -606,23 +731,22 @@ function buildShip(out, group, map, r, mats) {
   const deck = new THREE.Mesh(dg, new THREE.MeshStandardMaterial({ color: '#4a3e34', roughness: 1, side: THREE.DoubleSide }));
   deck.position.y = H; ship.add(deck);
   const dsn = new THREE.Mesh(dg, mats.snowCap); dsn.position.y = H + 0.05; ship.add(dsn);
-  // the bridge, a funnel, two masts with rigging
-  const brX = stern + 7;
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(9, 4.2, half * 1.4), mats.paint);
+  const brX = stern + (big ? 7 : 4);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(big ? 9 : 5, 4.2, half * 1.4), mats.paint);
   bridge.position.set(brX, H + 2.1, zc); ship.add(bridge);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, half * 1.2), mats.paint);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(big ? 6 : 4, 2.2, half * 1.2), mats.paint);
   top.position.set(brX + 0.5, H + 5.3, zc); ship.add(top);
-  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
+  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
     const w = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), mats.window);
-    w.position.set(brX - 1.7 + i * 1.1, H + 5.6, zc + s * (half * 0.6 + 0.02));
+    w.position.set(brX - 1.6 + i * 1.1, H + 5.6, zc + s * (half * 0.6 + 0.02));
     if (s < 0) w.rotation.y = Math.PI;
     ship.add(w);
   }
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(6.3, 0.15, half * 1.25), mats.snowCap); roof.position.set(brX + 0.5, H + 6.48, zc); ship.add(roof);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry((big ? 6 : 4) + 0.3, 0.15, half * 1.25), mats.snowCap); roof.position.set(brX + 0.5, H + 6.48, zc); ship.add(roof);
   const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 6, 18), mats.hullRed);
-  funnel.position.set(brX + 8, H + 3, zc); funnel.rotation.z = 0.1; ship.add(funnel);
+  funnel.position.set(brX + (big ? 8 : 5), H + 3, zc); funnel.rotation.z = 0.1; ship.add(funnel);
   const rig = [];
-  for (const mx of [brX + 17, x1 + 7]) {
+  for (const mx of big ? [brX + 17, x1 + 7] : [x1 + 3]) {
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 14, 8), mats.iron);
     mast.position.set(mx, H + 7, zc); ship.add(mast);
     const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, half * 1.6, 6).rotateX(Math.PI / 2), mats.iron);
@@ -631,40 +755,34 @@ function buildShip(out, group, map, r, mats) {
   }
   const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rig, 3));
   ship.add(new THREE.LineSegments(rg, mats.wire));
-  // ice heaped against the hull
-  for (let x = stern; x < bow - 4; x += 3) {
-    for (const s of [-1, 1]) {
-      const g = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), mats.snowCap);
-      g.scale.set(2 + r() * 1.5, 0.8 + r() * 0.8, 1.0 + r() * 0.5);
-      g.position.set(x, -0.1, zc + s * (half + 2.2 + r()));
-      ship.add(g);
-    }
-  }
   group.add(ship);
-  out.smoke.push({ x: brX + 8.3, y: H + 6, z: zc, puffs: null, big: true });
+  out.smoke.push({ x: brX + (big ? 8.3 : 5.3), y: H + 6, z: zc, puffs: null, big: true });
 }
 
-// --- pine forest round the map (not on the sea, not on the map) -----------------------------
-function buildForest(out, group, B, sea, r, mats, inRoom) {
+// --- pines on the high ground of each island ---------------------------------------------
+function buildForest(out, group, isl, map, r, mats) {
   const trunk = new THREE.CylinderGeometry(0.15, 0.25, 2, 6);
   const needles = new THREE.ConeGeometry(1, 2.2, 8);
   out.trunk = trunk; out.needles = needles;
-  const cx = (B.x0 + B.x1) / 2, cz = (B.z0 + B.z1) / 2;
   const spots = [];
-  for (let i = 0; i < 1200 && spots.length < 320; i++) {
-    const x = cx + (r() - 0.5) * 300, z = cz + (r() - 0.5) * 280;
-    if (z < sea + 6) continue;
-    if (x > B.x0 - 3 && x < B.x1 + 3 && z > B.z0 - 3 && z < B.z1 + 3) continue;
-    if (inRoom(x, z, 3)) continue;
-    spots.push([x, z, 0.8 + r() * 1.3]);
+  for (const I of isl) {
+    const want = I.id === 'caves' ? 30 : 45;
+    let got = 0;
+    for (let i = 0; i < 1500 && got < want; i++) {
+      const x = I.B.x0 - 10 + r() * (I.B.x1 - I.B.x0 + 20), z = I.B.z0 - 10 + r() * (I.B.z1 - I.B.z0 + 20);
+      if (map.rooms.some((rm) => x > rm.rect[0] - 2.5 && x < rm.rect[2] + 2.5 && z > rm.rect[1] - 2.5 && z < rm.rect[3] + 2.5)) continue;
+      const h = I.heightAt ? I.heightAt(x, z) : 0;
+      if (h < 1.5) continue;
+      spots.push([x, z, 0.8 + r() * 1.2, h]);
+      got++;
+    }
   }
   const tiers = 3;
   const tIm = new THREE.InstancedMesh(trunk, mats.bark, spots.length);
   const nIm = new THREE.InstancedMesh(needles, mats.pine, spots.length * tiers);
   const cIm = new THREE.InstancedMesh(needles, mats.snowCap, spots.length * tiers);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
-  spots.forEach(([x, z, s], i) => {
-    const base = Math.max(0, out.groundAt(x, z));
+  spots.forEach(([x, z, s, base], i) => {
     m4.compose(ps.set(x, base + s, z), q.identity(), sc.set(s, s, s)); tIm.setMatrixAt(i, m4);
     for (let k = 0; k < tiers; k++) {
       const w = (1.6 - k * 0.4) * s, y = base + s * (1.8 + k * 1.3);
@@ -675,9 +793,7 @@ function buildForest(out, group, B, sea, r, mats, inRoom) {
   group.add(tIm, nIm, cIm);
 }
 
-// --- far away: the plant and its four stacks; mountains all round ----------------------------
-// (the plant is pulled in toward the eye so it's never past the far plane; the
-// mountains ride along with you like the sky)
+// --- far away: the plant and its four stacks (the final fight); mountains all round -----------
 function buildFar(out, group, map, r) {
   const plant = new THREE.Group();
   const stackHeads = [];
@@ -699,30 +815,19 @@ function buildFar(out, group, map, r) {
     b.position.set(s.x + 10.5, bh / 2, s.z - 5); plant.add(b);
     const low = new THREE.Mesh(new THREE.BoxGeometry(17, 9, 9), new THREE.MeshStandardMaterial({ color: '#6a6c6e', roughness: 0.9, emissive: new THREE.Color('#1a1c20') }));
     low.position.set(s.x + 6, 4.5, s.z + 9); plant.add(low);
-    const win = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.2, 0.6) });
-    for (let k = 0; k < 9; k++) {
-      const w = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), win);
-      w.position.set(s.x + 10.5 - 6 + (k % 3) * 6, 6 + Math.floor(k / 3) * 9 + r() * 2, s.z - 5 + 8.02); plant.add(w);
-    }
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,230,190,0.9)', 'rgba(255,200,140,0)'), color: new THREE.Color(1.2, 1.0, 0.8), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
     glow.scale.set(14, 10, 1); glow.position.set(s.x, 4, s.z + 3); plant.add(glow);
   });
-  const quay = new THREE.Mesh(new THREE.BoxGeometry(120, 2.2, 10), new THREE.MeshStandardMaterial({ color: '#58595a', roughness: 1, emissive: new THREE.Color('#14161a') }));
-  quay.position.set(sx, 1.1, sz + 22); plant.add(quay);
-  for (const [dx, dz, rad] of [[-48, 4, 4], [-55, -2, 3], [52, 12, 4.5], [60, 5, 3.5]]) {
-    const tk = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, rad * 1.6, 24), new THREE.MeshStandardMaterial({ color: '#8a8c8a', roughness: 0.9, emissive: new THREE.Color('#1c1e22') }));
-    tk.position.set(sx + dx, rad * 0.8, sz + dz); plant.add(tk);
-  }
   group.add(plant);
-  out.plant = { group: plant, center: new THREE.Vector3(sx, 0, sz), D: 150 };
+  out.plant = { group: plant, center: new THREE.Vector3(sx, 0, sz), D: 230 };
   out.stackHeads = stackHeads;
 
   const ring = new THREE.Group();
-  const mtnMat = new THREE.MeshStandardMaterial({ color: '#5f6c80', roughness: 1, flatShading: true, emissive: new THREE.Color('#121826') });
-  for (let i = 0; i < 22; i++) {
-    const a = (i / 22) * Math.PI * 2 + (r() - 0.5) * 0.15, d = 196;
-    const north = Math.max(0, -Math.sin(a));        // low out over the sea, so the stacks stand clear
-    const h = (22 + r() * 30) * (1 - north * 0.7), w = 40 + r() * 30;
+  const mtnMat = new THREE.MeshStandardMaterial({ color: '#5f6c80', roughness: 1, flatShading: true, emissive: new THREE.Color('#121826'), fog: false });
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + (r() - 0.5) * 0.15, d = 300;
+    const north = Math.max(0, -Math.sin(a));
+    const h = (34 + r() * 40) * (1 - north * 0.6), w = 50 + r() * 40;
     const geo = new THREE.ConeGeometry(w, h, 9, 3);
     const gpos = geo.attributes.position;
     for (let k = 0; k < gpos.count; k++) {
@@ -741,18 +846,44 @@ function buildFar(out, group, map, r) {
   out.ring = ring;
 }
 
+// --- a launcher pad: a steel disc, a glowing ring in the colour of where it sends you ----------
+function buildPad(out, group, L, map, mats, mv) {
+  const dest = map.launchers.find((q) => q.id === L.to);
+  const isl = (map.islands || []).find((i) => i.rooms.includes(dest.room));
+  const el = isl && isl.element ? ELEMENT[isl.element] : { color: new THREE.Color(2.4, 2.0, 1.2), light: 0xffd9a0 };
+  const g = new THREE.Group();
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.5, 0.12, 32), mats.steel); disc.position.y = 0.06; g.add(disc);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.07, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color }));
+  ring.position.y = 0.14; g.add(ring);
+  const inner = new THREE.Mesh(new THREE.RingGeometry(0.4, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color, transparent: true, opacity: 0.25, depthWrite: false }));
+  inner.position.y = 0.13; g.add(inner);
+  // four pylons, and an arrow on the deck pointing the way you'll go
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2 + Math.PI / 4;
+    const py = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.4, 0.25), mats.iron); py.position.set(Math.cos(a) * 2.7, 0.7, Math.sin(a) * 2.7); g.add(py);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: el.color })); lamp.position.set(Math.cos(a) * 2.7, 1.45, Math.sin(a) * 2.7); g.add(lamp);
+  }
+  const dir = Math.atan2(dest.x - L.x, dest.z - L.z);
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 3).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color }));
+  arrow.scale.y = 0.15; arrow.position.set(Math.sin(dir) * 1.1, 0.15, Math.cos(dir) * 1.1); arrow.rotation.y = dir; g.add(arrow);
+  g.position.set(L.x, 0, L.z);
+  group.add(g);
+  out.spin.push({ obj: inner, rate: 0.8 });
+  mv.addVirtualLight({ x: L.x, y: 1.2, z: L.z }, el.light, 10, 9, 1.6);
+}
 // --- the props (collision comes from the map data) -------------------------------------------
 function buildProps(out, group, world, r, mats, mv) {
+  const add = (geo, mat, x, y, z, ry = 0, parent = group) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m; };
+  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   for (const b of world.propBoxes) {
     const p = b.prop;
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2, w = b.maxX - b.minX, d = b.maxZ - b.minZ, h = b.maxY - b.minY;
+    const alongX = w >= d, L = Math.max(w, d), Wd = Math.min(w, d), ry = alongX ? 0 : Math.PI / 2;
     switch (p.kind) {
       case 'truck': group.add(truck(cx, cz, w, d, p.yaw || 0, mats.snowCap)); break;
       case 'crate': {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), crateMat());
-        m.position.set(cx, b.minY + h / 2, cz); m.rotation.y = 0.05; group.add(m);
-        const cap = new THREE.Mesh(new THREE.BoxGeometry(w * 0.96, 0.06, d * 0.96), mats.snowCap);
-        cap.position.set(cx, b.maxY + 0.03, cz); group.add(cap);
+        add(B(w, h, d), crateMat(), cx, b.minY + h / 2, cz, 0.05);
+        add(B(w * 0.96, 0.06, d * 0.96), mats.snowCap, cx, b.maxY + 0.03, cz);
         break;
       }
       case 'barrel': out.fires.push(fireBarrel(mv, group, cx, cz, h)); break;
@@ -761,25 +892,23 @@ function buildProps(out, group, world, r, mats, mv) {
         const pp = g.attributes.position;
         for (let i = 0; i < pp.count; i++) { const k = 0.8 + r() * 0.4; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); }
         g.computeVertexNormals();
-        const m = new THREE.Mesh(g, mats.rock); m.scale.set(w * 0.6, h * 0.75, d * 0.6); m.position.set(cx, h * 0.38, cz); group.add(m);
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), mats.snowCap);
-        cap.scale.set(w * 0.45, h * 0.25, d * 0.45); cap.position.set(cx, h * 0.82, cz); group.add(cap);
+        const m = add(g, mats.rock, cx, h * 0.38, cz); m.scale.set(w * 0.6, h * 0.75, d * 0.6);
+        const cap = add(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), mats.snowCap, cx, h * 0.82, cz); cap.scale.set(w * 0.45, h * 0.25, d * 0.45);
         break;
       }
       case 'pine': {
         const s = 1.9;
-        const t = new THREE.Mesh(out.trunk, mats.bark); t.position.set(cx, s, cz); t.scale.setScalar(s); group.add(t);
+        add(out.trunk, mats.bark, cx, s, cz).scale.setScalar(s);
         for (let k = 0; k < 4; k++) {
           const ww = (1.8 - k * 0.38) * s, y = s * (1.6 + k * 1.15);
-          const n = new THREE.Mesh(out.needles, mats.pine); n.position.set(cx, y, cz); n.scale.set(ww, s * 1.1, ww); group.add(n);
-          const c = new THREE.Mesh(out.needles, mats.snowCap); c.position.set(cx, y + 0.3 * s, cz); c.scale.set(ww * 0.8, s * 0.65, ww * 0.8); group.add(c);
+          add(out.needles, mats.pine, cx, y, cz).scale.set(ww, s * 1.1, ww);
+          add(out.needles, mats.snowCap, cx, y + 0.3 * s, cz).scale.set(ww * 0.8, s * 0.65, ww * 0.8);
         }
         break;
       }
       case 'sign': {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.4, 0.16), mats.bark);
-        post.position.set(cx, 1.2, cz); group.add(post);
-        const board = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 0.08), [mats.bark, mats.bark, mats.bark, mats.bark, new THREE.MeshStandardMaterial({ map: signTexture(p.text || ['THE STACKS', '']), roughness: 0.9 }), mats.bark]);
+        add(B(0.16, 2.4, 0.16), mats.bark, cx, 1.2, cz);
+        const board = new THREE.Mesh(B(2.2, 1.1, 0.08), [mats.bark, mats.bark, mats.bark, mats.bark, new THREE.MeshStandardMaterial({ map: signTexture(p.text || ['THE STACKS', '']), roughness: 0.9 }), mats.bark]);
         board.position.set(cx, 1.85, cz + 0.12); board.rotation.y = 0.08; group.add(board);
         break;
       }
@@ -789,44 +918,295 @@ function buildProps(out, group, world, r, mats, mv) {
         const pp = g.attributes.position;
         for (let i = 0; i < pp.count; i++) { const k = 0.8 + r() * 0.4; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); }
         g.computeVertexNormals();
-        const m = new THREE.Mesh(g, mats.ice);
-        m.scale.set(w * 0.62, h * 0.75, d * 0.62); m.position.set(cx, h * 0.35, cz); m.rotation.y = r() * 3;
-        group.add(m);
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), mats.snowCap);
-        cap.scale.set(w * 0.4, h * 0.2, d * 0.4); cap.position.set(cx, h * 0.85, cz); group.add(cap);
+        const m = add(g, mats.ice, cx, h * 0.35, cz, r() * 3); m.scale.set(w * 0.62, h * 0.75, d * 0.62);
+        add(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), mats.snowCap, cx, h * 0.85, cz).scale.set(w * 0.4, h * 0.2, d * 0.4);
         break;
       }
       case 'boat': {
-        // a rowboat pulled up and turned over, snowed on
         const g = new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-        const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#3c4a52', roughness: 0.9 }));
-        m.scale.set(w / 2, h, d / 2); m.position.set(cx, 0, cz); group.add(m);
-        const s = new THREE.Mesh(g, mats.snowCap); s.scale.set(w * 0.42, h * 0.5, d * 0.42); s.position.set(cx, h * 0.62, cz); group.add(s);
+        add(g, new THREE.MeshStandardMaterial({ color: '#3c4a52', roughness: 0.9 }), cx, 0, cz).scale.set(w / 2, h, d / 2);
+        add(g, mats.snowCap, cx, h * 0.62, cz).scale.set(w * 0.42, h * 0.5, d * 0.42);
         break;
       }
       case 'rack': {
-        // a fish-drying rack: two A-frames and a pole, fish hanging off it
-        const alongX = w > d, L = alongX ? w : d;
         for (const s of [-1, 1]) for (const k of [-1, 1]) {
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, h + 0.2, 0.08), mats.wood);
-          leg.position.set(alongX ? cx + s * L / 2 : cx + k * 0.25, h / 2, alongX ? cz + k * 0.25 : cz + s * L / 2);
+          const leg = add(B(0.08, h + 0.2, 0.08), mats.wood, alongX ? cx + s * L / 2 : cx + k * 0.25, h / 2, alongX ? cz + k * 0.25 : cz + s * L / 2);
           if (alongX) leg.rotation.x = k * 0.16; else leg.rotation.z = k * 0.16;
-          group.add(leg);
         }
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, L, 6), mats.wood);
-        pole.position.set(cx, h, cz); if (alongX) pole.rotation.z = Math.PI / 2; else pole.rotation.x = Math.PI / 2;
-        group.add(pole);
+        const pole = add(new THREE.CylinderGeometry(0.04, 0.04, L, 6), mats.wood, cx, h, cz);
+        if (alongX) pole.rotation.z = Math.PI / 2; else pole.rotation.x = Math.PI / 2;
         const fish = new THREE.MeshStandardMaterial({ color: '#8a8478', roughness: 0.6, metalness: 0.3 });
-        for (let a = -L / 2 + 0.3; a < L / 2; a += 0.35) {
-          const f = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.12), fish);
-          f.position.set(alongX ? cx + a : cx, h - 0.28, alongX ? cz : cz + a); f.rotation.y = r();
-          group.add(f);
+        for (let a = -L / 2 + 0.3; a < L / 2; a += 0.35) add(B(0.05, 0.42, 0.12), fish, alongX ? cx + a : cx, h - 0.28, alongX ? cz : cz + a, r());
+        break;
+      }
+      case 'anvil': buildAnvil(out, group, cx, cz, w, h, mats, mv); break;
+      case 'shrine': buildShrine(out, group, cx, cz, h, p.element, mats, mv); break;
+      case 'wreck': {
+        // twisted plates from whatever came through the portal with them
+        for (let k = 0; k < 5; k++) {
+          const m = add(B(1 + r() * (L * 0.6), 0.12, 0.6 + r() * Wd * 0.6), mats.iron, cx + (r() - 0.5) * w * 0.6, 0.3 + r() * h * 0.7, cz + (r() - 0.5) * d * 0.6, r() * 3);
+          m.rotation.x = (r() - 0.5) * 1.4; m.rotation.z = (r() - 0.5) * 1.2;
         }
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(120,255,160,1)', 'rgba(40,200,120,0)'), color: new THREE.Color(0.6, 2.2, 1.0), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+        glow.scale.setScalar(2.2); glow.position.set(cx, 0.6, cz); group.add(glow);
+        out.glows.push({ s: glow, base: 2.2, rate: 3 + r() * 2 });
+        break;
+      }
+      case 'tent': {
+        const g = new THREE.Group();
+        const slope = Math.hypot(Wd / 2, h), ang = Math.atan2(h, Wd / 2);
+        for (const s of [-1, 1]) {
+          const pl = new THREE.Mesh(B(L, 0.05, slope), mats.canvas); pl.position.set(0, h / 2, s * Wd / 4); pl.rotation.x = s * ang; g.add(pl);
+          const sn = new THREE.Mesh(B(L * 0.95, 0.06, slope * 0.6), mats.snowCap); sn.position.set(0, h * 0.72, s * Wd / 6); sn.rotation.x = s * ang; g.add(sn);
+        }
+        g.position.set(cx, 0, cz); g.rotation.y = ry; group.add(g);
+        break;
+      }
+      case 'telescope': {
+        add(new THREE.CylinderGeometry(1.3, 1.6, 0.8, 16), mats.stone, cx, 0.4, cz);
+        const tube = add(new THREE.CylinderGeometry(0.45, 0.6, 5.2, 18), new THREE.MeshStandardMaterial({ color: '#8a6a3a', roughness: 0.4, metalness: 0.8 }), cx, 2.6, cz);
+        tube.rotation.z = 0.7; tube.rotation.y = 0.6;
+        break;
+      }
+      case 'shelves': {
+        const g = new THREE.Group();
+        for (const y of [0.05, 1.0, 2.0, 3.0]) { const s = new THREE.Mesh(B(L, 0.06, Wd), mats.steel); s.position.y = y; g.add(s); }
+        for (let a = -L / 2; a <= L / 2 + 0.01; a += L / Math.max(1, Math.round(L / 2.5))) for (const k of [-1, 1]) { const u = new THREE.Mesh(B(0.06, h, 0.06), mats.steel); u.position.set(a, h / 2, k * Wd / 2); g.add(u); }
+        for (let i = 0; i < Math.round(L * 1.5); i++) { const c = new THREE.Mesh(B(0.5 + r() * 0.4, 0.4 + r() * 0.3, Wd * 0.8), crateMat()); c.position.set(-L / 2 + 0.4 + r() * (L - 0.8), [0.3, 1.25, 2.25][Math.floor(r() * 3)], 0); g.add(c); }
+        g.position.set(cx, 0, cz); g.rotation.y = ry; group.add(g);
+        break;
+      }
+      case 'boiler': {
+        const t = add(new THREE.CylinderGeometry(Wd / 2, Wd / 2, L, 20), mats.hullRed, cx, h / 2, cz); t.rotation.z = Math.PI / 2; t.rotation.y = ry;
+        add(new THREE.CylinderGeometry(0.3, 0.3, 3, 10), mats.iron, cx, h + 1.2, cz);
+        break;
+      }
+      case 'heliwreck': {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CapsuleGeometry(1.1, 3.2, 6, 12).rotateZ(Math.PI / 2), mats.olive); body.position.set(0, 1.2, 0); body.rotation.x = 0.25; g.add(body);
+        const boom = new THREE.Mesh(B(4.2, 0.4, 0.4), mats.olive); boom.position.set(-3.6, 1.6, 0.5); boom.rotation.z = 0.12; boom.rotation.y = 0.3; g.add(boom);
+        for (let k = 0; k < 3; k++) { const bl = new THREE.Mesh(B(4.5, 0.05, 0.25), mats.iron); bl.position.set(0.5, 2.6 - k * 0.2, 0); bl.rotation.set((r() - 0.5) * 0.6, k * 2.1, (r() - 0.5) * 0.5); g.add(bl); }
+        const sn = new THREE.Mesh(B(3, 0.1, 1.6), mats.snowCap); sn.position.set(0.3, 2.35, 0); g.add(sn);
+        g.position.set(cx, 0, cz); g.rotation.y = alongX ? 0 : Math.PI / 2; group.add(g);
+        break;
+      }
+      case 'radiotower': {
+        const g = new THREE.Group();
+        const lines = [];
+        const base = Math.min(w, d) / 2, topW = 0.4;
+        const corner = (k, y) => { const s = base + (topW - base) * (y / h); return [(k & 1 ? 1 : -1) * s, y, (k & 2 ? 1 : -1) * s]; };
+        for (let k = 0; k < 4; k++) { const a = corner(k, 0), b2 = corner(k, h); lines.push(...a, ...b2); }
+        for (let y = 0; y < h; y += 2.5) for (const [k1, k2] of [[0, 1], [1, 3], [3, 2], [2, 0]]) { lines.push(...corner(k1, y), ...corner(k2, y + 2.5)); lines.push(...corner(k1, y + 2.5), ...corner(k2, y + 2.5)); }
+        const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+        g.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#8a2a22' })));
+        const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,80,60,1)', 'rgba(255,20,10,0)'), color: new THREE.Color(3, 0.4, 0.3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+        lamp.scale.setScalar(2.4); lamp.position.y = h + 0.5; g.add(lamp);
+        out.stackHeads.push({ lamp, phase: 0.5 });
+        g.position.set(cx, 0, cz); group.add(g);
+        break;
+      }
+      case 'dish': {
+        add(new THREE.CylinderGeometry(0.25, 0.4, h * 0.6, 10), mats.steel, cx, h * 0.3, cz);
+        const bowl = add(new THREE.SphereGeometry(L / 2, 20, 10, 0, Math.PI * 2, 0, Math.PI / 3.2), mats.white, cx, h * 0.62, cz);
+        bowl.rotation.x = -1.0; bowl.material.side = THREE.DoubleSide;
+        break;
+      }
+      case 'generator': {
+        add(B(w, h * 0.8, d), mats.olive, cx, h * 0.4, cz);
+        add(B(w * 0.3, h * 0.5, d * 0.9), new THREE.MeshStandardMaterial({ color: '#1c1c1e', roughness: 0.5 }), cx - w * 0.3, h * 0.45, cz);
+        add(new THREE.CylinderGeometry(0.12, 0.12, 1.4, 8), mats.iron, cx + w * 0.3, h + 0.3, cz);
+        break;
+      }
+      case 'labbench': {
+        add(B(w, 0.1, d), mats.white, cx, h, cz);
+        add(B(w * 0.96, h - 0.1, d * 0.9), mats.steel, cx, (h - 0.1) / 2, cz);
+        for (let i = 0; i < 5; i++) { const f = add(new THREE.CylinderGeometry(0.07, 0.1, 0.3, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3 + r(), 1.4, 0.6 + r()) }), cx - w / 2 + 0.6 + r() * (w - 1.2), h + 0.2, cz + (r() - 0.5) * d * 0.6); void f; }
+        break;
+      }
+      case 'servers': {
+        const g = new THREE.Group();
+        const n = Math.max(1, Math.round(L / 1.1));
+        for (let i = 0; i < n; i++) {
+          const rack = new THREE.Mesh(B(1.0, h, Wd), new THREE.MeshStandardMaterial({ color: '#1a1c20', roughness: 0.5, metalness: 0.4 }));
+          rack.position.set(-L / 2 + 0.55 + i * (L - 1.1) / Math.max(1, n - 1), h / 2, 0); g.add(rack);
+          for (let k = 0; k < 6; k++) { const led = new THREE.Mesh(B(0.05, 0.05, 0.02), mats.screen); led.position.set(rack.position.x - 0.3 + r() * 0.6, 0.4 + k * 0.32, Wd / 2 + 0.01); g.add(led); }
+        }
+        g.position.set(cx, 0, cz); g.rotation.y = ry; group.add(g);
+        break;
+      }
+      case 'teslacoil': {
+        add(new THREE.CylinderGeometry(w * 0.5, w * 0.6, 0.6, 16), mats.iron, cx, 0.3, cz);
+        add(new THREE.CylinderGeometry(w * 0.22, w * 0.28, h - 1.6, 14), new THREE.MeshStandardMaterial({ color: '#b87333', roughness: 0.35, metalness: 0.9 }), cx, 0.6 + (h - 1.6) / 2, cz);
+        add(new THREE.TorusGeometry(w * 0.45, w * 0.16, 10, 24).rotateX(Math.PI / 2), mats.steel, cx, h - 0.8, cz);
+        const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(220,190,255,1)', 'rgba(150,90,255,0)'), color: new THREE.Color(2, 1.2, 3.2), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+        spark.scale.setScalar(2.4); spark.position.set(cx, h - 0.6, cz); group.add(spark);
+        out.glows.push({ s: spark, base: 2.4, rate: 17, crackle: true });
+        mv.addVirtualLight({ x: cx, y: h - 0.6, z: cz }, 0xb58aff, 12, 10, 1.6);
+        break;
+      }
+      case 'fueltank': {
+        const t = add(new THREE.CylinderGeometry(Wd / 2 * 0.95, Wd / 2 * 0.95, L, 20), mats.white, cx, h / 2 + 0.2, cz); t.rotation.z = Math.PI / 2; t.rotation.y = ry;
+        add(B(L * 0.9, 0.1, Wd * 0.7), mats.snowCap, cx, h + 0.15, cz, ry);
+        break;
+      }
+      case 'snowcat': {
+        const g = new THREE.Group();
+        for (const s of [-1, 1]) { const tr = new THREE.Mesh(B(L, 0.8, 0.7), mats.iron); tr.position.set(0, 0.4, s * (Wd / 2 - 0.35)); g.add(tr); }
+        const body = new THREE.Mesh(B(L * 0.9, 0.9, Wd * 0.9), new THREE.MeshStandardMaterial({ color: '#b8401c', roughness: 0.8 })); body.position.y = 1.25; g.add(body);
+        const cab = new THREE.Mesh(B(L * 0.4, 0.9, Wd * 0.85), body.material); cab.position.set(L * 0.2, 2.0, 0); g.add(cab);
+        const sn = new THREE.Mesh(B(L * 0.4, 0.1, Wd * 0.8), mats.snowCap); sn.position.set(L * 0.2, 2.5, 0); g.add(sn);
+        g.position.set(cx, 0, cz); g.rotation.y = ry; group.add(g);
+        break;
+      }
+      case 'biplane': {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(B(L * 0.75, 1.0, 1.0), new THREE.MeshStandardMaterial({ color: '#5a4a30', roughness: 0.9 })); body.position.set(0, 0.8, 0); body.rotation.z = -0.18; g.add(body);
+        const wingMat = new THREE.MeshStandardMaterial({ color: '#6a2a20', roughness: 0.9 });
+        const w1 = new THREE.Mesh(B(1.6, 0.08, Wd * 1.0), wingMat); w1.position.set(L * 0.12, 0.7, 0); w1.rotation.x = 0.12; g.add(w1);
+        const w2 = new THREE.Mesh(B(1.6, 0.08, Wd * 0.55), wingMat); w2.position.set(L * 0.12, 2.0, Wd * 0.18); w2.rotation.x = -0.4; w2.rotation.z = 0.2; g.add(w2);
+        const tail = new THREE.Mesh(B(0.9, 0.9, 0.1), wingMat); tail.position.set(-L * 0.38, 1.4, 0); g.add(tail);
+        const prop = new THREE.Mesh(B(0.1, 2.2, 0.18), mats.darkWood); prop.position.set(L * 0.4, 0.5, 0); prop.rotation.x = 1.1; g.add(prop);
+        g.position.set(cx, 0, cz); g.rotation.y = alongX ? 0 : Math.PI / 2; group.add(g);
+        out.fires.push(fireBarrel(mv, group, cx + 0.8, cz + 0.4, 0.6));
+        break;
+      }
+      case 'ruinwall': {
+        const n = Math.max(2, Math.round(L / 0.7));
+        for (let i = 0; i < n; i++) {
+          const hh = h * (0.4 + r() * 0.6);
+          add(B(L / n * 0.98, hh, Wd), mats.stone, alongX ? b.minX + (i + 0.5) * L / n : cx, hh / 2, alongX ? cz : b.minZ + (i + 0.5) * L / n);
+        }
+        break;
+      }
+      case 'fieldgun': {
+        const g = new THREE.Group();
+        for (const s of [-1, 1]) { const wh = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 6, 16), mats.darkWood); wh.position.set(0, 0.65, s * 0.9); g.add(wh); }
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, L * 0.8, 10), mats.iron); barrel.rotation.z = Math.PI / 2 - 0.35; barrel.position.set(L * 0.15, 1.2, 0); g.add(barrel);
+        const shield = new THREE.Mesh(B(0.1, 1.0, 1.8), mats.olive); shield.position.set(0.2, 1.0, 0); g.add(shield);
+        const trail = new THREE.Mesh(B(L * 0.5, 0.12, 0.2), mats.olive); trail.position.set(-L * 0.25, 0.35, 0); trail.rotation.z = 0.2; g.add(trail);
+        g.position.set(cx, 0, cz); g.rotation.y = alongX ? 0 : Math.PI / 2; group.add(g);
+        break;
+      }
+      case 'tank': {
+        const sh = new THREE.Shape([new THREE.Vector2(-L / 2, 0.3), new THREE.Vector2(-L / 2 + 1.2, 0), new THREE.Vector2(L / 2 - 1.2, 0), new THREE.Vector2(L / 2, 0.6), new THREE.Vector2(L / 2 - 0.6, h), new THREE.Vector2(-L / 2 + 0.6, h)]);
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: Wd, bevelEnabled: false }).translate(0, 0, -Wd / 2);
+        const m = add(geo, mats.olive, cx, 0, cz, ry);
+        void m;
+        add(B(L * 0.5, 0.12, Wd * 0.8), mats.snowCap, cx, h + 0.06, cz, ry);
+        break;
+      }
+      case 'cots': {
+        const n = Math.max(1, Math.round(L / 2.3));
+        for (let i = 0; i < n; i++) {
+          const a = -L / 2 + (i + 0.5) * L / n;
+          add(B(alongX ? 0.8 : Wd, h * 0.4, alongX ? Wd : 0.8), mats.olive, alongX ? cx + a : cx, h * 0.5, alongX ? cz : cz + a);
+          add(B(alongX ? 0.85 : Wd * 0.9, 0.08, alongX ? Wd * 0.9 : 0.85), new THREE.MeshStandardMaterial({ color: '#8a7a5a', roughness: 1 }), alongX ? cx + a : cx, h * 0.72, alongX ? cz : cz + a);
+        }
+        break;
+      }
+      case 'standing': {
+        const g = new THREE.BoxGeometry(w, h, d, 1, 3, 1);
+        const pp = g.attributes.position;
+        for (let i = 0; i < pp.count; i++) { if (pp.getY(i) > 0) { pp.setX(i, pp.getX(i) * 0.75); pp.setZ(i, pp.getZ(i) * 0.75); } }
+        g.computeVertexNormals();
+        add(g, new THREE.MeshStandardMaterial({ map: CT.runeTexture(31 + Math.floor(cx), '#b8ffd0'), emissive: new THREE.Color('#ffffff'), emissiveMap: CT.runeTexture(31 + Math.floor(cx), '#b8ffd0'), emissiveIntensity: 0.8, roughness: 1 }), cx, h / 2, cz);
+        add(B(w * 0.8, 0.1, d * 0.8), mats.snowCap, cx, h + 0.05, cz);
+        break;
+      }
+      case 'crystal': {
+        const cm = new THREE.MeshStandardMaterial({ color: '#8fe0ff', roughness: 0.15, metalness: 0.1, emissive: new THREE.Color('#2a9adf'), emissiveIntensity: 1.2, transparent: true, opacity: 0.88, flatShading: true });
+        for (let k = 0; k < 5; k++) {
+          const s = h * (0.45 + r() * 0.55);
+          const c = add(new THREE.OctahedronGeometry(1, 0), cm, cx + (r() - 0.5) * w * 0.5, s * 0.45, cz + (r() - 0.5) * d * 0.5, r() * 3);
+          c.scale.set(w * 0.22, s * 0.6, d * 0.22); c.rotation.z = (r() - 0.5) * 0.5;
+        }
+        mv.addVirtualLight({ x: cx, y: h * 0.6, z: cz }, 0x7ad0ff, 26, 15, 1.5);
+        break;
+      }
+      case 'icefall': {
+        const g = new THREE.CylinderGeometry(1, 1.2, 1, 14, 6, true);
+        const pp = g.attributes.position;
+        for (let i = 0; i < pp.count; i++) { const k = 0.8 + r() * 0.35; pp.setX(i, pp.getX(i) * k); pp.setZ(i, pp.getZ(i) * k); }
+        g.computeVertexNormals();
+        const m = add(g, mats.ice, cx, h / 2, cz); m.scale.set(w / 2, h, d / 2);
+        add(new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mats.ice, cx, 0, cz).scale.set(w * 0.9, 0.6, d * 0.7);
+        break;
+      }
+      case 'minecart': {
+        add(B(w, h * 0.7, d), mats.iron, cx, h * 0.55, cz);
+        for (const s of [-1, 1]) for (const k of [-1, 1]) add(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 10).rotateX(Math.PI / 2), mats.darkWood, cx + s * w * 0.35, 0.2, cz + k * d * 0.5);
+        add(B(w * 0.85, 0.25, d * 0.85), mats.rock, cx, h * 0.92, cz);
+        // the rails it sits on
+        for (const s of [-1, 1]) add(B(alongX ? L + 6 : 0.08, 0.06, alongX ? 0.08 : L + 6), mats.iron, alongX ? cx : cx + s * 0.45, 0.03, alongX ? cz + s * 0.45 : cz);
+        break;
+      }
+      case 'shed': {
+        add(B(w, h, d), new THREE.MeshStandardMaterial({ map: tinTexture(), roughness: 0.7, metalness: 0.4 }), cx, h / 2, cz);
+        add(B(w + 0.6, 0.15, d + 0.6), mats.snowCap, cx, h + 0.08, cz);
+        add(B(1.2, 2.0, 0.05), mats.darkWood, cx + w / 2 - 1.2, 1.0, cz + d / 2 + 0.03);
         break;
       }
       default: break;
     }
   }
+}
+
+// THE ANVIL: a stepped stone base, a great anvil of black iron on a carved
+// pillar, and four sockets glowing with the four elements (each facing the
+// island its War Hammer comes from). The rituals will come together here.
+function buildAnvil(out, group, cx, cz, w, h, mats, mv) {
+  const g = new THREE.Group();
+  const tiers = [[w, 1.6], [w * 0.82, 1.4], [w * 0.64, 1.2]];
+  let y = 0;
+  for (const [s, th] of tiers) { const t = new THREE.Mesh(new THREE.BoxGeometry(s, th, s), mats.stone); t.position.y = y + th / 2; g.add(t); y += th; const sn = new THREE.Mesh(new THREE.BoxGeometry(s * 0.98, 0.08, s * 0.98), mats.snowCap); sn.position.y = y + 0.02; g.add(sn); }
+  const rune = CT.runeTexture(77, '#ffd27a');
+  const pillar = new THREE.Mesh(new THREE.BoxGeometry(w * 0.36, h * 0.42, w * 0.36), new THREE.MeshStandardMaterial({ map: rune, emissive: new THREE.Color('#ffffff'), emissiveMap: rune, emissiveIntensity: 0.9, roughness: 1 }));
+  pillar.position.y = y + h * 0.21; g.add(pillar);
+  y += h * 0.42;
+  // the anvil itself: feet, waist, face and horn
+  const iron = new THREE.MeshStandardMaterial({ color: '#1e2024', roughness: 0.45, metalness: 0.9 });
+  const feet = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 1.0, w * 0.42), iron); feet.position.y = y + 0.5; g.add(feet);
+  const waist = new THREE.Mesh(new THREE.BoxGeometry(w * 0.34, 1.8, w * 0.26), iron); waist.position.y = y + 1.9; g.add(waist);
+  const face = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.5, w * 0.34), iron); face.position.y = y + 3.55; g.add(face);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(w * 0.17, w * 0.45, 16).rotateZ(-Math.PI / 2), iron); horn.position.set(w * 0.43 + w * 0.22, y + 3.7, 0); g.add(horn);
+  const sn = new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.1, w * 0.32), mats.snowCap); sn.position.y = y + 4.33; g.add(sn);
+  // the four sockets (N ice, E lightning, S fire, W wind)
+  const socket = [['ice', 0, -1], ['lightning', 1, 0], ['fire', 0, 1], ['wind', -1, 0]];
+  for (const [el, sx, sz] of socket) {
+    const E = ELEMENT[el];
+    const px = sx * w * 0.41, pz = sz * w * 0.41, py = 3.2;
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.45, 0.5, 12), iron); cup.position.set(px, py, pz); g.add(cup);
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), new THREE.MeshBasicMaterial({ color: E.color })); gem.position.set(px, py + 0.6, pz); g.add(gem);
+    out.spin.push({ obj: gem, rate: 1.2 });
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: E.color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.setScalar(2.4); halo.position.set(px, py + 0.6, pz); g.add(halo);
+    out.glows.push({ s: halo, base: 2.4, rate: 1.5 });
+    mv.addVirtualLight({ x: cx + px * 1.25, y: py + 0.6, z: cz + pz * 1.25 }, E.light, 14, 12, 1.6);
+  }
+  g.position.set(cx, 0, cz);
+  group.add(g);
+  // a ring of runes cut into the floor round it
+  const ringTex = CT.runeTexture(19, '#ffd27a');
+  const ring = new THREE.Mesh(new THREE.RingGeometry(w * 0.62, w * 0.7, 64, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: ringTex, color: new THREE.Color(1.4, 1.1, 0.6), transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  ring.position.set(cx, 0.02, cz); group.add(ring);
+  out.spin.push({ obj: ring, rate: 0.05 });
+}
+
+// An element's shrine: a dark obelisk with the element burning in it.
+function buildShrine(out, group, cx, cz, h, element, mats, mv) {
+  const E = ELEMENT[element] || ELEMENT.fire;
+  const g = new THREE.BoxGeometry(1.2, h, 1.2, 1, 2, 1);
+  const pp = g.attributes.position;
+  for (let i = 0; i < pp.count; i++) if (pp.getY(i) > 0) { pp.setX(i, pp.getX(i) * 0.6); pp.setZ(i, pp.getZ(i) * 0.6); }
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mats.darkStone); m.position.set(cx, h / 2, cz); group.add(m);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.4, 8), mats.stone); base.position.set(cx, 0.2, cz); group.add(base);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), new THREE.MeshBasicMaterial({ color: E.color })); gem.position.set(cx, h + 0.6, cz); group.add(gem);
+  out.spin.push({ obj: gem, rate: 0.9, bob: h + 0.6 });
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: E.color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.setScalar(3); halo.position.set(cx, h + 0.6, cz); group.add(halo);
+  out.glows.push({ s: halo, base: 3, rate: 2 });
+  mv.addVirtualLight({ x: cx, y: h + 0.6, z: cz }, E.light, 16, 12, 1.6);
 }
 
 let crateTex = null;
@@ -939,20 +1319,20 @@ function updateCrust(W, dt, eye, time) {
   P.group.position.set(eye.x * (1 - k), eye.y * (1 - k), eye.z * (1 - k));
   // the snow box rides along with the camera; flakes wrap round inside it
   const S = W.snow, p = S.pos, b = S.box;
-  if (!S.placed) { for (let i = 0; i < p.length; i += 3) { p[i] += eye.x; p[i + 2] += eye.z; } S.placed = true; }
+  if (!S.placed) { for (let i = 0; i < p.length; i += 3) { p[i] += eye.x; p[i + 2] += eye.z; p[i + 1] += eye.y - 4; } S.placed = true; }
   const end = S.count * 3;
   for (let i = 0; i < end; i += 3) {
     const kk = i / 3;
     p[i + 1] -= dt * (1.1 + (kk % 7) * 0.12);
     p[i] += dt * (0.6 + Math.sin(time * 0.7 + S.drift[kk]) * 0.5);
     p[i + 2] += dt * Math.cos(time * 0.5 + S.drift[kk]) * 0.3;
-    const lx = p[i] - eye.x, lz = p[i + 2] - eye.z;
+    const lx = p[i] - eye.x, lz = p[i + 2] - eye.z, ly = p[i + 1] - eye.y;
     if (lx > b.x / 2) p[i] -= b.x; else if (lx < -b.x / 2) p[i] += b.x;
     if (lz > b.z / 2) p[i + 2] -= b.z; else if (lz < -b.z / 2) p[i + 2] += b.z;
-    if (p[i + 1] < 0) p[i + 1] += b.y;
+    if (ly < -8) p[i + 1] += b.y; else if (ly > b.y - 8) p[i + 1] -= b.y;
   }
   S.flakes.geometry.attributes.position.needsUpdate = true;
-  // aviation lights blink; the fires dance; the lighthouse turns
+  // aviation lights blink; the fires dance; the lighthouse turns; things glow and spin
   for (const h of W.stackHeads) h.lamp.material.opacity = (Math.sin((time + h.phase) * Math.PI) > 0.2 ? 1 : 0.15);
   for (const F of W.fires) {
     F.flames.forEach((s, i) => {
@@ -965,6 +1345,11 @@ function updateCrust(W, dt, eye, time) {
     F.light.level = 0.8 + Math.sin(time * 13) * 0.1 + Math.sin(time * 7.3) * 0.1;
   }
   for (const L of W.beams) { L.pivot.rotation.y = time * 0.5; L.halo.material.opacity = 0.7 + Math.sin(time) * 0.3; }
+  for (const s of W.spin) { s.obj.rotation.y += dt * s.rate; if (s.bob) s.obj.position.y = s.bob + Math.sin(time * 1.4) * 0.15; }
+  for (const gl of W.glows) {
+    const f = gl.crackle ? (Math.sin(time * gl.rate) > 0.3 ? 1 : 0.35) * (0.7 + Math.random() * 0.5) : 0.8 + Math.sin(time * gl.rate) * 0.2;
+    gl.s.scale.setScalar(gl.base * f);
+  }
   // chimney and funnel smoke
   for (const sm of W.smoke) {
     if (!sm.puffs) {
