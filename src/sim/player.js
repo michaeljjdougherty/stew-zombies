@@ -155,7 +155,7 @@ export function updatePlayer(sim, p, cmd, dt) {
 
   // --- move & collide
   const before = { x: p.pos.x, z: p.pos.z };
-  const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers], cfg.gravity);
+  const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain], cfg.gravity);
   if (res.landed) {
     p.landSlowTimer = res.impact > 4 ? cfg.landSlowdownTime : 0;
     p.lastLandImpact = res.impact;
@@ -222,7 +222,9 @@ function updateInteraction(sim, p, cmd, dt) {
   let best = null, bestD = Infinity;
   const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
   const cosLook = Math.cos(sim.cfg.interaction.lookAngle * Math.PI / 180);
+  const tall = !!sim.mapData.terrainBoxes;   // (a map with floors above floors: not through the ceiling)
   for (const it of sim.interactables) {
+    if (tall && it.pos && it.pos.y != null && Math.abs(it.pos.y - p.pos.y) > 2.6) continue;
     const d = it.distanceTo(sim, p);
     if (d > it.range || d >= bestD || !it.canUse(sim, p)) continue;
     if (it.requireLook) {

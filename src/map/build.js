@@ -3,6 +3,7 @@
 // Pure JS (no three.js) so the simulation and a future server can use it.
 // =============================================================================
 import { CONFIG } from '../config.js';
+import { BoxGrid } from '../sim/boxgrid.js';
 
 const box = (minX, minY, minZ, maxX, maxY, maxZ, kind = 'wall', extra = {}) =>
   ({ minX, minY, minZ, maxX, maxY, maxZ, kind, ...extra });
@@ -44,6 +45,7 @@ function buildSide(room, side, spec, openings, T, pieces) {
     const [ra, rb] = Array.isArray(rg) ? rg : [rg.from, rg.to];
     const o = Array.isArray(rg) ? {} : rg;
     const H = o.height ?? spec.height ?? room.height;
+    const Y = room.y || 0;   // (a room up on a hill, or a second floor)
     const tag = { room: room.id, side, style: o.style || spec.style || room.style };
     const out = o.outStyle || spec.outStyle || room.outStyle;
     if (out) tag.outStyle = out;
@@ -52,12 +54,12 @@ function buildSide(room, side, spec, openings, T, pieces) {
     let cursor = ra;
     for (const o of ops) {
       const a = o.center - o.width / 2, b = o.center + o.width / 2;
-      if (a > cursor) pieces.push(slab(si, T, cursor, a, 0, H, 'wall', tag));
-      if (o.bottom > 0) pieces.push(slab(si, T, a, b, 0, o.bottom, 'sill', { ...tag, openingId: o.id }));
-      if (o.top < H) pieces.push(slab(si, T, a, b, o.top, H, 'lintel', { ...tag, openingId: o.id }));
+      if (a > cursor) pieces.push(slab(si, T, cursor, a, Y, Y + H, 'wall', tag));
+      if (o.bottom > 0) pieces.push(slab(si, T, a, b, Y, Y + o.bottom, 'sill', { ...tag, openingId: o.id }));
+      if (o.top < H) pieces.push(slab(si, T, a, b, Y + o.top, Y + H, 'lintel', { ...tag, openingId: o.id }));
       cursor = b;
     }
-    if (cursor < rb) pieces.push(slab(si, T, cursor, rb, 0, H, 'wall', tag));
+    if (cursor < rb) pieces.push(slab(si, T, cursor, rb, Y, Y + H, 'wall', tag));
   }
 }
 
@@ -108,11 +110,12 @@ export function buildMap(map, cfg = CONFIG) {
   const doors = map.doors.map((d) => {
     const room = roomById.get(d.room);
     const si = sideInfo(room.rect, d.side, T);
-    const b = slab(si, T, d.at - d.width / 2, d.at + d.width / 2, 0, d.height, 'door', { doorId: d.id });
+    const Y = room.y || 0;
+    const b = slab(si, T, d.at - d.width / 2, d.at + d.width / 2, Y, Y + d.height, 'door', { doorId: d.id });
     doorBoxes.set(d.id, b);
     const p = wallPoint(room.rect, d.side, d.at);
     const mid = { x: p.x - si.normal.x * T / 2, z: p.z - si.normal.z * T / 2 };
-    return { ...d, box: b, center: mid, normal: si.normal, axis: si.axis };
+    return { ...d, box: b, center: { ...mid, y: Y }, normal: si.normal, axis: si.axis };
   });
 
   // --- windows
@@ -121,13 +124,14 @@ export function buildMap(map, cfg = CONFIG) {
     const si = sideInfo(room.rect, w.side, T);
     const c = wallPoint(room.rect, w.side, w.at);
     const n = si.normal;
+    const Y = room.y || 0;
     return {
       id: w.id, room: w.room, zone: room.zone, side: w.side, kind: w.kind || 'window',
-      center: { x: c.x, y: 0, z: c.z },
+      center: { x: c.x, y: Y, z: c.z },
       normal: { x: n.x, y: 0, z: n.z },
-      exterior: { x: c.x - n.x * (T + 0.55), y: 0, z: c.z - n.z * (T + 0.55) },
-      interior: { x: c.x + n.x * 0.9, y: 0, z: c.z + n.z * 0.9 },
-      blocker: slab(si, T, w.at - wc.width / 2, w.at + wc.width / 2, 0, room.height, 'windowBlock', { windowId: w.id }),
+      exterior: { x: c.x - n.x * (T + 0.55), y: Y, z: c.z - n.z * (T + 0.55) },
+      interior: { x: c.x + n.x * 0.9, y: Y, z: c.z + n.z * 0.9 },
+      blocker: slab(si, T, w.at - wc.width / 2, w.at + wc.width / 2, Y, Y + room.height, 'windowBlock', { windowId: w.id }),
     };
   });
 
@@ -136,7 +140,7 @@ export function buildMap(map, cfg = CONFIG) {
     const room = roomById.get(wb.room);
     const si = sideInfo(room.rect, wb.side, T);
     const p = wallPoint(room.rect, wb.side, wb.at);
-    return { id: 'wall_' + wb.weapon + '_' + i, weapon: wb.weapon, room: wb.room, zone: room.zone, pos: { x: p.x, y: wb.y, z: p.z }, normal: si.normal };
+    return { id: 'wall_' + wb.weapon + '_' + i, weapon: wb.weapon, room: wb.room, zone: room.zone, pos: { x: p.x, y: (room.y || 0) + wb.y, z: p.z }, normal: si.normal };
   });
 
   // each box spot gets a collider; only the one the box is at is solid
@@ -144,7 +148,8 @@ export function buildMap(map, cfg = CONFIG) {
     const along = Math.abs(Math.sin(b.yaw)) > 0.5; // box's long side runs along z
     const hw = 0.55, hd = 0.29;
     const hx = along ? hd : hw, hz = along ? hw : hd;
-    return { ...b, zone: roomById.get(b.room).zone, collider: box(b.x - hx, 0, b.z - hz, b.x + hx, 0.62, b.z + hz, 'boxBase', { spot: b.id }) };
+    const Y = b.y ?? (roomById.get(b.room).y || 0);
+    return { ...b, y: Y, zone: roomById.get(b.room).zone, collider: box(b.x - hx, Y, b.z - hz, b.x + hx, Y + 0.62, b.z + hz, 'boxBase', { spot: b.id }) };
   });
   const startSpot = boxSpots.find((b) => b.start) || boxSpots[0];
 
@@ -201,6 +206,8 @@ export function buildMap(map, cfg = CONFIG) {
     navRegions: map.navRegions,
     portals: map.portals,
     floorY: 0,
+    // sculpted ground (Call of the Crust): thousands of boxes, kept in a grid
+    terrain: new BoxGrid(map.terrainBoxes || []),
   };
 }
 

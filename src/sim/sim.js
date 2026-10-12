@@ -242,6 +242,11 @@ export class GameSim {
         if (any) break;
       }
     }
+    // the sculpted ground
+    if (this.world.terrain.boxes.length) {
+      const h = this.world.terrain.raycast(o, d, best ? best.t : maxT);
+      if (h && (!best || h.t < best.t)) best = h;
+    }
     // floor
     if (d.y < -1e-6) {
       const t = (0 - o.y) / d.y;

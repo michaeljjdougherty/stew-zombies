@@ -3,6 +3,8 @@
 // Upright cylinder vs AABB with step-up, gravity, ground snapping and ceilings.
 // =============================================================================
 
+import { boxesNear } from './boxgrid.js';
+
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 function overlapsY(b, y, h) {
@@ -47,7 +49,7 @@ function circleOverlapsXZ(x, z, r, b) {
 export function groundHeight(x, z, r, maxY, boxLists, floorY = 0) {
   let g = floorY;
   for (const list of boxLists) {
-    for (const b of list) {
+    for (const b of boxesNear(list, x, z, r)) {
       if (b.maxY <= maxY + 0.001 && b.maxY > g && circleOverlapsXZ(x, z, r, b)) g = b.maxY;
     }
   }
@@ -75,7 +77,7 @@ export function moveBody(body, dt, boxLists, gravity, floorY = 0) {
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
       for (const list of boxLists) {
-        for (const b of list) {
+        for (const b of boxesNear(list, p.x, p.z, r)) {
           if (!overlapsY(b, p.y, h)) continue;
           if (!circleOverlapsXZ(p.x, p.z, r, b)) continue;
           const rise = b.maxY - p.y;
@@ -101,7 +103,7 @@ export function moveBody(body, dt, boxLists, gravity, floorY = 0) {
     let ny = p.y + v.y * dt;
     // ceilings
     if (v.y > 0) {
-      for (const list of boxLists) for (const b of list) {
+      for (const list of boxLists) for (const b of boxesNear(list, p.x, p.z, r)) {
         if (b.minY >= p.y + h - 0.05 && ny + h > b.minY && circleOverlapsXZ(p.x, p.z, r * 0.85, b)) {
           ny = b.minY - h; v.y = 0;
         }

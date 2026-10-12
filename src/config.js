@@ -245,6 +245,7 @@ export const CONFIG = {
     radius: 0.36,
     height: 1.8,
     stepHeight: 0.5,
+    dropChance: 0.25,        // share of plain walkers that will jump down a ledge after you (runners always do)
 
     healthBase: 150,
     healthAddPerRound: 100,

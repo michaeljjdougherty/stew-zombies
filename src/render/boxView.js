@@ -121,7 +121,7 @@ export class BoxView {
 
   place() {
     const s = this.box.spot;
-    this.group.position.set(s.x, 0, s.z);
+    this.group.position.set(s.x, s.y || 0, s.z);
     this.group.rotation.set(0, s.yaw, 0);
     this.group.scale.setScalar(1);
     this.light.pos.set(s.x + Math.sin(s.yaw) * 0.4, 1.2, s.z + Math.cos(s.yaw) * 0.4);
@@ -218,7 +218,7 @@ export class BoxView {
     this.bobble.userData.head.rotation.z = Math.sin(time * 7) * 0.12;
     const lift = Math.max(0, (this.t - T * 0.45) / (T * 0.55));
     const s = this.box.spot;
-    this.group.position.set(s.x + Math.sin(time * 30) * 0.03 * Math.min(1, lift * 4), lift * lift * 9, s.z);
+    this.group.position.set(s.x + Math.sin(time * 30) * 0.03 * Math.min(1, lift * 4), (s.y || 0) + lift * lift * 9, s.z);
     this.group.rotation.y = s.yaw + lift * lift * 8;
     this.group.scale.setScalar(Math.max(0.01, 1 - lift * 0.9));
     if (lift > 0.75) this.show(null);
@@ -232,7 +232,7 @@ export class BoxView {
     const k = Math.min(1, this.t / 1.1);
     const s = this.box.spot;
     this.lid.rotation.x += (0 - this.lid.rotation.x) * Math.min(1, dt * 8); if (this.modelLid) this.modelLid.rotation.x = this.lid.rotation.x;
-    this.group.position.set(s.x, k * k * 0.6, s.z);
+    this.group.position.set(s.x, (s.y || 0) + k * k * 0.6, s.z);
     this.group.rotation.y = s.yaw + k * k * 10;
     this.group.scale.setScalar(Math.max(0.01, 1 - k * k));
     this.glowMat.emissiveIntensity = 2 + k * 4;
@@ -246,7 +246,7 @@ export class BoxView {
     const T = this.cfg.box.arriveTime;
     const k = Math.min(1, this.t / (T * 0.6));
     const s = this.box.spot;
-    this.group.position.set(s.x, (1 - k * k) * 7, s.z);
+    this.group.position.set(s.x, (s.y || 0) + (1 - k * k) * 7, s.z);
     this.group.rotation.y = s.yaw + (1 - k) * 3;
     this.group.scale.setScalar(1);
     this.lid.rotation.x = 0; if (this.modelLid) this.modelLid.rotation.x = this.lid.rotation.x;

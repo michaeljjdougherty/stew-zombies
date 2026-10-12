@@ -37,7 +37,7 @@ export function spawnZombie(sim, win, round) {
   const tx = -n.z, tz = n.x;
   const z = makeZombie(sim, {
     type,
-    pos: { x: win.exterior.x - n.x * out + tx * lateral, y: 0, z: win.exterior.z - n.z * out + tz * lateral },
+    pos: { x: win.exterior.x - n.x * out + tx * lateral, y: win.center.y || 0, z: win.exterior.z - n.z * out + tz * lateral },
     yaw: Math.atan2(n.x, n.z),
     health: zombieHealthForRound(round, c),
     state: 'approach',
@@ -55,15 +55,16 @@ export function spawnRising(sim, spot, round) {
   const type = pickZombieType(sim, round);
   const z = makeZombie(sim, {
     type,
-    pos: { x: spot.x + sim.rng.range(-0.6, 0.6), y: -c.riseDepth, z: spot.z + sim.rng.range(-0.6, 0.6) },
+    pos: { x: spot.x + sim.rng.range(-0.6, 0.6), y: (spot.y || 0) - c.riseDepth, z: spot.z + sim.rng.range(-0.6, 0.6) },
     yaw: sim.rng.range(-Math.PI, Math.PI),
     health: zombieHealthForRound(round, c),
     state: 'rising',
   });
-  z.riseFrom = z.pos.y;
+  z.riseBase = spot.y || 0;
+  z.riseFrom = z.pos.y - z.riseBase;
   sim.zombies.push(z);
   sim.emit('zombieSpawn', { id: z.id, zombieType: type, pos: { ...z.pos }, windowId: null, rising: true });
-  sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: 0, z: z.pos.z } });
+  sim.emit('zombieRise', { id: z.id, pos: { x: z.pos.x, y: z.riseBase, z: z.pos.z } });
   return z;
 }
 
@@ -81,7 +82,7 @@ export function spawnCheddar(sim, pos, health) {
 export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state = 'chase', windowId = null }) {
   const c = type === 'cheddar' ? { ...sim.cfg.zombie, ...sim.cfg.cheddar } : sim.cfg.zombie;
   const range = type === 'cheddar' ? c.speed : type === 'sprinter' ? c.sprintSpeed : type === 'runner' ? c.runSpeed : c.walkSpeed;
-  return {
+  const z = {
     id: sim.nextId++,
     type,
     speed: sim.rng.range(range[0], range[1]),
@@ -107,6 +108,9 @@ export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state =
     moveSpeed: 0,
     region: sim.nav ? sim.nav.regionAt(pos) : null,
   };
+  // will it jump down a ledge after you? (the quick ones will; some others too)
+  z.canDrop = type === 'runner' || type === 'sprinter' || type === 'cheddar' || (z.seed % 100) < (sim.cfg.zombie.dropChance ?? 0.25) * 100;
+  return z;
 }
 
 // Firing range target: stands on its spot (or strafes) and faces the player.
@@ -189,7 +193,7 @@ function reachable(sim, z, p) {
   if (p.launch) return false;
   const pr = p.region || sim.nav.regionAt(p.pos);
   if (!pr || !z.region) return false;
-  return pr === z.region || !!sim.nav.firstPortal(z.region, pr);
+  return pr === z.region || !!sim.nav.firstPortal(z.region, pr, z.canDrop);
 }
 
 function faceToward(z, dx, dz, rate, dt) {
@@ -220,11 +224,11 @@ export function updateZombies(sim, dt) {
     if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
     if (z.state === 'rising') {
       const k = Math.min(1, z.stateTime / c.riseTime);
-      z.pos.y = z.riseFrom * (1 - k * (2 - k));
+      z.pos.y = (z.riseBase || 0) + z.riseFrom * (1 - k * (2 - k));
       z.moveSpeed = 0;
       const p = nearestPlayer(sim, z.pos);
       if (p) faceToward(z, p.pos.x - z.pos.x, p.pos.z - z.pos.z, c.turnRate * 0.4, dt);
-      if (k >= 1) { z.pos.y = 0; setState(sim, z, 'chase'); }
+      if (k >= 1) { z.pos.y = z.riseBase || 0; setState(sim, z, 'chase'); }
       continue;
     }
     const win = sim.windowById(z.windowId);
@@ -281,6 +285,7 @@ export function updateZombies(sim, dt) {
         const t = Math.min(1, z.climbT);
         z.pos.x = win.exterior.x + (win.interior.x - win.exterior.x) * t;
         z.pos.z = win.exterior.z + (win.interior.z - win.exterior.z) * t;
+        if (win.center.y) z.pos.y = win.center.y;
         // up and over a fence (they hang off the top), or a hop through a window
         z.pos.y = fence ? Math.sin(Math.PI * Math.min(1, t * 1.15)) * 2.3 : Math.sin(Math.PI * t) * 0.75;
         if (t >= 1) {
@@ -319,7 +324,7 @@ export function updateZombies(sim, dt) {
         }
         let dirX = 0, dirZ = 0;
         if (goTo) {
-          const goal = sim.nav.nextPoint(z.pos, z.region, goTo.pos, goTo.region);
+          const goal = sim.nav.nextPoint(z.pos, z.region, goTo.pos, goTo.region, z.canDrop);
           const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z;
           const d = Math.hypot(dx, dz) || 1;
           dirX = dx / d; dirZ = dz / d;
@@ -373,7 +378,7 @@ export function updateZombies(sim, dt) {
         z.vel.x += (dirX * speed - z.vel.x) * k;
         z.vel.z += (dirZ * speed - z.vel.z) * k;
         const px = z.pos.x, pz = z.pos.z;
-        moveBody(z, dt, [sim.world.solids], sim.cfg.player.gravity);
+        moveBody(z, dt, [sim.world.solids, sim.world.terrain], sim.cfg.player.gravity);
         // stuck detection: wanted to move but barely did
         const moved = Math.hypot(z.pos.x - px, z.pos.z - pz) / dt;
         if (speed > 0.5 && moved < speed * 0.25 && z.attack.phase === 'none') {
@@ -464,7 +469,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
 function blocked(sim, z, dx, dz, dist) {
   const px = z.pos.x + dx * dist, pz = z.pos.z + dz * dist;
   const r = z.radius * 0.9, y0 = z.pos.y + z.stepHeight, y1 = z.pos.y + z.height;
-  for (const b of sim.world.solids) {
+  for (const b of [...sim.world.solids, ...sim.world.terrain.near(px, pz, r)]) {
     if (b.maxY <= y0 || b.minY >= y1) continue;
     const cx = px < b.minX ? b.minX : px > b.maxX ? b.maxX : px;
     const cz = pz < b.minZ ? b.minZ : pz > b.maxZ ? b.maxZ : pz;

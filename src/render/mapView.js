@@ -279,7 +279,8 @@ export class MapView {
     const uv = geo.attributes.uv, pos = geo.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) + (x0 + x1) / 2, -(pos.getZ(i) + (z0 + z1) / 2));
     const floor = new THREE.Mesh(geo, this.floorMat(room.floor));
-    floor.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    const RY = room.y || 0;
+    floor.position.set((x0 + x1) / 2, RY + 0.002, (z0 + z1) / 2);
     this.group.add(floor);
     this.bakeReceivers.push(floor);
 
@@ -290,11 +291,11 @@ export class MapView {
       const lt = litterTexture(w, d, room.id.length * 17);
       lt.repeat.set(1 / w, 1 / d); lt.offset.set(-x0 / w, z1 / d);
       const ov = new THREE.Mesh(geo, applyBake(new THREE.MeshStandardMaterial({ map: lt, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, roughness: 0.8 })));
-      ov.position.set((x0 + x1) / 2, 0.004, (z0 + z1) / 2);
+      ov.position.set((x0 + x1) / 2, RY + 0.004, (z0 + z1) / 2);
       this.group.add(ov);
     }
 
-    const H = room.height, Tt = this.T;
+    const H = RY + room.height, Tt = this.T;
     if (room.ceiling === 'none') {
       // outdoors: nothing overhead
     } else if (room.ceiling === 'trusses') {
@@ -312,7 +313,7 @@ export class MapView {
 
   buildTrussCeiling(room) {
     const [minX, minZ, maxX, maxZ] = room.rect;
-    const H = room.height, Tt = this.T;
+    const H = (room.y || 0) + room.height, Tt = this.T;
     const e = Tt * 0.5;
     const ceil = new BoxBatch().add({ minX: minX - e, maxX: maxX + e, minY: H, maxY: H + 0.3, minZ: minZ - e, maxZ: maxZ + e }, { cell: 1.0, skip: new Set([2]) });
     const cm = new THREE.Mesh(ceil.build(), this.mats.trussCeiling);
@@ -1021,7 +1022,7 @@ export class MapView {
       if (w.kind === 'fence') continue;
       const n = w.normal;
       const grp = new THREE.Group();
-      grp.position.set(w.center.x, 0, w.center.z);
+      grp.position.set(w.center.x, w.center.y || 0, w.center.z);
       grp.rotation.y = Math.atan2(n.x, n.z);
       this.group.add(grp);
       const fr = new BoxBatch();
@@ -1073,7 +1074,7 @@ export class MapView {
       const grp = new THREE.Group();
       // local frame: origin at the wall's inner face centre of the opening, +z into the owning room
       const n = d.normal;
-      grp.position.set(d.center.x + n.x * this.T / 2, 0, d.center.z + n.z * this.T / 2);
+      grp.position.set(d.center.x + n.x * this.T / 2, d.center.y || 0, d.center.z + n.z * this.T / 2);
       grp.rotation.y = Math.atan2(n.x, n.z);
       this.group.add(grp);
       const view = { door: d, grp, leaves: [], chains: [], debris: [], t: -1, swing: -1 };
