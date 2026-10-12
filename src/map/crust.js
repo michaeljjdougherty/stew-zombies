@@ -1,311 +1,242 @@
 // =============================================================================
-// MAP DATA — Call of the Crust (Map 2). A frozen World War One battlefield on
-// another planet: a loop of deep trenches round a cratered No Man's Land, a
-// ruined farmhouse and barn, a bombed-out church, a stone workshop, and in the
-// middle a huge excavation pit with something ancient glowing at the bottom.
-// Far to the north, four enormous smoke stacks.
+// MAP DATA — Call of the Crust (Map 2), early build.
+// Laid out like Call of the Dead: a box canyon to start in, two ways out that
+// you buy open, and a loop round the frozen shore between them; with narrow,
+// Origins-style trenches cut through the snow on the west side. Night, snow,
+// a sky full of planets, and four smokestacks out across the ice.
+// Same format as school.js (rooms, walls, doors, windows, nav regions).
+// Axes: +X east, +Y up, -Z north. Metres.
 //
-// Everything sits on the ground (y = 0): the trenches are corridors between
-// earth walls (berms) taller than you, and the pit is ringed by a spoil bank
-// you can climb (its rim is at y = 4). Built with src/map/layout.js; the
-// renderer is src/render/crustWorld.js.
-// Axes: +X east, +Y up, -Z north (toward the stacks). Metres.
-//
-//                     the four stacks, far off to the north
-//      +==============N trench (jogs south round the workshop)==============+
-//      |                 [ workshop ]                                        |
-//      W     tank                          gun                            E  |
-//      |  [farm]       (( excavation pit ))        [church + tower]          |
-//      |  [barn]                                         wall               |
-//      +=======S trench (jogs north in the middle)===========================+
-//                               | communication trench
-//                          [ command bunker ]  <- you start here
+//            ~ ~ ~ frozen sea ~ ~ ~        the four stacks, ~150 m out
+//   +----------------+---------------------------+-----------------+
+//   | LIGHTHOUSE     |      THE LAGOON           |  THE SHORE   +--+--------+
+//   |  POINT    [LH] |   (ice, slush slows you)  |              | SHIP'S    |
+//   HUT [door]       |                           |              | HOLD      |
+//   |                |                           |   [door] ----+-----------+
+//   +---[debris]-----+---------------------------+                 |
+//        |  |                                    |                 |
+//    DUG-|T4|-DUG       (solid cliff)            +--[debris]--+----+
+//    OUT |  |                                    | FISHING CAMP    [door] CABIN
+//    +---+T3+                                    |                 |
+//    |T2|                                        |                 |
+//  DUG|  |                                       |                 |
+//    |  +========T1========[debris] LANDING [debris]---------------+
+//    +--+                         (spawn)        |
+//                                 +--------------+
 // =============================================================================
-import { trenchLoop, carve, tile, autoPortals, regionAt, stairs, walls, doorway, boxOf, rect } from './layout.js';
 
-const G = {
-  trenchW: 3.6, berm: 2.0, bermH: 2.6,
-  rimH: 4, rimT: 6,
-};
+const T = 0.5;
 
-// --- the trench loop ------------------------------------------------------------------
-const LOOP = [
-  [-60, 44], [-24, 44], [-24, 36], [24, 36], [24, 44], [60, 44],           // south (jogs north in the middle)
-  [60, 14], [52, 14], [52, -14], [60, -14], [60, -52],                      // east (jogs in by the church)
-  [26, -52], [26, -44], [-26, -44], [-26, -52], [-60, -52],                 // north (jogs south by the workshop)
-  [-60, -14], [-52, -14], [-52, 14], [-60, 14],                             // west (jogs in by the farmhouse)
-];
-const loop = trenchLoop({ points: LOOP, width: G.trenchW, berm: G.berm, height: G.bermH, room: 'trench' });
-// which stretch of trench an edge belongs to (for zones)
-const sideOf = (e) => {
-  const [p, q] = e.center, mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
-  if (mz > 30) return 'trench_s';
-  if (mz < -40) return 'trench_n';
-  return mx < 0 ? 'trench_w' : 'trench_e';
-};
-loop.regions.forEach((r, i) => { r.room = sideOf(loop.edges[i]); r.id = `trench_${i}`; });
+// --- rooms -----------------------------------------------------------------------------
+const outside = (id, zone, name, rect, walls, extra = {}) => ({ id, zone, name, outdoor: true, rect, height: 7, floor: 'snow', style: 'cliff', reverb: 0.3, litter: false, ceiling: 'none', walls, ...extra });
+const trench = (id, rect, walls, extra = {}) => ({ id, zone: 'trenches', name: 'The Trenches', outdoor: true, rect, height: 2.6, floor: 'duckboard', style: 'trench', reverb: 0.35, litter: false, ceiling: 'none', walls, ...extra });
+const inside = (id, zone, name, rect, walls, extra = {}) => ({ id, zone, name, rect, height: 3.2, floor: 'wood', style: 'cabin', ceilingMat: 'planks', reverb: 0.3, litter: false, walls, ...extra });
 
-// Gaps in the inner berm out into No Man's Land: [x0, z0, x1, z1]
-const EXITS = [
-  [-42, 40.2, -39.6, 42.2], [-12, 32.2, -9.6, 34.2], [9.6, 32.2, 12, 34.2], [39.6, 40.2, 42, 42.2],   // south
-  [56.2, 26, 58.2, 28.4], [48.2, -1.2, 50.2, 1.2], [56.2, -30, 58.2, -27.6],                           // east
-  [40, -50.2, 42.4, -48.2], [-16, -42.2, -13.6, -40.2], [13.6, -42.2, 16, -40.2], [-42.4, -50.2, -40, -48.2], // north
-  [-58.2, -30, -56.2, -27.6], [-50.2, -1.2, -48.2, 1.2], [-58.2, 26, -56.2, 28.4],                       // west
-];
-// Dugouts: niches cut into the outer berm, timber-roofed, a wall gun in each.
-const DUGOUTS = [
-  { id: 'dug_mp41', rect: [-44, 45.8, -41.4, 47.4], side: 's', weapon: 'MP41', zone: 'trench_s' },
-  { id: 'dug_m15', rect: [-63.4, 24, -61.8, 26.6], side: 'w', weapon: 'M15', zone: 'trench_w' },
-  { id: 'dug_staykout', rect: [61.8, -34, 63.4, -31.4], side: 'e', weapon: 'Staykout', zone: 'trench_e' },
-  { id: 'dug_pm64', rect: [-12, -47.4, -9.4, -45.8], side: 'n', weapon: 'PM64', zone: 'trench_n' },
-];
-
-let berms = loop.berms;
-for (const c of EXITS) berms = carve(berms, c);
-for (const d of DUGOUTS) berms = carve(berms, d.rect);
-
-// --- the communication trench down to the command bunker ---------------------------
-const COMM = { rect: [-1.8, 37.8, 1.8, 54] };
-berms = carve(berms, [-1.8, 37.8, 1.8, 39.8]);   // through the loop's outer berm
-berms.push(
-  { rect: [-3.8, 39.8, -1.8, 54], y1: G.bermH, face: { x: 1, z: 0 }, side: 'comm' },
-  { rect: [1.8, 39.8, 3.8, 54], y1: G.bermH, face: { x: -1, z: 0 }, side: 'comm' },
-);
-
-// --- the command bunker (spawn) ---------------------------------------------------------
-const BUNKER = { yard: [-9, 54, 9, 70], dugout: [-6, 64, 6, 70], wallH: 1.7, roofH: 2.5 };
-const bunkerProps = [
-  // sandbag walls round the yard (the communication trench comes in at the north)
-  boxOf([-9.7, 53.3, -1.8, 54], 0, BUNKER.wallH, 'sandbags'), boxOf([1.8, 53.3, 9.7, 54], 0, BUNKER.wallH, 'sandbags'),
-  boxOf([-9.7, 54, -9, 70.7], 0, BUNKER.wallH, 'sandbags'), boxOf([9, 54, 9.7, 70.7], 0, BUNKER.wallH, 'sandbags'),
-  boxOf([-9.7, 70, 9.7, 70.7], 0, BUNKER.wallH, 'sandbags'),
-  // the command dugout: timber walls, earth and iron on the roof, door facing north
-  ...walls({ rect: BUNKER.dugout, t: 0.4, h: BUNKER.roofH, openings: [{ side: 'n', from: -1.5, to: 1.5 }, { side: 's', from: -6, to: 6 }], kind: 'timber' }),
-  boxOf([-6.4, 63.6, 6.4, 70], BUNKER.roofH, BUNKER.roofH + 0.5, 'bunkerRoof'),
-  boxOf([-1, 69.2, 1, 70], 0, 1.0, 'radio'),          // the field radio on its table
-  boxOf([-4.6, 66, -2.8, 67.4], 0, 0.85, 'mapTable'),
-];
-
-// --- the buildings -------------------------------------------------------------------
-// Ruined farmhouse: stone, burnt out, the roof half fallen in.
-const FARM = { rect: [-44, -8, -30, 6], t: 0.6, h: 4.2 };
-const farmOpen = [{ side: 'e', from: -2.2, to: 0.2 }, { side: 's', from: -38, to: -35.6 }, { side: 'n', from: -40, to: -37 }];
-const farmWalls = walls({
-  ...FARM, openings: farmOpen, kind: 'stone', style: 'farm',
-  heights: { n: [[-44, -40, 4.2], [-37, -33, 2.4], [-33, -30, 3.6]], e: [[-7.4, -2.2, 3.4], [0.2, 5.4, 1.6]], s: [[-44, -38, 4.2], [-35.6, -30, 2.8]], w: 4.2 },
-});
-const BARN = { rect: [-45, 18, -33, 28], t: 0.35, h: 4.6 };
-const barnOpen = [{ side: 'e', from: 21, to: 25 }, { side: 'n', from: -41, to: -38.6 }];
-const barnWalls = walls({ ...BARN, openings: barnOpen, kind: 'planks', style: 'barn' });
-// Bombed-out church: stone nave, west door under the tower, a bomb hole in the south wall.
-const CHURCH = { rect: [30, -7, 44, 5], t: 0.8, h: 7.5, tower: [25, -12, 30, -7], towerH: 19 };
-const churchOpen = [{ side: 'w', from: -2.2, to: 0.2 }, { side: 's', from: 36, to: 39 }];
-const churchWalls = walls({ ...CHURCH, openings: churchOpen, kind: 'stone', style: 'church', heights: { s: [[30, 36, 7.5], [39, 41, 4.5], [41, 44, 7.5]] } });
-// Stone workshop: forges along the back wall, doors south (to the pit), east and west.
-const SHOP = { rect: [-9, -36, 9, -27], t: 0.6, h: 5 };
-const shopOpen = [{ side: 's', from: -1.5, to: 1.5 }, { side: 'e', from: -33, to: -30.6 }, { side: 'w', from: -33, to: -30.6 }];
-const shopWalls = walls({ ...SHOP, openings: shopOpen, kind: 'stone', style: 'workshop' });
-const shopProps = [
-  boxOf([-7.6, -35.4, -4.4, -34], 0, 1.1, 'forge'), boxOf([4.4, -35.4, 7.6, -34], 0, 1.1, 'forge'),
-  boxOf([-1.4, -35.4, 1.4, -34.6], 0, 1.0, 'workbench'),
-  boxOf([-8.4, -29.2, -6.8, -27.6], 0, 0.8, 'anvil'), boxOf([6.8, -29.2, 8.4, -27.6], 0, 0.8, 'anvil'),
-];
-const churchProps = [
-  boxOf(CHURCH.tower, 0, CHURCH.towerH, 'tower'),
-  boxOf([41.6, -2.2, 43.2, 0.2], 0, 1.1, 'altar'),
-];
-const farmProps = [boxOf([-41, -5, -37.5, -2], 0, 1.5, 'rubble'), boxOf([-35, 1, -32, 3.6], 0, 0.9, 'farmTable')];
-
-// --- the excavation pit ------------------------------------------------------------------
-// A spoil bank (the rim) round a pit dug down to the old stones. Cuts through
-// the rim east and west lead in at ground level; stairs climb the outside of
-// the rim (north, south) and scaffold stairs go down inside (north).
-const PIT = { outer: [-18, -18, 18, 18], inner: [-12, -12, 12, 12], cutW: 5 };
-const cut = (x0, x1) => [x0, -PIT.cutW / 2, x1, PIT.cutW / 2];
-const RIM = [
-  { id: 'rim_n', rect: [-18, -18, 18, -12] }, { id: 'rim_s', rect: [-18, 12, 18, 18] },
-  { id: 'rim_wn', rect: [-18, -12, -12, -PIT.cutW / 2] }, { id: 'rim_ws', rect: [-18, PIT.cutW / 2, -12, 12] },
-  { id: 'rim_en', rect: [12, -12, 18, -PIT.cutW / 2] }, { id: 'rim_es', rect: [12, PIT.cutW / 2, 18, 12] },
-];
-const rimProps = RIM.map((r) => boxOf(r.rect, 0, G.rimH, 'rim', { rim: r.id }));
-const outerStairsN = stairs({ id: 'stairs_rim_n', rect: [10, -25, 13, -18], dir: 's', rise: 0.4, top: G.rimH, room: 'pit' });
-const outerStairsS = stairs({ id: 'stairs_rim_s', rect: [-13, 18, -10, 25], dir: 'n', rise: 0.4, top: G.rimH, room: 'pit' });
-const innerStairs = stairs({ id: 'stairs_pit', rect: [-9.5, -12, -6.5, -5], dir: 'n', rise: 0.4, top: G.rimH, room: 'pit' });
-// the old stones at the bottom: four standing stones round a glowing altar
-const STONES = [[-5, -5], [5, -5], [-5, 5], [5, 5]].map(([x, z]) => rect(x - 0.6, z - 0.6, x + 0.6, z + 0.6));
-const ALTAR = [-1.5, -1.5, 1.5, 1.5];
-const pitProps = [
-  ...STONES.map((r, i) => boxOf(r, 0, 4.2, 'standingStone', { i })),
-  boxOf(ALTAR, 0, 1.2, 'altarStone'),
-];
-
-// --- No Man's Land obstacles ----------------------------------------------------------
-const WRECKS = [
-  { kind: 'tank', rect: [-42, -35, -34.5, -30.5], yaw: 0.25 },
-  { kind: 'fieldGun', rect: [33, -36, 37, -32], yaw: -0.6 },
-  { kind: 'ruinWall', rect: [30, 24, 40, 25.2] },
-];
-const wreckProps = WRECKS.map((w) => boxOf(w.rect, 0, w.kind === 'ruinWall' ? 2.4 : w.kind === 'tank' ? 2.6 : 1.8, w.kind, { yaw: w.yaw || 0 }));
-
-// --- nav regions ---------------------------------------------------------------------
-const nmlRoom = (x, z) => (z < -8 ? (x < 0 ? 'nml_nw' : 'nml_ne') : (x < 0 ? 'nml_sw' : 'nml_se'));
-const R = [];
-R.push(...loop.regions);
-// (each exit takes the zone of the trench it opens off)
-const dist2 = (r, x, z) => Math.hypot(Math.max(r[0] - x, 0, x - r[2]), Math.max(r[1] - z, 0, z - r[3]));
-EXITS.forEach((c, i) => {
-  const cx = (c[0] + c[2]) / 2, cz = (c[1] + c[3]) / 2;
-  const t = loop.regions.reduce((best, q) => (dist2(q.rect, cx, cz) < dist2(best.rect, cx, cz) ? q : best));
-  R.push({ id: `exit_${i}`, rect: c, room: t.room, level: 0 });
-});
-for (const d of DUGOUTS) R.push({ id: d.id, rect: d.rect, room: d.id, level: 0 });
-R.push({ id: 'comm', rect: COMM.rect, room: 'trench_s', level: 0 });
-R.push(...tile({ area: BUNKER.yard, holes: [BUNKER.dugout], roomOf: () => 'bunker', prefix: 'yard' }));
-R.push(...tile({ area: [-5.6, 64.4, 5.6, 70], holes: [[-1, 69.2, 1, 70], [-4.6, 66, -2.8, 67.4]], roomOf: () => 'bunker', prefix: 'dugout' }));
-R.push({ id: 'bunker_door', rect: [-1.5, 64, 1.5, 64.4], room: 'bunker', level: 0 });
-// No Man's Land: everything inside the loop that isn't a building, the pit or a wreck
-const footprint = (r, m = 0) => [r[0] - m, r[1] - m, r[2] + m, r[3] + m];
-const NML_HOLES = [PIT.outer, outerStairsN.region.rect, outerStairsS.region.rect, FARM.rect, BARN.rect, CHURCH.rect, CHURCH.tower, SHOP.rect, ...WRECKS.map((w) => w.rect)];
-R.push(...tile({ poly: loop.bIn, holes: NML_HOLES, roomOf: nmlRoom, prefix: 'nml' }));
-// building insides and their doorways
-const inside = (b) => footprint(b.rect, -b.t);
-R.push(...tile({ area: inside(FARM), holes: farmProps.map((p) => [p.box[0], p.box[2], p.box[3], p.box[5]]), roomOf: () => 'farmhouse', prefix: 'farm' }));
-R.push(...farmOpen.map((o) => doorway(FARM.rect, FARM.t, o, 'farmhouse')));
-R.push(...tile({ area: inside(BARN), roomOf: () => 'barn', prefix: 'barn' }));
-R.push(...barnOpen.map((o) => doorway(BARN.rect, BARN.t, o, 'barn')));
-R.push(...tile({ area: inside(CHURCH), holes: [[41.6, -2.2, 43.2, 0.2]], roomOf: () => 'church', prefix: 'church' }));
-R.push(...churchOpen.map((o) => doorway(CHURCH.rect, CHURCH.t, o, 'church')));
-R.push(...tile({ area: inside(SHOP), holes: shopProps.map((p) => [p.box[0], p.box[2], p.box[3], p.box[5]]), roomOf: () => 'workshop', prefix: 'shop' }));
-R.push(...shopOpen.map((o) => doorway(SHOP.rect, SHOP.t, o, 'workshop')));
-// the pit: floor, the cuts in, the rim on top, the stairs between
-R.push(...tile({ area: PIT.inner, holes: [innerStairs.region.rect, ...STONES, ALTAR], roomOf: () => 'pit', prefix: 'pit' }));
-R.push({ id: 'cut_w', rect: cut(-18, -12), room: 'pit', level: 0 }, { id: 'cut_e', rect: cut(12, 18), room: 'pit', level: 0 });
-R.push(...RIM.map((r) => ({ ...r, room: 'rim', level: G.rimH })));
-for (const s of [outerStairsN, outerStairsS, innerStairs]) R.push(s.region);
-
-const PORTALS = autoPortals(R);
-// stairs: bottom to the ground region there, top to the rim
-for (const s of [outerStairsN, outerStairsS, innerStairs]) {
-  const out = (e) => ({ x: e.axis === 'x' ? e.x : e.x, z: e.axis === 'z' ? e.z : e.z });
-  const step = (e, d) => (e.axis === 'z' ? { x: e.x, z: e.z + d } : { x: e.x + d, z: e.z });
-  // a point just past each end, to find what's there
-  const sgn = { n: -1, s: 1, e: 1, w: -1 }[s.dir];
-  const below = step(out(s.bottom), -sgn * 0.3), above = step(out(s.top), sgn * 0.3);
-  const lo = regionAt(R, below.x, below.z, 0), hi = regionAt(R, above.x, above.z, G.rimH);
-  if (lo) PORTALS.push({ a: s.region.id, b: lo.id, x: s.bottom.x, z: s.bottom.z, axis: s.bottom.axis, width: s.bottom.width });
-  if (hi) PORTALS.push({ a: s.region.id, b: hi.id, x: s.top.x, z: s.top.z, axis: s.top.axis, width: s.top.width });
-}
-
-// --- ground spawns: zombies claw up out of the mud everywhere --------------------------
-const SPAWN_ZONES = R.filter((r) => r.level === 0 && (r.id.startsWith('nml') || r.id.startsWith('trench_') || r.id.startsWith('pit')));
-const GROUND = [];
-{
-  let k = 0;
-  for (const r of SPAWN_ZONES) {
-    const [x0, z0, x1, z1] = r.rect, w = x1 - x0, d = z1 - z0;
-    if (w < 2.5 || d < 2.5) continue;
-    const n = Math.max(1, Math.min(4, Math.floor((w * d) / 140)));
-    for (let i = 0; i < n; i++) {
-      // spread along the region, kept off its edges
-      const t = (i + 0.5) / n;
-      const x = w >= d ? x0 + 1 + t * (w - 2) : (x0 + x1) / 2 + ((k % 3) - 1) * Math.min(1, w / 2 - 1.2);
-      const z = w >= d ? (z0 + z1) / 2 + ((k % 3) - 1) * Math.min(1, d / 2 - 1.2) : z0 + 1 + t * (d - 2);
-      GROUND.push({ id: `mud_${k++}`, room: r.room, x: +x.toFixed(2), z: +z.toFixed(2) });
-    }
-  }
-}
-
-// --- rooms (zones) ---------------------------------------------------------------------
-const room = (id, zone, r, extra = {}) => ({ id, zone, name: extra.name || id, outdoor: true, rect: r, height: 6, floor: 'mud', style: 'cliff', walls: {}, ceiling: 'none', litter: false, ...extra });
 const ROOMS = [
-  room('bunker', 'bunker', BUNKER.yard, { name: 'the Command Bunker' }),
-  room('trench_s', 'trench_s', [-62, 32, 62, 48], { name: 'the South Trench' }),
-  room('trench_n', 'trench_n', [-62, -56, 62, -40], { name: 'the North Trench' }),
-  room('trench_w', 'trench_w', [-62, -54, -48, 46], { name: 'the West Trench' }),
-  room('trench_e', 'trench_e', [48, -54, 62, 46], { name: 'the East Trench' }),
-  ...DUGOUTS.map((d) => room(d.id, d.zone, d.rect, { name: 'a dugout' })),
-  room('nml_nw', 'nml_nw', [-56, -48, 0, -8], { name: "No Man's Land" }),
-  room('nml_ne', 'nml_ne', [0, -48, 56, -8], { name: "No Man's Land" }),
-  room('nml_sw', 'nml_sw', [-56, -8, 0, 40], { name: "No Man's Land" }),
-  room('nml_se', 'nml_se', [0, -8, 56, 40], { name: "No Man's Land" }),
-  room('farmhouse', 'farmhouse', FARM.rect, { name: 'the Farmhouse' }),
-  room('barn', 'farmhouse', BARN.rect, { name: 'the Barn' }),
-  room('church', 'church', CHURCH.rect, { name: 'the Church' }),
-  room('workshop', 'workshop', SHOP.rect, { name: 'the Workshop' }),
-  room('pit', 'pit', PIT.inner, { name: 'the Excavation' }),
-  room('rim', 'pit', PIT.outer, { name: 'the Excavation' }),
+  // The Landing: where you come down. A snowy box canyon, cliffs all round.
+  outside('landing', 'landing', 'The Landing', [-12, 6, 12, 30], { n: {}, s: {}, w: {}, e: {} }, {
+    fixtures: [
+      { x: -8, y: 4.4, z: 26, lit: true, flicker: 0.1, kind: 'lamp' },
+      { x: 9, y: 4.4, z: 10, lit: true, flicker: 0.5, kind: 'lamp' },
+    ],
+  }),
+
+  // The trenches (Origins-narrow): west out of the Landing, north to the point.
+  trench('t1', [-34, 10, -12.5, 12.6], { n: {}, s: {} }, { fixtures: [{ x: -23, y: 2.3, z: 12.3, lit: true, flicker: 0.3, kind: 'lamp' }] }),
+  trench('t2', [-37.1, -22.6, -34.5, 12.6], { n: {}, s: {}, w: {}, e: {} }, { fixtures: [{ x: -36.8, y: 2.3, z: -10, lit: true, flicker: 0.2, kind: 'lamp' }] }),
+  trench('t3', [-34, -22.6, -24, -20], { n: {}, s: {} }),
+  trench('t4', [-23.5, -46, -20.9, -20], { w: {}, e: {}, s: {} }, { fixtures: [{ x: -21.2, y: 2.3, z: -40, lit: true, flicker: 0.15, kind: 'lamp' }] }),
+  // dugouts off the trenches (roofed), each with a gun on the wall
+  trench('dug_w', [-45, -5, -37.6, -1], { n: {}, s: {}, w: {} }, { name: 'West Dugout', ceiling: 'planks', ceilingMat: 'planks', height: 2.4, outdoor: false, fixtures: [{ x: -41, y: 2.1, z: -3, lit: true, flicker: 0.25, kind: 'hanging' }] }),
+  trench('dug_e', [-20.4, -36, -15, -30], { n: {}, s: {}, e: {} }, { name: 'East Dugout', ceiling: 'planks', ceilingMat: 'planks', height: 2.4, outdoor: false, fixtures: [{ x: -17.7, y: 2.1, z: -33, lit: true, flicker: 0.1, kind: 'hanging' }] }),
+
+  // Lighthouse Point: the lighthouse on its rock, and the keeper's hut in the cliff.
+  outside('point', 'point', 'Lighthouse Point', [-56, -84, -16, -46.5], { n: { style: 'invisible' }, s: {}, w: {} }, {
+    fixtures: [{ x: -30, y: 4.4, z: -60, lit: true, flicker: 0.05, kind: 'lamp' }],
+  }),
+  inside('hut', 'hut', "Keeper's Hut", [-68.5, -70, -56.5, -58], { n: {}, s: {}, w: {} }, {
+    fixtures: [{ x: -62.5, y: 2.9, z: -64, lit: true, flicker: 0.4, kind: 'hanging' }],
+  }),
+
+  // The Lagoon: frozen over, but the slush in it holds you back.
+  outside('lagoon', 'lagoon', 'The Lagoon', [-15.5, -84, 22, -46.5], { n: { style: 'invisible' }, s: {} }, { floor: 'ice' }),
+
+  // The Fishing Camp: east out of the Landing. A cabin on its far side.
+  outside('camp', 'camp', 'Fishing Camp', [12.5, -20, 44, 22], { n: {}, s: {}, w: { ranges: [[-20, 6]] }, e: {} }, {
+    fixtures: [
+      { x: 28, y: 4.4, z: 4, lit: true, flicker: 0.1, kind: 'lamp' },
+      { x: 40, y: 4.4, z: -16, lit: true, flicker: 0.6, kind: 'lamp' },
+    ],
+  }),
+  inside('cabin', 'cabin', 'The Cabin', [44.5, -12, 56, 0], { n: {}, s: {}, e: {} }, {
+    fixtures: [{ x: 50, y: 2.9, z: -6, lit: true, flicker: 0.15, kind: 'hanging' }],
+  }),
+
+  // The Shore: the strip along the ice where the ship ran aground.
+  outside('shore', 'shore', 'The Shore', [22.5, -84, 48, -20.5], { n: { style: 'invisible', ranges: [[22, 23.5], [46.5, 48.5]] }, s: { ranges: [[44.5, 48.5]] }, w: { ranges: [[-46.5, -20.5]] }, e: {} }, {
+    fixtures: [{ x: 35, y: 4.4, z: -78, lit: true, flicker: 0.2, kind: 'lamp' }],
+  }),
+  // The ship's hold, down in the hull (the ship sits frozen in the ice).
+  inside('hold', 'hold', "Ship's Hold", [24, -104, 46, -84.5], { n: {}, s: {}, w: {}, e: {} }, {
+    height: 4.2, floor: 'deck', style: 'hull', ceilingMat: 'hullCeil', reverb: 0.8,
+    fixtures: [
+      { x: 30, y: 3.9, z: -94, lit: true, flicker: 0.3, kind: 'hanging' },
+      { x: 40, y: 3.9, z: -94, lit: true, flicker: 0.05, kind: 'hanging' },
+    ],
+  }),
 ];
+
+// --- doors (debris and doors you buy) --------------------------------------------------
+const DOORS = [
+  { id: 'debris_trench', kind: 'debris', room: 'landing', side: 'w', at: 11.3, width: 2.6, height: 2.6, zones: ['landing', 'trenches'], label: 'THE TRENCHES' },
+  { id: 'debris_camp', kind: 'debris', room: 'landing', side: 'e', at: 13, width: 3.0, height: 3.2, zones: ['landing', 'camp'], label: 'FISHING CAMP' },
+  { id: 'debris_point', kind: 'debris', room: 'point', side: 's', at: -22.2, width: 2.6, height: 2.6, zones: ['trenches', 'point'], label: 'LIGHTHOUSE POINT' },
+  { id: 'door_hut', kind: 'door', room: 'point', side: 'w', at: -64, width: 2.0, height: 2.5, zones: ['point', 'hut'], label: "KEEPER'S HUT" },
+  { id: 'door_cabin', kind: 'door', room: 'camp', side: 'e', at: -6, width: 2.0, height: 2.5, zones: ['camp', 'cabin'], label: 'THE CABIN' },
+  { id: 'debris_shore', kind: 'debris', room: 'camp', side: 'n', at: 33, width: 3.0, height: 3.2, zones: ['camp', 'shore'], label: 'THE SHORE' },
+  { id: 'door_hold', kind: 'door', room: 'hold', side: 's', at: 35, width: 2.4, height: 2.8, zones: ['shore', 'hold'], label: "SHIP'S HOLD" },
+];
+// always-open gaps in the trench walls (corners and dugouts)
+const GAPS = [
+  { room: 't2', side: 'e', at: 11.3, width: 2.6, height: 2.6, to: 't1' },
+  { room: 't2', side: 'e', at: -21.3, width: 2.6, height: 2.6, to: 't3' },
+  { room: 't4', side: 'w', at: -21.3, width: 2.6, height: 2.6, to: 't3' },
+  { room: 't2', side: 'w', at: -3, width: 2.0, height: 2.2, to: 'dug_w' },
+  { room: 't4', side: 'e', at: -33, width: 2.0, height: 2.2, to: 'dug_e' },
+];
+// where the doors lead (the room on the other side)
+const DOOR_TO = { debris_trench: 't1', debris_camp: 'camp', debris_point: 't4', door_hut: 'hut', door_cabin: 'cabin', debris_shore: 'shore', door_hold: 'shore' };
+
+// --- navigation: one region per room, portals at every opening -----------------------
+function portalAt(roomId, side, at) {
+  const r = ROOMS.find((q) => q.id === roomId).rect;
+  if (side === 'n') return { x: at, z: r[1] - T / 2, axis: 'z' };
+  if (side === 's') return { x: at, z: r[3] + T / 2, axis: 'z' };
+  if (side === 'w') return { x: r[0] - T / 2, z: at, axis: 'x' };
+  return { x: r[2] + T / 2, z: at, axis: 'x' };
+}
+const PORTALS = [
+  ...DOORS.map((d) => ({ a: d.room, b: DOOR_TO[d.id], ...portalAt(d.room, d.side, d.at), width: d.width, door: d.id })),
+  ...GAPS.map((g) => ({ a: g.room, b: g.to, ...portalAt(g.room, g.side, g.at), width: g.width })),
+  // the open shoreline: the point, the lagoon and the shore run into each other
+  { a: 'point', b: 'lagoon', x: -15.75, z: -65.25, axis: 'x', width: 37.5 },
+  { a: 'lagoon', b: 'shore', x: 22.25, z: -65.25, axis: 'x', width: 37.5 },
+];
+
+// --- zombies claw up out of the snow (and the ice) --------------------------------------
+function groundSpawns() {
+  const out = [];
+  const add = (room, x, z) => out.push({ id: `rise_${room}_${out.length}`, room, x, z });
+  const grid = (room, xs, zs) => { for (const x of xs) for (const z of zs) add(room, x, z); };
+  grid('landing', [-9, 0, 9], [9, 25]);
+  for (const x of [-30, -20]) add('t1', x, 11.3);
+  for (const z of [5, -8, -18]) add('t2', -35.8, z);
+  add('t3', -29, -21.3);
+  for (const z of [-26, -39]) add('t4', -22.2, z);
+  for (const [x, z] of [[-42, -80], [-24, -80], [-50, -68], [-38, -68], [-24, -66], [-50, -52], [-38, -52]]) add('point', x, z);
+  grid('lagoon', [-10, 4, 17], [-80, -64, -51]);
+  grid('camp', [16, 28, 40], [-16, 0, 15]);
+  grid('shore', [26, 36, 45], [-80, -60, -40, -25]);
+  return out;
+}
 
 export const CRUST = {
   id: 'crust',
   name: 'Call of the Crust',
-  wallThickness: 0.5,
-  snow: true,              // the crust world: sky, snow, the stacks (src/render/crustWorld.js)
-  customRender: true,      // crustWorld draws the ground, berms and buildings itself
-  openField: true,         // a battlefield, not rooms: every zone is live, zombies rise near you
-  pa: false,               // (The Schnitz's loudspeakers come later)
-  fog: { color: '#2e343c', density: 0.0115 },
+  wallThickness: T,
+  snow: true,          // the snow world: sky, snowfall, stacks, props (src/render/crustWorld.js)
+  pa: false,           // nobody on the speakers yet (The Shntitz comes later)
+  fog: { color: '#1c2534', density: 0.0075 },
+
   playerSpawns: [
-    { x: 0, z: 58, yaw: 0 }, { x: -2.2, z: 59.5, yaw: 0 }, { x: 2.2, z: 59.5, yaw: 0 }, { x: 0, z: 61, yaw: 0 },
+    { x: 0, z: 22, yaw: 0 },
+    { x: -2, z: 23, yaw: 0 },
+    { x: 2, z: 23, yaw: 0 },
+    { x: 0, z: 24.5, yaw: 0 },
   ],
-  G, LOOP, loop, EXITS, DUGOUTS, BUNKER, COMM, FARM, BARN, CHURCH, SHOP, PIT, RIM, STONES, ALTAR, WRECKS,
-  stairsList: [outerStairsN, outerStairsS, innerStairs],
 
   rooms: ROOMS,
-  navRegions: R,
+  navRegions: ROOMS.map((r) => ({ id: r.id, rect: r.rect, room: r.id })),
   portals: PORTALS,
-  windows: [],
-  doors: [],
-  gaps: [],
+  doors: DOORS,
+  gaps: GAPS.map(({ to, ...g }) => g),
 
+  // boarded windows the zombies tear their way in through
+  windows: [
+    { id: 'win_hut_n', room: 'hut', side: 'n', at: -63 },
+    { id: 'win_hut_w', room: 'hut', side: 'w', at: -64 },
+    { id: 'win_cabin_e', room: 'cabin', side: 'e', at: -6 },
+    { id: 'win_cabin_n', room: 'cabin', side: 'n', at: 50 },
+    { id: 'win_hold_w', room: 'hold', side: 'w', at: -95 },
+    { id: 'win_hold_e', room: 'hold', side: 'e', at: -93 },
+    { id: 'win_hold_n', room: 'hold', side: 'n', at: 35 },
+  ],
+
+  groundSpawns: groundSpawns(),
+
+  // Solid things (drawn by crustWorld.js).
   props: [
-    ...berms.map((b) => boxOf(b.rect, 0, b.y1, 'berm', { face: b.face, stub: !!b.stub, side: b.side })),
-    ...DUGOUTS.map((d) => boxOf(d.rect, G.bermH - 0.25, G.bermH, 'dugoutRoof', { dugout: d.id })),
-    ...bunkerProps,
-    ...farmWalls, ...farmProps, ...barnWalls,
-    ...churchWalls, ...churchProps,
-    ...shopWalls, ...shopProps,
-    ...rimProps, ...pitProps,
-    ...[outerStairsN, outerStairsS, innerStairs].flatMap((s) => s.boxes),
-    ...wreckProps,
+    // the Landing
+    { kind: 'truck', box: [-7.6, 0, 14.6, -2.6, 1.9, 17.1], yaw: 0.12 },
+    { kind: 'barrel', box: [2.65, 0, 17.65, 3.35, 0.95, 18.35], fire: true },
+    { kind: 'crate', box: [7, 0, 23, 8.2, 1.1, 24.2] },
+    { kind: 'crate', box: [8.3, 0, 23.3, 9.3, 0.8, 24.3] },
+    { kind: 'crate', box: [7.3, 1.1, 23.2, 8.0, 1.7, 23.9] },
+    { kind: 'rock', box: [-11, 0, 26.5, -8.4, 1.5, 29] },
+    { kind: 'sign', box: [4.85, 0, 7.15, 5.15, 2.4, 7.45], text: ['THE STACKS', 'ACROSS THE ICE'] },
+    // Lighthouse Point
+    { kind: 'lighthouse', box: [-55.5, 0, -83.5, -47.5, 24, -75.5] },
+    { kind: 'rock', box: [-30, 0, -56, -27, 1.8, -53] },
+    { kind: 'pine', box: [-52.3, 0, -52.3, -51.7, 7, -51.7] },
+    // the Lagoon: ice heaves you can hide behind
+    { kind: 'iceberg', box: [-4, 0, -72, 0, 2.2, -68] },
+    { kind: 'iceberg', box: [10, 0, -58, 13, 1.6, -55] },
+    // the Fishing Camp
+    { kind: 'crate', box: [20, 0, 10, 21.2, 1.1, 11.2] },
+    { kind: 'crate', box: [21.3, 0, 10.3, 22.3, 0.8, 11.3] },
+    { kind: 'barrel', box: [30.65, 0, -8.35, 31.35, 0.95, -7.65], fire: true },
+    { kind: 'rack', box: [17, 0, -14, 23, 1.9, -13.4] },
+    { kind: 'pine', box: [41.2, 0, 17.2, 41.8, 7, 17.8] },
+    { kind: 'rock', box: [14, 0, 18, 16.6, 1.3, 20.6] },
+    // the Shore: a rowboat pulled up, crates off the ship
+    { kind: 'boat', box: [40, 0, -50, 42, 0.9, -45] },
+    { kind: 'crate', box: [27, 0, -36, 28.2, 1.1, -34.8] },
+    { kind: 'rock', box: [44, 0, -30, 46.6, 1.7, -27.4] },
+    // the hold: cargo
+    { kind: 'crate', box: [26, 0, -101, 27.2, 1.1, -99.8] },
+    { kind: 'crate', box: [26, 0, -99.6, 27.2, 1.1, -98.4] },
+    { kind: 'crate', box: [26.2, 1.1, -100.6, 27.0, 1.8, -99.0] },
+    { kind: 'crate', box: [43, 0, -90, 44.2, 1.1, -88.8] },
   ],
 
-  groundSpawns: GROUND,
-
-  // deep mud slows you down (not on the duckboards): circles { x, z, r }
+  // slush in the lagoon: circles { x, z, r } that slow you down
   mud: [
-    { x: -30, z: -20, r: 7 }, { x: 28, z: -22, r: 6 }, { x: -22, z: 28, r: 6.5 }, { x: 26, z: 28, r: 5.5 },
-    { x: -48, z: 34, r: 4.5 }, { x: 46, z: -40, r: 5 }, { x: 0, z: 27, r: 4 }, { x: -24, z: -42, r: 4 },
-    { x: 44, z: 12, r: 4.5 }, { x: -48, z: -32, r: 4 },
+    { x: -6, z: -60, r: 6 }, { x: 8, z: -72, r: 7 }, { x: 16, z: -52, r: 4 }, { x: -10, z: -78, r: 4.5 },
   ],
-  // where the duckboards are laid (no slow-down): trench floors, the bunker, the pit, a few paths
-  duckboards: [
-    ...loop.regions.map((r) => r.rect), COMM.rect, BUNKER.yard, PIT.inner, cut(-18, -12), cut(12, 18),
-    ...DUGOUTS.map((d) => d.rect),
-    [-1.2, -27, 1.2, -18], [-32.5, -1.8, -18, -0.2], [18, -1.8, 30, -0.2],
-  ],
-  // shell craters dotting No Man's Land (looks only): { x, z, r }
-  craters: [
-    [-30, -20, 7], [28, -22, 6], [-22, 28, 6.5], [26, 28, 5.5], [-48, 34, 4.5], [46, -40, 5], [0, 27, 4],
-    [-24, -42, 4], [44, 12, 4.5], [-48, -32, 4], [-12, -26, 2.5], [20, -30, 3], [-36, 14, 2.8], [38, 34, 3],
-    [-6, 30, 2.4], [50, -24, 2.6], [-52, -44, 2.4], [16, 24, 2.2], [-20, 10, 2.6], [30, 12, 2.4],
-  ].map(([x, z, r]) => ({ x, z, r })),
 
-  wallBuys: [
-    { weapon: 'Olympus', room: 'bunker', side: 'w', at: 59, y: 1.3 },
-    { weapon: 'frag', room: 'bunker', side: 'e', at: 66, y: 1.25 },
-    ...DUGOUTS.map((d) => ({ weapon: d.weapon, room: d.id, side: d.side, at: d.side === 'n' || d.side === 's' ? (d.rect[0] + d.rect[2]) / 2 : (d.rect[1] + d.rect[3]) / 2, y: 1.45 })),
-  ],
   boxSpots: [
-    { id: 'box_bunker', room: 'bunker', x: 8.4, z: 61, yaw: -Math.PI / 2, start: true },
-    { id: 'box_church', room: 'church', x: 37, z: -5.9, yaw: 0 },
-    { id: 'box_barn', room: 'barn', x: -44.3, z: 23, yaw: Math.PI / 2 },
-    { id: 'box_pit', room: 'pit', x: 4, z: 11.4, yaw: Math.PI },
+    { id: 'box_landing', room: 'landing', x: -4, z: 29.65, yaw: Math.PI, start: true },
+    { id: 'box_hut', room: 'hut', x: -68.15, z: -61, yaw: Math.PI / 2 },
+    { id: 'box_cabin', room: 'cabin', x: 55.65, z: -2, yaw: -Math.PI / 2 },
+    { id: 'box_hold', room: 'hold', x: 30, z: -103.65, yaw: 0 },
+  ],
+  wallBuys: [
+    { weapon: 'MP41', room: 'landing', side: 'n', at: -4, y: 1.5 },
+    { weapon: 'frag', room: 'landing', side: 'n', at: 4, y: 1.4 },
+    { weapon: 'M15', room: 'dug_w', side: 'w', at: -3, y: 1.45 },
+    { weapon: 'Staykout', room: 'dug_e', side: 'e', at: -33, y: 1.45 },
+    { weapon: 'PM64', room: 'hut', side: 's', at: -62, y: 1.45 },
+    { weapon: 'MPK', room: 'cabin', side: 's', at: 50, y: 1.45 },
+    { weapon: 'Olympus', room: 'hold', side: 'e', at: -100, y: 1.45 },
   ],
 
-  // the four stacks, far off to the north (the final fight happens there, later)
+  // Out across the frozen sea: the four stacks and the plant they stand on.
   stacks: [
-    { x: -22, z: -232, h: 120 }, { x: 22, z: -232, h: 118 },
-    { x: -22, z: -276, h: 122 }, { x: 22, z: -276, h: 120 },
+    { x: -33, z: -200, h: 92 },
+    { x: -11, z: -195, h: 92 },
+    { x: 11, z: -190, h: 90 },
+    { x: 33, z: -185, h: 90 },
   ],
+  // the shoreline: where the land ends and the frozen sea starts (z)
+  seaEdge: -84,
 };

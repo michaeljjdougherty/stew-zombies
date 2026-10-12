@@ -258,7 +258,7 @@ export class MapView {
 
   floorMat(type) {
     const M = this.mats;
-    return { gym: M.gymFloor, tile: M.tile, tile_big: M.tile_big, carpet: M.carpet, concrete: M.concrete, asphalt: M.asphalt, wood: M.woodFloor, grass: M.grass, snow: M.snow }[type] || M.tile;
+    return { gym: M.gymFloor, tile: M.tile, tile_big: M.tile_big, carpet: M.carpet, concrete: M.concrete, asphalt: M.asphalt, wood: M.woodFloor, grass: M.grass, snow: M.snow }[type] || M[type] || M.tile;
   }
 
   roomAtPoint(x, z) {
@@ -302,7 +302,7 @@ export class MapView {
       // shows through (z-fights) on a taller room next door
       const e = Tt * 0.5;
       const c = new BoxBatch().add({ minX: x0 - e, maxX: x1 + e, minY: H, maxY: H + 0.25, minZ: z0 - e, maxZ: z1 + e }, { cell: 0.8, skip: new Set([2]) });
-      const cm = new THREE.Mesh(c.build(), this.mats.drop);
+      const cm = new THREE.Mesh(c.build(), this.mats[room.ceilingMat] || this.mats.drop);
       this.group.add(cm);
       this.bakeReceivers.push(cm);
     }
@@ -347,7 +347,10 @@ export class MapView {
       const room = this.world.roomById.get(b.room);
       const si = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[b.side];
       const other = this.roomAtPoint(cx + si[0] * (this.T / 2 + 0.2), cz + si[1] * (this.T / 2 + 0.2));
-      const outStyle = other ? other.style : 'exterior';
+      let outStyle = other ? other.style : 'exterior';
+      // the snow world: a hut or a ship's side looks the same from outside;
+      // only a room next door paints the other face
+      if (this.map.snow && (!other || other.outdoor)) outStyle = b.style || room.style;
       const all = [0, 1, 2, 3, 4, 5];
       get(b.style || room.style).add(b, { skip: new Set([outF]), cell: 0.6 });
       get(outStyle).add(b, { skip: new Set(all.filter((f) => f !== outF)), cell: 0.6 });
@@ -517,7 +520,7 @@ export class MapView {
     const others = (f) => new Set([0, 1, 2, 3, 4, 5].filter((i) => i !== f));
     for (const b of this.world.propBoxes) {
       const p = b.prop;
-      if (this.map.customRender) continue;   // (crustWorld draws its own)
+      if (this.map.snow) continue;   // (Call of the Crust: crustWorld draws its own)
       switch (p.kind) {
         case 'lockers': {
           const f = faceIdx[p.face];
@@ -1255,7 +1258,7 @@ export class MapView {
     const g = this.cfg.graphics;
     // (Call of the Crust brings its own sky light: one hemisphere light, not two,
     // keeps the shaders smaller)
-    if (!this.crust) {
+    if (!this.map.customRender) {
       this.hemi = new THREE.HemisphereLight(0x6f7580, 0x2a2016, g.ambientLight);
       this.group.add(this.hemi);
     }

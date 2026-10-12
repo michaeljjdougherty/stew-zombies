@@ -377,6 +377,7 @@
   #ep-slots { font: 12px var(--mono); color: var(--muted); }
   #ep-now { font-size: 12px; color: var(--muted); margin-left: 4px; }
   .ep-egg-wrap { display: grid; gap: 10px; }
+  .ep-egg-wrap[hidden] { display: none; }
   .ep-egg-wrap small { color: var(--muted); font-size: 11px; }
   #ep-egg { display: flex; flex-wrap: wrap; gap: 8px; }
   #ep-egg button.sm.done { color: var(--muted); border-color: rgba(255,255,255,.08); }
@@ -471,6 +472,7 @@
   .ms-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .ms-actions button { all: unset; cursor: pointer; font-family: var(--display); font-size: 22px; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 22px; color: #fff; background: var(--blood); }
   .ms-actions button:hover, .ms-actions button:focus-visible { background: var(--blood-hi); outline: 1px dashed var(--muted); outline-offset: 3px; }
+  .ms-actions button[hidden] { display: none; }
   .ms-actions button[disabled] { background: #2a2722; color: #7b7466; cursor: default; }
   .ms-actions button.ms-sec { font: 700 12px var(--body); letter-spacing: 1.5px; padding: 9px 12px; background: none; border: 1px solid var(--line); color: var(--ink); }
   .ms-actions button.ms-sec:hover, .ms-actions button.ms-sec:focus-visible { border-color: var(--blood-hi); background: none; }
@@ -788,6 +790,7 @@
       </div>
       <div class="ms-actions">
         <button id="ms-play" type="button" data-nav-first>Play</button>
+        <button id="ms-explore" type="button" class="ms-sec" title="Endless points, nobody can hurt you; zombies off till you switch them on">Explore</button>
         <button id="ms-watch" type="button" class="ms-sec">Watch the intro</button>
         <button id="ms-back" type="button" class="ms-sec">Back</button>
       </div>

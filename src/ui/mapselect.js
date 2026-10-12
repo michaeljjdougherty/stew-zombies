@@ -23,8 +23,8 @@ export const MAPS = [
   },
   {
     id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
-    blurb: 'Snow falling out of a sky full of planets, and four smokestacks across the ice. Through the portal. The season isn\'t over.',
-    facts: ['Map 2', 'Solo for now', 'Developers only'],
+    blurb: 'Snow falling out of a sky full of planets, a ship frozen in the ice, a lighthouse on the point, and four smokestacks out across the sea. Through the portal. The season isn\'t over.',
+    facts: ['Map 2 · early build', 'Solo for now', 'Developers only'],
   },
   {
     id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,
@@ -203,6 +203,7 @@ export class MapSelect {
     $('ms-zout').addEventListener('click', () => this.zoomBy(1 / 1.6));
     $('ms-home').addEventListener('click', () => this.flyTo(MAPS.find((m) => m.id === this.sel), true));
     $('ms-play').addEventListener('click', () => this.tryPlay());
+    $('ms-explore').addEventListener('click', () => this.tryPlay(true));
     $('ms-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.tryPlay(); } e.stopPropagation(); });
     for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.addEventListener('change', () => { if (r.checked && this.h.setHints) this.h.setHints(r.value); });
     $('ms-watch').addEventListener('click', () => this.h.watchIntro());
@@ -213,7 +214,8 @@ export class MapSelect {
   current() { return MAPS.find((m) => m.id === this.sel); }
 
   // Play. A map still in development wants the developer code, every time.
-  tryPlay() {
+  // Explore: the same, with endless points and the zombies off.
+  tryPlay(explore = false) {
     const m = this.current();
     if (!m.ready) return;
     if (m.locked) {
@@ -226,6 +228,7 @@ export class MapSelect {
       }
       $('ms-code').value = '';
     }
+    if (explore) { this.h.explore(m.id); return; }
     this.h.play(m.id, m.id === 'lastbell' && $('ms-intro').checked);
   }
 
@@ -291,6 +294,7 @@ export class MapSelect {
     $('ms-card').classList.toggle('soon', !m.ready);
     $('ms-play').disabled = !m.ready;
     $('ms-play').textContent = m.ready ? 'Play' : 'Coming soon';
+    $('ms-explore').hidden = !m.ready;
     $('ms-introrow').hidden = m.id !== 'lastbell';
     $('ms-moderow').hidden = m.id !== 'lastbell';
     $('ms-coderow').hidden = !m.locked;

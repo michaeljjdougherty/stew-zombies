@@ -60,6 +60,7 @@ export class ExploreUI {
   open(sim, p) {
     this.sim = sim; this.p = p;
     this.round = Math.max(1, sim.rounds.round || 1);
+    $('ep-egg').parentElement.hidden = !sim.quest;   // (the egg skips are the school's)
     this.refresh();
     this.panel.hidden = false;
   }

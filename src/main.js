@@ -416,6 +416,7 @@ const mapSelect = new MapSelect({
     if (sim.mode !== 'zombies' || sim.mapData.id !== 'lastbell') restart('zombies');
     startPlaying();
   },
+  explore: (id) => { mapSelect.close(); restart('explore', id); startPlaying(); },
   watchIntro: () => { mapSelect.close(); startIntro('maps'); },
   back: () => { mapSelect.close(); menus.show('title'); },
   introSeen: () => !!progress.introSeen,

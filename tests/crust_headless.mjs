@@ -1,110 +1,125 @@
-// Call of the Crust (map 2), phase 1: the battlefield layout. The nav joins up,
-// zombies rise near you and find their way to you wherever you stand (trench,
-// No Man's Land, the buildings, down in the pit, up on its rim), the berms stop
-// you, the mud slows you and the duckboards don't, the stairs climb the rim,
-// and the wall guns and the box work. Run: node tests/crust_headless.mjs
+// Call of the Crust (map 2), early build: the Call of the Dead-style layout.
+// The nav joins up, the debris and doors open the way round (trenches →
+// Lighthouse Point → the lagoon → the shore → the camp → back to the Landing),
+// zombies find you wherever you stand once it's open, the trenches are narrow,
+// the slush slows you, the windows have boards, and the guns and the box work.
+// Explore mode works here too. Run: node tests/crust_headless.mjs
 import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
 import { emptyCommand } from '../src/sim/player.js';
 import { unreachable } from '../src/map/layout.js';
 import { makeZombie } from '../src/sim/zombies.js';
-import { CONFIG } from '../src/config.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
 const dt = 1 / 60;
 
 // --- the map data
-const R = CRUST.navRegions;
-check(unreachable(R, CRUST.portals, 'yard_0').length === 0, `every one of the ${R.length} nav regions joins up`);
-check(CRUST.groundSpawns.length > 40, `${CRUST.groundSpawns.length} places zombies claw up`);
+check(unreachable(CRUST.navRegions, CRUST.portals, 'landing').length === 0, `all ${CRUST.navRegions.length} areas join up`);
+const ALL = CRUST.doors.map((d) => d.id);
 
-function game(seed = 5) {
-  const sim = new GameSim({ map: CRUST, seed, mode: 'zombies' });
+function game(seed = 5, mode = 'zombies') {
+  const sim = new GameSim({ map: CRUST, seed, mode });
   const me = sim.addPlayer('p1', 'Tester');
   const log = [];
   const step = (patch = {}, n = 1) => { for (let i = 0; i < n; i++) { sim.setInput('p1', { ...emptyCommand(), yaw: me.yaw, ...patch }); sim.step(dt); log.push(...sim.drainEvents()); } };
-  const put = (x, z, y = 0, yaw = 0) => { me.pos.x = x; me.pos.y = y; me.pos.z = z; me.vel.x = me.vel.y = me.vel.z = 0; me.yaw = yaw; step({}, 3); };
-  return { sim, me, log, step, put };
+  const put = (x, z, yaw = 0) => { me.pos.x = x; me.pos.y = 0; me.pos.z = z; me.vel.x = me.vel.y = me.vel.z = 0; me.yaw = yaw; step({}, 3); };
+  const face = (it) => { me.yaw = Math.atan2(-(it.pos.x - me.pos.x), -(it.pos.z - me.pos.z)); };
+  return { sim, me, log, step, put, face };
 }
 
+// --- you start in the Landing, shut in; zombies come up out of the snow
 {
   const { sim, me, log, step } = game();
-  check(!sim.quest && !sim.pa.enabled, 'no quest, nobody on the PA yet');
-  check(sim.zoneOf(me.pos) === 'bunker', 'you start in the command bunker');
+  check(sim.zoneOf(me.pos) === 'landing', 'you start in the Landing');
   me.health = me.maxHealth = 1e9;
-  step({}, 60 * 25);
-  const rose = log.filter((e) => e.type === 'zombieRise');
-  check(rose.length > 0, `round ${sim.rounds.round}: zombies rise out of the mud (${rose.length})`);
-  const far = rose.filter((e) => Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) > CONFIG.crust.spawnRadius + 0.5);
-  check(far.length === 0, 'all of them near you (none further than ' + CONFIG.crust.spawnRadius + ' m)');
   step({}, 60 * 30);
-  const near = sim.zombies.filter((z) => z.state === 'chase' && Math.hypot(z.pos.x - me.pos.x, z.pos.z - me.pos.z) < 3).length;
-  check(near > 0, 'they find their way down the communication trench to the bunker (' + near + ' on you)');
+  const rose = log.filter((e) => e.type === 'zombieRise');
+  check(rose.length > 0, `zombies rise in the Landing (${rose.length})`);
+  check(rose.every((e) => sim.zoneOf(e.pos) === 'landing'), 'only in the Landing while the rest is shut');
 }
 
-// One zombie, a long way off: does it reach you?
-function chase(label, from, to, secs = 90) {
+// --- buying the way round
+{
+  const { sim, me, step, put, face } = game();
+  me.points = 1e6;
+  const buy = (id) => {
+    const it = sim.interactables.find((i) => i.kind === 'door' && i.door.id === id);
+    const d = sim.world.doors.find((x) => x.id === id);
+    put(d.center.x + d.normal.x * 1.2, d.center.z + d.normal.z * 1.2);
+    face({ pos: d.center });
+    step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
+    void it;
+    return sim.doorOpen(id);
+  };
+  const before = me.points;
+  check(buy('debris_trench'), 'clear the debris into the trenches');
+  check(before - me.points === 750, 'for 750 (' + (before - me.points) + ')');
+  check(buy('debris_camp'), 'clear the debris into the Fishing Camp');
+  for (const id of ['door_cabin', 'debris_shore', 'door_hold', 'debris_point', 'door_hut']) check(buy(id), 'open ' + id);
+}
+
+// One zombie a long way off, everything open: does it reach you?
+function chase(label, from, to, secs = 120) {
   const { sim, me, step, put } = game(7);
-  sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;   // just this one zombie
+  for (const id of ALL) sim.openDoor(id);
+  sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   me.health = me.maxHealth = 1e9;
-  put(to.x, to.z, to.y || 0);
-  const z = makeZombie(sim, { type: 'runner', pos: { x: from.x, y: from.y || 0, z: from.z }, health: 1e6, state: 'chase' });
+  put(to.x, to.z);
+  const z = makeZombie(sim, { type: 'runner', pos: { x: from.x, y: 0, z: from.z }, health: 1e6, state: 'chase' });
   sim.zombies.push(z);
   let t = 0, best = Infinity;
   for (; t < secs * 60; t++) {
     step({}, 1);
-    const d = Math.hypot(z.pos.x - me.pos.x, z.pos.z - me.pos.z) + Math.abs(z.pos.y - me.pos.y) * 0.5;
+    const d = Math.hypot(z.pos.x - me.pos.x, z.pos.z - me.pos.z);
     best = Math.min(best, d);
     if (d < 2.2) break;
   }
   check(t < secs * 60, `${label} (${(t / 60).toFixed(1)} s${t >= secs * 60 ? ', closest ' + best.toFixed(1) + ' m, stuck at ' + z.pos.x.toFixed(1) + ',' + z.pos.z.toFixed(1) : ''})`);
 }
-chase('from the north-west of No Man\'s Land to the bunker', { x: -45, z: -40 }, { x: 0, z: 60 });
-chase('round the trench loop', { x: 57, z: -50 }, { x: -57, z: 44 });
-chase('into the farmhouse', { x: 30, z: 30 }, { x: -36, z: -2 });
-chase('into the church', { x: -40, z: 30 }, { x: 40, z: -1 });
-chase('into the workshop', { x: 0, z: 30 }, { x: 0, z: -31 });
-chase('down into the pit', { x: -40, z: -20 }, { x: 6, z: 2 });
-chase('up onto the rim', { x: 40, z: 30 }, { x: 0, z: -15, y: 4 });
-chase('out of the pit to a dugout', { x: 0, z: 0 }, { x: -42.7, z: 46.6 });
-chase('into the barn', { x: 20, z: -30 }, { x: -39, z: 23 });
+chase('from the Landing, through the trenches, to the lighthouse', { x: 0, z: 20 }, { x: -40, z: -60 });
+chase('from the ship\'s hold to the Landing', { x: 35, z: -95 }, { x: 0, z: 20 });
+chase('into the west dugout', { x: 30, z: 0 }, { x: -42, z: -3 });
+chase('into the east dugout', { x: -40, z: -70 }, { x: -17.5, z: -33 });
+chase('into the keeper\'s hut', { x: 40, z: -60 }, { x: -62, z: -64 });
+chase('into the cabin', { x: -30, z: -60 }, { x: 50, z: -6 });
+chase('across the lagoon to the shore', { x: -45, z: -70 }, { x: 35, z: -40 });
 
-// --- walls, mud, stairs
+// --- the trenches are narrow; the slush slows you; the cliffs hold
 {
-  const { me, step, put } = game();
-  // the berm between the south trench and No Man's Land
-  put(-50, 44, 0, 0);
+  const { sim, me, step, put } = game();
+  const t = CRUST.rooms.filter((r) => /^t\d$/.test(r.id));
+  check(t.every((r) => Math.min(r.rect[2] - r.rect[0], r.rect[3] - r.rect[1]) <= 2.7), 'the trenches are narrow (2.6 m)');
+  const run = (x, z) => { put(x, z, Math.PI / 2); const x0 = me.pos.x; step({ moveY: 1, yaw: Math.PI / 2 }, 60); return Math.abs(me.pos.x - x0); };
+  const slush = run(8 + 3, -72), ice = run(-2, -50);
+  check(slush < ice * 0.75, `slush in the lagoon slows you (${slush.toFixed(2)} m vs ${ice.toFixed(2)} m on clear ice)`);
+  put(0, 8, 0);
   step({ moveY: 1 }, 120);
-  check(me.pos.z > 42, 'the trench wall stops you (z ' + me.pos.z.toFixed(2) + ')');
-  // mud vs duckboards: same push, different distance
-  const run = (x, z) => { put(x, z, 0, Math.PI / 2); const x0 = me.pos.x; step({ moveY: 1, yaw: Math.PI / 2 }, 60); return Math.abs(me.pos.x - x0); };
-  const inMud = run(-30, -20), onBoards = run(-28, -1);
-  check(inMud < onBoards * 0.75, `deep mud slows you (${inMud.toFixed(2)} m vs ${onBoards.toFixed(2)} m on the duckboards)`);
-  // up the outside stairs to the rim
-  put(11.5, -26, 0, Math.PI);
-  step({ moveY: 1, yaw: Math.PI }, 150);
-  check(me.pos.y > 3.8, 'the stairs climb the rim (y ' + me.pos.y.toFixed(2) + ')');
+  check(me.pos.z > 6, 'the Landing\'s cliffs hold you in (z ' + me.pos.z.toFixed(2) + ')');
+  check(sim.windows.length === 7 && sim.windows.every((w) => w.boards === sim.cfg.windows.boards), `${sim.windows.length} boarded windows (hut, cabin, hold)`);
 }
 
-// --- the bunker's wall gun and the box
+// --- the guns on the walls and the box
 {
-  const { sim, me, step } = game();
+  const { sim, me, step, face } = game();
   me.points = 50000;
-  for (const [weapon, x, z] of [['Olympus', -8.2, 59]]) {
-    const wb = sim.interactables.find((i) => i.kind === 'wallbuy' && i.wb.weapon === weapon);
-    me.pos.x = wb.stand.x; me.pos.z = wb.stand.z; me.yaw = Math.atan2(-(wb.pos.x - me.pos.x), -(wb.pos.z - me.pos.z));
-    step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
-    check(me.loadout.slots.some((s) => s.id === weapon), `bought the ${weapon} off the bunker wall`);
-    void x; void z;
-  }
-  const dug = sim.interactables.filter((i) => i.kind === 'wallbuy').map((i) => i.wb.weapon);
-  check(['MP41', 'M15', 'Staykout', 'PM64', 'frag'].every((w) => dug.includes(w)), 'wall guns in the dugouts: ' + dug.join(', '));
-  const box = sim.box;
-  me.pos.x = box.stand.x; me.pos.z = box.stand.z; me.yaw = Math.atan2(-(box.pos.x - me.pos.x), -(box.pos.z - me.pos.z));
+  const wb = sim.interactables.find((i) => i.kind === 'wallbuy' && i.wb.weapon === 'MP41');
+  me.pos.x = wb.stand.x; me.pos.z = wb.stand.z; face(wb);
   step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
-  check(box.phase === 'spinning', 'the Mystery Box spins in the bunker (' + box.phase + ')');
+  check(me.loadout.slots.some((s) => s.id === 'MP41'), 'bought the MP41 off the Landing\'s cliff');
+  const guns = sim.interactables.filter((i) => i.kind === 'wallbuy').map((i) => i.wb.weapon);
+  check(['M15', 'Staykout', 'PM64', 'MPK', 'Olympus', 'frag'].every((w) => guns.includes(w)), 'guns round the map: ' + guns.join(', '));
+  const box = sim.box;
+  me.pos.x = box.stand.x; me.pos.z = box.stand.z; face(box);
+  step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
+  check(box.phase === 'spinning', 'the Mystery Box spins in the Landing (' + box.phase + ')');
   check(sim.world.boxSpots.length === 4, 'four places the box can be: ' + sim.world.boxSpots.map((b) => b.id).join(', '));
+}
+
+// --- Explore mode on this map: endless points, everything open for nothing
+{
+  const { sim, me } = game(5, 'explore');
+  check(me.points >= 999999 && sim.godMode, 'Explore: endless points, nothing can hurt you');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall crust checks passed');

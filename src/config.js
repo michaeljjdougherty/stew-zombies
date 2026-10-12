@@ -730,6 +730,9 @@ export const CONFIG = {
   // Doors, debris and the mystery box
   // ---------------------------------------------------------------------------
   doors: {
+    // Call of the Crust
+    debris_trench: 750, debris_camp: 750, debris_point: 1000, door_hut: 750,
+    door_cabin: 750, debris_shore: 1000, door_hold: 1250,
     door_hall: 750,
     door_cafe: 1000,
     debris_office: 1250,
