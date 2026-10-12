@@ -9,6 +9,7 @@
 // added on top with their own boxes and regions.
 // Pure JS (no three.js): the simulation and the renderer both read it.
 // =============================================================================
+import { CONFIG } from '../config.js';
 
 // SEA: the frozen sea (you can't go there). ROCK: cliffs, mountain, too steep
 // to walk. GROUND: where you walk. ROOM: under a building (its own floor).
@@ -17,6 +18,8 @@ export const K = { SEA: 0, ROCK: 1, GROUND: 2, ROOM: 3, BLOCK: 4 };
 export const STEP = 0.45;   // the biggest rise you can walk up (zombies 0.5, players 0.48)
 export const DROP_MAX = 12; // ledges higher than this aren't something you jump off
 const FENCE = 3.5;          // how high the invisible edge reaches over the ground beside it
+const { drop: RAIL_DROP, h: RAIL_H, t: RAIL_T } = CONFIG.crust.rails;
+const EDGES = [[1, 0, 1], [-1, 0, 2], [0, 1, 4], [0, -1, 8]];
 
 // --- shapes: (x, z) => inside? ----------------------------------------------------------
 export const wobble = (x, z, amp, freq = 0.35) => amp * (Math.sin(x * freq + Math.cos(z * freq * 0.7) * 1.7) * 0.6 + Math.sin(z * freq * 1.3 - x * freq * 0.4) * 0.4);
@@ -108,6 +111,7 @@ export class Terrain {
     this.smooth = new Uint8Array(n);       // ramps: drawn as a slope, not a step
     this.spawn = new Uint8Array(n);        // zombies may claw up here
     this.noFence = new Uint8Array(n);      // (under a deck that juts out over a cliff)
+    this.rail = new Uint8Array(n);         // guard rails on the cell's edges (1 +x, 2 -x, 4 +z, 8 -z)
   }
   i(ix, iz) { return iz * this.nx + ix; }
   cx(ix) { return this.x0 + (ix + 0.5) * this.cell; }
@@ -204,6 +208,57 @@ export class Terrain {
   walkable(c) { return this.kind[c] === K.GROUND; }
   physWalk(c) { return this.kind[c] === K.GROUND || this.kind[c] === K.BLOCK; }
 
+  // --- guard rails: along every ledge you'd fall more than `minDrop` off (and the
+  // island's edge, over nothing), except where skip(x, z) says it's a place to dive
+  guardRails(minDrop = RAIL_DROP, skip = () => false) {
+    this.rail.fill(0);
+    this.railRuns = null;
+    for (let iz = 0; iz < this.nz; iz++) for (let ix = 0; ix < this.nx; ix++) {
+      const c = this.i(ix, iz);
+      if (!this.walkable(c)) continue;
+      for (const [dx, dz, bit] of EDGES) {
+        const jx = ix + dx, jz = iz + dz;
+        if (jx < 0 || jz < 0 || jx >= this.nx || jz >= this.nz) continue;
+        const n = this.i(jx, jz);
+        let drop;
+        if (this.kind[n] === K.SEA) { if (!this.openEdges) continue; drop = Infinity; }
+        else if (this.walkable(n)) drop = this.h[c] - this.h[n];
+        else continue;      // (rock: its invisible fence already stops you)
+        if (drop < minDrop) continue;
+        if (skip(this.cx(ix) + dx * this.cell / 2, this.cz(iz) + dz * this.cell / 2, this.h[c])) continue;
+        this.rail[c] |= bit;
+      }
+    }
+  }
+  // The rails as runs along cell edges: { axis ('x': a line of constant x), line,
+  // side (+1/-1: which way is the drop), a0, a1, ys: the ground's height at each cell }
+  railRunList() {
+    if (this.railRuns) return this.railRuns;
+    const out = [];
+    for (const [dx, dz, bit] of EDGES) {
+      const alongX = dz !== 0;          // a rail on a ±z edge runs along x
+      const nA = alongX ? this.nz : this.nx, nB = alongX ? this.nx : this.nz;
+      for (let a = 0; a < nA; a++) {
+        let run = null;
+        const flush = () => { if (run) out.push(run); run = null; };
+        for (let b = 0; b < nB; b++) {
+          const ix = alongX ? b : a, iz = alongX ? a : b;
+          const c = this.i(ix, iz);
+          if (!(this.rail[c] & bit)) { flush(); continue; }
+          const h = this.h[c];
+          if (run && Math.abs(run.ys[run.ys.length - 1] - h) <= STEP + 0.05) { run.ys.push(h); run.a1 += this.cell; continue; }
+          flush();
+          const line = alongX ? this.z0 + (iz + (dz > 0 ? 1 : 0)) * this.cell : this.x0 + (ix + (dx > 0 ? 1 : 0)) * this.cell;
+          const a0 = alongX ? this.x0 + ix * this.cell : this.z0 + iz * this.cell;
+          run = { axis: alongX ? 'z' : 'x', line, side: dx + dz, a0, a1: a0 + this.cell, ys: [h] };
+        }
+        flush();
+      }
+    }
+    this.railRuns = out;
+    return out;
+  }
+
   // --- collision boxes: runs of cells with the same top, merged into rectangles ----------------
   boxes() {
     const out = [];
@@ -255,6 +310,19 @@ export class Terrain {
     }
     merge((c) => (need[c] > 0 ? need[c] : null),
       (key, x0, z0, x1, z1) => ({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, minY: -1, maxY: key, kind: 'shore', ghost: true, terrain: this.id }));
+    // the guard rails (a box per level stretch of each run)
+    for (const r of this.railRunList()) {
+      let k0 = 0;
+      for (let k = 1; k <= r.ys.length; k++) {
+        if (k < r.ys.length && Math.abs(r.ys[k] - r.ys[k0]) < 0.06) continue;
+        const a0 = r.a0 + k0 * this.cell, a1 = r.a0 + k * this.cell, y = Math.max(...r.ys.slice(k0, k));
+        const l0 = r.side > 0 ? r.line - RAIL_T : r.line, l1 = r.side > 0 ? r.line : r.line + RAIL_T;
+        out.push(r.axis === 'x'
+          ? { minX: l0, maxX: l1, minZ: a0, maxZ: a1, minY: y - 0.05, maxY: y + RAIL_H, kind: 'rail', ledge: true, terrain: this.id }
+          : { minX: a0, maxX: a1, minZ: l0, maxZ: l1, minY: y - 0.05, maxY: y + RAIL_H, kind: 'rail', ledge: true, terrain: this.id });
+        k0 = k;
+      }
+    }
     return out;
   }
 
@@ -311,6 +379,8 @@ export class Terrain {
           const [a, b] = reg[c] < reg[n] ? [reg[c], reg[n]] : [reg[n], reg[c]];
           note(a, b, 'walk', axis, line, along);
         } else if (Math.abs(diff) <= DROP_MAX) {
+          // (not over a guard rail)
+          if (diff > 0 ? this.rail[n] & (axis === 'x' ? 2 : 8) : this.rail[c] & (axis === 'x' ? 1 : 4)) continue;
           const up = diff > 0 ? reg[n] : reg[c], down = diff > 0 ? reg[c] : reg[n];
           note(up, down, 'drop', axis, line, along);
         }

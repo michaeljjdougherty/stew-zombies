@@ -72,7 +72,8 @@ for (const s of specs) {
   const gx0 = Math.floor(x0 / CELL) * CELL, gz0 = Math.floor(z0 / CELL) * CELL;
   const nx = Math.ceil((x1 - gx0) / CELL) + 1, nz = Math.ceil((z1 - gz0) / CELL) + 1;
   const H = new Float32Array(nx * nz).fill(-1e9);
-  const put = (x, z, y) => { const i = Math.floor((x - gx0) / CELL), k2 = Math.floor((z - gz0) / CELL); if (i < 0 || k2 < 0 || i >= nx || k2 >= nz) return; const c = k2 * nx + i; if (y > H[c]) H[c] = y; };
+  const capY = s.capY != null ? (s.y ?? 0) + s.capY : process.env.CAPY ? (s.y ?? 0) + +process.env.CAPY : Infinity;
+  const put = (x, z, y) => { if (y > capY) return; const i = Math.floor((x - gx0) / CELL), k2 = Math.floor((z - gz0) / CELL); if (i < 0 || k2 < 0 || i >= nx || k2 >= nz) return; const c = k2 * nx + i; if (y > H[c]) H[c] = y; };
   for (const T of tris) {
     const [ax, ay, az, bx, by, bz, cx, cy, cz] = T;
     // its edges (walls seen edge-on from above still get their tops)
@@ -90,6 +91,60 @@ for (const s of specs) {
       const l1 = ((bz - cz) * (px - cx) + (cx - bx) * (pz - cz)) / d, l2 = ((cz - az) * (px - cx) + (ax - cx) * (pz - cz)) / d, l3 = 1 - l1 - l2;
       if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
       put(px, pz, l1 * ay + l2 * by + l3 * cy);
+    }
+  }
+  // banded: which cells have anything in each height band (world y). A band:
+  // { y0, y1 (what's rasterized), from, to (the box it makes), rect / skip ([x0, z0, x1, z1]: where), fill (close what it rings) }
+  if (s.bands || process.env.PROFILE === s.solid) {
+    const base = s.y ?? 0, off = +process.env.OFF || 0;
+    const bands = s.bands || Array.from({ length: 40 }, (_, k) => ({ y0: base + off + k * 0.5, y1: base + off + k * 0.5 + 0.5 }));
+    const occ = bands.map(() => new Uint8Array(nx * nz));
+    const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
+    const mark = (x, y, z) => {
+      const i = Math.floor((x - gx0) / CELL), k2 = Math.floor((z - gz0) / CELL);
+      if (i < 0 || k2 < 0 || i >= nx || k2 >= nz) return;
+      for (let j = 0; j < bands.length; j++) { const B = bands[j]; if (y >= B.y0 && y <= B.y1) occ[j][k2 * nx + i] = 1; }
+    };
+    const SAMP = CELL * 0.45;
+    for (const T of tris) {
+      const [ax, ay, az, bx, by, bz, cx, cy, cz] = T;
+      const n1 = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay, bz - az) / SAMP)), n2 = Math.max(1, Math.ceil(Math.hypot(cx - ax, cy - ay, cz - az) / SAMP));
+      for (let i = 0; i <= n1; i++) for (let j = 0; j <= n2; j++) {
+        const u = i / n1, w = j / n2;
+        if (u + w > 1 + 1e-9) continue;
+        mark(ax + (bx - ax) * u + (cx - ax) * w, ay + (by - ay) * u + (cy - ay) * w, az + (bz - az) * u + (cz - az) * w);
+      }
+    }
+    bands.forEach((B, j) => {
+      const o = occ[j];
+      for (let c = 0; c < nx * nz; c++) {
+        const x = gx0 + (c % nx + 0.5) * CELL, z = gz0 + (Math.floor(c / nx) + 0.5) * CELL;
+        if ((B.rect && !inR(B.rect, x, z)) || (B.skip || []).some((r) => inR(r, x, z))) o[c] = 0;
+      }
+      if (B.fill) {
+        // flood the outside in from the edges: whatever it can't reach is inside the ring
+        const seen = new Uint8Array(nx * nz), st = [];
+        for (let i = 0; i < nx; i++) st.push(i, (nz - 1) * nx + i);
+        for (let k2 = 0; k2 < nz; k2++) st.push(k2 * nx, k2 * nx + nx - 1);
+        while (st.length) { const c = st.pop(); if (seen[c] || o[c]) continue; seen[c] = 1; const i = c % nx, k2 = Math.floor(c / nx); if (i > 0) st.push(c - 1); if (i < nx - 1) st.push(c + 1); if (k2 > 0) st.push(c - nx); if (k2 < nz - 1) st.push(c + nx); }
+        for (let c = 0; c < nx * nz; c++) if (!seen[c]) o[c] = 1;
+      }
+    });
+    if (!s.bands) {
+      bands.forEach((B, j) => {
+        let cnt = 0, r = 0;
+        for (let c = 0; c < nx * nz; c++) if (occ[j][c]) { cnt++; r = Math.max(r, Math.hypot(gx0 + (c % nx + 0.5) * CELL - s.x, gz0 + (Math.floor(c / nx) + 0.5) * CELL - s.z)); }
+        console.log(`  ${B.y0.toFixed(1)}-${B.y1.toFixed(1)} m: ${String(cnt).padStart(5)} cells, out to ${r.toFixed(1)} m`);
+      });
+      if (process.env.SHOW) {
+        const j = +process.env.SHOW;
+        console.log('x0', gx0, 'z0', gz0);
+        for (let k2 = 0; k2 < nz; k2++) { let row = ''; for (let i = 0; i < nx; i++) row += occ[j][k2 * nx + i] ? '#' : '.'; console.log((gz0 + k2 * CELL).toFixed(1).padStart(7), row); }
+      }
+    } else {
+      out[s.solid] = { x0: +gx0.toFixed(2), z0: +gz0.toFixed(2), nx, nz, cell: CELL, bands: bands.map((B, j) => ({ from: B.from ?? B.y0, to: B.to ?? B.y1, rows: Array.from({ length: nz }, (_, k2) => Array.from(occ[j].subarray(k2 * nx, k2 * nx + nx)).join('')) })) };
+      console.log(s.solid.padEnd(22), s.a.padEnd(12), `${nx}x${nz}`, 'bands', bands.length);
+      continue;
     }
   }
   // rows of heights in decimetres (-1: nothing there)

@@ -164,7 +164,7 @@ chase('hub: down from the rim into the pit (jumps)', { x: 26, z: 4, y: 9 }, { x:
 chase('hub: down from the rim into the pit (a walker goes round by the ramps)', { x: 26, z: 4, y: 9 }, { x: -6, z: 10, y: 0 }, 'walker');
 chase('hub: out along the catwalk', { x: 12, z: 0 }, { x: 0, z: 9, y: 4.5 });
 chase('ship: up the mesa road and the scaffold stairs to the lighthouse gallery', { x: -20, z: -140, y: 0.8 }, { x: -44.5, z: -188, y: 15.15 });
-chase('ship: up the gangway and the stairs to the galleon\'s aft castle', { x: -6, z: -118, y: 0.8 }, { x: 0, z: -160, y: 8.45 });
+chase('ship: up the gangway and the stairs to the galleon\'s quarterdeck', { x: -6, z: -118, y: 0.8 }, { x: 4, z: -160, y: 6.55 });
 chase('ship: onto the capsized hull up the snow drift', { x: 20, z: -130, y: 0.8 }, { x: 42.5, z: -170, y: 6.3 });
 chase('ship: down through the hole into the capsized hull', { x: 42.5, z: -150, y: 6.3 }, { x: 42.5, z: -170, y: 0.8 });
 chase('ship: onto the shed roofs up the pack ice', { x: -20, z: -125, y: 0.8 }, { x: -36, z: -152, y: 4.3 });
@@ -181,11 +181,37 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
 // --- you stand on things at the right height
 {
   const { me, put, step } = game();
-  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -44.5, -188, 15.15], ['the galleon\'s main deck', 20, -158, 3.7], ['the galleon\'s aft castle', 0, -160, 8.45], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0]];
+  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -44.5, -188, 15.15], ['the galleon\'s main deck', 20, -158, 3.7], ['the galleon\'s quarterdeck', 4, -160, 6.55], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0]];
   for (const [name, x, z, y] of spots) { put(x, z, y + 0.4); step({}, 60); check(Math.abs(me.pos.y - y) < 0.15, `standing on ${name} (y ${me.pos.y.toFixed(2)})`); }
 }
 
-// --- the zipline: grab it at the lighthouse gallery, shoot on the way down, land on the galleon's aft castle
+// --- guard rails: you can't walk off a ledge, but for the gaps left to dive off
+{
+  const { me, put, walk, step } = game();
+  check(CRUST.rails.length > 100, `${CRUST.rails.length} stretches of guard rail round the ledges and decks`);
+  for (const isl of CRUST.islands) {
+    const ds = CRUST.dives.filter((d) => d.island === isl.id);
+    const ok = ds.filter((d) => CRUST.portals.some((p) => p.drop && Math.hypot(p.x - d.x, p.z - d.z) < 3));
+    check(ds.length >= 2 && ok.length === ds.length, `${isl.name}: ${ds.length} places to dive off (${ds.map((d) => d.y.toFixed(1) + ' m').join(', ')})`);
+  }
+  // the west terrace's lip, away from the dive: the rail holds you
+  put(-19.5, 6, 4.5); walk(0, 6, 4); step({}, 30);
+  check(Math.abs(me.pos.y - 4.5) < 0.3, `the rail along the terrace's lip stops you (y ${me.pos.y.toFixed(2)})`);
+  // ...and at the dive spot you go over
+  put(-19.5, -3.5, 4.5); walk(-8, -3.5, 4); step({}, 60);
+  check(me.pos.y < 0.5, `at the gap you dive into the pit (y ${me.pos.y.toFixed(2)})`);
+  // the galleon's bulwark, the lighthouse's walls
+  put(17, -158, 3.7); walk(17, -148, 4); step({}, 30);
+  check(Math.abs(me.pos.y - 3.7) < 0.3 && me.pos.z < -156, `the galleon's side keeps you on the deck (${me.pos.z.toFixed(1)}, y ${me.pos.y.toFixed(2)})`);
+  put(8, -150, 0.4); walk(8, -170, 4);
+  check(me.pos.z > -156, `you can't walk into the galleon's hull from the harbor (${me.pos.z.toFixed(1)})`);
+  put(-44.5, -188, 15.15); walk(-36, -188, 6); step({}, 30);
+  check(Math.abs(me.pos.y - 15.15) < 0.3 && Math.hypot(me.pos.x + 36, me.pos.z + 188) > 5.5, `the lighthouse's walls stop you on the gallery (${Math.hypot(me.pos.x + 36, me.pos.z + 188).toFixed(1)} m out)`);
+  put(-25, -186, 9.4); walk(-36, -186, 6);
+  check(Math.hypot(me.pos.x + 36, me.pos.z + 186) > 6, `nor can you walk in under the house through its piles (${Math.hypot(me.pos.x + 36, me.pos.z + 186).toFixed(1)} m out)`);
+}
+
+// --- the zipline: grab it at the lighthouse gallery, shoot on the way down, land on the galleon's quarterdeck
 {
   const { sim, me, log, step, put } = game();
   const R = CRUST.rides.find((r) => r.id === 'zip_lighthouse');
@@ -199,7 +225,7 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   check(me.loadout.slots[me.loadout.current].clip < clip0, '  and shoot while you ride');
   for (let i = 0; i < 60 * 8 && me.ride; i++) step({}, 1);
   step({}, 60);
-  check(!me.ride && Math.abs(me.pos.y - 8.45) < 0.2 && Math.hypot(me.pos.x, me.pos.z + 160) < 3, `  off at the far end, on the galleon's aft castle (y ${me.pos.y.toFixed(2)})`);
+  check(!me.ride && Math.abs(me.pos.y - 6.55) < 0.2 && Math.hypot(me.pos.x - 4, me.pos.z + 160) < 3, `  off at the far end, on the galleon's quarterdeck (y ${me.pos.y.toFixed(2)})`);
   // let go half way: jump
   put(R.pts[0][0] - 0.6, R.pts[0][2], 15.15);
   step({ use: true, usePressed: true, yaw: me.yaw });

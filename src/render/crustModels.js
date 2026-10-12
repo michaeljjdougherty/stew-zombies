@@ -120,7 +120,10 @@ export function buildModels(out, group, map) {
       for (const mesh of meshes) {
         const mats = Array.isArray(mesh.material) ? mesh.material.map((mm) => settle(mm, G.look)) : settle(mesh.material, G.look);
         if (placements.length === 1) {
-          const m = new THREE.Mesh(mesh.geometry, mats);
+          const s0 = G.list[0];
+          const geo = s0.cutBelow != null ? cutBelow(mesh.geometry, new THREE.Matrix4().multiplyMatrices(placements[0], mesh.matrixWorld), (s0.y ?? 0) + s0.cutBelow) : mesh.geometry;
+          if (!geo) continue;
+          const m = new THREE.Mesh(geo, mats);
           m.matrixAutoUpdate = false;
           m.matrix.multiplyMatrices(placements[0], mesh.matrixWorld);
           m.userData.noBake = true;
@@ -136,6 +139,26 @@ export function buildModels(out, group, map) {
       }
     });
   }
+}
+
+// A model's triangles, less those wholly below world height y (a ground plate
+// that would sit in the rock or hang off a cliff). null if none are left.
+function cutBelow(geo, M, y) {
+  const P = geo.attributes.position, I = geo.index;
+  const n = I ? I.count : P.count;
+  const v = new THREE.Vector3(), keep = [];
+  let cut = 0;
+  for (let i = 0; i < n; i += 3) {
+    let top = -Infinity;
+    for (let j = 0; j < 3; j++) { v.fromBufferAttribute(P, I ? I.getX(i + j) : i + j).applyMatrix4(M); top = Math.max(top, v.y); }
+    if (top < y) { cut++; continue; }
+    for (let j = 0; j < 3; j++) keep.push(I ? I.getX(i + j) : i + j);
+  }
+  if (!cut) return geo;
+  if (!keep.length) return null;
+  const g = geo.clone();
+  g.setIndex(keep);
+  return g;
 }
 
 // Move the critters along their paths (a loop, or there and back).

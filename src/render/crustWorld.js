@@ -887,8 +887,10 @@ function buildForest(out, group, isl, map, r, mats) {
 function buildFar(out, group, map, r) {
   const plant = new THREE.Group();
   const stackHeads = [];
-  const sx = map.stacks.reduce((a, s) => a + s.x, 0) / map.stacks.length, sz = map.stacks.reduce((a, s) => a + s.z, 0) / map.stacks.length;
-  map.stacks.forEach((s, i) => {
+  // (out in space there's no plant on the horizon: just the islands and the planets)
+  const stacks = map.space ? [] : map.stacks;
+  const sx = stacks.reduce((a, s) => a + s.x, 0) / (stacks.length || 1), sz = stacks.reduce((a, s) => a + s.z, 0) / (stacks.length || 1);
+  stacks.forEach((s, i) => {
     const tex = stackTexture(11 + i);
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, emissive: new THREE.Color('#ffffff'), emissiveMap: tex, emissiveIntensity: 0.32 });
     const st = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 3.3, s.h, 32, 1, true), mat);

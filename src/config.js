@@ -1007,6 +1007,13 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   crust: {
     islandZombies: 0.45,     // share of the zombies on an island that are its own kind (lab zombies, skeletons...)
+    // guard rails along the ledges (src/map/terrain.js), but for the marked places to dive off
+    rails: {
+      drop: 1.3,             // m: a ledge higher than this gets a rail
+      h: 1.1,                // m: the rail's height (more than you can jump)
+      t: 0.14,               // m: its thickness, on the high side of the edge
+      diveR: 2.2,            // m: the gap left in the rail at a dive spot (radius)
+    },
     mudSpeed: 0.6,           // walking speed in deep mud (x); duckboards don't slow you
     spawnRadius: 42,         // zombies only rise this close to someone...
     spawnMin: 7,             // ...but not right on top of them

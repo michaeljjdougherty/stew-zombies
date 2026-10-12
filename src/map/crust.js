@@ -27,6 +27,7 @@
 import { buildIslands } from './islandKit.js';
 import { Terrain, K, STEP, shape, arcPts, wobble, deck, flight, flightPortals, spiral } from './terrain.js';
 import { SOLIDS } from './crustSolids.js';
+import { CONFIG } from '../config.js';
 
 const T = 0.5;
 const R = (seed) => { let x = seed >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
@@ -41,7 +42,12 @@ class Isle {
     this.areas = []; this.links = []; this.windows = []; this.wallBuys = []; this.props = [];
     this.structs = []; this.joins = []; this.portalSpecs = []; this.freeDoors = []; this.rides = [];
     this.decor = []; this.boxSpots = []; this.pads = []; this.later = [];
+    this.dives = [];              // gaps left in the guard rails: ledges to dive off ({ x, z, r?, label? })
+    this.railGaps = [];           // rects left without rails (a hole you're meant to drop through)
+    this.railStyle = 'metal';     // how its rails look: stone, wood, metal, sandbag
   }
+  // a gap in the rails at a ledge worth diving off
+  dive(x, z, o = {}) { this.dives.push({ x, z, ...o }); }
   zone(id, name, o = {}) { this.zones.set(id, { id, name, reverb: 0.3, fixtures: [], ...o }); return id; }
   lamp(zone, x, z, o = {}) { this.later.push(() => { const y = this.t.heightAt(x, z); this.zones.get(zone).fixtures.push({ x, y: y + (o.h ?? 4.4), z, lit: true, flicker: o.flicker ?? 0.2, kind: o.kind || 'lamp' }); }); }
   // a building (a room or several) standing on the ground
@@ -129,6 +135,7 @@ const box6 = (x0, z0, x1, z1, y0, y1) => [x0, y0, z0, x1, y1, z1];
 // =============================================================================
 function hub() {
   const I = new Isle('hub', 'The Anvil', null, { x0: -52, z0: -52, x1: 52, z1: 52 });
+  I.railStyle = 'stone';
   const t = I.t;
   const PIT = I.zone('pit', 'The Pit', { reverb: 0.7 });
   const TW = I.zone('terraceW', 'West Terrace');
@@ -215,6 +222,9 @@ function hub() {
   I.pads.push({ id: 'pad_hub_e', x: 28, z: 0, to: 'pad_research', label: 'the Research Base' });
   I.pads.push({ id: 'pad_hub_s', x: 0, z: 28, to: 'pad_trench', label: 'the Trench Front' });
   I.pads.push({ id: 'pad_hub_w', x: -28, z: 0, to: 'pad_caves', label: 'the Ice Caves' });
+  // places to dive off: the rim down onto the terraces, the terraces down into the pit
+  I.dive(-22.4, -0.5, { label: 'the West Terrace' }); I.dive(22.4, 0, { label: 'the East Terrace' });
+  I.dive(-16.4, -3.5, { label: 'the Pit' }); I.dive(16.4, 3.5, { label: 'the Pit' });
   // the forge's curtain wall round the rim: tall dressed stone with battlements and
   // round towers, down to a parapet where the launchers fling you over it
   {
@@ -286,6 +296,7 @@ function hub() {
 // =============================================================================
 function ship() {
   const I = new Isle('ship', 'Ship Graveyard', 'wind', { x0: -60, z0: -212, x1: 60, z1: -104 });
+  I.railStyle = 'wood';
   const t = I.t;
   const SHORE = I.zone('shore', 'The Shore');
   const PIER = I.zone('pier', 'The Pier');
@@ -326,42 +337,76 @@ function ship() {
   }
   I.add(deck('plank_roofs', [-37.5, -147, -34.5, -143], G + 3.5, { zone: VIL, look: 'planks' }), { connect: 'we' });
 
-  // the lighthouse on its mesa: the lamp house up on piles, a scaffold gallery round it
+  // the lighthouse on its mesa: the lamp house up on piles, a scaffold gallery round it.
+  // Solid where it looks solid: the piles under the deck, the house walls and
+  // everything they ring (bands of the model, tools/crust/solids.mjs)
   const PORCH = MESA + 5.75;
-  I.model({ a: 'lighthouse', x: LX, y: MESA, z: LZ, yaw: 0.3 }, { collide: [LX, LZ, 7.5, 7.5, 12] });
+  t.paint(shape.circle(LX, LZ, 8.2), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });   // (under the house: piles and rubble)
+  I.model({
+    a: 'lighthouse', x: LX, y: MESA, z: LZ, yaw: 0.3, cutBelow: 0.45, solid: 'lighthouse',
+    bands: [
+      { y0: MESA + 0.6, y1: MESA + 5.2, from: MESA - 0.3, to: PORCH - 0.35 },
+      { y0: MESA + 7.1, y1: MESA + 9.0, from: PORCH, to: MESA + 10.5, fill: true },
+    ],
+  });
   for (const d of deckHole('gallery', [LX - 9.4, LZ - 9.4, LX + 9.4, LZ + 9.4], [LX - 7.6, LZ - 7.6, LX + 7.6, LZ + 7.6], PORCH, { zone: LH, rails: 'nswe', look: 'scaffold' })) I.add(d);
+  // (the model's own porch fills the middle)
+  I.add(deck('gallery_in', [LX - 7.6, LZ - 7.6, LX + 7.6, LZ + 7.6], PORCH, { zone: LH, look: 'hidden' }));
   I.add(deck('gallery_top', [LX - 11.2, LZ - 5.8, LX - 9.4, LZ - 4], PORCH, { zone: LH, rails: 'nw', look: 'scaffold' }));
-  const gst = I.add(flight('gallery_stairs', [LX - 11.2, LZ - 4, LX - 9.4, LZ + 4], MESA, PORCH, 'n', { zone: LH, look: 'steel' }), { footprint: MESA });
+  const gst = I.add(flight('gallery_stairs', [LX - 11.2, LZ - 4, LX - 9.4, LZ + 4], MESA, PORCH, 'n', { zone: LH, look: 'planks' }), { footprint: MESA });
   I.portalSpecs.push({ flight: gst, belowAt: [LX - 10.3, LZ + 4.6, MESA], aboveId: 'gallery_top' });
   I.decor.push({ kind: 'beacon', x: LX, y: MESA + 14.8, z: LZ });
+  // dive off the mesa onto the shore, off the net shed's roof
+  I.dive(-50, -188, { label: 'the shore' }); I.dive(-35, -174.2, { label: 'the village' });
+  I.dive(-30, -138, { label: 'the village' });
 
-  // the galleon, wrecked in the dry harbor: the hold, hatches to the main deck,
-  // the gangway, stairs up to the stern castle (it lies east-west, bow east)
+  // the galleon, wrecked in the dry harbor (it lies east-west, bow east). Its
+  // decks are where the model's are: the waist amidships, up the two ladders
+  // to the quarterdeck (it slopes aft to stern, so three steps of it); the
+  // stern castle and the forecastle are solid, and so is the hull below.
   const SX = 15, SZ = -160, SY = BAS + 0.3;            // where the model sits
-  const HOLD = BAS, MAIN = SY + 3.0, AFT = SY + 7.75;
-  I.model({ a: 'pirateship', x: SX, y: SY - 2.4, z: SZ, yaw: Math.PI / 2, look: { glow: '#3a3026' } });
-  I.room({ id: 'hold', kind: 'hull', rect: [4, -162.5, 26, -157.5], y: HOLD, height: MAIN - 0.3 - HOLD, name: 'Galleon Hold', ceiling: 'none', edge: 'invisible', style: 'invisible', floor: 'deck', fixtures: [{ x: 10, y: HOLD + 2.8, z: -160, lit: true, flicker: 0.4, kind: 'hanging' }, { x: 20, y: HOLD + 2.8, z: -160, lit: true, flicker: 0.2, kind: 'hanging' }] });
-  I.wallBuys.push({ weapon: 'Olympus', room: 'hold', side: 'n', t: 0.5 }, { weapon: 'Staykout', room: 'hold', side: 's', t: 0.5 });
-  I.boxSpots.push({ id: 'box_hold', room: 'hold', x: 25.4, z: -160, yaw: -Math.PI / 2 });
-  const hA = I.add(flight('hatch_a', [6, -160, 12, -157.5], HOLD, MAIN, 'e', { zone: SHIPZ, look: 'planks' }));
-  const hB = I.add(flight('hatch_b', [18, -162.5, 24, -160], HOLD, MAIN, 'w', { zone: SHIPZ, look: 'planks' }));
-  for (const d of deckCut('main', [2.5, -163.5, 27.5, -156.5], [[6, -160, 12, -157.5], [18, -162.5, 24, -160]], MAIN, { zone: SHIPZ, look: 'hidden' })) I.add(d, { connect: 'nswe' });
-  I.joins.push(...flightPortals(hA, 'hold', null), ...flightPortals(hB, 'hold', null));
-  I.add(deck('aft', [-2.5, -163, 2.5, -157], AFT, { zone: SHIPZ, look: 'hidden' }), { connect: 'nsw' });
-  const ast = I.add(flight('aft_stairs', [2.5, -163, 9, -161], MAIN, AFT, 'w', { zone: SHIPZ, look: 'planks' }));
-  I.portalSpecs.push({ flight: hA, aboveAt: [12.3, -158.7, MAIN] }, { flight: hB, aboveAt: [17.7, -161.3, MAIN] }, { flight: ast, belowAt: [9.3, -162, MAIN], aboveId: 'aft' });
-  const gang = I.add(flight('gangway', [19, -156.5, 22, -150], HOLD, MAIN, 'n', { zone: SHIPZ, look: 'planks' }), { footprint: HOLD });
-  I.portalSpecs.push({ flight: gang, belowAt: [20.5, -149.4, HOLD], aboveAt: [20.5, -157, MAIN] });
-  // the zipline from the lighthouse gallery down onto the stern castle
-  I.rides.push({ id: 'zip_lighthouse', kind: 'zip', label: 'the galleon', pts: [[LX + 8.5, PORCH + 2.2, LZ], [0, AFT + 2.35, SZ]] });
+  const MAIN = SY + 3.0, Q1 = 6.55, Q2 = 6.2, Q3 = 5.85;
+  const ladders = [[12, -162.3, 16.2, -160.9], [12, -159.1, 16.2, -157.7]];
+  const gangR = [18.5, -156.5, 20.5, -150];
+  I.model({
+    a: 'pirateship', x: SX, y: SY - 2.4, z: SZ, yaw: Math.PI / 2, look: { glow: '#3a3026' }, solid: 'galleon',
+    bands: [
+      // the hull, from the harbor bed up to the waist
+      { y0: 0.5, y1: 3.3, from: -1, to: MAIN - 0.25, skip: [[18.2, -157.5, 20.8, -149]] },
+      // round the waist: bulwarks, the masts, the hatch grating, the quarterdeck's front
+      { y0: MAIN + 0.35, y1: MAIN + 1.4, from: MAIN - 0.25, to: MAIN + 2.4, rect: [13, -167, 21.4, -153], skip: [...ladders, [18.2, -157.6, 20.8, -155]] },
+      // on the quarterdeck: its rails, the mizzen
+      { y0: Q1 + 0.35, y1: Q1 + 1.3, from: Q1, to: Q1 + 2.2, rect: [2.5, -167, 5.5, -153] },
+      { y0: Q2 + 0.35, y1: Q2 + 1.3, from: Q2, to: Q2 + 2.2, rect: [5.5, -167, 8.5, -153] },
+      { y0: Q3 + 0.35, y1: Q3 + 1.3, from: Q3, to: Q3 + 2.2, rect: [8.5, -167, 12, -153] },
+      // the stern castle and the forecastle, solid
+      { y0: 3.9, y1: 10, from: 3, to: 10, rect: [-8, -167, 2.5, -153] },
+      { y0: 3.9, y1: 7.5, from: 3, to: 7.2, rect: [21.4, -167, 38, -153] },
+    ],
+  });
+  for (const d of deckCut('waist', [13.8, -163.4, 21, -156.6], ladders.map((r) => [13.8, r[1], r[2], r[3]]), MAIN, { zone: SHIPZ, look: 'hidden' })) I.add(d, { connect: 'nswe' });
+  I.add(deck('quarter_1', [2.5, -162.7, 5.5, -157.3], Q1, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.add(deck('quarter_2', [5.5, -162.7, 8.5, -157.3], Q2, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.add(deck('quarter_3', [8.5, -162.7, 12, -157.3], Q3, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.joins.push({ a: 'quarter_3', b: 'quarter_2', x: 8.5, z: SZ, axis: 'x', width: 5.4, dirAB: -1 }, { a: 'quarter_2', b: 'quarter_1', x: 5.5, z: SZ, axis: 'x', width: 5.4, dirAB: -1 });
+  ladders.forEach((r, i) => {
+    const f = I.add(flight('qd_stairs_' + i, r, MAIN, Q3, 'w', { zone: SHIPZ, look: 'planks' }));
+    I.portalSpecs.push({ flight: f, belowAt: [16.6, (r[1] + r[3]) / 2, MAIN], aboveId: 'quarter_3' });
+  });
+  const gang = I.add(flight('gangway', gangR, BAS, MAIN, 'n', { zone: SHIPZ, look: 'planks' }), { footprint: BAS });
+  I.portalSpecs.push({ flight: gang, belowAt: [19.5, -149.4, BAS], aboveAt: [19.5, -157, MAIN] });
+  I.boxSpots.push({ id: 'box_deck', room: SHIPZ, x: 17.2, z: -156.9, y: MAIN, yaw: Math.PI });
+  // the zipline from the lighthouse gallery down onto the quarterdeck
+  I.rides.push({ id: 'zip_lighthouse', kind: 'zip', label: 'the galleon', pts: [[LX + 8.5, PORCH + 2.2, LZ], [4, Q1 + 2.35, SZ]] });
 
   // the capsized hull: walk along the keel, drop in through the hole
   const CY = G, KY = 6.3;
   I.room({ id: 'capsized', kind: 'hull', rect: [38, -178, 47, -148], y: CY, height: KY - 0.3 - CY, name: 'The Capsized Hull', ceiling: 'none', fixtures: [{ x: 42.5, y: CY + 4.6, z: -170, lit: true, flicker: 0.6, kind: 'hanging' }, { x: 42.5, y: CY + 4.6, z: -154, lit: true, flicker: 0.3, kind: 'hanging' }] });
   I.links.push({ a: 'capsized', out: 'w', t: 0.5, type: 'door', id: 'door_ship_capsized', name: 'The Hull' });
-  I.wallBuys.push({ weapon: 'AK-75u', room: 'capsized', side: 'e', t: 0.3 });
+  I.wallBuys.push({ weapon: 'AK-75u', room: 'capsized', side: 'e', t: 0.3 }, { weapon: 'Olympus', room: 'capsized', side: 'e', t: 0.75 }, { weapon: 'Staykout', room: 'smokehouse', side: 's', t: 0.5 });
   I.boxSpots.push({ id: 'box_capsized', room: 'capsized', x: 46.4, z: -158, yaw: -Math.PI / 2 });
   for (const d of deckHole('hull', [37, -179, 48, -147], [40.5, -165, 44.5, -161], KY, { zone: HULLZ, look: 'hullTop' })) I.add(d, { connect: 'nswe' });
+  I.railGaps.push([40.2, -165.3, 44.8, -160.7]);   // (the hole's for dropping through)
   I.joins.push({ a: 'hull_n', b: 'capsized', x: 42.5, z: -165, axis: 'z', width: 4, dirAB: 1, drop: true, oneWay: true });
   I.joins.push({ a: 'hull_s', b: 'capsized', x: 42.5, z: -161, axis: 'z', width: 4, dirAB: -1, drop: true, oneWay: true });
   I.decor.push({ kind: 'capsized', rect: [37, -179, 48, -147], keelY: KY, hole: [40.5, -165, 44.5, -161] });
@@ -405,6 +450,7 @@ function ship() {
 // =============================================================================
 function research() {
   const I = new Isle('research', 'Research Base', 'lightning', { x0: 98, z0: -54, x1: 208, z1: 54 });
+  I.railStyle = 'metal';
   const t = I.t;
   const CMP = I.zone('compound', 'The Compound');
   const HELI = I.zone('helipad', 'Helipad');
@@ -508,6 +554,8 @@ function research() {
     I.model({ a: 'roach', anim: true, clip: 'Crawl', x: x0, y: G + 0.02, z: z0, fit: { len: 0.22 }, path: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], speed: 0.9, phase: ph });
   }
   I.pads.push({ id: 'pad_research', x: 112, z: 0, to: 'pad_hub_e', label: 'the Anvil' });
+  // dive off the mast's first platform, off the tesla catwalks
+  I.dive(177.7, -28, { label: 'the yard' }); I.dive(147.7, 33, { label: 'the coils' }); I.dive(170.3, 33, { label: 'the coils' });
   return I;
 }
 
@@ -523,6 +571,7 @@ function research() {
 // =============================================================================
 function trench() {
   const I = new Isle('trench', 'Trench Front', 'fire', { x0: -60, z0: 102, x1: 60, z1: 196 });
+  I.railStyle = 'sandbag';
   const t = I.t;
   const LZ = I.zone('lz', 'Landing Zone');
   const YARD = I.zone('fortyard', 'Fort Yard');
@@ -623,7 +672,7 @@ function trench() {
   I.joins.push(...flightPortals(s2, 'fort2_2', 'roof_e'));
   const lk = I.add(spiral('look', 4.5, 143.5, 5, RY, RY + 7, { zone: LOOK, w: 1.4, perFlight: 1.4, look: 'steel' }));
   I.joins.push(...flightPortals(lk.first, 'roof_n', null));
-  for (const d of deckHole('lookout', [1, 140, 8, 147], [2, 141, 7, 146], RY + 7, { zone: LOOK, rails: 'nswe', look: 'grate' })) I.add(d);
+  for (const d of deckHole('lookout', [0.4, 139.4, 8.6, 147.6], [2, 141, 7, 146], RY + 7, { zone: LOOK, rails: 'nswe', look: 'grate' })) I.add(d);
   I.decor.push({ kind: 'fort', rect: [-9, 139, 9, 153], roofY: RY }, { kind: 'mast', x: 4.5, z: 143.5, size: 5, h: 12, y: RY + 7 });
   // the field telephone: call in a ceasefire
   I.ceasefire = { pos: { x: -7.95, y: F1 + 1.4, z: 144 }, normal: { x: 1, z: 0 }, room: 'fort1' };
@@ -649,6 +698,8 @@ function trench() {
     I.model({ a: 'rat', anim: true, x: path[0][0], y: TF + 0.02, z: path[0][1], fit: { len: 0.4 }, path, speed: 2.2, phase: ph, pingpong: true });
   }
   I.pads.push({ id: 'pad_trench', x: 0, z: 115, to: 'pad_hub_s', label: 'the Anvil' });
+  // dive off the fort's roof into no man's land, over the parapet into the trench
+  I.dive(0, 138.7, { label: "no man's land" }); I.dive(-25, 159.5, { label: 'the trench' });
   return I;
 }
 
@@ -659,6 +710,30 @@ function trench() {
 function modelSolid(t, m) {
   const S = SOLIDS[m.solid];
   if (!S) return [];
+  if (S.bands) {
+    // banded: a box over each run of cells with something in the band
+    const boxes = [];
+    for (const B of S.bands) {
+      B.rows.forEach((row, k) => {
+        const z = S.z0 + k * S.cell;
+        let i0 = -1;
+        for (let i = 0; i <= S.nx; i++) {
+          const on = i < S.nx && row[i] === '1';
+          if (on && i0 < 0) i0 = i;
+          if (!on && i0 >= 0) {
+            boxes.push({ minX: S.x0 + i0 * S.cell, maxX: S.x0 + i * S.cell, minZ: z, maxZ: z + S.cell, minY: B.from, maxY: B.to, kind: 'model', terrain: t.id });
+            // (standing on the ground: the zombies' paths go round it)
+            for (let q = i0; q < i; q++) {
+              const c = t.cellAt(S.x0 + (q + 0.5) * S.cell, z + S.cell / 2);
+              if (c >= 0 && t.kind[c] === K.GROUND && B.from <= t.h[c] + 0.3 && B.to > t.h[c] + 1) { t.kind[c] = K.ROOM; t.spawn[c] = 0; }
+            }
+            i0 = -1;
+          }
+        }
+      });
+    }
+    return boxes;
+  }
   const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
   const boxes = [];
   const lift = m.minLift ?? 0.2;
@@ -709,6 +784,7 @@ function polyEdge(pts, x, z) {
 // =============================================================================
 function caves() {
   const I = new Isle('caves', 'Ice Caves', 'ice', { x0: -212, z0: -58, x1: -100, z1: 58 });
+  I.railStyle = 'wood';
   const t = I.t;
   const MOUTH = I.zone('mouth', 'Cave Mouth');
   const GAL = I.zone('gallery', 'Ice Gallery', { reverb: 1.0 });
@@ -802,6 +878,8 @@ function caves() {
   I.prop('rock', -120, 12, -117, 15, 1.8);
   I.lamp(MOUTH, -112, -12); I.lamp(MINE, -146, 30, { kind: 'hanging', h: 3.6, flicker: 0.5 }); I.lamp(WORKS, -164, 40, { flicker: 0.3 });
   I.pads.push({ id: 'pad_caves', x: -112, z: 0, to: 'pad_hub_w', label: 'the Anvil' });
+  // dive off the shelves down into the cavern
+  I.dive(-150, -7, { label: 'the cavern' }); I.dive(-147.5, 8, { label: 'the cavern' });
   I.mud = [{ x: -184, z: 8, r: 5, y: F }, { x: -178, z: 0, r: 4, y: F }];
   return I;
 }
@@ -825,6 +903,7 @@ const out = {
   rooms: [...ROOMS.rooms], navRegions: [...ROOMS.navRegions], portals: ROOMS.portals.filter((p) => p.b != null),
   doors: [...ROOMS.doors], wallBuys: [...ROOMS.wallBuys], groundSpawns: [], props: [], launchers: [], boxSpots: [],
   terrainBoxes: [], terrains: [], structures: [], rides: [], decor: [], mud: [], craters: [], islands: [], models: [], shelled: [], ceasefire: null,
+  rails: [], dives: [],
 };
 const roomIsle = new Map(ISLES.flatMap((I) => I.areas.map((a) => [a.id, I])));
 
@@ -857,6 +936,10 @@ for (const I of ISLES) {
     const [x0, z0, x1, z1] = s.region.rect;
     t.paint(shape.rect(x0 + 0.01, z0 + 0.01, x1 - 0.01, z1 - 0.01), { kind: K.ROOM, spawn: false, only: (k, c) => k === K.GROUND && Math.abs(t.h[c] - s.region.y0) <= STEP + 0.05 });
   }
+  // guard rails along the ledges, but for the places to dive off
+  const RL = CONFIG.crust.rails;
+  const inGap = (x, z) => I.dives.some((d) => Math.hypot(x - d.x, z - d.z) <= (d.r ?? RL.diveR)) || I.railGaps.some((g) => x >= g[0] && x <= g[2] && z >= g[1] && z <= g[3]);
+  t.guardRails(RL.drop, inGap);
   // the ground's nav
   // wired-off ground (no-man's-land): an invisible fence wherever it meets
   // ground you can stand on at its own height, gone when its gate opens
@@ -922,6 +1005,62 @@ for (const I of ISLES) {
     if (bs > 1.2) throw new Error(`Call of the Crust: nothing to stand on at ${x}, ${z} (y ${y}) on ${I.id}`);
     return best;
   };
+  // guard rails round the decks: along every side (or stretch of one) that drops
+  // more than a rail's worth onto what's below, and isn't onto another deck, the
+  // stairs, a roof at its level, or a place to dive
+  const railSpans = [];
+  for (const { s } of I.structs) {
+    const R0 = s.region;
+    if (!R0 || !R0.deck || R0.y0 !== R0.y1 || s.noRails) continue;
+    const y = R0.y0, [x0, z0, x1, z1] = R0.rect;
+    for (const side of 'nswe') {
+      if ((s.rails || '').includes(side)) continue;
+      const axis = side === 'n' || side === 's' ? 'z' : 'x';
+      const line = side === 'n' ? z0 : side === 's' ? z1 : side === 'w' ? x0 : x1;
+      const dir = side === 'n' || side === 'w' ? -1 : 1;
+      const a0 = axis === 'z' ? x0 : z0, a1 = axis === 'z' ? x1 : z1;
+      const n = Math.max(1, Math.round((a1 - a0) / 0.5)), st = (a1 - a0) / n;
+      let run = null;
+      const flush = () => { if (run) { railSpans.push(run); } run = null; };
+      for (let k = 0; k < n; k++) {
+        const a = a0 + (k + 0.5) * st;
+        const px = axis === 'z' ? a : line + dir * 0.3, pz = axis === 'z' ? line + dir * 0.3 : a;
+        const onto = [...sregs, ...roomRegs].some((r) => r !== R0 && px >= r.rect[0] - 0.05 && px <= r.rect[2] + 0.05 && pz >= r.rect[1] - 0.05 && pz <= r.rect[3] + 0.05 && y >= r.y0 - 0.7 && y <= r.y1 + 0.7);
+        const g = t.heightAt(px, pz);
+        const open = onto || inGap(px, pz) || y - g < RL.drop;
+        if (open) { flush(); continue; }
+        if (run) { run.a1 = a + st / 2; continue; }
+        run = { deck: R0.id, look: s.look, axis: axis === 'z' ? 'z' : 'x', line, side: dir, a0: a - st / 2, a1: a + st / 2, y };
+      }
+      flush();
+    }
+  }
+  for (const r of railSpans) {
+    const l0 = r.side > 0 ? r.line - RL.t : r.line, l1 = r.side > 0 ? r.line : r.line + RL.t;
+    out.terrainBoxes.push(r.axis === 'x'
+      ? { minX: l0, maxX: l1, minZ: r.a0, maxZ: r.a1, minY: r.y, maxY: r.y + RL.h, kind: 'rail', rail: r.deck }
+      : { minX: r.a0, maxX: r.a1, minZ: l0, maxZ: l1, minY: r.y, maxY: r.y + RL.h, kind: 'rail', rail: r.deck });
+    const style = r.look === 'hidden' ? null : r.look === 'stone' ? 'stone' : /plank|deck|hull|cabin/.test(r.look || '') ? 'wood' : 'metal';
+    if (style) out.rails.push({ island: I.id, style, axis: r.axis, line: r.line, side: r.side, a0: r.a0, a1: r.a1, ys: [r.y], step: r.a1 - r.a0 });
+  }
+  // (and the ways off those decks that a rail now closes)
+  for (let i = portals.length - 1; i >= 0; i--) {
+    const p = portals[i];
+    if (!p.drop) continue;
+    const spans = railSpans.filter((r) => r.deck === p.a && r.axis === p.axis && Math.abs((p.axis === 'x' ? p.x : p.z) - r.line) < 0.02);
+    if (!spans.length) continue;
+    const mid = p.axis === 'x' ? p.z : p.x;
+    let pieces = [[mid - p.width / 2, mid + p.width / 2]];
+    for (const r of spans) pieces = pieces.flatMap(([u0, u1]) => [[u0, Math.min(u1, r.a0)], [Math.max(u0, r.a1), u1]].filter(([v0, v1]) => v1 - v0 > 0.6));
+    portals.splice(i, 1, ...pieces.map(([u0, u1]) => ({ ...p, width: u1 - u0, ...(p.axis === 'x' ? { z: (u0 + u1) / 2 } : { x: (u0 + u1) / 2 }) })));
+  }
+  for (const r of t.railRunList()) out.rails.push({ island: I.id, style: I.railStyle, ...r, step: t.cell });
+  // (a dive's height: the top of the ledges it opens)
+  const regY = new Map(regions.map((r) => [r.id, r.y1]));
+  for (const d of I.dives) {
+    const tops = portals.filter((p) => p.drop && Math.hypot(p.x - d.x, p.z - d.z) < 3).map((p) => regY.get(p.a) ?? -Infinity);
+    out.dives.push({ island: I.id, ...d, y: d.y ?? (tops.length ? Math.max(...tops) : t.heightAt(d.x, d.z)) });
+  }
   for (const j of I.joins) portals.push(j);
   for (const ps of I.portalSpecs) {
     const below = ps.belowAt ? at(...ps.belowAt) : null;
@@ -1037,6 +1176,8 @@ export const CRUST = {
   decor: out.decor,
   models: out.models,            // the downloaded models (src/render/crustModels.js)
   shelled: out.shelled,          // zones the guns hit (src/sim/shelling.js)
+  rails: out.rails,              // guard rails along the ledges and decks (drawn by src/render/crustTerrain.js)
+  dives: out.dives,              // the gaps in them: ledges to dive off
   ceasefire: out.ceasefire,      // the field telephone in the fort
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [
