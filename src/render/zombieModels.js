@@ -24,6 +24,11 @@ export const ZOMBIE_CAST = [
   { id: 'ch22', weight: 1 },
   { id: 'ch31', weight: 1 },
   { id: 'remy', weight: 1 },
+  // Call of the Crust: each island's own dead (alongside the usual ones)
+  { id: 'labzombie', weight: 1, island: 'research' },   // the Research Base's test subjects
+  { id: 'walkzombie', weight: 1, island: 'trench' },    // the Trench Front's fallen
+  { id: 'ghoul', weight: 1, island: 'caves' },          // the Ice Caves' starved ghouls
+  { id: 'skeleton', weight: 1, island: 'ship' },        // the Ship Graveyard's drowned crew
 ];
 
 // bones the hit reactions are allowed to move (so they don't slide the legs)
@@ -186,6 +191,7 @@ export class ZombieModelLib {
             await Promise.all(files.map(async (f) => { tex[f] = await loadTexture(f, !/_n\d/.test(f)); }));
             const t = new Template(meta, bin, tex);
             t.weight = c.weight;
+            t.island = c.island || null;
             return t;
           } catch (e) { console.warn('zombie model', c.id, e.message); return null; }
         }));
@@ -214,12 +220,16 @@ export class ZombieModelLib {
     return t.clips;
   }
 
-  // a character for this zombie (r = 0..1, from its seed)
-  pick(r) {
-    const total = this.templates.reduce((s, t) => s + t.weight, 0);
+  // a character for this zombie (r = 0..1, from its seed). On an island with
+  // its own dead, `share` of them are those; the rest are the usual cast.
+  pick(r, island = null, r2 = 1, share = 0) {
+    const own = island ? this.templates.filter((t) => t.island === island) : [];
+    const pool = own.length && r2 < share ? own : this.templates.filter((t) => !t.island);
+    const list = pool.length ? pool : this.templates;
+    const total = list.reduce((s, t) => s + t.weight, 0);
     let x = r * total;
-    for (const t of this.templates) { x -= t.weight; if (x <= 0) return t; }
-    return this.templates[this.templates.length - 1];
+    for (const t of list) { x -= t.weight; if (x <= 0) return t; }
+    return list[list.length - 1];
   }
 }
 

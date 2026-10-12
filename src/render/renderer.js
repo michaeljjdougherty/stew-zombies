@@ -102,6 +102,7 @@ export class GameRenderer {
         if (p) this.rig.explosion({ pos: { x: spot.x, y: 0, z: spot.z }, radius: 2, shake: 0.4 }, p.pos);
       };
       for (const v of w.saleBoxes.values()) v.onLand = w.box.onLand;
+      w.zombies.islands = sim.mapData.islands || null;   // (Call of the Crust: each island's own dead)
       w.cauldron = new CauldronView(scene, sim.mapData, effects);
       w.cauldron.attachLight(map);
       this.worlds.set(sim.mapData.id, w);

@@ -8,7 +8,7 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
 const dir = new URL('../assets/zombies/', import.meta.url);
 const src = readFileSync(new URL('../src/render/zombieModels.js', import.meta.url), 'utf8');
 const cast = [...src.matchAll(/\{ id: '(\w+)', weight/g)].map((m) => m[1]);
-check(cast.length === 8, `8 characters in the cast (${cast.join(', ')})`);
+check(cast.length === 12, `12 characters in the cast (${cast.join(', ')})`);
 
 const anims = JSON.parse(readFileSync(new URL('anims.json', dir)));
 const names = anims.clips.map((c) => c.name);

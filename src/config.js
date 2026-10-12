@@ -1006,6 +1006,7 @@ export const CONFIG = {
   // Call of the Crust (Map 2): numbers for the battlefield
   // ---------------------------------------------------------------------------
   crust: {
+    islandZombies: 0.45,     // share of the zombies on an island that are its own kind (lab zombies, skeletons...)
     mudSpeed: 0.6,           // walking speed in deep mud (x); duckboards don't slow you
     spawnRadius: 42,         // zombies only rise this close to someone...
     spawnMin: 7,             // ...but not right on top of them

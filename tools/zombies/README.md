@@ -25,3 +25,21 @@ with Pillow and NumPy.
   emissive map.
 - Eye centres for rigs without eye bones are in `build.sh` (found with
   `eyeprobe.mjs`, which looks for small, separate, symmetric eyeball pieces).
+
+## Call of the Crust's island zombies (GLB sources)
+
+`conv_char.mjs` also reads `.glb` files (`glbload.mjs`; Sketchfab-style
+`mixamorig:Hips_65` bone names are fine). Models that come without a rig are
+rigged first by `autorig.mjs` (needs `@gltf-transform`): it scales a reference
+zombie's skeleton to the model, finds which way the arms hang, and weights
+each vertex to its nearest bones.
+
+```
+node autorig.mjs zombie_corpse.glb ghoul.glb ../../assets/zombies/ch10.json 182
+node autorig.mjs skeleton_low.glb skeleton.glb ../../assets/zombies/ch10.json 176
+node conv_char.mjs ghoul.glb ghoul out/models out/png "[[3.2,9,null],[-3.2,9,null],1.4]"
+node conv_char.mjs skeleton.glb skeleton out/models out/png "[[3.2,9,null],[-3.2,9,null],2.6]"
+node conv_char.mjs labzombie.glb labzombie out/models out/png "[[-3.81,12.02,15.94],[2.85,12.38,15.82],0.95]"   # test-facility-zombie, simplified to 30k tris
+node conv_char.mjs walkzombie.glb walkzombie out/models out/png "[[2.61,9.97,10.53],[-3.38,9.8,10.58],1.75]"  # zombie_walk_test, spec-gloss -> metal-rough first
+python3 tex.py out/models out/png labzombie walkzombie ghoul skeleton
+```

@@ -79,10 +79,18 @@ export class ZombieViews {
   }
 
 
+  // Which Call of the Crust island a spot is on (for the island's own dead).
+  islandAt(p) {
+    const isl = this.islands;
+    if (!isl || !p) return null;
+    for (const I of isl) { const [x0, z0, x1, z1] = I.bounds; if (p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1) return I.id; }
+    return null;
+  }
+
   // --- rigged (Mixamo) zombies --------------------------------------------------
   buildRigged(z) {
     const r = (k) => hash(z.seed + k * 7919);
-    const t = this.models.pick(r(1));
+    const t = this.models.pick(r(1), this.islandAt(z.pos), r(11), this.cfg && this.cfg.crust ? this.cfg.crust.islandZombies : 0);
     const inst = t.instance();
     inst.model.scale.setScalar(0.01 * z.scale);
     for (const m of inst.meshes) m.boundingSphere = RIG_SPHERE;

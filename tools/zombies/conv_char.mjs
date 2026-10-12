@@ -5,6 +5,7 @@
 // The mesh is baked into the pose it was loaded in (Mixamo's T-pose), scaled
 // so the hips sit 100 units up (the animations are normalized the same way).
 import { loadFBX, blobs, THREE } from './fbxload.mjs';
+import { loadGLB } from './glbload.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const [path, id, outDir, texOut, eyeArg] = process.argv.slice(2);
@@ -12,9 +13,10 @@ const [path, id, outDir, texOut, eyeArg] = process.argv.slice(2);
 const EYE_GUESS = eyeArg ? JSON.parse(eyeArg) : null;
 mkdirSync(outDir, { recursive: true });
 mkdirSync(texOut, { recursive: true });
-const norm = (n) => n.replace(/^mixamorig\d*:?/, '');
+const comp = (a, i, j) => [a.getX(i), a.getY(i), a.getZ(i), a.getW(i)][j];
+const norm = (n) => n.replace(/^mixamorig\d*:?/, '').replace(/_\d+$/, '');
 
-const g = loadFBX(path);
+const g = path.endsWith('.glb') ? await loadGLB(path) : loadFBX(path);
 g.updateMatrixWorld(true);
 
 // canonical bones: first bone seen with each name (FBXLoader adds same-named sub-bones)
@@ -55,9 +57,9 @@ g.traverse((o) => {
       acc.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
       const inf = [];
       for (let j = 0; j < 4; j++) {
-        const w = SW.getComponent(i, j);
+        const w = comp(SW, i, j);
         if (w <= 0) continue;
-        const bi = SI.getComponent(i, j);
+        const bi = comp(SI, i, j);
         const e = boneMats[bi].elements, a = acc.elements;
         for (let q = 0; q < 16; q++) a[q] += e[q] * w;
         inf.push([boneCanon[bi], w]);
