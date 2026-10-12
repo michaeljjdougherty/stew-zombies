@@ -119,6 +119,9 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (p.boosts && p.boosts.speed) speed *= p.boosts.speed;   // restored by the half-court ritual
   if (downed) speed = sim.cfg.lastStand.crawlSpeed;
   if (p.landSlowTimer > 0) { speed *= cfg.landSlowdownMult; p.landSlowTimer -= dt; }
+  // Call of the Crust: wading through deep mud (not on the duckboards)
+  p.inMud = !!(sim.mapData.mud && p.pos.y < 0.3 && inDeepMud(sim.mapData, p.pos.x, p.pos.z));
+  if (p.inMud && !downed) speed *= sim.cfg.crust.mudSpeed;
 
   const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
   // forward = (-sin, -cos), right = (cos, -sin)
@@ -246,4 +249,13 @@ export function damagePlayer(sim, p, amount, source) {
   p.lastDamageTime = sim.time;
   sim.emit('playerHit', { playerId: p.id, amount, from: source ? { x: source.pos.x, z: source.pos.z } : null, health: p.health });
   if (p.health <= 0) goDown(sim, p);
+}
+
+// Is (x, z) in a patch of deep mud, and not on the duckboards?
+export function inDeepMud(map, x, z) {
+  let mud = false;
+  for (const m of map.mud) if ((x - m.x) ** 2 + (z - m.z) ** 2 < m.r * m.r) { mud = true; break; }
+  if (!mud) return false;
+  for (const r of map.duckboards || []) if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) return false;
+  return true;
 }

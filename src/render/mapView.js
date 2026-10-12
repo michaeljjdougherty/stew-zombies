@@ -55,8 +55,11 @@ export class MapView {
     this.T = this.map.wallThickness;
 
     this.buildMaterials();
-    for (const room of this.map.rooms) this.buildRoom(room);
-    this.buildWalls();
+    // (Call of the Crust draws its own ground, berms and buildings: crustWorld.js)
+    if (!this.map.customRender) {
+      for (const room of this.map.rooms) this.buildRoom(room);
+      this.buildWalls();
+    }
     this.buildCourt();
     this.buildProps();
     // windows, doors and wall weapons move or come and go: they don't cast baked shadows
@@ -514,6 +517,7 @@ export class MapView {
     const others = (f) => new Set([0, 1, 2, 3, 4, 5].filter((i) => i !== f));
     for (const b of this.world.propBoxes) {
       const p = b.prop;
+      if (this.map.customRender) continue;   // (crustWorld draws its own)
       switch (p.kind) {
         case 'lockers': {
           const f = faceIdx[p.face];
@@ -930,13 +934,15 @@ export class MapView {
       const geo = new THREE.CircleGeometry(1.4, 18).rotateX(-Math.PI / 2);
       const pos = geo.attributes.position;
       for (let i = 1; i < pos.count; i++) { const k = 0.75 + Math.random() * 0.4; pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }
-      const dirt = new THREE.Mesh(geo, this.map.snow ? (M.dugSnow ||= applyBake(new THREE.MeshStandardMaterial({ color: '#9aa3b0', roughness: 1 }))) : M.soil);
-      dirt.position.set(gs.x, 0.012, gs.z); this.group.add(dirt);
-      if (this.map.snow) this.bakeReceivers.push(dirt);   // (unbaked, it showed up as a black hole in the moonlit snow)
+      // (the crust's battlefield is lit live, not baked: churned black mud)
+      const dug = this.map.customRender ? (M.dugMud ||= new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: 0.75 })) : this.map.snow ? (M.dugSnow ||= applyBake(new THREE.MeshStandardMaterial({ color: '#9aa3b0', roughness: 1 }))) : M.soil;
+      const dirt = new THREE.Mesh(geo, dug);
+      dirt.position.set(gs.x, 0.02, gs.z); this.group.add(dirt);
+      if (this.map.snow && !this.map.customRender) this.bakeReceivers.push(dirt);   // (unbaked, it showed up as a black hole in the moonlit snow)
       for (let i = 0; i < 7; i++) {
         const clod = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.1), M.soil);
         const a = Math.random() * 6.28, r = 0.5 + Math.random() * 0.9;
-        if (this.map.snow) clod.material = M.dugSnow;
+        if (this.map.snow) clod.material = this.map.customRender ? dug : M.dugSnow;
         clod.position.set(gs.x + Math.cos(a) * r, 0.04, gs.z + Math.sin(a) * r); this.group.add(clod);
       }
     }
@@ -1247,8 +1253,12 @@ export class MapView {
 
   buildLights() {
     const g = this.cfg.graphics;
-    this.hemi = new THREE.HemisphereLight(0x6f7580, 0x2a2016, g.ambientLight);
-    this.group.add(this.hemi);
+    // (Call of the Crust brings its own sky light: one hemisphere light, not two,
+    // keeps the shaders smaller)
+    if (!this.crust) {
+      this.hemi = new THREE.HemisphereLight(0x6f7580, 0x2a2016, g.ambientLight);
+      this.group.add(this.hemi);
+    }
 
     const beamTex = T.beamTexture();
     const hangGeo = new THREE.PlaneGeometry(1.25, 0.24).rotateX(Math.PI / 2);
@@ -1339,7 +1349,8 @@ export class MapView {
       this.pool.push(l);
     }
     this.spotPool = [];
-    for (let i = 0; i < g.maxSpotLights; i++) {
+    // (moonbeams through windows: the battlefield has no windows)
+    for (let i = 0; i < (this.map.customRender ? 0 : g.maxSpotLights); i++) {
       const s = new THREE.SpotLight(0x8fa6c8, 0, 22, 0.45, 0.6, 1.25);
       this.group.add(s); this.group.add(s.target);
       this.spotPool.push(s);

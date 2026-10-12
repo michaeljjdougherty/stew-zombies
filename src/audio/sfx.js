@@ -1170,6 +1170,21 @@ export function powerupFizzle(A, out, t) {
   return 0.4;
 }
 
+// A shell landing a long way off: a dull thump and a low roll, no crack.
+export function distantShell(A, out, t, p = {}) {
+  const k = p.size ?? 1;
+  const n = A.noiseSource('brown', t, 2.6);
+  const lp = A.filter('lowpass', 160 + 80 * k, 0.7);
+  lp.frequency.exponentialRampToValueAtTime(60, t + 2.2);
+  const g = A.gain(0); A.env(g, t, 0.01, 2.2, 1.3 * k);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  const o = A.osc('sine', 52 + 10 * k, t, 0.6);
+  o.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+  const og = A.gain(0); A.env(og, t, 0.005, 0.5, 0.7 * k);
+  o.connect(og); og.connect(out);
+  return 2.8;
+}
+
 export function thunder(A, out, t, p = {}) {
   const near = p.near ?? 1;
   // crack

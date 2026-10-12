@@ -913,6 +913,10 @@ window.STEW = {
     ending(at = 0) { if (mode !== 'ending') startEnding(); renderer.ending.t = at; },
     // jump into the intro at `at` seconds (for testing)
     intro(at = 0) { if (mode !== 'intro') startIntro('title'); renderer.ending.t = at; },
+    // start a zombies game on a map straight away (tests: 'crust')
+    play(mapId = 'lastbell') { menus.hideAll(); restart('zombies', mapId); startPlaying(); },
+    // put the local player somewhere (tests, screenshots)
+    put(x, z, yaw = 0, y = 0) { const p = sim.playerById(localId); p.pos.x = x; p.pos.z = z; p.pos.y = y; input.setLook(yaw, 0); },
 
   },
 };

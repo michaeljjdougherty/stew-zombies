@@ -197,6 +197,9 @@ export class GameSim {
 
   // Zones where zombies may spawn: where players are, plus open neighbours.
   activeZones() {
+    // a battlefield (Call of the Crust): no doors between zones, all of it is live
+    // (rounds.js only picks spawn points near the players there)
+    if (this.mapData.openField) return this.allZones || (this.allZones = new Set(this.world.rooms.map((r) => r.zone)));
     const act = new Set();
     for (const p of this.players) {
       if (!p.alive) continue;

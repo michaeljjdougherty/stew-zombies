@@ -987,6 +987,19 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // Call of the Crust (Map 2): numbers for the battlefield
+  // ---------------------------------------------------------------------------
+  crust: {
+    mudSpeed: 0.6,           // walking speed in deep mud (x); duckboards don't slow you
+    spawnRadius: 42,         // zombies only rise this close to someone...
+    spawnMin: 7,             // ...but not right on top of them
+    fogDensity: 0.0115,
+    thunderEvery: [7, 16],   // s between distant thunderclaps
+    artilleryEvery: [3, 9],  // s between far-off shells landing
+    stackDrawDistance: 175,  // the distant stacks are drawn at most this far away (scaled to look right)
+  },
+
+  // ---------------------------------------------------------------------------
   // Boot splash: the Tiger Fish Interactive logo (src/ui/splash.js)
   // ---------------------------------------------------------------------------
   splash: {

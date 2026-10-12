@@ -129,6 +129,7 @@ export class SoundDirector {
     const A = this.A;
     if (!A.ready || this.ambientStarted) return;
     this.ambientStarted = true;
+    this.mapView = mapView;
     const ctx = A.ctx;
     this.ambNodes = [];
     const keep = (n) => { this.ambNodes.push(n); return n; };
@@ -593,6 +594,22 @@ export class SoundDirector {
     }
 
     this.updateMusic();
+
+    // Call of the Crust: thunder rolls in after each lightning flash, and shells
+    // land somewhere far off across the front
+    const W = this.mapView && this.mapView.crust;
+    if (W && this.ambientStarted) {
+      if (W.flashSeq && W.flashSeq !== this.lastFlash) {
+        this.lastFlash = W.flashSeq;
+        A.play(S.thunder, { near: 0.1 + Math.random() * 0.25 }, { bus: 'ambient', gain: 0.6, reverb: 0.95, delay: 0.4 + Math.random() * 2.2 });
+      }
+      const C = this.cfg.crust;
+      this.shellT = (this.shellT ?? C.artilleryEvery[0]) - dt;
+      if (this.shellT <= 0) {
+        this.shellT = C.artilleryEvery[0] + Math.random() * (C.artilleryEvery[1] - C.artilleryEvery[0]);
+        A.play(S.distantShell, { size: 0.6 + Math.random() * 0.8 }, { bus: 'ambient', gain: 0.25 + Math.random() * 0.35, reverb: 0.85 });
+      }
+    }
 
     // the cauldron bubbles away when you're near it
     const cd = sim.mapData.cauldron;

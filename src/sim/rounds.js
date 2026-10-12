@@ -92,6 +92,13 @@ function pickSpawn(sim) {
   const cands = sim.spawnWindows().map((w) => ({ win: w, pos: w.center, weight: 1 / (1 + w.queue.length * 0.5) }));
   for (const g of sim.world.groundSpawns) if (act.has(g.zone)) cands.push({ ground: g, pos: g, weight: sim.cfg.zombie.groundSpawnWeight });
   if (!cands.length) return null;
+  // on a big open map, only spawn points near someone (else zombies take ages to arrive)
+  const rad = sim.mapData.openField ? sim.cfg.crust.spawnRadius : 0;
+  if (rad) {
+    const near = (c) => sim.players.some((p) => p.alive && dist2D(p.pos, c.pos) <= rad && dist2D(p.pos, c.pos) >= sim.cfg.crust.spawnMin);
+    const close = cands.filter(near);
+    if (close.length) cands.splice(0, cands.length, ...close);
+  }
   const weights = cands.map((c) => {
     let d = Infinity;
     for (const p of sim.players) if (p.alive) d = Math.min(d, dist2D(p.pos, c.pos));
