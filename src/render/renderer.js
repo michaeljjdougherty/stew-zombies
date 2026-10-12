@@ -522,6 +522,8 @@ export class GameRenderer {
     // Cheddar Round haze: yellow tint, thicker yellow-brown fog, distant lightning
     const hazeTarget = sim.rounds.cheddar ? 1 : 0;
     this.haze = (this.haze || 0) + (hazeTarget - (this.haze || 0)) * Math.min(1, dt * 0.8);
+    const air = this.map.crust && this.map.crust.air;   // (out in space: each island's own air)
+    if (air) { this.fogBase.copy(air.fog); this.fogDensity = air.density; }
     this.scene.fog.color.copy(this.fogBase).lerp(this.hazeColor, this.haze * 0.8);
     this.scene.background = this.scene.fog.color;
     this.scene.fog.density = (this.fogDensity ?? this.cfg.graphics.fogDensity) * (1 + this.haze * 0.9);

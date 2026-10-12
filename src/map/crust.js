@@ -30,12 +30,14 @@ import { buildIslands } from './islandKit.js';
 import { Terrain, K, STEP, shape, arcPts, wobble, deck, flight, flightPortals, spiral } from './terrain.js';
 
 const T = 0.5;
+const R = (seed) => { let x = seed >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 
 // --- the builder: one island at a time ------------------------------------------------------
 class Isle {
   constructor(id, name, element, bounds) {
     this.id = id; this.name = name; this.element = element;
     this.t = new Terrain({ id, ...bounds });
+    this.t.openEdges = true;   // (floating in space: nothing stops you walking off the edge)
     this.zones = new Map();       // zone id -> { name, reverb, fixtures }
     this.areas = []; this.links = []; this.windows = []; this.wallBuys = []; this.props = [];
     this.structs = []; this.joins = []; this.portalSpecs = []; this.freeDoors = []; this.rides = [];
@@ -48,6 +50,11 @@ class Isle {
   // a deck, a flight, a spiral: boxes, regions, portals
   add(s, o = {}) { this.structs.push({ s, ...o }); return s; }
   prop(kind, x0, z0, x1, z1, h, o = {}) { this.props.push({ kind, x0, z0, x1, z1, h, ...o }); }
+  // a downloaded model (src/render/crustModels.js); collide: [x, z, half w, half d, h] for a box round it
+  model(spec, { collide } = {}) {
+    (this.models ||= []).push(spec);
+    if (collide) { const [x, z, hw, hd, h] = collide; this.prop('model', x - hw, z - hd, x + hw, z + hd, h); }
+  }
   // a portal between whatever's at two points ([x, z, y]): `at` where it is
   portal(a, b, at, axis, width, o = {}) { this.portalSpecs.push({ a, b, at, axis, width, ...o }); }
 }
@@ -63,6 +70,24 @@ function deckHole(id, outer, hole, y, o = {}) {
   if (hx0 > x0) out.push(deck(id + '_w', [x0, hz0, hx0, hz1], y, { ...o, rails: pick('w') }));
   if (hx1 < x1) out.push(deck(id + '_e', [hx1, hz0, x1, hz1], y, { ...o, rails: pick('e') }));
   return out;
+}
+
+// A deck with several holes cut out of it: the pieces left.
+function deckCut(id, outer, holes, y, o = {}) {
+  let rects = [outer];
+  for (const [hx0, hz0, hx1, hz1] of holes) {
+    const next = [];
+    for (const r of rects) {
+      const [x0, z0, x1, z1] = r;
+      if (hx1 <= x0 || hx0 >= x1 || hz1 <= z0 || hz0 >= z1) { next.push(r); continue; }
+      if (hz0 > z0) next.push([x0, z0, x1, hz0]);
+      if (hz1 < z1) next.push([x0, hz1, x1, z1]);
+      if (hx0 > x0) next.push([x0, Math.max(z0, hz0), hx0, Math.min(z1, hz1)]);
+      if (hx1 < x1) next.push([hx1, Math.max(z0, hz0), x1, Math.min(z1, hz1)]);
+    }
+    rects = next;
+  }
+  return rects.map((r, i) => deck(`${id}_${i}`, r, y, o));
 }
 
 // Where a rock face is, marching from (x, z) along (dx, dz): a spot on it for a
@@ -151,6 +176,18 @@ function hub() {
   I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2 });
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
   I.prop('anvil', -5, -5, 5, 5, 22, { blank: true });
+  // a ring of rune stones round it
+  const runes = ['Runic_1', 'Runic_2', 'Runic_3', 'Runic_4', 'Runic_5', 'Runic_6', 'Runic_7'];
+  runes.forEach((k, i) => {
+    const a = (i / runes.length) * Math.PI * 2 + 0.45, x = Math.cos(a) * 8.6, z = Math.sin(a) * 8.6;
+    I.model({ a: 'stones', pick: [k], x, y: F, z, yaw: -a + Math.PI / 2, fit: { h: 2.6 }, look: { glow: '#5a4420' } }, { collide: [x, z, 0.6, 0.6, 2.6] });
+  });
+  const rh = R(9);
+  for (let i = 0; i < 18; i++) {
+    const a = rh() * Math.PI * 2, r = 32 + rh() * 8, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.abs(Math.abs(x) - 28) < 8 && Math.abs(z) < 8 || Math.abs(Math.abs(z) - 28) < 8 && Math.abs(x) < 8) continue;
+    I.model({ a: 'stones', pick: [['Big_2', 'Big_3', 'Big_4', 'BIG_1', 'Mid_1', 'Mid_2'][i % 6]], x, y: Math.max(F, t.heightAt(x, z)) - 0.6, z, yaw: rh() * 6, scale: 1.2 + rh() * 0.8, look: { tint: '#5a5660' } });
+  }
   I.later.push(() => {
     I.wallBuys.push({ weapon: 'M15', zone: PIT, room: PIT, ...rockFace(t, -4, -8, 0, -1, F) });
     I.wallBuys.push({ weapon: 'MP41', zone: PIT, room: PIT, ...rockFace(t, 4, 8, 0, 1, F) });
@@ -177,42 +214,46 @@ function hub() {
 }
 
 // =============================================================================
-// SHIP GRAVEYARD (north, Ice). Land on the pier. A fishing village to the
-// west (pack ice heaped against the net shed: climb it onto the roofs), a
-// rock point with the lighthouse (spiral stairs up inside to the gallery, and
-// a zipline from there down onto the icebreaker), the icebreaker frozen into
-// the harbor (its hold, a gangway up to the deck, stairs to the bridge), and
-// to the east a capsized hull you can walk along and drop into.
+// SHIP GRAVEYARD (north, Wind): a windswept rock where the storm drops the
+// ships it catches. Land on the pier. A fishing village to the west (debris
+// heaped against the net shed: climb it onto the roofs); a mesa to the
+// north-west with the old screw-pile lighthouse on it, a scaffold gallery
+// round its lamp house and a zipline from there down onto the wrecked
+// galleon in the dry harbor (its hold, hatches up to the deck, the gangway,
+// stairs to the stern castle); to the east a capsized hull you can walk along
+// and drop into; cargo containers spilled everywhere.
 // =============================================================================
 function ship() {
-  const I = new Isle('ship', 'Ship Graveyard', 'ice', { x0: -60, z0: -212, x1: 60, z1: -104 });
+  const I = new Isle('ship', 'Ship Graveyard', 'wind', { x0: -60, z0: -212, x1: 60, z1: -104 });
   const t = I.t;
   const SHORE = I.zone('shore', 'The Shore');
-  const PIER = I.zone('pier', 'Frozen Pier');
+  const PIER = I.zone('pier', 'The Pier');
   const VIL = I.zone('village', 'Fishing Village');
-  const HAR = I.zone('harbor', 'The Harbor');
-  const PT = I.zone('point', 'Lighthouse Point');
+  const HAR = I.zone('harbor', 'The Dry Harbor');
+  const PT = I.zone('point', 'Lighthouse Mesa');
   const WRK = I.zone('wreckyard', 'Wreck Yard');
-  const SHIPZ = I.zone('icebreaker', 'The Icebreaker', { reverb: 0.5 });
+  const SHIPZ = I.zone('galleon', 'The Galleon', { reverb: 0.5 });
   const HULLZ = I.zone('hulltop', 'The Capsized Hull');
-  const LH = I.zone('lighthouseStairs', 'The Lighthouse', { reverb: 0.9 });
-  const G = 0.8, ICE = 0.4;
+  const LH = I.zone('lighthouseGallery', 'The Lighthouse');
+  const G = 0.8, BAS = 0.4;
   t.paint(shape.poly([[-50, -200], [-10, -207], [30, -203], [52, -186], [55, -150], [49, -122], [20, -116], [9, -109], [-9, -109], [-20, -117], [-48, -124], [-56, -150], [-55, -180]], 2.5), { h: G, zone: SHORE });
   t.paint(shape.rect(-60, -162, -22, -110), { h: G, zone: VIL, only: (k) => k === K.GROUND });
   t.paint(shape.rect(30, -205, 60, -110), { h: G, zone: WRK, only: (k) => k === K.GROUND });
-  t.paint(shape.ellipse(10, -160, 24, 15, 2), { h: ICE, zone: HAR, mat: 'ice' });
+  t.paint(shape.ellipse(12, -160, 24, 15, 2), { h: BAS, zone: HAR, mat: 'mud' });
+  // the dried harbor's bed: sucking mud in its low spots
+  I.mud = [{ x: 18, z: -172, r: 5 }, { x: -4, z: -150, r: 4 }, { x: 26, z: -149, r: 3.5 }];
   t.paint(shape.rect(-8, -128, 8, -108), { h: G, zone: PIER, mat: 'planks', spawn: false });
-  // rocks along the north shore
-  for (const [x, z, r, h] of [[-50, -172, 5, 4.5], [-22, -203, 5.5, 5.5], [14, -204, 6, 6.5], [46, -194, 6.5, 7.5], [53, -168, 4, 4]]) {
+  for (const [x, z, r, h] of [[-50, -168, 5, 4.5], [14, -204, 6, 6.5], [46, -194, 6.5, 7.5], [53, -168, 4, 4]]) {
     t.paint(shape.circle(x, z, r, 1.4), { kind: K.ROCK, mat: 'rock', h: (px, pz) => h + wobble(px, pz, 1.2, 0.8) - Math.hypot(px - x, pz - z) * 0.35 });
   }
-  // the lighthouse point: a rock knoll, a path up from the village
-  t.paint(shape.circle(-36, -188, 10, 1.5), { h: 2.6, zone: PT });
-  t.ramp([[-29, -167, G], [-32, -178.6, 2.6]], 3.2, { zone: PT });
-  // pack ice heaped against the net shed: up onto the roofs
-  t.ramp([[-36.5, -121, G], [-36.5, -132.5, 4.3]], 3, { zone: VIL, mat: 'ice', jag: 0.5 });
-  // a snow drift up onto the capsized hull's keel
-  t.ramp([[42.5, -127, G], [42.5, -146.5, 6.3]], 3.4, { zone: WRK, mat: 'snow' });
+  // the lighthouse mesa, a road winding up round it
+  const LX = -36, LZ = -188, MESA = 9.4;
+  t.paint(shape.circle(LX, LZ, 13.5, 1), { h: MESA, zone: PT });
+  t.ramp(arcPts(LX, LZ, 15.1, 62, -42, G, MESA, 6), 3.8, { zone: PT });
+  // debris heaped against the net shed: up onto the roofs
+  t.ramp([[-36.5, -121, G], [-36.5, -132.5, 4.3]], 3, { zone: VIL, jag: 0.5 });
+  // a drift of sand up onto the capsized hull's keel
+  t.ramp([[42.5, -127, G], [42.5, -146.5, 6.3]], 3.4, { zone: WRK });
 
   // the village: the net shed and the smokehouse (flat roofs you can walk on)
   for (const [id, name, z0, z1, gun] of [['netshed', 'Net Shed', -142, -134, 'MP41'], ['smokehouse', 'Smokehouse', -156, -148, 'PM64']]) {
@@ -224,36 +265,34 @@ function ship() {
   }
   I.add(deck('plank_roofs', [-37.5, -147, -34.5, -143], G + 3.5, { zone: VIL, look: 'planks' }), { connect: 'we' });
 
-  // the lighthouse: spiral stairs up inside, the gallery round the top
-  const LY = 2.6, TOP = 14.6;
-  I.room({ id: 'lighthouse', kind: 'stone', rect: [-40, -192, -32, -184], y: LY, height: TOP - LY, name: 'The Lighthouse', ceiling: 'none', lighthouse: true, fixtures: [{ x: -36, y: LY + 3.2, z: -186, lit: true, flicker: 0.1, kind: 'hanging' }] });
-  I.links.push({ a: 'lighthouse', out: 'w', t: 0.85, type: 'gap', width: 1.6, height: 2.4 });
-  const lh = I.add(spiral('lh', -36, -188, 8, LY, TOP, { zone: LH, w: 1.8, perFlight: 1.5, look: 'stone' }));
-  I.joins.push(...flightPortals(lh.first, 'lighthouse', null));
-  for (const d of deckHole('gallery', [-42, -194, -30, -182], [-40, -192, -32, -184], TOP, { zone: LH, rails: 'nswe', look: 'steel' })) I.add(d);
+  // the lighthouse on its mesa: the lamp house up on piles, a scaffold gallery round it
+  const PORCH = MESA + 5.75;
+  I.model({ a: 'lighthouse', x: LX, y: MESA, z: LZ, yaw: 0.3 }, { collide: [LX, LZ, 7.5, 7.5, 12] });
+  for (const d of deckHole('gallery', [LX - 9.4, LZ - 9.4, LX + 9.4, LZ + 9.4], [LX - 7.6, LZ - 7.6, LX + 7.6, LZ + 7.6], PORCH, { zone: LH, rails: 'nswe', look: 'scaffold' })) I.add(d);
+  I.add(deck('gallery_top', [LX - 11.2, LZ - 5.8, LX - 9.4, LZ - 4], PORCH, { zone: LH, rails: 'nw', look: 'scaffold' }));
+  const gst = I.add(flight('gallery_stairs', [LX - 11.2, LZ - 4, LX - 9.4, LZ + 4], MESA, PORCH, 'n', { zone: LH, look: 'steel' }), { footprint: MESA });
+  I.portalSpecs.push({ flight: gst, belowAt: [LX - 10.3, LZ + 4.6, MESA], aboveId: 'gallery_top' });
+  I.decor.push({ kind: 'beacon', x: LX, y: MESA + 14.8, z: LZ });
 
-
-  // the icebreaker, frozen into the harbor: the hold, the deck, the bridge
-  const HY = ICE, DY = 5.2, BY = 8.6;
-  I.room({ id: 'hold', kind: 'hull', rect: [0, -166, 30, -154], y: HY, height: DY - 0.3 - HY, name: 'Icebreaker Hold', ceiling: 'none', ship: 'icebreaker', fixtures: [{ x: 15, y: HY + 4.1, z: -160, lit: true, flicker: 0.4, kind: 'hanging' }, { x: 25, y: HY + 4.1, z: -160, lit: true, flicker: 0.2, kind: 'hanging' }] });
-  I.links.push({ a: 'hold', out: 's', t: 0.3, type: 'door', id: 'door_ship_hold', name: 'Icebreaker' });
-  I.links.push({ a: 'hold', out: 'w', t: 0.5, type: 'gap', width: 2.2, height: 2.6 });
-  I.windows.push({ room: 'hold', side: 'n', t: 0.6 });
-  I.wallBuys.push({ weapon: 'Olympus', room: 'hold', side: 'n', t: 0.85 });
-  I.wallBuys.push({ weapon: 'Staykout', room: 'hold', side: 's', t: 0.75 });
-  I.boxSpots.push({ id: 'box_hold', room: 'hold', x: 29.4, z: -160, yaw: -Math.PI / 2 });
-  const hatch = I.add(flight('hold_stairs', [2, -166, 10, -164.4], HY, DY, 'e', { zone: SHIPZ, look: 'steel' }));
-  const ibDeck = deckHole('ib', [-1, -167, 31, -153], [2, -166, 10, -164.4], DY, { zone: SHIPZ, look: 'deck' });
-  for (const d of ibDeck) I.add(d, { connect: 'nswe' });
-  I.joins.push(...flightPortals(hatch, 'hold', 'ib_e'));
-  I.add(deck('bridge', [1, -163, 8, -156], BY, { zone: SHIPZ, rails: 'nsw', look: 'deck' }));
-  const bst = I.add(flight('bridge_stairs', [8, -161, 13, -159], DY, BY, 'w', { zone: SHIPZ, look: 'steel' }));
-  I.joins.push(...flightPortals(bst, 'ib_s', 'bridge'));
-  const gang = I.add(flight('gangway', [18, -153, 21, -145], HY, DY, 'n', { zone: SHIPZ, look: 'planks' }), { footprint: HY });
-  I.portalSpecs.push({ flight: gang, belowAt: [19.5, -144.4, HY], aboveId: 'ib_s' });
-  I.decor.push({ kind: 'icebreaker', rect: [-1, -167, 31, -153], deckY: DY, bridge: [1, -163, 8, -156], bridgeY: BY });
-  // the zipline from the lighthouse gallery down onto the bridge
-  I.rides.push({ id: 'zip_lighthouse', kind: 'zip', label: 'the icebreaker', pts: [[-30.6, TOP + 2.2, -188], [4.5, BY + 2.35, -159.5]] });
+  // the galleon, wrecked in the dry harbor: the hold, hatches to the main deck,
+  // the gangway, stairs up to the stern castle (it lies east-west, bow east)
+  const SX = 15, SZ = -160, SY = BAS + 0.3;            // where the model sits
+  const HOLD = BAS, MAIN = SY + 3.0, AFT = SY + 7.75;
+  I.model({ a: 'pirateship', x: SX, y: SY - 2.4, z: SZ, yaw: Math.PI / 2, look: { glow: '#3a3026' } });
+  I.room({ id: 'hold', kind: 'hull', rect: [4, -162.5, 26, -157.5], y: HOLD, height: MAIN - 0.3 - HOLD, name: 'Galleon Hold', ceiling: 'none', edge: 'invisible', style: 'invisible', floor: 'deck', fixtures: [{ x: 10, y: HOLD + 2.8, z: -160, lit: true, flicker: 0.4, kind: 'hanging' }, { x: 20, y: HOLD + 2.8, z: -160, lit: true, flicker: 0.2, kind: 'hanging' }] });
+  I.wallBuys.push({ weapon: 'Olympus', room: 'hold', side: 'n', t: 0.5 }, { weapon: 'Staykout', room: 'hold', side: 's', t: 0.5 });
+  I.boxSpots.push({ id: 'box_hold', room: 'hold', x: 25.4, z: -160, yaw: -Math.PI / 2 });
+  const hA = I.add(flight('hatch_a', [6, -160, 12, -157.5], HOLD, MAIN, 'e', { zone: SHIPZ, look: 'planks' }));
+  const hB = I.add(flight('hatch_b', [18, -162.5, 24, -160], HOLD, MAIN, 'w', { zone: SHIPZ, look: 'planks' }));
+  for (const d of deckCut('main', [2.5, -163.5, 27.5, -156.5], [[6, -160, 12, -157.5], [18, -162.5, 24, -160]], MAIN, { zone: SHIPZ, look: 'hidden' })) I.add(d, { connect: 'nswe' });
+  I.joins.push(...flightPortals(hA, 'hold', null), ...flightPortals(hB, 'hold', null));
+  I.add(deck('aft', [-2.5, -163, 2.5, -157], AFT, { zone: SHIPZ, look: 'hidden' }), { connect: 'nsw' });
+  const ast = I.add(flight('aft_stairs', [2.5, -163, 9, -161], MAIN, AFT, 'w', { zone: SHIPZ, look: 'planks' }));
+  I.portalSpecs.push({ flight: hA, aboveAt: [12.3, -158.7, MAIN] }, { flight: hB, aboveAt: [17.7, -161.3, MAIN] }, { flight: ast, belowAt: [9.3, -162, MAIN], aboveId: 'aft' });
+  const gang = I.add(flight('gangway', [19, -156.5, 22, -150], HOLD, MAIN, 'n', { zone: SHIPZ, look: 'planks' }), { footprint: HOLD });
+  I.portalSpecs.push({ flight: gang, belowAt: [20.5, -149.4, HOLD], aboveAt: [20.5, -157, MAIN] });
+  // the zipline from the lighthouse gallery down onto the stern castle
+  I.rides.push({ id: 'zip_lighthouse', kind: 'zip', label: 'the galleon', pts: [[LX + 8.5, PORCH + 2.2, LZ], [0, AFT + 2.35, SZ]] });
 
   // the capsized hull: walk along the keel, drop in through the hole
   const CY = G, KY = 6.3;
@@ -266,19 +305,24 @@ function ship() {
   I.joins.push({ a: 'hull_s', b: 'capsized', x: 42.5, z: -161, axis: 'z', width: 4, dirAB: -1, drop: true, oneWay: true });
   I.decor.push({ kind: 'capsized', rect: [37, -179, 48, -147], keelY: KY, hole: [40.5, -165, 44.5, -161] });
 
-  // things lying about
-  for (const [x, z, s, h] of [[2, -171, 2.2, 2.4], [24, -170, 1.8, 1.8], [-6, -150, 1.6, 1.6], [30, -148, 1.4, 1.4]]) I.prop('iceberg', x - s, z - s, x + s, z + s, h);
-  I.prop('boat', -27, -170, -25, -164, 1.0); I.prop('boat', -16, -150, -14, -144, 1.0);
+  // spilled cargo, rocks, wind-bent trees
+  for (const [x, z, yaw, rows] of [[-12, -176, 0.25, [0, 1]], [32, -130, -0.4, [2]], [-4, -197, 1.2, [3, 4]], [28, -186, 0.9, [5]]]) {
+    I.model({ a: 'containers', pick: rows.map((r) => ['Object_0', 'Object_12', 'Object_18', 'Object_21', 'Object_24', 'Object_38'][r]), x, y: BAS, z, yaw }, { collide: [x, z, 3.4, 3.4, 2.9] });
+  }
+  I.model({ a: 'containers', pick: ['Object_36', 'Object_37', 'Object_39'], x: -2, y: G, z: -132, yaw: 1.4, rz: 0.03 }, { collide: [-2, -132, 4, 6.2, 2.9] });
+  const rr = R(17);
+  for (const [x, z] of [[-48, -142], [-26, -128], [-50, -186], [34, -120], [50, -150], [-14, -200], [24, -198], [-46, -126]]) {
+    I.model({ a: 'maple', x, y: G - 0.2, z, yaw: rr() * 6, fit: { h: 7 + rr() * 3 }, rz: 0.12, look: { tint: '#9a8a6a' } });
+  }
+  for (const [x, z, k] of [[-30, -200, 'Big_2'], [5, -205, 'Big_3'], [50, -134, 'Mid_2'], [-54, -158, 'BIG_1'], [-6, -112, 'Mid_3'], [40, -200, 'Big_5']]) I.model({ a: 'stones', pick: [k], x, y: G - 0.3, z, yaw: rr() * 6, scale: 1.3 });
   I.prop('rack', -27, -138, -21, -137.4, 1.9); I.prop('rack', -27, -146, -21, -145.4, 1.9);
   I.prop('barrel', -20.35, -128.35, -19.65, -127.65, 0.95, { fire: true });
   I.prop('crate', 5, -124, 6.2, -122.8, 1.1); I.prop('crate', 6.4, -124, 7.6, -122.8, 0.8);
-  I.prop('crate', 30, -133, 31.2, -131.8, 1.1);
-  I.prop('shrine', -31, -196, -28, -193, 3.6, { element: 'ice' });
+  I.prop('shrine', -24, -164, -21, -161, 3.6, { element: 'wind' });
   I.prop('barrel', 33.65, -186.35, 34.35, -185.65, 0.95, { fire: true });
-  I.lamp(PIER, 6, -118); I.lamp(VIL, -26, -140, { flicker: 0.15 }); I.lamp(PT, -30, -182, { flicker: 0.1 });
-  I.lamp(WRK, 34, -140, { flicker: 0.3 }); I.lamp(HAR, -8, -168, { flicker: 0.2 });
+  I.lamp(PIER, 6, -118); I.lamp(VIL, -26, -140, { flicker: 0.15 }); I.lamp(PT, -30, -180, { flicker: 0.1 });
+  I.lamp(WRK, 34, -140, { flicker: 0.3 }); I.lamp(HAR, -4, -168, { flicker: 0.2 });
   I.pads.push({ id: 'pad_ship', x: 0, z: -114, to: 'pad_hub_n', label: 'the Anvil' });
-  I.mud = [{ x: 18, z: -170, r: 5 }, { x: -4, z: -158, r: 4.5 }, { x: 26, z: -150, r: 3.5 }];
   return I;
 }
 
@@ -346,7 +390,7 @@ function research() {
   // the observatory dome: a ramp winding up round the plinth to the telescope
   const DX = 181, DZ = 17, DT = 6.0;
   I.room({
-    id: 'dome', kind: 'lab', rect: [172, 8, 190, 26], y: G, height: 9.5, name: 'Observatory Dome', ceiling: 'none', dome: true,
+    id: 'dome', kind: 'lab', rect: [172, 8, 190, 26], y: G, height: 9.5, name: 'Observatory Dome', ceiling: 'none',
     regions: [[172, 8, 190, 10], [172, 24, 190, 26], [172, 10, 174, 24], [188, 10, 190, 24]],
     innerPortals: [{ a: 0, b: 2, x: 173, z: 10, axis: 'z', width: 2 }, { a: 0, b: 3, x: 189, z: 10, axis: 'z', width: 2 }, { a: 1, b: 2, x: 173, z: 24, axis: 'z', width: 2 }, { a: 1, b: 3, x: 189, z: 24, axis: 'z', width: 2 }],
     fixtures: [{ x: 173.5, y: G + 3.4, z: 9.5, lit: true, flicker: 0.1 }, { x: 188.5, y: G + 3.4, z: 24.5, lit: true, flicker: 0.2 }],
@@ -357,6 +401,7 @@ function research() {
   const dr = I.add(spiral('domeramp', DX, DZ, 14, G, DT, { zone: RAMP, w: 2.2, perFlight: (DT - G) / 4, look: 'steel', summit: true }));
   I.joins.push({ a: 'dome_2', b: dr.bottom.id, x: 174, z: 22.9, axis: 'x', width: 2.2, dirAB: 1 });
   I.prop('telescope', DX - 2, DZ - 2, DX + 2, DZ + 2, 4.2, { y: DT });
+  I.model({ a: 'dome', x: DX, y: G + 9.3, z: DZ, fit: { w: 19.6 }, look: { glow: '#20283a' } });
 
   // the tesla yard: coils, and catwalks up between them
   const CY = 4.2;
@@ -366,7 +411,15 @@ function research() {
     I.portalSpecs.push({ flight: f, belowAt: [(x0 + x1) / 2, 19.4, G], aboveId: id });
   }
   I.add(deck('cat_s', [148, 40, 170, 42.4], CY, { zone: CAT, look: 'grate' }), { connect: 'nswe' });
-  I.prop('teslacoil', 156, 30, 158, 32, 7); I.prop('teslacoil', 160, 35, 162, 37, 7); I.prop('teslacoil', 176, 31, 178, 33, 7);
+  // the tesla coils (lightning arcs between them: src/render/crustTerrain.js 'storm')
+  const coils = [[157, 31], [161, 36], [177, 32], [140, 40], [192, 20]];
+  for (const [x, z] of coils) I.model({ a: 'tesla', x, y: G, z, yaw: x * 0.3, fit: { h: 8.5 }, look: { glow: '#3a3248' } }, { collide: [x, z, 1.6, 1.6, 8] });
+  I.decor.push({ kind: 'storm', coils: coils.map(([x, z]) => [x, G + 8.3, z]), mast: [184, 34, -28] });
+  // supply containers stacked round the yards
+  for (const [x, z, yaw, rows] of [[176, -42, 0, [0, 1, 2]], [126, 30, 1.57, [3]], [194, -2, 1.57, [4]], [136, -38, 0.1, [5]]]) {
+    I.model({ a: 'containers', pick: rows.map((r) => ['Object_0', 'Object_12', 'Object_18', 'Object_21', 'Object_24', 'Object_38'][r]), x, y: G, z, yaw }, { collide: [x, z, 3.4, 3.4, 2.9] });
+  }
+  for (const [x, z] of [[124, 18], [168, -46], [146, 44], [198, 10]]) I.model({ a: 'barrel', x, y: G, z, yaw: x, fit: { h: 1.1 } }, { collide: [x, z, 0.5, 0.5, 1.1] });
   I.prop('shrine', 175, 39, 178, 42, 3.6, { element: 'lightning' });
 
   // round about
@@ -383,43 +436,90 @@ function research() {
 }
 
 // =============================================================================
-// TRENCH FRONT (south, Fire). Land in the landing zone on the plain. Across
-// the south, facing the sea, the front line zig-zags; curving communication
-// trenches run inland from it to the concrete fort in the middle: two
-// floors, stairs up to a sandbagged roof (jump off it), and a spiral up to
-// the radio tower's lookout. Ramps climb out of the trenches.
+// TRENCH FRONT (south, Fire): a molten battlefield on a scorched meteor. The
+// trenches are the way round: a traverse behind the landing zone, winding
+// communication trenches, a zig-zag front line facing the void, saps out to
+// firing pits. Most of the ground up top is no-man's-land, wired off and
+// shelled (the Fire quest will open it); a few patches are safe (the landing
+// zone, the fort's yard) or shelled but reachable (the gun pits, the saps).
+// The fort in the middle: two floors, a roof to jump off, a radio lookout,
+// and a field telephone that calls a ceasefire for a while.
 // =============================================================================
 function trench() {
   const I = new Isle('trench', 'Trench Front', 'fire', { x0: -60, z0: 102, x1: 60, z1: 196 });
   const t = I.t;
   const LZ = I.zone('lz', 'Landing Zone');
-  const NML = I.zone('plain', "No Man's Land");
+  const YARD = I.zone('fortyard', 'Fort Yard');
   const TR = I.zone('trenches', 'The Trenches');
+  const NML = I.zone('nomansland', "No Man's Land");
+  const GUNW = I.zone('gunpitW', 'West Gun Pit');
+  const GUNE = I.zone('gunpitE', 'East Gun Pit');
+  const SAPS = I.zone('saps', 'Forward Saps');
   const ROOF = I.zone('fortroof', 'The Fort Roof');
   const LOOK = I.zone('lookout', 'Radio Lookout');
-  const G = 2.2, TF = 0.2;
-  t.paint(shape.poly([[-50, 112], [-20, 108], [20, 108], [50, 112], [54, 140], [52, 170], [42, 184], [0, 190], [-42, 184], [-52, 170], [-54, 140]], 2), { h: G, zone: NML });
-  t.paint(shape.rect(-60, 102, 60, 127), { h: G, zone: LZ, only: (k) => k === K.GROUND });
-  // the front line, zig-zagging along the south shore
-  const front = [[-42, 168], [-34, 175], [-26, 168], [-18, 175], [-10, 168], [-2, 175], [6, 168], [14, 175], [22, 168], [30, 175], [38, 168], [44, 172]];
-  t.paint(shape.path(front, 2.6, 0.25), { h: TF, zone: TR, mat: 'duckboard' });
-  // communication trenches, winding inland to the fort
-  const commW = [[-26, 168], [-27.5, 161], [-23, 154], [-16, 151]];
-  const commE = [[22, 168], [24.5, 161], [20, 154], [16, 151]];
-  t.paint(shape.path(commW, 2.4, 0.25), { h: TF, zone: TR, mat: 'duckboard' });
-  t.paint(shape.path(commE, 2.4, 0.25), { h: TF, zone: TR, mat: 'duckboard' });
-  // ramps up out of them: at the fort, and out of the front line onto the plain
-  t.ramp([[-16.5, 151.2, TF], [-10.5, 148.4, G]], 2.4, { zone: TR, mat: 'duckboard' });
-  t.ramp([[16.5, 151.2, TF], [10.5, 148.4, G]], 2.4, { zone: TR, mat: 'duckboard' });
-  for (const x of [-30, 10, 34]) {
-    const z = x === -30 ? 171.5 : x === 10 ? 171.5 : 171.5;
-    t.ramp([[x, z, TF], [x, z - 6.6, G]], 2.2, { zone: TR, mat: 'duckboard' });
+  const G = 2.3, TF = 0;
+  t.paint(shape.poly([[-50, 112], [-20, 108], [20, 108], [50, 112], [54, 140], [52, 170], [42, 184], [0, 191], [-42, 184], [-52, 170], [-54, 140]], 2), { h: G, zone: NML });
+  // the patches up top you can stand on
+  t.paint(shape.rect(-14, 108, 14, 122), { h: G, zone: LZ, only: (k) => k === K.GROUND });
+  t.paint(shape.rect(-13, 134, 13, 156), { h: G, zone: YARD });
+  t.paint(shape.rect(-41, 133, -31, 143), { h: G, zone: GUNW });
+  t.paint(shape.rect(31, 133, 41, 143), { h: G, zone: GUNE });
+  for (const [x0, z0, x1, z1] of [[-35, 178, -29, 183], [-3, 180, 3, 185], [29, 178, 35, 183]]) t.paint(shape.rect(x0, z0, x1, z1), { h: G, zone: SAPS });
+  // the trenches: 2 m wide, square-cut (the trench kit's sections line them)
+  const segs = [];
+  const dig = (pts) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+      t.paint(shape.rect(Math.min(ax, bx) - 1, Math.min(az, bz) - 1, Math.max(ax, bx) + 1, Math.max(az, bz) + 1), { h: TF, zone: TR, mat: 'duckboard' });
+      segs.push([ax, az, bx, bz]);
+    }
+  };
+  dig([[-36, 129], [36, 129]]);                                                     // the traverse behind the landing zone
+  for (const sx of [-1, 1]) {
+    dig([[24 * sx, 129], [24 * sx, 140], [30 * sx, 140], [30 * sx, 152], [24 * sx, 152], [24 * sx, 167]]);   // communication trenches
+    dig([[24 * sx, 152], [20 * sx, 152]]);                                         // spur to the fort yard
   }
-  // a gun on a post in the front line
-  I.later.push(() => I.wallBuys.push({ weapon: 'M17', zone: TR, room: TR, ...rockFace(t, -2, 174, 0, 1, TF, 1.6) }));
-
+  const front = [[-44, 167], [-36, 167], [-36, 173], [-28, 173], [-28, 167], [-20, 167], [-20, 173], [-12, 173], [-12, 167], [-4, 167], [-4, 173], [4, 173], [4, 167], [12, 167], [12, 173], [20, 173], [20, 167], [28, 167], [28, 173], [36, 173], [36, 167], [44, 167]];
+  dig(front);                                                                      // the front line, zig-zag
+  for (const x of [-32, 0, 32]) dig([[x, 173], [x, 176]]);                         // saps
+  // ramps: down from the landing zone, up into the yard, the gun pits, the saps
+  t.ramp([[0, 121.5, G], [0, 128, TF]], 2, { zone: TR, mat: 'duckboard' });
+  t.ramp([[0, 130, TF], [0, 135.5, G]], 2, { zone: TR, mat: 'duckboard' });
+  for (const sx of [-1, 1]) {
+    t.ramp([[19.5 * sx, 152, TF], [12.6 * sx, 152, G]], 2, { zone: TR, mat: 'duckboard' });
+    t.ramp([[36 * sx, 129.5, TF], [36 * sx, 135.5, G]], 2, { zone: TR, mat: 'duckboard' });
+  }
+  for (const [x, z0, z1] of [[-32, 175.5, 181.5], [0, 175.5, 182], [32, 175.5, 181.5]]) t.ramp([[x, z0, TF], [x, z1, G]], 2, { zone: TR, mat: 'duckboard' });
+  // lava in the cracks of no-man's-land
+  for (const crack of [[[-48, 150], [-40, 156], [-34, 160], [-30, 164]], [[30, 120], [38, 124], [46, 132]], [[-8, 158], [-2, 162], [6, 161], [14, 158]], [[40, 150], [46, 156], [48, 162]], [[-46, 132], [-40, 124], [-30, 118]]]) {
+    t.paint(shape.path(crack, 1.6, 0.4), { kind: K.ROCK, mat: 'lava', h: G - 0.5, only: (k, c) => k === K.GROUND && t.zone[c] === NML });
+  }
+  // no-man's-land is wired off (the Fire quest will open it)
+  I.gated = { zone: NML, door: 'gate_nml' };
+  I.shelled = [NML, GUNW, GUNE, SAPS];
+  // the trench kit along every trench; the pillboxes, the tank, the dead trees
+  for (const [ax, az, bx, bz] of segs) {
+    const along = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(along / 3.25));
+    const yaw = ax === bx ? 0 : Math.PI / 2;
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) / n;
+      I.model({ a: 'trenchset', pick: ['Box019_Straight'], x: ax + (bx - ax) * u, y: TF - 0.05, z: az + (bz - az) * u, yaw, scale: [0.95, 1, along / n / 3.25 * 1.02] });
+    }
+  }
+  for (const [x, z, yaw] of [[-16, 179, 0.1], [16, 180, -0.15], [44, 176, 0.4]]) I.model({ a: 'fieldbunker', x, y: G - 0.4, z, yaw, scale: 1 }, { collide: [x, z, 3.4, 5.6, 2.7] });
+  I.model({ a: 'trenchset', pick: ['Object359_Bunker'], x: -44, y: G - 2.3, z: 148, yaw: Math.PI / 2 });
+  I.model({ a: 'trenchset', pick: ['Sphere002_Bunker'], x: 44, y: G - 2.0, z: 150, yaw: -Math.PI / 2 });
+  I.model({ a: 'tank', x: -36, y: G - 0.5, z: 152, yaw: 0.6, rz: 0.08, scale: 1.1 }, { collide: [-36, 152, 4, 4, 2.6] });
+  I.model({ a: 'tent', x: -8, y: G, z: 113, yaw: 0.2, scale: 0.75 }, { collide: [-8, 113, 4.2, 4, 3] });
+  const rr = R(41);
+  for (let i = 0; i < 46; i++) {
+    const x = -50 + rr() * 100, z = 112 + rr() * 74;
+    if (t.kindAt(x, z) !== K.GROUND || t.zone[t.cellAt(x, z)] !== NML) continue;
+    const kind = ['TreeBareTall', 'deadtreehero', 'deadtreewide'][i % 3];
+    I.model({ a: 'trees', pick: [kind], x, y: G - 0.2, z, yaw: rr() * 6.28, fit: { h: 5 + rr() * 4 }, look: { tint: '#3a2c24', glowK: 0.05 } });
+  }
   // the fort: two floors, a roof, a lookout
-  const F1 = G, F2 = 5.7, RY = 9.0;
+  const F1 = G, F2 = G + 3.5, RY = G + 6.8;
   I.room({
     id: 'fort1', kind: 'bunker', rect: [-8, 140, 8, 152], y: F1, height: 3.2, name: 'The Fort', ceiling: 'none',
     regions: [[-8, 141.6, 8, 152], [1.5, 140, 8, 141.6], [-8, 140, -6, 141.6]],
@@ -445,24 +545,23 @@ function trench() {
   const s2 = I.add(flight('fort_stairs2', [0, 150.4, 7.5, 152], F2, RY, 'e', { zone: 'fort2', look: 'concrete' }));
   for (const d of deckHole('roof', [-9, 139, 9, 153], [0, 150.4, 7.5, 152], RY, { zone: ROOF, look: 'concrete' })) I.add(d, { connect: 'nswe' });
   I.joins.push(...flightPortals(s2, 'fort2_2', 'roof_e'));
-  const lk = I.add(spiral('look', 4.5, 143.5, 5, RY, 16, { zone: LOOK, w: 1.4, perFlight: 1.4, look: 'steel' }));
+  const lk = I.add(spiral('look', 4.5, 143.5, 5, RY, RY + 7, { zone: LOOK, w: 1.4, perFlight: 1.4, look: 'steel' }));
   I.joins.push(...flightPortals(lk.first, 'roof_n', null));
-  for (const d of deckHole('lookout', [1, 140, 8, 147], [2, 141, 7, 146], 16, { zone: LOOK, rails: 'nswe', look: 'grate' })) I.add(d);
-  I.decor.push({ kind: 'fort', rect: [-9, 139, 9, 153], roofY: RY }, { kind: 'mast', x: 4.5, z: 143.5, size: 5, h: 12, y: 16 });
-
-  // the battlefield
-  I.prop('biplane', -24, 128, -16, 136, 2.6);
-  I.prop('tank', -40, 146, -32, 151, 2.4);
-  I.prop('fieldgun', 28, 134, 33, 138, 1.8); I.prop('fieldgun', 36, 140, 41, 144, 1.8);
-  I.prop('ruinwall', 24, 150, 30, 150.6, 2.4); I.prop('ruinwall', 30, 150, 30.6, 156, 1.8);
-  I.prop('barrel', 26.65, 152.65, 27.35, 153.35, 0.95, { fire: true });
-  I.prop('barrel', -12.35, 120.65, -11.65, 121.35, 0.95, { fire: true });
-  I.prop('crate', 12, 118, 13.2, 119.2, 1.1); I.prop('crate', 13.4, 118, 14.6, 119.2, 0.8);
-  I.prop('crate', -44, 138, -42.8, 139.2, 1.1);
-  I.prop('shrine', -44, 156, -41, 159, 3.6, { element: 'fire' });
-  I.craters = [[-18, 143, 3], [-30, 136, 2.4], [-8, 160, 2], [36, 158, 2.6], [20, 130, 2.2], [-40, 165, 1.8]].map(([x, z, r]) => ({ x, z, r, y: G }));
-  I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 116, { flicker: 0.15 }); I.lamp(NML, -20, 158, { flicker: 0.4 }); I.lamp(NML, 22, 160, { flicker: 0.3 });
-  for (const [x, z, f] of [[-38, 171.5, 0.3], [-22, 171.5, 0.2], [-6, 171.5, 0.4], [10, 171.5, 0.2], [26, 171.5, 0.3], [40, 171, 0.25], [-26, 158, 0.3], [23, 158, 0.2]]) I.lamp(TR, x, z, { h: 2.1, flicker: f });
+  for (const d of deckHole('lookout', [1, 140, 8, 147], [2, 141, 7, 146], RY + 7, { zone: LOOK, rails: 'nswe', look: 'grate' })) I.add(d);
+  I.decor.push({ kind: 'fort', rect: [-9, 139, 9, 153], roofY: RY }, { kind: 'mast', x: 4.5, z: 143.5, size: 5, h: 12, y: RY + 7 });
+  // the field telephone: call in a ceasefire
+  I.ceasefire = { pos: { x: -7.95, y: F1 + 1.4, z: 144 }, normal: { x: 1, z: 0 }, room: 'fort1' };
+  // a gun in the front line, guns in the pits
+  I.later.push(() => I.wallBuys.push({ weapon: 'M17', zone: TR, room: TR, ...rockFace(t, -4, 171, 0, 1, TF, 1.6) }));
+  I.prop('fieldgun', -39, 136, -34, 140, 1.8); I.prop('fieldgun', 34, 136, 39, 140, 1.8);
+  I.prop('crate', -33, 141, -31.8, 142.2, 1.1); I.prop('crate', 31.8, 141, 33, 142.2, 1.1);
+  I.prop('barrel', 10.65, 115.65, 11.35, 116.35, 0.95, { fire: true });
+  I.prop('barrel', -11.35, 154.65, -10.65, 155.35, 0.95, { fire: true });
+  I.prop('crate', 10, 118, 11.2, 119.2, 1.1); I.prop('crate', 11.4, 118, 12.6, 119.2, 0.8);
+  I.prop('shrine', 9, 135, 12, 138, 3.6, { element: 'fire' });
+  I.craters = [[-18, 143, 3], [-30, 120, 2.4], [-8, 162, 2], [36, 158, 2.6], [18, 118, 2.2], [-40, 165, 1.8], [44, 140, 2.4]].map(([x, z, r]) => ({ x, z, r, y: G }));
+  I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 120, { flicker: 0.15 }); I.lamp(YARD, -11, 137, { flicker: 0.3 }); I.lamp(YARD, 11, 155, { flicker: 0.2 });
+  for (const [x, z, f] of [[-30, 129, 0.3], [10, 129, 0.2], [-24, 160, 0.3], [24, 145, 0.2], [-32, 173, 0.4], [0, 173, 0.2], [32, 173, 0.3], [-12, 167, 0.25], [16, 167, 0.3]]) I.lamp(TR, x, z, { h: 2.1, flicker: f });
   I.pads.push({ id: 'pad_trench', x: 0, z: 115, to: 'pad_hub_s', label: 'the Anvil' });
   return I;
 }
@@ -488,7 +587,7 @@ function polyEdge(pts, x, z) {
 // the summit an ice slide runs down a gully to the beach. South, the old mine.
 // =============================================================================
 function caves() {
-  const I = new Isle('caves', 'Ice Caves', 'wind', { x0: -212, z0: -58, x1: -100, z1: 58 });
+  const I = new Isle('caves', 'Ice Caves', 'ice', { x0: -212, z0: -58, x1: -100, z1: 58 });
   const t = I.t;
   const MOUTH = I.zone('mouth', 'Cave Mouth');
   const GAL = I.zone('gallery', 'Ice Gallery', { reverb: 1.0 });
@@ -555,7 +654,26 @@ function caves() {
   I.boxSpots.push({ id: 'box_mineworks', room: WORKS, x: -168, z: 46.5, yaw: Math.PI, y: 0.8 });
   // crystals, the standing stones on the summit, the mine's carts
   for (const [x, z, h] of [[-160, -12, 3.2], [-146, -12, 4.2], [-158, 11, 2.6], [-145, 12, 3.6], [-152, -2, 5.2], [-186, 10, 2.4], [-130, 2, 2.2], [-176, -2, 3]]) I.prop('crystal', x - 1, z - 1, x + 1, z + 1, h);
-  I.prop('shrine', -172, -35, -169, -32, 3.6, { element: 'wind' });
+  I.prop('shrine', -172, -35, -169, -32, 3.6, { element: 'ice' });
+  // the ice: a glacier over the summit, a golem guarding the shrine, ice walls at
+  // the mouth, formations in the cavern, icicles off every ceiling, snowy trees
+  I.model({ a: 'glacier', x: -176, y: SUMH - 1.5, z: -46, yaw: 0.4, scale: 1.1 });
+  I.model({ a: 'golem', x: -164.5, y: SUMH, z: -36.5, yaw: -2.4, fit: { h: 5.2 } }, { collide: [-164.5, -36.5, 1.6, 1.6, 5] });
+  I.model({ a: 'icewall', pick: ['Object_0', 'Object_4', 'Object_7'], x: -112, y: 0.4, z: -21, yaw: 1.4, scale: 0.9 });
+  I.model({ a: 'icewall', pick: ['Object_2', 'Object_5', 'Object_9'], x: -113, y: 0.4, z: 21, yaw: -1.5, scale: 0.9 });
+  for (const [x, z, yaw] of [[-150, 3, 0.3], [-155, 4.5, 2.1], [-178, 8, 1.1]]) I.model({ a: 'iceformations', pick: ['Object_3'], x, y: F - 0.3, z, yaw, scale: 0.7 }, { collide: [x, z, 1.3, 1.3, 1.2] });
+  I.later.push(() => {
+    const r = R(23);
+    for (let iz = 0; iz < t.nz; iz += 2) for (let ix = 0; ix < t.nx; ix += 2) {
+      const c = t.i(ix, iz);
+      if (t.kind[c] !== K.GROUND || !(t.ceil[c] > 0) || r() > 0.32) continue;
+      I.model({ a: 'icicle', x: t.cx(ix) + r() - 0.5, y: t.ceil[c] - 1.6 - r() * 0.3, z: t.cz(iz) + r() - 0.5, yaw: r() * 6.28, scale: 0.7 + r() * 0.6 });
+    }
+  });
+  const rt = R(5);
+  for (const [x, z] of [[-110, -14], [-117, 12], [-108, 8], [-180, -24], [-160, -26], [-186, -36], [-168, 46], [-176, 38]]) {
+    I.model({ a: 'trees', pick: [rt() > 0.4 ? 'snowtree' : 'snowbush'], x, y: t.heightAt(x, z) - 0.1, z, yaw: rt() * 6, fit: { h: 4 + rt() * 4 } });
+  }
   for (const [x, z] of [[-178, -38], [-163, -38], [-178, -27], [-163, -27]]) I.prop('standing', x - 0.7, z - 0.7, x + 0.7, z + 0.7, 4.2);
   I.prop('minecart', -148.6, 30, -146.4, 32.6, 1.4);
   I.prop('shed', -174, 38, -168, 43, 3.2);
@@ -585,7 +703,7 @@ for (const r of ROOMS.navRegions) { const rm = ROOMS.rooms.find((q) => q.id === 
 const out = {
   rooms: [...ROOMS.rooms], navRegions: [...ROOMS.navRegions], portals: ROOMS.portals.filter((p) => p.b != null),
   doors: [...ROOMS.doors], wallBuys: [...ROOMS.wallBuys], groundSpawns: [], props: [], launchers: [], boxSpots: [],
-  terrainBoxes: [], terrains: [], structures: [], rides: [], decor: [], mud: [], craters: [], islands: [],
+  terrainBoxes: [], terrains: [], structures: [], rides: [], decor: [], mud: [], craters: [], islands: [], models: [], shelled: [], ceasefire: null,
 };
 const roomIsle = new Map(ISLES.flatMap((I) => I.areas.map((a) => [a.id, I])));
 
@@ -616,6 +734,27 @@ for (const I of ISLES) {
     t.paint(shape.rect(x0 + 0.01, z0 + 0.01, x1 - 0.01, z1 - 0.01), { kind: K.ROOM, spawn: false, only: (k, c) => k === K.GROUND && Math.abs(t.h[c] - s.region.y0) <= STEP + 0.05 });
   }
   // the ground's nav
+  // wired-off ground (no-man's-land): an invisible fence wherever it meets
+  // ground you can stand on at its own height, gone when its gate opens
+  const gateBoxes = [];
+  if (I.gated) {
+    const { zone, door } = I.gated;
+    const wire = [];
+    for (let iz = 1; iz < t.nz - 1; iz++) for (let ix = 1; ix < t.nx - 1; ix++) {
+      const c = t.i(ix, iz);
+      if (t.kind[c] !== K.GROUND || t.zone[c] !== zone) continue;
+      let edge = false;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = t.i(ix + dx, iz + dz);
+        if (t.physWalk(n) && t.zone[n] !== zone && Math.abs(t.h[n] - t.h[c]) <= 1.2) edge = true;
+      }
+      if (!edge) continue;
+      const x0 = t.x0 + ix * t.cell, z0 = t.z0 + iz * t.cell;
+      gateBoxes.push({ minX: x0, maxX: x0 + t.cell, minZ: z0, maxZ: z0 + t.cell, minY: -1, maxY: t.h[c] + 3.5, kind: 'shore', ghost: true, gate: door, terrain: t.id });
+      wire.push([x0 + t.cell / 2, t.h[c], z0 + t.cell / 2]);
+    }
+    I.decor.push({ kind: 'wire', pts: wire });
+  }
   const tn = t.regions(pre);
   const regions = [...tn.regions], portals = [...tn.portals];
   // the raised things' nav
@@ -661,8 +800,9 @@ for (const I of ISLES) {
   };
   for (const j of I.joins) portals.push(j);
   for (const ps of I.portalSpecs) {
-    const [x, z, y] = ps.belowAt;
-    portals.push(...flightPortals(ps.flight, at(x, z, y), ps.aboveId));
+    const below = ps.belowAt ? at(...ps.belowAt) : null;
+    const above = ps.aboveId || (ps.aboveAt ? at(...ps.aboveAt) : null);
+    portals.push(...flightPortals(ps.flight, below, above));
   }
   // the buildings' outside doors and gaps, onto whatever's out there
   for (const p of ROOMS.portals) {
@@ -679,6 +819,16 @@ for (const I of ISLES) {
     out.doors.push({ ...d, free: true, y, room: d.zones[0] });
     portals.push({ a, b, x: d.x, z: d.z, axis: d.axis === 'z' ? 'x' : 'z', width: d.width, door: d.id, dirAB: 1 });
   }
+  // (every way into wired-off ground goes through its gate)
+  if (I.gated) {
+    const zoneOf = new Map(regions.map((r) => [r.id, r.zone]));
+    for (const p of portals) if (zoneOf.get(p.a) === I.gated.zone || zoneOf.get(p.b) === I.gated.zone) p.door = I.gated.door;
+    const far = regions.find((r) => r.zone === I.gated.zone);
+    out.doors.push({ id: I.gated.door, kind: 'gate', free: true, locked: true, x: far.rect[0] + 0.5, z: far.rect[1] + 0.5, y: -50, axis: 'x', width: 0.2, height: 0.2, zones: [I.gated.zone, I.gated.zone], label: "NO MAN'S LAND" });
+  }
+  if (I.shelled) out.shelled.push(...I.shelled);
+  if (I.ceasefire) out.ceasefire = I.ceasefire;
+  out.models.push(...(I.models || []));
   // zombies claw up out of the snow and ice (not under a launcher, not in a prop)
   const avoid = [...I.pads.map((p) => [p.x - 3.5, p.z - 3.5, p.x + 3.5, p.z + 3.5]), ...(I.spawnAvoid || []), ...I.props.map((p) => [p.x0 - 1.2, p.z0 - 1.2, p.x1 + 1.2, p.z1 + 1.2])];
   const spawns = t.spawns('rise_' + pre, 9, avoid);
@@ -707,7 +857,7 @@ for (const I of ISLES) {
     const room = ROOMS.rooms.find((q) => q.id === b.room);
     out.boxSpots.push({ ...b, y: b.y ?? (room ? room.y || 0 : t.heightAt(b.x, b.z)) });
   }
-  out.terrainBoxes.push(...t.boxes());
+  out.terrainBoxes.push(...t.boxes(), ...gateBoxes);
   for (const { s } of I.structs) {
     out.terrainBoxes.push(...s.boxes);
     out.structures.push({ island: I.id, id: s.id, look: s.look, boxes: s.boxes, rails: s.rails, rect: s.rect, y: s.y, kind: s.parts ? 'spiral' : s.dir ? 'flight' : 'deck', dir: s.dir, size: s.size, cx: s.cx, cz: s.cz, y0: s.y0, y1: s.y1 });
@@ -720,6 +870,10 @@ for (const I of ISLES) {
   out.islands.push({ id: I.id, name: I.name, element: I.element, rooms: [...I.areas.map((a) => a.id), ...zoneRooms.map((r) => r.id)], bounds: [t.x0, t.z0, t.x0 + t.nx * t.cell, t.z0 + t.nz * t.cell] });
 }
 
+for (const L of out.launchers) {
+  const D = out.launchers.find((q) => q.id === L.to);
+  out.models.push({ a: 'launcher', x: L.x, y: L.y - 0.05, z: L.z, yaw: Math.atan2(D.x - L.x, D.z - L.z) + Math.PI / 2, fit: { len: 6.4 } });
+}
 export const LAUNCHERS = out.launchers;
 export const ISLANDS = out.islands;
 const HUB = ISLES[0];
@@ -730,6 +884,7 @@ export const CRUST = {
   wallThickness: T,
   snow: true,          // the snow world: sky, snowfall, the sea (src/render/crustWorld.js)
   openField: true,     // no zones to open: zombies come for you wherever you can be reached
+  space: true,         // the islands float in space: step off an edge and you're gone
   islands: ISLANDS,
   pa: false,           // nobody on the speakers yet (The Shntitz comes later)
   fog: { color: '#1c2534', density: 0.006 },
@@ -756,6 +911,9 @@ export const CRUST = {
   structures: out.structures,
   rides: out.rides,
   decor: out.decor,
+  models: out.models,            // the downloaded models (src/render/crustModels.js)
+  shelled: out.shelled,          // zones the guns hit (src/sim/shelling.js)
+  ceasefire: out.ceasefire,      // the field telephone in the fort
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [
     { x: -33, z: -330, h: 96 },

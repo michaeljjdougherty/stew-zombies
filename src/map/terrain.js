@@ -229,7 +229,7 @@ export class Terrain {
     };
     // the ground and the rock
     merge((c) => {
-      if (this.kind[c] === K.SEA || this.h[c] <= 0.01) return null;
+      if (this.kind[c] === K.SEA) return null;
       return (this.kind[c] === K.ROCK ? 'r' : 'g') + q(this.h[c]);
     }, (key, x0, z0, x1, z1) => ({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, minY: -1, maxY: +key.slice(1), kind: key[0] === 'r' ? 'rock' : 'ground', terrain: this.id }));
     // cave ceilings: the rock overhead
@@ -242,6 +242,7 @@ export class Terrain {
       const c = this.i(ix, iz);
       const k = this.kind[c];
       if ((k !== K.SEA && k !== K.ROCK) || this.noFence[c]) continue;
+      if (k === K.SEA && this.openEdges) continue;   // (an edge you can walk off)
       const top = k === K.SEA ? 0 : this.h[c];
       let want = -1;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {

@@ -163,33 +163,33 @@ chase('hub: up from the pit floor to the rim (ramps)', { x: -3, z: 10 }, { x: 0,
 chase('hub: down from the rim into the pit (jumps)', { x: 26, z: 4, y: 9 }, { x: -6, z: 10, y: 0 });
 chase('hub: down from the rim into the pit (a walker goes round by the ramps)', { x: 26, z: 4, y: 9 }, { x: -6, z: 10, y: 0 }, 'walker');
 chase('hub: out along the catwalk', { x: 12, z: 0 }, { x: 0, z: 9, y: 4.5 });
-chase('ship: up the lighthouse stairs to the gallery', { x: -20, z: -140, y: 0.8 }, { x: -41, z: -188, y: 14.6 });
-chase('ship: up the gangway and the stairs to the icebreaker\'s bridge', { x: -6, z: -118, y: 0.8 }, { x: 4, z: -160, y: 8.6 });
+chase('ship: up the mesa road and the scaffold stairs to the lighthouse gallery', { x: -20, z: -140, y: 0.8 }, { x: -44.5, z: -188, y: 15.15 });
+chase('ship: up the gangway and the stairs to the galleon\'s aft castle', { x: -6, z: -118, y: 0.8 }, { x: 0, z: -160, y: 8.45 });
 chase('ship: onto the capsized hull up the snow drift', { x: 20, z: -130, y: 0.8 }, { x: 42.5, z: -170, y: 6.3 });
 chase('ship: down through the hole into the capsized hull', { x: 42.5, z: -150, y: 6.3 }, { x: 42.5, z: -170, y: 0.8 });
 chase('ship: onto the shed roofs up the pack ice', { x: -20, z: -125, y: 0.8 }, { x: -36, z: -152, y: 4.3 });
 chase('research: up the radio mast to the top platform', { x: 120, z: -10, y: 0.8 }, { x: 184, z: -32.5, y: 17 });
 chase('research: up the observatory ramp to the telescope', { x: 160, z: 30, y: 0.8 }, { x: 179, z: 14, y: 6 });
 chase('research: up onto the tesla catwalks', { x: 140, z: 30, y: 0.8 }, { x: 160, z: 41.2, y: 4.2 });
-chase('trenches: from the front line up to the fort roof', { x: -18, z: 175, y: 0.2 }, { x: -5, z: 145, y: 9 });
+chase('trenches: from the front line up to the fort roof', { x: -18, z: 175, y: 0 }, { x: -5, z: 145, y: 9 });
 chase('trenches: up the radio lookout', { x: 30, z: 120, y: 2.2 }, { x: 1.5, z: 143.5, y: 16 });
-chase('trenches: from the fort down into the trenches', { x: 0, z: 146, y: 2.2 }, { x: 14, z: 174.5, y: 0.2 });
+chase('trenches: from the fort down into the trenches', { x: 0, z: 146, y: 2.2 }, { x: 14, z: 174.5, y: 0 });
 chase('caves: up a toppled pillar onto the north shelf', { x: -118, z: 0, y: 0.8 }, { x: -150, z: -12, y: 5.5 });
 chase('caves: up the frozen falls to the Wind Summit', { x: -150, z: 0, y: 1 }, { x: -172, z: -28, y: 10 });
 chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x: -146, z: 33, y: 1 });
 
 // --- you stand on things at the right height
 {
-  const { me, put } = game();
-  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -41, -188, 14.6], ['the icebreaker deck', 20, -158, 5.2], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0.2]];
-  for (const [name, x, z, y] of spots) { put(x, z, y + 1); check(Math.abs(me.pos.y - y) < 0.15, `standing on ${name} (y ${me.pos.y.toFixed(2)})`); }
+  const { me, put, step } = game();
+  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -44.5, -188, 15.15], ['the galleon\'s main deck', 20, -158, 3.7], ['the galleon\'s aft castle', 0, -160, 8.45], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0]];
+  for (const [name, x, z, y] of spots) { put(x, z, y + 0.4); step({}, 60); check(Math.abs(me.pos.y - y) < 0.15, `standing on ${name} (y ${me.pos.y.toFixed(2)})`); }
 }
 
-// --- the zipline: grab it at the lighthouse gallery, shoot on the way down, land on the bridge
+// --- the zipline: grab it at the lighthouse gallery, shoot on the way down, land on the galleon's aft castle
 {
   const { sim, me, log, step, put } = game();
   const R = CRUST.rides.find((r) => r.id === 'zip_lighthouse');
-  put(R.pts[0][0] - 0.6, R.pts[0][2], 14.6);
+  put(R.pts[0][0] - 0.6, R.pts[0][2], 15.15);
   step({}, 3);
   check(me.prompt && /zipline/i.test(me.prompt.text), `the zipline: "${me.prompt && me.prompt.text}"`);
   step({ use: true, usePressed: true, yaw: me.yaw });
@@ -199,9 +199,9 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   check(me.loadout.slots[me.loadout.current].clip < clip0, '  and shoot while you ride');
   for (let i = 0; i < 60 * 8 && me.ride; i++) step({}, 1);
   step({}, 60);
-  check(!me.ride && Math.abs(me.pos.y - 8.6) < 0.2 && Math.hypot(me.pos.x - 4.5, me.pos.z + 159.5) < 3, `  off at the far end, on the icebreaker's bridge (y ${me.pos.y.toFixed(2)})`);
+  check(!me.ride && Math.abs(me.pos.y - 8.45) < 0.2 && Math.hypot(me.pos.x, me.pos.z + 160) < 3, `  off at the far end, on the galleon's aft castle (y ${me.pos.y.toFixed(2)})`);
   // let go half way: jump
-  put(R.pts[0][0] - 0.6, R.pts[0][2], 14.6);
+  put(R.pts[0][0] - 0.6, R.pts[0][2], 15.15);
   step({ use: true, usePressed: true, yaw: me.yaw });
   step({}, 60);
   step({ jump: true, jumpPressed: true }); step({}, 3);
@@ -240,12 +240,68 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   check(sim.windows.length >= 6 && sim.windows.every((w) => w.boards === sim.cfg.windows.boards), `${sim.windows.length} boarded windows`);
 }
 
-// --- the slush slows you
+// --- the mud in the dried harbor slows you
 {
   const { me, step, put } = game();
   const run = (x, z) => { put(x, z, 0.4, Math.PI / 2); const x0 = me.pos.x; step({ moveY: 1, yaw: Math.PI / 2 }, 60); return Math.abs(me.pos.x - x0); };
-  const slush = run(20, -170), ice = run(-2, -172);
-  check(slush < ice * 0.8, `slush in the harbor slows you (${slush.toFixed(2)} m vs ${ice.toFixed(2)} m on clear ice)`);
+  const slush = run(15, -172), ice = run(-2, -172);
+  check(slush < ice * 0.8, `mud in the dried harbor slows you (${slush.toFixed(2)} m vs ${ice.toFixed(2)} m on firm ground)`);
+}
+
+// --- out in space: step off an edge and you're gone (solo: game over)
+{
+  const { sim, me, log, step, put } = game();
+  check(CRUST.space && CRUST.terrains.every((t) => t.openEdges), 'the islands float in space (open edges, no fences)');
+  put(0, 95, 2);   // (the gulf between the hub and the Trench Front)
+  for (let i = 0; i < 60 * 6 && me.alive; i++) step({}, 1);
+  check(!me.alive && log.some((e) => e.type === 'playerFell') && log.some((e) => e.type === 'playerDied' && e.fell), `fall off and you die (y ${me.pos.y.toFixed(0)})`);
+  step({}, 30);
+  check(sim.gameOver, '  solo: game over');
+  const ex = game(5, 'explore');
+  ex.put(0, -26, 9); ex.step({}, 30);
+  ex.put(0, 95, 2);
+  for (let i = 0; i < 60 * 6; i++) ex.step({}, 1);
+  check(ex.me.alive && ex.me.pos.y > 5, `  Explore: you're put back where you last stood (y ${ex.me.pos.y.toFixed(1)})`);
+}
+
+// --- the Trench Front: up top is shelled, no-man's-land is wired off, the field telephone
+{
+  const { sim, me, log, step, put } = game();
+  me.points = 50000;
+  check(CRUST.doors.some((d) => d.id === 'gate_nml' && d.kind === 'gate'), "no-man's-land is wired off (a gate to open later)");
+  check(CRUST.portals.filter((p) => p.door === 'gate_nml').length > 0, "  the zombies' ways into it are shut too");
+  put(-10, 116, 2.3, -Math.PI / 2); step({}, 10);
+  for (let i = 0; i < 60 * 3; i++) step({ moveY: 1, yaw: Math.PI / 2 }, 1);
+  check(sim.zoneOf(me.pos, me.region) !== 'nomansland' && me.pos.x > -15.5, `  you can't walk out into it off the landing zone (stopped at x ${me.pos.x.toFixed(1)})`);
+  put(-36, 138, 2.3); step({}, 30);
+  const gp = sim.zoneOf(me.pos, me.region) === 'gunpitW' ? { x: -36, z: 138, y: 2.3 } : null;
+  check(!!gp, `up in the west gun pit (${sim.zoneOf(me.pos, me.region)}, y ${me.pos.y.toFixed(2)})`);
+  if (gp) {
+    const hp0 = me.health; log.length = 0;
+    put(gp.x, gp.z, gp.y);
+    for (let i = 0; i < 60 * 6 && me.alive && !me.downed; i++) step({}, 1);
+    check(log.some((e) => e.type === 'shellIncoming'), '  up in the gun pit the shells come in');
+    check(log.some((e) => e.type === 'explosion') || me.health < hp0 || me.downed, `  and they hit (${me.downed ? 'downed' : 'health ' + me.health.toFixed(0)})`);
+  }
+  // safe down in the trench
+  const g2 = game();
+  g2.log.length = 0;
+  g2.put(14, 174.5, 0);
+  for (let i = 0; i < 60 * 5; i++) g2.step({}, 1);
+  check(!g2.log.some((e) => e.type === 'shellIncoming'), '  down in the trenches no shells fall');
+  // the field telephone
+  const tel = sim.interactables.find((i) => i.kind === 'ceasefire');
+  check(!!tel, 'a field telephone in the fort');
+  if (tel && gp) {
+    const g3 = game(); g3.me.points = 50000;
+    g3.me.pos.x = tel.stand.x; g3.me.pos.z = tel.stand.z; g3.me.pos.y = tel.pos.y - 1.4; g3.face(tel.pos);
+    g3.step({}, 2); g3.step({ use: true, usePressed: true, yaw: g3.me.yaw }); g3.step({}, 2);
+    check(g3.me.points === 50000 - sim.cfg.crust.shelling.ceasefireCost && g3.log.some((e) => e.type === 'ceasefire'), `  call a ceasefire (${50000 - g3.me.points} pts)`);
+    g3.log.length = 0;
+    g3.put(gp.x, gp.z, gp.y);
+    for (let i = 0; i < 60 * 5; i++) g3.step({}, 1);
+    check(!g3.log.some((e) => e.type === 'shellIncoming'), '  and the guns go quiet');
+  }
 }
 
 // --- Explore: endless points

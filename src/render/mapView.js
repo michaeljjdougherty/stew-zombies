@@ -1071,6 +1071,7 @@ export class MapView {
     const chainMat = new THREE.MeshStandardMaterial({ color: '#5a5650', metalness: 0.8, roughness: 0.5 });
     const linkGeo = new THREE.TorusGeometry(0.04, 0.01, 4, 8);
     for (const d of this.world.doors) {
+      if (d.kind === 'gate') continue;   // (a wired-off area: its wire is drawn with the ground)
       const grp = new THREE.Group();
       // local frame: origin at the wall's inner face centre of the opening, +z into the owning room
       const n = d.normal;
@@ -1412,6 +1413,7 @@ export class MapView {
 
   // ---------------------------------------------------------------------------
   onEvent(e) {
+    if (this.crust && this.crust.onEvent) this.crust.onEvent(e);
     if (e.type === 'boardTorn') {
       const v = this.windowViews.get(e.windowId);
       const pl = v && v.planks[v.order[e.board]];
@@ -1506,7 +1508,7 @@ export class MapView {
     if (this.blackout) {
       for (const f of this.fixtures) { f.level = 0; f.tubeMat.color.setRGB(0.04, 0.04, 0.035); if (f.beam) f.beam.visible = false; }
     }
-    if (this.hemi) this.hemi.intensity = (this.map.ambient ?? this.cfg.graphics.ambientLight) * (this.blackout ? 0.12 : (1.35 - 0.35 * bp.value) * Math.max(0.25, this.dimLevel));
+    if (this.hemi) this.hemi.intensity = ((this.crust && this.crust.air && this.crust.air.amb) ?? this.map.ambient ?? this.cfg.graphics.ambientLight) * (this.blackout ? 0.12 : (1.35 - 0.35 * bp.value) * Math.max(0.25, this.dimLevel));
     bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : this.dimLevel) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
     // baked surfaces follow each light's live brightness
     for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {

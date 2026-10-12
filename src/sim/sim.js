@@ -30,6 +30,9 @@ import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js'
 import { createCrew } from './crew.js';
 import { createRides, ZiplineInteractable } from './rides.js';
 import { LaunchInteractable } from './launchers.js';
+import { updateVoid } from './void.js';
+import { createShelling, updateShelling, CeasefireInteractable } from './shelling.js';
+import { setFloor } from './physics.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -39,6 +42,7 @@ export class GameSim {
     this.replica = false;      // online client: this copy only moves you and mirrors the host
     this.netOut = [];          // online client: hits, throws and blasts to send to the host
     this.mapData = map;
+    setFloor(map.space ? -1e4 : 0);   // (islands in space: nothing underneath)
     this.world = buildMap(map, cfg);
     this.rng = new RNG(seed);
     this.seed = seed;
@@ -82,6 +86,8 @@ export class GameSim {
       ...questInteractables(this),
       ...(map.launchers || []).map((pad) => new LaunchInteractable(pad, map.launchers.find((q) => q.id === pad.to))),
     ];
+    this.shelling = createShelling(this);   // the guns over the Trench Front
+    if (map.ceasefire) this.interactables.push(new CeasefireInteractable(map.ceasefire));
     this.rides = createRides(map);   // ziplines and ice slides (Call of the Crust)
     for (const r of this.rides) if (r.kind === 'zip') this.interactables.push(new ZiplineInteractable(r, cfg));
     this.pa = createPA(this);
@@ -327,6 +333,8 @@ export class GameSim {
     updateTraps(this, dt);
     updatePowerups(this, dt);
     updateZombies(this, dt);
+    if (this.mapData.space) updateVoid(this);
+    if (this.shelling) updateShelling(this, dt);
     this.cheddarChatter(dt);
     updateJukebox(this);
     updateProjectiles(this, dt);

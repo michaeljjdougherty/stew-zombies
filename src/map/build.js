@@ -219,12 +219,15 @@ export function buildMap(map, cfg = CONFIG) {
     portals: map.portals,
     floorY: 0,
     // sculpted ground (Call of the Crust): thousands of boxes, kept in a grid
-    terrain: new BoxGrid(map.terrainBoxes || []),
+    // (a gate's boxes are this game's own copies: opening it mustn't open it in the next game)
+    terrain: new BoxGrid((map.terrainBoxes || []).map((b) => (b.gate ? { ...b } : b))),
   };
 }
 
 // Remove an opened door's collider from the world.
 export function openDoorCollision(world, doorId) {
+  // (a gate's wire runs along the ground: those boxes go too)
+  for (const t of world.terrain.boxes) if (t.gate === doorId) { t.minY = -1e5; t.maxY = -1e5 + 1; }
   const b = world.doorBoxes.get(doorId);
   if (!b) return;
   world.solids = world.solids.filter((s) => s !== b);

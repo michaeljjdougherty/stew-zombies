@@ -3,14 +3,15 @@
 // and rock from each island's height grid (rough rock faces, snow on top,
 // ramps drawn as slopes, trench walls boarded, cave ceilings overhead), then
 // what's built on it (catwalks, decks, stairs, spiral stairs, railings), the
-// ziplines and ice slides, and the set pieces (the icebreaker's hull and
-// funnel, the capsized hull, the radio masts, the toppled ice pillars, the
-// frozen waterfall, the lighthouse's lamp, the observatory's dome).
+// ziplines and ice slides, and the set pieces (the lighthouse's turning lamp,
+// the storm coils' glow, the barbed wire, the capsized hull, the radio masts,
+// the toppled ice pillars, the frozen waterfall, the observatory's dome).
 // =============================================================================
 import * as THREE from 'three';
 import { BoxBatch } from './geometry.js';
 import { K } from '../map/terrain.js';
 import * as T from './textures.js';
+import { themeMaterials } from './crustThemes.js';
 
 const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 // smooth-ish noise from sines (deterministic: the same point always moves the same way)
@@ -66,18 +67,26 @@ function groundMaterials(M, wallMats) {
 export function buildGround(out, group, map, M, wallMats) {
   const G = groundMaterials(M, wallMats);
   out.groundMats = G;
-  for (const t of map.terrains) buildIsland(group, t, G);
+  for (const t of map.terrains) buildIsland(group, t, G, !!map.space);
+  if (map.space) for (const t of map.terrains) buildUnderside(group, t, themeMaterials(G)[t.id] || {}, G);
 }
 
 function topMat(t, c) {
   const k = t.kind[c], m = t.mat[c];
+  if (m === 'lava') return 'lava';
+  if (m === 'mud') return 'mud';
   if (k === K.ROCK) return m === 'ice' ? 'ice' : 'rocktop';
   if (m === 'ice' || m === 'icesteps') return 'ice';
   if (m === 'duckboard' || m === 'planks' || m === 'concrete' || m === 'flagstone') return m;
   return 'snow';
 }
 
-function buildIsland(group, t, G) {
+function buildIsland(group, t, G0, space) {
+  // this island's own ground (src/render/crustThemes.js), over the shared ones
+  const TM = themeMaterials(G0)[t.id] || {};
+  const G = { ...G0, ...TM, snow: TM.top || G0.snow, iceside: TM.iceside || G0.iceside };
+  if (TM.cliff) G.trench = G0.trench;
+  const deep = space ? -3 : -0.6;   // (out in space the edge goes on down to the rock underneath)
   const B = new Map();
   const bucket = (k) => { if (!B.has(k)) B.set(k, new Bucket()); return B.get(k); };
   const nx = t.nx, nz = t.nz, C = t.cell;
@@ -184,10 +193,10 @@ function buildIsland(group, t, G) {
       const jx = ix + dx, jz = iz + dz;
       let b1, b2, n = -1;
       const p = [tc[i1][0], tc[i1][2]], q = [tc[i2][0], tc[i2][2]];
-      if (jx < 0 || jz < 0 || jx >= nx || jz >= nz) { b1 = b2 = -0.6; }
+      if (jx < 0 || jz < 0 || jx >= nx || jz >= nz) { b1 = b2 = deep; }
       else {
         n = t.i(jx, jz);
-        if (!solid(n)) { b1 = b2 = -0.6; }
+        if (!solid(n)) { b1 = b2 = deep; }
         else {
           // the neighbour's top along the same edge
           const tn = top(n, jx, jz);
@@ -200,7 +209,8 @@ function buildIsland(group, t, G) {
       let mat;
       if (t.kind[c] === K.ROCK) mat = t.mat[c] === 'ice' ? 'iceside' : 'cliff';
       else if (n >= 0 && t.mat[n] === 'duckboard' && t.mat[c] !== 'duckboard' && tall > 0.6) mat = 'trench';
-      else if (t.mat[c] === 'ice' || t.mat[c] === 'icesteps') mat = 'iceside';
+      else if ((t.mat[c] === 'ice' || t.mat[c] === 'icesteps') && t.id === 'caves') mat = 'iceside';
+      else if (t.mat[c] === 'lava') mat = 'lava';
       else if (tall <= 0.5) mat = topMat(t, c) === 'rocktop' ? 'cliff' : topMat(t, c);
       else if (t.mat[c] === 'planks' || t.mat[c] === 'duckboard') mat = t.mat[c];
       else mat = 'cliff';
@@ -239,6 +249,61 @@ function buildIsland(group, t, G) {
   }
 }
 
+// --- the rock each island floats on: a jagged mass tapering away underneath --------------
+function buildUnderside(group, t, TM, G) {
+  const r = R(t.nx * 7 + t.nz);
+  let sx = 0, sz = 0, n = 0;
+  for (let iz = 0; iz < t.nz; iz++) for (let ix = 0; ix < t.nx; ix++) if (t.kind[t.i(ix, iz)] !== K.SEA) { sx += t.cx(ix); sz += t.cz(iz); n++; }
+  if (!n) return;
+  const cx = sx / n, cz = sz / n;
+  // how far the island reaches in each direction
+  const A = 64, rad = [];
+  for (let k = 0; k < A; k++) {
+    const a = (k / A) * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a);
+    let best = 2;
+    for (let d = 0; d < 120; d += 0.5) { const c = t.cellAt(cx + dx * d, cz + dz * d); if (c >= 0 && t.kind[c] !== K.SEA) best = d; }
+    rad.push(best);
+  }
+  const mean = rad.reduce((a, b) => a + b, 0) / A;
+  const depth = mean * 0.95 + 8;
+  const rings = [[0.99, 0], [0.92, 0.08], [0.78, 0.22], [0.58, 0.42], [0.36, 0.64], [0.16, 0.85], [0.03, 1]];
+  const pos = [];
+  const P = rings.map(([f, d], j) => rad.map((R0, k) => {
+    const a = (k / A) * Math.PI * 2, wob = j === 0 ? 1 : 1 + (r() - 0.5) * 0.35;
+    const rr = R0 * f * wob;
+    return [cx + Math.cos(a) * rr, -3.2 - depth * d + (j ? (r() - 0.5) * 3 : 0), cz + Math.sin(a) * rr];
+  }));
+  for (let j = 0; j < rings.length - 1; j++) for (let k = 0; k < A; k++) {
+    const k2 = (k + 1) % A;
+    const a = P[j][k], b = P[j][k2], c = P[j + 1][k2], d = P[j + 1][k];
+    pos.push(...a, ...d, ...c, ...a, ...c, ...b);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const uv = [];
+  for (let i = 0; i < pos.length; i += 3) uv.push(Math.atan2(pos[i + 2] - cz, pos[i] - cx) * mean / 3, pos[i + 1] / 3);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  const um = (TM.cliff || G.cliff).clone(); um.side = THREE.DoubleSide;
+  const m = new THREE.Mesh(g, um);
+  m.userData.noBake = true;
+  group.add(m);
+  // a few chunks drifting alongside it
+  const rock = TM.rocktop || G.cliff;
+  for (let i = 0; i < 9; i++) {
+    const a = r() * Math.PI * 2, d = mean * (1.1 + r() * 0.5), s = 1.5 + r() * 4;
+    const geo = new THREE.DodecahedronGeometry(s, 1);
+    const pp = geo.attributes.position;
+    for (let q = 0; q < pp.count; q++) { const k = 0.7 + r() * 0.5; pp.setXYZ(q, pp.getX(q) * k, pp.getY(q) * k * 0.8, pp.getZ(q) * k); }
+    geo.computeVertexNormals();
+    const c = new THREE.Mesh(geo, rock);
+    c.position.set(cx + Math.cos(a) * d, -6 - r() * 22, cz + Math.sin(a) * d);
+    c.rotation.set(r() * 3, r() * 3, r() * 3);
+    c.userData.noBake = true;
+    group.add(c);
+  }
+}
+
 // --- what's built on it ------------------------------------------------------------------
 export function buildStructures(out, group, map, mats, M, wallMats) {
   const steel = new THREE.MeshStandardMaterial({ color: '#5a626c', roughness: 0.6, metalness: 0.4, emissive: new THREE.Color('#1c222c') });
@@ -260,6 +325,7 @@ export function buildStructures(out, group, map, mats, M, wallMats) {
   for (const s of map.structures) {
     for (const b of s.boxes) {
       const look = b.look || s.look || 'steel';
+      if (look === 'hidden') continue;   // (a model draws it: the galleon's decks)
       if (b.kind === 'rail') {
         // a railing: a top bar and posts
         const along = b.maxX - b.minX > b.maxZ - b.minZ;
@@ -367,7 +433,9 @@ export function buildRides(out, group, map, mats) {
 export function buildDecor(out, group, map, mats, mv) {
   for (const d of map.decor) {
     switch (d.kind) {
-      case 'icebreaker': icebreaker(out, group, d, mats); break;
+      case 'beacon': out.beams.push(beacon(group, d, mats, mv)); break;
+      case 'storm': stormGlows(out, group, d); break;
+      case 'wire': wireLine(out, group, d); break;
       case 'capsized': capsized(group, d, mats); break;
       case 'mast': mast(out, group, d); break;
       case 'pillar': pillar(group, d, mats); break;
@@ -380,53 +448,6 @@ export function buildDecor(out, group, map, mats, mv) {
     if (rm.lighthouse) out.beams.push(lighthouseTop(group, rm, mats, mv));
     if (rm.dome) dome(group, rm, mats);
   }
-}
-
-function icebreaker(out, group, d, mats) {
-  const [x0, z0, x1, z1] = d.rect, Y = d.deckY;
-  const g = new THREE.Group();
-  const zc = (z0 + z1) / 2, half = (z1 - z0) / 2;
-  const plate = (xa, xb, ya, yb, z, th = 0.35) => { const m = new THREE.Mesh(new THREE.BoxGeometry(xb - xa, yb - ya, th), mats.hull); m.position.set((xa + xb) / 2, (ya + yb) / 2, z); g.add(m); };
-  // the sides (a bulwark you can see over), a red stripe at the ice
-  for (const s of [-1, 1]) {
-    const z = zc + s * (half + 0.18);
-    plate(x0 - 0.2, x1, -0.6, Y + 0.7, z);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.6, 0.05), mats.hullRed);
-    stripe.position.set((x0 + x1) / 2, 0.55, z + s * 0.2); g.add(stripe);
-  }
-  const stern = new THREE.Mesh(new THREE.BoxGeometry(0.35, Y + 1.3, z1 - z0 + 0.7), mats.hull);
-  stern.position.set(x0 - 0.2, (Y + 0.7 - 0.6) / 2, zc); g.add(stern);
-  // the bow: two raked plates meeting at the stem, a deck over the point
-  const bowLen = 11;
-  for (const s of [-1, 1]) {
-    const dz = half + 0.18, len = Math.hypot(bowLen, dz);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(len, Y + 2.0, 0.35), mats.hull);
-    m.position.set(x1 + bowLen / 2, (Y + 2.0) / 2 - 0.6, zc + s * dz / 2);
-    m.rotation.y = s * Math.atan2(dz, bowLen);
-    g.add(m);
-  }
-  const bowDeck = new THREE.Shape([new THREE.Vector2(x1, -(zc - half)), new THREE.Vector2(x1 + bowLen, -zc), new THREE.Vector2(x1, -(zc + half))]);
-  const bd = new THREE.Mesh(new THREE.ShapeGeometry(bowDeck).rotateX(-Math.PI / 2), mats.snowCap); bd.position.y = Y + 1.3; g.add(bd);
-  // the funnel and the masts
-  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 6, 18), mats.hullRed);
-  funnel.position.set(x0 + 13, Y + 3, zc); g.add(funnel);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.5, 18), mats.iron); band.position.set(x0 + 13, Y + 5.6, zc); g.add(band);
-  out.smoke.push({ x: x0 + 13, y: Y + 6.2, z: zc, puffs: null, big: true });
-  for (const mx of [x0 + 22, x1 + 4]) {
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 12, 8), mats.iron); mast.position.set(mx, Y + 6, zc); g.add(mast);
-    const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, half * 1.6, 6).rotateX(Math.PI / 2), mats.iron); yard.position.set(mx, Y + 9.5, zc); g.add(yard);
-  }
-  // the wheelhouse over the bridge: posts, a roof, a band of lit windows
-  if (d.bridge) {
-    const [bx0, bz0, bx1, bz1] = d.bridge, BY = d.bridgeY;
-    for (const [px, pz] of [[bx0, bz0], [bx1, bz0], [bx0, bz1], [bx1, bz1]]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.6, 0.15), mats.paint); p.position.set(px, BY + 1.3, pz); g.add(p); }
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(bx1 - bx0 + 0.6, 0.18, bz1 - bz0 + 0.6), mats.paint); roof.position.set((bx0 + bx1) / 2, BY + 2.65, (bz0 + bz1) / 2); g.add(roof);
-    const sn = new THREE.Mesh(new THREE.BoxGeometry(bx1 - bx0 + 0.5, 0.1, bz1 - bz0 + 0.5), mats.snowCap); sn.position.set((bx0 + bx1) / 2, BY + 2.8, (bz0 + bz1) / 2); g.add(sn);
-    const win = new THREE.Mesh(new THREE.BoxGeometry(bx1 - bx0, 0.5, 0.04), mats.window); win.position.set((bx0 + bx1) / 2, BY + 2.2, bz0 - 0.02); g.add(win);
-    // the deckhouse under it
-    const house = new THREE.Mesh(new THREE.BoxGeometry(bx1 - bx0 - 1.6, BY - Y - 0.3, 2.2), mats.paint); house.position.set((bx0 + bx1) / 2 - 0.4, Y + (BY - Y - 0.3) / 2, (bz0 + bz1) / 2); g.add(house);
-  }
-  group.add(g);
 }
 
 function capsized(group, d, mats) {
@@ -452,6 +473,57 @@ function capsized(group, d, mats) {
   // snow drifted on the bottom plates
   const sn = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 - 1, 0.08, hz0 - z0 - 1), mats.snowCap); sn.position.set(cx, Y + 0.05, (z0 + hz0) / 2); g.add(sn);
   group.add(g);
+}
+
+// The lighthouse's lamp (the model's lantern): a light turning, its beams out over the void.
+function beacon(group, d, mats, mv) {
+  const g = new THREE.Group();
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.6, 14, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3.4, 2.2) })); g.add(lamp);
+  const beamGeo = new THREE.ConeGeometry(6, 90, 24, 1, true).rotateZ(Math.PI / 2).translate(45, 0, 0);
+  const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.85, 0.85, 0.75), transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const pivot = new THREE.Group(); g.add(pivot);
+  for (const a of [0, Math.PI]) { const bm = new THREE.Mesh(beamGeo, beamMat); bm.rotation.y = a; pivot.add(bm); }
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,240,200,1)', 'rgba(255,220,150,0)'), color: new THREE.Color(2, 1.8, 1.4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.setScalar(4.5); g.add(halo);
+  g.position.set(d.x, d.y, d.z);
+  group.add(g);
+  mv.addVirtualLight({ x: d.x, y: d.y, z: d.z }, 0xffe6b8, 24, 18, 1.6);
+  return { pivot, halo };
+}
+
+// The storm asteroid's coils: violet glows crackling on their tops.
+function stormGlows(out, group, d) {
+  const tex = T.softDotTexture('rgba(210,170,255,1)', 'rgba(140,90,255,0)');
+  for (const [x, y, z] of d.coils) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(1.6, 1.1, 3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    s.scale.setScalar(2.6); s.position.set(x, y, z); group.add(s);
+    out.glows.push({ s, base: 2.6, rate: 17, crackle: true });
+  }
+}
+
+// Barbed wire on stakes round the place you can't go yet (gone when it opens).
+function wireLine(out, group, d) {
+  if (!d.pts.length) return;
+  const has = new Set(d.pts.map(([x, , z]) => Math.round(x * 2) + ',' + Math.round(z * 2)));
+  // a coil of concertina wire, a metre long, along x
+  const pts = [];
+  for (let i = 0; i <= 60; i++) { const a = (i / 60) * Math.PI * 2 * 7; pts.push(new THREE.Vector3(-0.5 + i / 60, 0.42 + Math.sin(a) * 0.36, Math.cos(a) * 0.36)); }
+  const coilGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.018, 3, false);
+  const stakeGeo = new THREE.BoxGeometry(0.07, 1.1, 0.07).translate(0, 0.45, 0);
+  const coilMat = new THREE.MeshStandardMaterial({ color: '#4a4440', roughness: 0.6, metalness: 0.6, emissive: new THREE.Color('#2a1408') });
+  const stakeMat = new THREE.MeshStandardMaterial({ color: '#2a1e16', roughness: 1, emissive: new THREE.Color('#120a06') });
+  const coils = new THREE.InstancedMesh(coilGeo, coilMat, d.pts.length);
+  const stakes = new THREE.InstancedMesh(stakeGeo, stakeMat, d.pts.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
+  d.pts.forEach(([x, y, z], i) => {
+    const alongX = has.has(Math.round(x * 2 + 2) + ',' + Math.round(z * 2)) || has.has(Math.round(x * 2 - 2) + ',' + Math.round(z * 2));
+    q.setFromAxisAngle(up, alongX ? 0 : Math.PI / 2);
+    m.compose(new THREE.Vector3(x, y, z), q, one); coils.setMatrixAt(i, m);
+    q.setFromAxisAngle(new THREE.Vector3(0.2 * Math.sin(i), 0, 0.2 * Math.cos(i * 1.7)).normalize(), 0.12);
+    m.compose(new THREE.Vector3(x + 0.4, y, z + 0.4), q, one); stakes.setMatrixAt(i, m);
+  });
+  for (const im of [coils, stakes]) { im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.userData.noBake = true; group.add(im); }
+  (out.gateWire || (out.gateWire = [])).push(coils, stakes);
 }
 
 function mast(out, group, d) {

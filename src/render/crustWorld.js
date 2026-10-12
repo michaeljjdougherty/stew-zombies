@@ -12,6 +12,8 @@
 // =============================================================================
 import * as THREE from 'three';
 import { buildGround, buildStructures, buildRides, buildDecor, buildPines } from './crustTerrain.js';
+import { buildModels } from './crustModels.js';
+import { ATMOS, PARTICLES, spaceTexture } from './crustThemes.js';
 import * as T from './textures.js';
 import * as CT from './crustTextures.js';
 
@@ -351,14 +353,15 @@ export function buildCrust(mv) {
   }
   const isl = islandsOf(map);
 
-  buildSky(out, group, fog);
-  buildSea(out, group, isl);
+  buildSky(out, group, fog, !!map.space);
+  if (!map.space) buildSea(out, group, isl);
   if (map.terrains) {
     // the sculpted islands (src/render/crustTerrain.js)
     buildGround(out, group, map, mv.mats, mv.wallMats);
     buildStructures(out, group, map, mats, mv.mats, mv.wallMats);
     buildRides(out, group, map, mats);
-    buildPines(out, group, map, mats);
+    if (!map.space) buildPines(out, group, map, mats);
+    buildModels(out, group, map);
   } else {
     for (const I of isl) buildTerrain(out, group, I, map, mats, R(I.rooms.length * 31 + 7));
     buildEdges(out, group, world, mats, r);
@@ -397,6 +400,8 @@ export function buildCrust(mv) {
     rim.scale.y = 0.6; rim.position.set(c.x, (c.y || 0) + 0.05, c.z); group.add(rim);
   }
 
+  if (map.space) setupAtmosphere(out, map, group);
+  out.onEvent = (e) => crustEvent(out, e);
   out.update = (dt, eye, time) => updateCrust(out, dt, eye, time);
   return out;
 }
@@ -413,10 +418,10 @@ function islandsOf(map) {
 }
 
 // --- the sky: a dome that follows the camera, with planets in it ---------------------------
-function buildSky(out, group, fog) {
+function buildSky(out, group, fog, space = false) {
   const sky = new THREE.Group();
   sky.renderOrder = -10;
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(205, 64, 32), new THREE.MeshBasicMaterial({ map: skyTexture(fog), side: THREE.BackSide, fog: false, depthWrite: false }));
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(205, 64, 32), new THREE.MeshBasicMaterial({ map: space ? spaceTexture() : skyTexture(fog), side: THREE.BackSide, fog: false, depthWrite: false }));
   dome.renderOrder = -10;
   sky.add(dome);
   const planet = (kind, dir, size, ring = false) => {
@@ -847,6 +852,8 @@ function buildFar(out, group, map, r) {
   out.stackHeads = stackHeads;
 
   const ring = new THREE.Group();
+  out.ring = ring;
+  if (map.space) { group.add(ring); return; }   // (out in space: no mountains round the horizon)
   const mtnMat = new THREE.MeshStandardMaterial({ color: '#5f6c80', roughness: 1, flatShading: true, emissive: new THREE.Color('#121826'), fog: false });
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * Math.PI * 2 + (r() - 0.5) * 0.15, d = 300;
@@ -876,7 +883,8 @@ function buildPad(out, group, L, map, mats, mv) {
   const isl = (map.islands || []).find((i) => i.rooms.includes(dest.room));
   const el = isl && isl.element ? ELEMENT[isl.element] : { color: new THREE.Color(2.4, 2.0, 1.2), light: 0xffd9a0 };
   const g = new THREE.Group();
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.5, 0.12, 32), mats.steel); disc.position.y = 0.06; g.add(disc);
+  const model = !!(map.models && map.models.some((m) => m.a === 'launcher'));   // (the launcher model's there instead)
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.5, 0.12, 32), mats.steel); disc.position.y = 0.06; if (!model) g.add(disc);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.07, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color }));
   ring.position.y = 0.14; g.add(ring);
   const inner = new THREE.Mesh(new THREE.RingGeometry(0.4, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color, transparent: true, opacity: 0.25, depthWrite: false }));
@@ -884,6 +892,7 @@ function buildPad(out, group, L, map, mats, mv) {
   // four pylons, and an arrow on the deck pointing the way you'll go
   for (let k = 0; k < 4; k++) {
     const a = k * Math.PI / 2 + Math.PI / 4;
+    if (model) continue;
     const py = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.4, 0.25), mats.iron); py.position.set(Math.cos(a) * 2.7, 0.7, Math.sin(a) * 2.7); g.add(py);
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: el.color })); lamp.position.set(Math.cos(a) * 2.7, 1.45, Math.sin(a) * 2.7); g.add(lamp);
   }
@@ -1200,7 +1209,7 @@ function buildAnvil(out, group, cx, cz, w, h, mats, mv, blank = false) {
   const horn = new THREE.Mesh(new THREE.ConeGeometry(w * 0.17, w * 0.45, 16).rotateZ(-Math.PI / 2), iron); horn.position.set(w * 0.43 + w * 0.22, y + 3.7, 0); g.add(horn);
   const sn = new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.1, w * 0.32), mats.snowCap); sn.position.y = y + 4.33; g.add(sn);
   // the four sockets (N ice, E lightning, S fire, W wind)
-  const socket = [['ice', 0, -1], ['lightning', 1, 0], ['fire', 0, 1], ['wind', -1, 0]];
+  const socket = [['wind', 0, -1], ['lightning', 1, 0], ['fire', 0, 1], ['ice', -1, 0]];
   for (const [el, sx, sz] of socket) {
     const E = ELEMENT[el];
     const px = sx * w * 0.41, pz = sz * w * 0.41, py = 3.2;
@@ -1349,6 +1358,7 @@ function updateCrust(W, dt, eye, time) {
   if (!eye) return;
   W.sky.position.copy(eye);
   W.ring.position.set(eye.x, 0, eye.z);
+  if (W.atmos) updateAtmosphere(W, dt, eye, time);
   // the plant: never further than D away (pulled in toward the eye, same size on screen)
   const P = W.plant, d = Math.hypot(P.center.x - eye.x, P.center.z - eye.z);
   const k = d > P.D ? P.D / d : 1;
@@ -1358,11 +1368,12 @@ function updateCrust(W, dt, eye, time) {
   const S = W.snow, p = S.pos, b = S.box;
   if (!S.placed) { for (let i = 0; i < p.length; i += 3) { p[i] += eye.x; p[i + 2] += eye.z; p[i + 1] += eye.y - 4; } S.placed = true; }
   const end = S.count * 3;
+  const st = S.style || { fall: 1.2, wind: [0.6, 0], swirl: 0.5 };
   for (let i = 0; i < end; i += 3) {
     const kk = i / 3;
-    p[i + 1] -= dt * (1.1 + (kk % 7) * 0.12);
-    p[i] += dt * (0.6 + Math.sin(time * 0.7 + S.drift[kk]) * 0.5);
-    p[i + 2] += dt * Math.cos(time * 0.5 + S.drift[kk]) * 0.3;
+    p[i + 1] -= dt * st.fall * (0.9 + (kk % 7) * 0.1);
+    p[i] += dt * (st.wind[0] * (0.8 + (kk % 5) * 0.1) + Math.sin(time * 0.7 + S.drift[kk]) * st.swirl);
+    p[i + 2] += dt * (st.wind[1] + Math.cos(time * 0.5 + S.drift[kk]) * st.swirl * 0.6);
     const lx = p[i] - eye.x, lz = p[i + 2] - eye.z, ly = p[i + 1] - eye.y;
     if (lx > b.x / 2) p[i] -= b.x; else if (lx < -b.x / 2) p[i] += b.x;
     if (lz > b.z / 2) p[i + 2] -= b.z; else if (lz < -b.z / 2) p[i + 2] += b.z;
@@ -1401,5 +1412,118 @@ function updateCrust(W, dt, eye, time) {
       s.scale.setScalar((0.8 + ph * 3) * big);
       s.material.opacity = 0.5 * (1 - ph);
     });
+  }
+}
+
+
+// --- the air on each island (space maps): fog, sky light, particles, lightning -------------
+function setupAtmosphere(W, map, group) {
+  W.atmos = {
+    cur: null, target: null, k: 1,
+    fog: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color(), density: 0.005, amb: 0.8,
+    islands: (map.islands || []).map((I) => ({ id: I.id, b: I.bounds })),
+    style: null, bolts: [], boltT: 3, flash: 0,
+    storm: (map.decor || []).find((d) => d.kind === 'storm'),
+  };
+  // a second particle system for things that glow (embers, sparks)
+  const S = W.snow;
+  W.glowPts = new THREE.Points(S.flakes.geometry, new THREE.PointsMaterial({ map: S.flakes.material.map, size: 0.07, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: new THREE.Color(2, 1, 0.3), sizeAttenuation: true }));
+  W.glowPts.frustumCulled = false;
+  W.glowPts.visible = false;
+  group.add(W.glowPts);
+  // shells coming in: a red ring on the ground where it'll land
+  W.shells = [];
+  W.shellMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.3, 0.15), transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3 });
+  W.shellGeo = new THREE.RingGeometry(0.9, 1.25, 32).rotateX(-Math.PI / 2);
+}
+
+function islandAt(A, eye) {
+  let best = null, bd = Infinity;
+  for (const I of A.islands) {
+    const [x0, z0, x1, z1] = I.b;
+    const dx = Math.max(x0 - eye.x, 0, eye.x - x1), dz = Math.max(z0 - eye.z, 0, eye.z - z1);
+    const d = Math.hypot(dx, dz);
+    if (d < bd) { bd = d; best = I.id; }
+  }
+  return bd < 20 ? best : 'void';
+}
+
+function updateAtmosphere(W, dt, eye, time) {
+  const A = W.atmos, mv = W.mv;
+  const id = islandAt(A, eye);
+  const tgt = ATMOS[id] || ATMOS.void;
+  if (!A.cur) { A.fog.set(tgt.fog); A.sky.set(tgt.sky); A.ground.set(tgt.ground); A.density = tgt.density; A.amb = tgt.amb; }
+  const k = Math.min(1, dt * 0.8);
+  A.fog.lerp(new THREE.Color(tgt.fog), k); A.sky.lerp(new THREE.Color(tgt.sky), k); A.ground.lerp(new THREE.Color(tgt.ground), k);
+  A.density += (tgt.density - A.density) * k; A.amb += (tgt.amb - A.amb) * k;
+  A.cur = id;
+  // lightning lights the sky up for a moment
+  A.flash = Math.max(0, A.flash - dt * 6);
+  // (the renderer takes the fog from here; the map view the light's strength)
+  W.air = { fog: A.fog, density: A.density, amb: A.amb * (1 + A.flash * 2) };
+  if (mv.hemi) {
+    mv.hemi.color.copy(A.sky).lerp(new THREE.Color(1.6, 1.4, 2.2), A.flash);
+    mv.hemi.groundColor.copy(A.ground);
+  }
+  // particles in the air: this island's kind
+  const style = tgt.particles;
+  if (style !== A.style) {
+    A.style = style;
+    const P = PARTICLES[style] || PARTICLES.none;
+    const m = W.snow.flakes.material, g = W.glowPts.material;
+    W.snow.flakes.visible = !P.add && P.opacity > 0; W.glowPts.visible = P.add;
+    (P.add ? g : m).color.setRGB(...P.color); (P.add ? g : m).size = P.size; (P.add ? g : m).opacity = P.opacity;
+    W.snow.style = P;
+  }
+  // lightning over the storm asteroid
+  if (id === 'research' && A.storm) {
+    A.boltT -= dt;
+    if (A.boltT <= 0) {
+      A.boltT = 1.5 + Math.random() * 4;
+      const pts = A.storm.coils;
+      const a = pts[Math.floor(Math.random() * pts.length)];
+      const b = Math.random() < 0.4 ? [a[0] + (Math.random() - 0.5) * 30, a[1] + 40, a[2] + (Math.random() - 0.5) * 30] : pts[Math.floor(Math.random() * pts.length)];
+      if (a !== b) { A.bolts.push(bolt(W, a, b)); A.flash = Math.max(A.flash, 0.6); }
+    }
+  }
+  for (let i = A.bolts.length - 1; i >= 0; i--) {
+    const B = A.bolts[i];
+    B.t -= dt;
+    B.line.material.opacity = Math.max(0, B.t / 0.25) * (Math.random() > 0.3 ? 1 : 0.4);
+    if (B.t <= 0) { W.mv.group.remove(B.line); B.line.geometry.dispose(); A.bolts.splice(i, 1); }
+  }
+  // the shells' warning rings
+  for (let i = W.shells.length - 1; i >= 0; i--) {
+    const sh = W.shells[i];
+    sh.t -= dt;
+    const u = 1 - Math.max(0, sh.t / sh.warn);
+    sh.m.scale.setScalar(4.5 * (1 - u) + 0.6);
+    sh.m.material.opacity = 0.3 + 0.5 * Math.abs(Math.sin(time * 18));
+    if (sh.t <= 0) { W.mv.group.remove(sh.m); W.shells.splice(i, 1); }
+  }
+}
+
+// A jagged bolt of lightning from a to b.
+function bolt(W, a, b) {
+  const pts = [];
+  const n = 14;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, j = i === 0 || i === n ? 0 : 1.6;
+    pts.push(a[0] + (b[0] - a[0]) * t + (Math.random() - 0.5) * j, a[1] + (b[1] - a[1]) * t + (Math.random() - 0.5) * j, a[2] + (b[2] - a[2]) * t + (Math.random() - 0.5) * j);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(2.6, 2.0, 4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  W.mv.group.add(line);
+  return { line, t: 0.25 };
+}
+
+function crustEvent(W, e) {
+  // the way into no-man's-land opens: the wire comes down
+  if (e.type === 'doorOpened' && /^gate/.test(e.id || '') && W.gateWire) for (const m of W.gateWire) m.visible = false;
+  if (e.type === 'shellIncoming' && W.shells) {
+    const m = new THREE.Mesh(W.shellGeo, W.shellMat.clone());
+    m.position.set(e.pos.x, e.pos.y + 0.05, e.pos.z);
+    W.mv.group.add(m);
+    W.shells.push({ m, t: e.warn, warn: e.warn });
   }
 }

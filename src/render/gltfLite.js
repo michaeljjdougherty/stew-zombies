@@ -13,13 +13,17 @@ const FILT = { 9728: THREE.NearestFilter, 9729: THREE.LinearFilter, 9984: THREE.
 export class BitmapTexturesPlugin {
   constructor(parser) { this.parser = parser; this.name = 'stew_bitmap_textures'; this.cache = new Map(); }
   loadTexture(index) {
-    const json = this.parser.json, def = json.textures[index], img = json.images[def.source];
+    const json = this.parser.json, def = json.textures[index];
+    // (our shrunk models carry WebP textures: EXT_texture_webp names the image)
+    const webp = def.extensions && def.extensions.EXT_texture_webp;
+    const srcIdx = webp ? webp.source : def.source;
+    const img = json.images[srcIdx];
     if (!img || img.bufferView === undefined || typeof createImageBitmap !== 'function') return null;
-    if (!this.cache.has(def.source)) {
-      this.cache.set(def.source, this.parser.getDependency('bufferView', img.bufferView)
-        .then((buf) => createImageBitmap(new Blob([buf], { type: img.mimeType || 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })));
+    if (!this.cache.has(srcIdx)) {
+      this.cache.set(srcIdx, this.parser.getDependency('bufferView', img.bufferView)
+        .then((buf) => createImageBitmap(new Blob([buf], { type: img.mimeType || (webp ? 'image/webp' : 'image/png') }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })));
     }
-    return this.cache.get(def.source).then((bmp) => {
+    return this.cache.get(srcIdx).then((bmp) => {
       const t = new THREE.Texture(bmp);
       t.flipY = false;
       const sm = (json.samplers || [])[def.sampler] || {};
@@ -36,7 +40,12 @@ export class BitmapTexturesPlugin {
 
 let loader = null;
 export function gltfLoader() {
-  if (!loader) { loader = new GLTFLoader(); loader.register((p) => new BitmapTexturesPlugin(p)); }
+  if (!loader) {
+    loader = new GLTFLoader();
+    loader.register((p) => new BitmapTexturesPlugin(p));
+    // (ahead of three's own WebP handler, which loads through blob: URLs)
+    loader.pluginCallbacks.unshift(loader.pluginCallbacks.pop());
+  }
   return loader;
 }
 

@@ -7,6 +7,11 @@ import { boxesNear } from './boxgrid.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+// The floor under everything: y = 0, except out in space (Call of the Crust's
+// islands float: miss the ground and you keep falling).
+let FLOOR = 0;
+export function setFloor(y) { FLOOR = y; }
+
 function overlapsY(b, y, h) {
   return b.maxY > y + 0.02 && b.minY < y + h - 0.02;
 }
@@ -46,7 +51,7 @@ function circleOverlapsXZ(x, z, r, b) {
 }
 
 // Highest box top underneath (x,z) that is at or below `maxY`.
-export function groundHeight(x, z, r, maxY, boxLists, floorY = 0) {
+export function groundHeight(x, z, r, maxY, boxLists, floorY = FLOOR) {
   let g = floorY;
   for (const list of boxLists) {
     for (const b of boxesNear(list, x, z, r)) {
@@ -62,7 +67,7 @@ export function groundHeight(x, z, r, maxY, boxLists, floorY = 0) {
  * boxLists: array of arrays of boxes to collide with.
  * Returns { landed, impact } where impact is downward speed on landing.
  */
-export function moveBody(body, dt, boxLists, gravity, floorY = 0) {
+export function moveBody(body, dt, boxLists, gravity, floorY = FLOOR) {
   const p = body.pos, v = body.vel, r = body.radius, h = body.height;
   const wasGrounded = body.grounded;
   const startY = p.y;

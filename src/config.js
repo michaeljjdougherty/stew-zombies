@@ -829,6 +829,7 @@ export const CONFIG = {
   // selfDamage = damage to the player who caused it if they're at the center.
   explosions: {
     frag: { radius: 4.5, damage: 1100, selfDamage: 120, minFrac: 0.15, shake: 1.0 },
+    shell: { radius: 4.5, damage: 900, selfDamage: 0, minFrac: 0.2, shake: 0.8 },   // (the Trench Front's guns)
     launcher: { radius: 3.6, damage: 1300, selfDamage: 80, minFrac: 0.2, shake: 0.9 },
     bolt: { radius: 2.8, damage: 1000, selfDamage: 60, minFrac: 0.2, shake: 0.6 },
     cookedOff: { radius: 4.5, damage: 1100, selfDamage: 160, minFrac: 0.15, shake: 1.2 },
@@ -1012,6 +1013,20 @@ export const CONFIG = {
     thunderEvery: [7, 16],   // s between distant thunderclaps
     artilleryEvery: [3, 9],  // s between far-off shells landing
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
+    // the guns over the Trench Front's open ground
+    shelling: {
+      firstDelay: 1.6,       // s up top before the first shell comes in
+      every: [1.4, 2.4],     // s between shells while you stay up there
+      warn: 1.0,             // s from the whistle to the bang
+      lead: 0.6,             // how much they aim where you're going
+      spread: 2.2,           // m off target
+      radius: 4.5,           // m
+      damage: 85,            // to a player at the middle of it
+      ceasefireCost: 1500,   // the field telephone
+      ceasefire: 90,         // s of quiet
+      cooldown: 45,          // s after that before you can call again
+    },
+    voidY: -30,              // fall below this (off an island, into space) and you're gone
     // ziplines and ice slides
     ride: {
       hang: 2.0,             // m your feet hang below a zipline's cable
