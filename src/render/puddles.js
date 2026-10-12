@@ -52,6 +52,7 @@ export class Puddles {
       return !h || h.point.y < 0.03;
     };
     for (const room of sim.mapData.rooms) {
+      if (room.virtual) continue;
       const [want, leaky] = WET[room.style] || WET[room.outdoor ? 'exterior' : 'hall'];
       const [x0, z0, x1, z1] = room.rect;
       let made = 0;

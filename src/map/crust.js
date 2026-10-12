@@ -106,8 +106,9 @@ function hub() {
   const F = 0, TER = 4.5, RIMH = 9;
   // the island: rock rising out of the ice, falling away outside the rim
   t.paint(shape.circle(0, 0, 45, 2.5), { kind: K.ROCK, mat: 'rock', h: (x, z) => { const d = Math.hypot(x, z); return Math.max(0.8, Math.min(RIMH + 1.5, RIMH + 1.5 - Math.max(0, d - 31) * 0.95) + wobble(x, z, 0.8, 0.5)); } });
-  // the quarry wall's lip stands proud of the rim
-  t.paint(shape.ring(0, 0, 14, 23, 1.2), { kind: K.ROCK, mat: 'rock', h: (x, z) => RIMH + 1.2 + Math.abs(wobble(x, z, 1.6, 0.6)) });
+  // the quarry wall: falling steeply from the rim to the floor (step off the rim
+  // anywhere and you'll tumble down it)
+  t.paint(shape.ring(0, 0, 13, 23, 1.2), { kind: K.ROCK, mat: 'rock', h: (x, z) => Math.max(0.6, RIMH - 0.4 - (22.6 - Math.hypot(x, z)) * 1.3 + wobble(x, z, 0.5, 0.9)) });
   // the rim walkway, wider at the launch decks and the depot
   t.paint(shape.ring(0, 0, 22.5, 31, 1.4), { h: RIMH, zone: RIM });
   for (const [x, z] of [[0, -28], [28, 0], [0, 28], [-28, 0]]) t.paint(shape.circle(x, z, 6.5, 1), { h: RIMH, zone: RIM });
@@ -170,6 +171,7 @@ function hub() {
   I.pads.push({ id: 'pad_hub_s', x: 0, z: 28, to: 'pad_trench', label: 'the Trench Front' });
   I.pads.push({ id: 'pad_hub_w', x: -28, z: 0, to: 'pad_caves', label: 'the Ice Caves' });
   I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5]];
+  I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
   I.playerSpawns = [{ x: -3, z: 11, yaw: Math.PI }, { x: 3, z: 11, yaw: Math.PI }, { x: -3, z: 13, yaw: Math.PI }, { x: 3, z: 13, yaw: Math.PI }];
   return I;
 }
@@ -425,7 +427,7 @@ function trench() {
     fixtures: [{ x: -3, y: F1 + 2.9, z: 146, lit: true, flicker: 0.3, kind: 'hanging' }, { x: 5, y: F1 + 2.9, z: 149, lit: true, flicker: 0.1, kind: 'hanging' }],
   });
   I.room({
-    id: 'fort2', kind: 'bunker', rect: [-8, 140, 8, 152], y: F2, height: RY - 0.3 - F2, name: 'Fort Upper Floor', ceiling: 'none', slab: false, upper: true,
+    id: 'fort2', kind: 'bunker', rect: [-8, 140, 8, 152], y: F2, height: RY - 0.3 - F2, name: 'Fort Upper Floor', ceiling: 'none', slab: false, upper: true, noFloor: true,
     regions: [[-8, 141.6, 8, 150.4], [1.5, 140, 8, 141.6], [-8, 150.4, 0, 152], [-8, 140, -6, 141.6]],
     innerPortals: [{ a: 0, b: 1, x: 4.75, z: 141.6, axis: 'z', width: 6.5 }, { a: 0, b: 2, x: -4, z: 150.4, axis: 'z', width: 8 }, { a: 0, b: 3, x: -7, z: 141.6, axis: 'z', width: 2 }],
     fixtures: [{ x: 0, y: F2 + 2.7, z: 146, lit: true, flicker: 0.2, kind: 'hanging' }],
@@ -460,7 +462,7 @@ function trench() {
   I.prop('shrine', -44, 156, -41, 159, 3.6, { element: 'fire' });
   I.craters = [[-18, 143, 3], [-30, 136, 2.4], [-8, 160, 2], [36, 158, 2.6], [20, 130, 2.2], [-40, 165, 1.8]].map(([x, z, r]) => ({ x, z, r, y: G }));
   I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 116, { flicker: 0.15 }); I.lamp(NML, -20, 158, { flicker: 0.4 }); I.lamp(NML, 22, 160, { flicker: 0.3 });
-  I.lamp(TR, -18, 172.5, { h: 2.1, flicker: 0.3 }); I.lamp(TR, 14, 172.5, { h: 2.1, flicker: 0.2 });
+  for (const [x, z, f] of [[-38, 171.5, 0.3], [-22, 171.5, 0.2], [-6, 171.5, 0.4], [10, 171.5, 0.2], [26, 171.5, 0.3], [40, 171, 0.25], [-26, 158, 0.3], [23, 158, 0.2]]) I.lamp(TR, x, z, { h: 2.1, flicker: f });
   I.pads.push({ id: 'pad_trench', x: 0, z: 115, to: 'pad_hub_s', label: 'the Anvil' });
   return I;
 }
@@ -598,6 +600,7 @@ for (const I of ISLES) {
     t.paint(shape.rect(r[0] + 0.01, r[1] + 0.01, r[2] - 0.01, r[3] - 0.01), { h: footprint, kind: K.ROOM, spawn: false });
   }
   for (const d of I.freeDoors) t.block(d.x, d.z, d.axis, d.width);
+  if (I.openFall) t.paint(I.openFall, { kind: null, only: (k, c) => { if (k === K.ROCK) t.noFence[c] = 1; return false; } });
   // big solid things on the ground: the nav goes round them
   for (const p of I.props) {
     if (p.y != null || Math.min(p.x1 - p.x0, p.z1 - p.z0) < 2.5) continue;
@@ -732,6 +735,7 @@ export const CRUST = {
   fog: { color: '#1c2534', density: 0.006 },
   farPlane: 320,
   lampScale: 0.55,     // (the lamps are bright on all this snow)
+  ambient: 0.8,        // the night sky's light on everything
   playerSpawns: HUB.playerSpawns.map((p) => ({ ...p, y: HUB.t.heightAt(p.x, p.z) })),
   rooms: out.rooms,
   navRegions: out.navRegions,

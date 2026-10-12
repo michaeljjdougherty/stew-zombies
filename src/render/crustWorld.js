@@ -11,6 +11,7 @@
 // buildCrust() in place of the school's exterior; update() runs every frame.
 // =============================================================================
 import * as THREE from 'three';
+import { buildGround, buildStructures, buildRides, buildDecor, buildPines } from './crustTerrain.js';
 import * as T from './textures.js';
 import * as CT from './crustTextures.js';
 
@@ -343,18 +344,38 @@ export function buildCrust(mv) {
     screen: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 1.2, 0.8) }),
   };
   out.mats = mats;
+  // (the sculpted islands are lit live: give their things a little moonlight of their own)
+  if (map.terrains) for (const m of Object.values(mats)) {
+    if (!m.isMeshStandardMaterial || (m.emissive && m.emissive.getHex() !== 0)) continue;
+    if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color('#34383f'); } else m.emissive = m.color.clone().multiplyScalar(0.22);
+  }
   const isl = islandsOf(map);
 
   buildSky(out, group, fog);
   buildSea(out, group, isl);
-  for (const I of isl) buildTerrain(out, group, I, map, mats, R(I.rooms.length * 31 + 7));
-  buildEdges(out, group, world, mats, r);
-  buildTrenches(group, world, map, r, mats);
+  if (map.terrains) {
+    // the sculpted islands (src/render/crustTerrain.js)
+    buildGround(out, group, map, mv.mats, mv.wallMats);
+    buildStructures(out, group, map, mats, mv.mats, mv.wallMats);
+    buildRides(out, group, map, mats);
+    buildPines(out, group, map, mats);
+  } else {
+    for (const I of isl) buildTerrain(out, group, I, map, mats, R(I.rooms.length * 31 + 7));
+    buildEdges(out, group, world, mats, r);
+    buildTrenches(group, world, map, r, mats);
+    for (const s of map.ships || []) buildShip(out, group, map, s, r, mats);
+    buildForest(out, group, isl, map, r, mats);
+  }
   buildRoofs(out, group, map, mats);
-  for (const s of map.ships || []) buildShip(out, group, map, s, r, mats);
-  buildForest(out, group, isl, map, r, mats);
+  // moonlight on the buildings' outsides (they're baked; the open ground isn't)
+  if (map.terrains) for (const rm of map.rooms) {
+    if (rm.virtual) continue;
+    const [x0, z0, x1, z1] = rm.rect, y = (rm.y || 0) + Math.max(7, rm.height + 3);
+    for (const [x, z] of [[x0 - 4, z0 - 4], [x1 + 4, z1 + 4]]) mv.addVirtualLight({ x, y, z }, 0x8098c8, 140, 26, 1.15);
+  }
   buildFar(out, group, map, r);
   buildProps(out, group, world, r, mats, mv);
+  if (map.terrains) buildDecor(out, group, map, mats, mv);
   for (const L of map.launchers || []) buildPad(out, group, L, map, mats, mv);
   buildSnow(out, group, r);
   // slush (it slows you down): dark wet patches on the ice
@@ -364,16 +385,16 @@ export function buildCrust(mv) {
       const g = new THREE.CircleGeometry(m.r, 28).rotateX(-Math.PI / 2);
       const p = g.attributes.position;
       for (let i = 1; i < p.count; i++) { const k = 0.85 + r() * 0.25; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); }
-      const mesh = new THREE.Mesh(g, slush); mesh.position.set(m.x, 0.012, m.z); group.add(mesh);
+      const mesh = new THREE.Mesh(g, slush); mesh.position.set(m.x, (m.y || 0) + 0.012, m.z); group.add(mesh);
     }
   }
   // shell craters (looks only)
   for (const c of map.craters || []) {
     const g = new THREE.CircleGeometry(c.r, 20).rotateX(-Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 1, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-    m.position.set(c.x, 0.012, c.z); group.add(m);
+    m.position.set(c.x, (c.y || 0) + 0.012, c.z); group.add(m);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(c.r, 0.25, 6, 20).rotateX(Math.PI / 2), mats.snowCap);
-    rim.scale.y = 0.6; rim.position.set(c.x, 0.05, c.z); group.add(rim);
+    rim.scale.y = 0.6; rim.position.set(c.x, (c.y || 0) + 0.05, c.z); group.add(rim);
   }
 
   out.update = (dt, eye, time) => updateCrust(out, dt, eye, time);
@@ -653,9 +674,12 @@ function buildRoofs(out, group, map, mats) {
   const stone = new THREE.MeshStandardMaterial({ map: CT.stoneTexture({ seed: 12 }), roughness: 1 });
   for (const rm of map.rooms) {
     const [x0, z0, x1, z1] = rm.rect;
+    // (zones, open-topped hulls and towers, walkable roofs: none)
+    if (rm.virtual || rm.flatRoof || rm.ceiling === 'none') continue;
+    const Y = rm.y || 0;
     if (rm.style === 'cabin' || rm.style === 'canvas') {
       const canvas = rm.style === 'canvas';
-      const o = 0.7, H = rm.height + 0.25, rise = canvas ? 2.2 : 1.8;
+      const o = 0.7, H = Y + rm.height + 0.25, rise = canvas ? 2.2 : 1.8;
       const alongX = x1 - x0 >= z1 - z0;
       const L = (alongX ? x1 - x0 : z1 - z0) + 1 + 2 * o;
       const W = (alongX ? z1 - z0 : x1 - x0) + 1 + 2 * o;
@@ -688,7 +712,7 @@ function buildRoofs(out, group, map, mats) {
     } else if (!rm.outdoor && !rm.cave && rm.style !== 'hull' && rm.kind !== 'dugout' && rm.kind !== 'bunker') {
       // a flat roof with snow on it (over the ceiling slab)
       const s = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, 0.12, z1 - z0 + 1), mats.snowCap);
-      s.position.set((x0 + x1) / 2, rm.height + (rm.ceiling === 'trusses' ? 0.36 : 0.31), (z0 + z1) / 2); group.add(s);
+      s.position.set((x0 + x1) / 2, Y + rm.height + (rm.ceiling === 'trusses' ? 0.36 : 0.31), (z0 + z1) / 2); group.add(s);
     }
   }
 }
@@ -866,24 +890,29 @@ function buildPad(out, group, L, map, mats, mv) {
   const dir = Math.atan2(dest.x - L.x, dest.z - L.z);
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 3).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: el.color }));
   arrow.scale.y = 0.15; arrow.position.set(Math.sin(dir) * 1.1, 0.15, Math.cos(dir) * 1.1); arrow.rotation.y = dir; g.add(arrow);
-  g.position.set(L.x, 0, L.z);
+  g.position.set(L.x, L.y || 0, L.z);
   group.add(g);
   out.spin.push({ obj: inner, rate: 0.8 });
-  mv.addVirtualLight({ x: L.x, y: 1.2, z: L.z }, el.light, 10, 9, 1.6);
+  mv.addVirtualLight({ x: L.x, y: (L.y || 0) + 1.2, z: L.z }, el.light, 10, 9, 1.6);
 }
 // --- the props (collision comes from the map data) -------------------------------------------
-function buildProps(out, group, world, r, mats, mv) {
-  const add = (geo, mat, x, y, z, ry = 0, parent = group) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m; };
+function buildProps(out, root, world, r, mats, mv0) {
   const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   for (const b of world.propBoxes) {
     const p = b.prop;
+    // each prop stands where it stands (on a rim, a deck, a plinth): built at
+    // its foot, lifted there
+    const base = b.minY;
+    const group = new THREE.Group(); group.position.y = base; root.add(group);
+    const mv = base ? { addVirtualLight: (q, ...a) => mv0.addVirtualLight({ ...q, y: q.y + base }, ...a) } : mv0;
+    const add = (geo, mat, x, y, z, ry = 0, parent = group) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m; };
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2, w = b.maxX - b.minX, d = b.maxZ - b.minZ, h = b.maxY - b.minY;
     const alongX = w >= d, L = Math.max(w, d), Wd = Math.min(w, d), ry = alongX ? 0 : Math.PI / 2;
     switch (p.kind) {
       case 'truck': group.add(truck(cx, cz, w, d, p.yaw || 0, mats.snowCap)); break;
       case 'crate': {
-        add(B(w, h, d), crateMat(), cx, b.minY + h / 2, cz, 0.05);
-        add(B(w * 0.96, 0.06, d * 0.96), mats.snowCap, cx, b.maxY + 0.03, cz);
+        add(B(w, h, d), crateMat(), cx, h / 2, cz, 0.05);
+        add(B(w * 0.96, 0.06, d * 0.96), mats.snowCap, cx, h + 0.03, cz);
         break;
       }
       case 'barrel': out.fires.push(fireBarrel(mv, group, cx, cz, h)); break;
@@ -939,7 +968,7 @@ function buildProps(out, group, world, r, mats, mv) {
         for (let a = -L / 2 + 0.3; a < L / 2; a += 0.35) add(B(0.05, 0.42, 0.12), fish, alongX ? cx + a : cx, h - 0.28, alongX ? cz : cz + a, r());
         break;
       }
-      case 'anvil': buildAnvil(out, group, cx, cz, w, h, mats, mv); break;
+      case 'anvil': buildAnvil(out, group, cx, cz, w, h, mats, mv, p.blank); break;
       case 'shrine': buildShrine(out, group, cx, cz, h, p.element, mats, mv); break;
       case 'wreck': {
         // twisted plates from whatever came through the portal with them
@@ -1154,7 +1183,7 @@ function buildProps(out, group, world, r, mats, mv) {
 // THE ANVIL: a stepped stone base, a great anvil of black iron on a carved
 // pillar, and four sockets glowing with the four elements (each facing the
 // island its War Hammer comes from). The rituals will come together here.
-function buildAnvil(out, group, cx, cz, w, h, mats, mv) {
+function buildAnvil(out, group, cx, cz, w, h, mats, mv, blank = false) {
   const g = new THREE.Group();
   const tiers = [[w, 1.6], [w * 0.82, 1.4], [w * 0.64, 1.2]];
   let y = 0;
@@ -1176,6 +1205,14 @@ function buildAnvil(out, group, cx, cz, w, h, mats, mv) {
     const E = ELEMENT[el];
     const px = sx * w * 0.41, pz = sz * w * 0.41, py = 3.2;
     const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.45, 0.5, 12), iron); cup.position.set(px, py, pz); g.add(cup);
+    if (blank) {
+      // empty: a dark socket waiting for its War Hammer, a faint rune of its element
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.42, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#030304' }));
+      hole.position.set(px, py + 0.26, pz); g.add(hole);
+      const rune = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.7, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: E.color.clone().multiplyScalar(0.18) }));
+      rune.position.set(px, py + 0.27, pz); g.add(rune);
+      continue;
+    }
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), new THREE.MeshBasicMaterial({ color: E.color })); gem.position.set(px, py + 0.6, pz); g.add(gem);
     out.spin.push({ obj: gem, rate: 1.2 });
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: E.color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));

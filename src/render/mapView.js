@@ -57,7 +57,7 @@ export class MapView {
     this.buildMaterials();
     // (Call of the Crust draws its own ground, berms and buildings: crustWorld.js)
     if (!this.map.customRender) {
-      for (const room of this.map.rooms) this.buildRoom(room);
+      for (const room of this.map.rooms) if (!room.virtual) this.buildRoom(room);
       this.buildWalls();
     }
     this.buildCourt();
@@ -104,7 +104,7 @@ export class MapView {
   collectOccluders() {
     const occ = new Occluders(2);
     // floors as thin slabs
-    for (const r of this.map.rooms) { const [x0, z0, x1, z1] = r.rect; occ.add(x0, -0.1, z0, x1, 0, z1); }
+    for (const r of this.map.rooms) { if (r.virtual) continue; const [x0, z0, x1, z1] = r.rect, y = r.y || 0; occ.add(x0, y - 0.1, z0, x1, y, z1); }
     const box = new THREE.Box3();
     this.group.updateMatrixWorld(true);
     const skip = (o) => { for (let q = o; q && q !== this.group; q = q.parent) if (q.userData.noBake) return true; return false; };
@@ -281,8 +281,8 @@ export class MapView {
     const floor = new THREE.Mesh(geo, this.floorMat(room.floor));
     const RY = room.y || 0;
     floor.position.set((x0 + x1) / 2, RY + 0.002, (z0 + z1) / 2);
-    this.group.add(floor);
-    this.bakeReceivers.push(floor);
+    // (an upper floor with a stairwell in it: its floor is drawn with the stairs)
+    if (!room.noFloor) { this.group.add(floor); this.bakeReceivers.push(floor); }
 
     // floor grime / litter overlay for non-court rooms
     if (room.id !== 'court' && room.litter !== false && !room.outdoor) {
@@ -1262,7 +1262,8 @@ export class MapView {
     // (Call of the Crust brings its own sky light: one hemisphere light, not two,
     // keeps the shaders smaller)
     if (!this.map.customRender) {
-      this.hemi = new THREE.HemisphereLight(0x6f7580, 0x2a2016, g.ambientLight);
+      // (Call of the Crust: a bluer, brighter night over all that snow)
+      this.hemi = this.map.ambient ? new THREE.HemisphereLight(0x7f8db0, 0x2a2a34, this.map.ambient) : new THREE.HemisphereLight(0x6f7580, 0x2a2016, g.ambientLight);
       this.group.add(this.hemi);
     }
 
@@ -1315,7 +1316,7 @@ export class MapView {
 
     // moonlight over outdoor areas (dim, bluish, a few big soft lights)
     for (const room of this.map.rooms) {
-      if (!room.outdoor) continue;
+      if (!room.outdoor || room.virtual) continue;
       const [x0, z0, x1, z1] = room.rect;
       const n = Math.max(1, Math.round((z1 - z0) / 14));
       for (let i = 0; i < n; i++) {
@@ -1505,7 +1506,7 @@ export class MapView {
     if (this.blackout) {
       for (const f of this.fixtures) { f.level = 0; f.tubeMat.color.setRGB(0.04, 0.04, 0.035); if (f.beam) f.beam.visible = false; }
     }
-    if (this.hemi) this.hemi.intensity = this.cfg.graphics.ambientLight * (this.blackout ? 0.12 : (1.35 - 0.35 * bp.value) * Math.max(0.25, this.dimLevel));
+    if (this.hemi) this.hemi.intensity = (this.map.ambient ?? this.cfg.graphics.ambientLight) * (this.blackout ? 0.12 : (1.35 - 0.35 * bp.value) * Math.max(0.25, this.dimLevel));
     bakeUniforms.bakeScale.value += ((this.blackout ? 0.03 : this.dimLevel) - bakeUniforms.bakeScale.value) * Math.min(1, dt * 30);
     // baked surfaces follow each light's live brightness
     for (let i = 0, n = Math.min(this.vlights.length, MAX_CHANNELS); i < n; i++) {
