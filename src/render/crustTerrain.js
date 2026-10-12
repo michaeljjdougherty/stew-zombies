@@ -12,6 +12,7 @@ import { BoxBatch } from './geometry.js';
 import { K } from '../map/terrain.js';
 import * as T from './textures.js';
 import { themeMaterials } from './crustThemes.js';
+import { surface } from './crustSurfaces.js';
 
 const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 // smooth-ish noise from sines (deterministic: the same point always moves the same way)
@@ -85,7 +86,7 @@ function buildIsland(group, t, G0, space) {
   // this island's own ground (src/render/crustThemes.js), over the shared ones
   const TM = themeMaterials(G0)[t.id] || {};
   const G = { ...G0, ...TM, snow: TM.top || G0.snow, iceside: TM.iceside || G0.iceside };
-  if (TM.cliff) G.trench = G0.trench;
+  if (TM.cliff && !TM.trench) G.trench = G0.trench;
   const deep = space ? -3 : -0.6;   // (out in space the edge goes on down to the rock underneath)
   const B = new Map();
   const bucket = (k) => { if (!B.has(k)) B.set(k, new Bucket()); return B.get(k); };
@@ -175,11 +176,15 @@ function buildIsland(group, t, G0, space) {
     if (!solid(c)) continue;
     const roomCell = t.kind[c] === K.ROOM;
     const tc = top(c, ix, iz);
-    // the top (not under a building: its own floor)
-    if (!roomCell) {
-      const bk = bucket(topMat(t, c));
+    // the top (under a building or a big model too, a hair lower: no holes
+    // round a floor's edge or a model's foot to see through into space)
+    {
+      // (a floor of its own on this island: the hub's cobbles, the planks...)
+      const mk = t.mat[c];
+      const bk = bucket(t.kind[c] !== K.ROCK && mk && TM[mk] ? mk : t.kind[c] === K.ROCK && mk && TM[mk + 'Top'] ? mk + 'Top' : topMat(t, c));
+      const q = roomCell ? tc.map((p) => [p[0], p[1] - 0.06, p[2]]) : tc;
       // NW, NE, SE, SW: wind for an upward normal
-      bk.quad(tc[0], tc[3], tc[2], tc[1], uvWorld);
+      bk.quad(q[0], q[3], q[2], q[1], uvWorld);
     }
     // the edges: wherever this cell stands higher than its neighbour
     // [dx, dz, our corner 1, our corner 2, outward, the neighbour's matching corners]
@@ -207,14 +212,14 @@ function buildIsland(group, t, G0, space) {
       if ((a1 + a2) / 2 <= (b1 + b2) / 2 + 0.005) continue;
       const tall = Math.max(a1 - b1, a2 - b2);
       let mat;
-      if (t.kind[c] === K.ROCK) mat = t.mat[c] === 'ice' ? 'iceside' : 'cliff';
+      if (t.kind[c] === K.ROCK) mat = t.mat[c] === 'ice' ? 'iceside' : (t.mat[c] && TM[t.mat[c]] ? t.mat[c] : 'cliff');
       else if (n >= 0 && t.mat[n] === 'duckboard' && t.mat[c] !== 'duckboard' && tall > 0.6) mat = 'trench';
       else if ((t.mat[c] === 'ice' || t.mat[c] === 'icesteps') && t.id === 'caves') mat = 'iceside';
       else if (t.mat[c] === 'lava') mat = 'lava';
       else if (tall <= 0.5) mat = topMat(t, c) === 'rocktop' ? 'cliff' : topMat(t, c);
       else if (t.mat[c] === 'planks' || t.mat[c] === 'duckboard') mat = t.mat[c];
       else mat = 'cliff';
-      face(bucket(mat), p, q, a1, a2, b1, b2, outv, mat === 'cliff' || mat === 'iceside');
+      face(bucket(mat), p, q, a1, a2, b1, b2, outv, mat === 'cliff' || mat === 'iceside' || mat === 'wall');
     }
     // a cave: its ceiling overhead, the rock above that
     if (cave(c)) {
@@ -284,12 +289,12 @@ function buildUnderside(group, t, TM, G) {
   const uv = [];
   for (let i = 0; i < pos.length; i += 3) uv.push(Math.atan2(pos[i + 2] - cz, pos[i] - cx) * mean / 3, pos[i + 1] / 3);
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  const um = (TM.cliff || G.cliff).clone(); um.side = THREE.DoubleSide;
+  const um = TM.under || (() => { const u = (TM.cliff || G.cliff).clone(); u.side = THREE.DoubleSide; return u; })();
   const m = new THREE.Mesh(g, um);
   m.userData.noBake = true;
   group.add(m);
   // a few chunks drifting alongside it
-  const rock = TM.rocktop || G.cliff;
+  const rock = TM.under || TM.rocktop || G.cliff;
   for (let i = 0; i < 9; i++) {
     const a = r() * Math.PI * 2, d = mean * (1.1 + r() * 0.5), s = 1.5 + r() * 4;
     const geo = new THREE.DodecahedronGeometry(s, 1);
@@ -310,22 +315,34 @@ export function buildStructures(out, group, map, mats, M, wallMats) {
   const gt = grateTexture();
   const grate = moonlit(gt, '#9aa0a8', '#3a4048', { roughness: 0.6, metalness: 0.4 });
   const looks = {
-    steel, grate, scaffold: grate,
-    concrete: moonlit(wallMats.bunker && wallMats.bunker.map, '#a09e96', '#3a3a3e'),
-    stone: moonlit(wallMats.stone && wallMats.stone.map, '#ffffff', '#38383c', { roughness: 1 }),
-    planks: moonlit(M.planks && M.planks.map, '#ffffff', '#7a6a58', { roughness: 1 }),
-    deck: moonlit(M.deck && M.deck.map, '#ffffff', '#36383c', { roughness: 0.85, metalness: 0.3 }),
+    steel: surface('metal_plate_02', { scale: 2, tint: '#a0a4ac', glow: 0.2, metal: 0.4, rough: 0.8 }),
+    grate: surface('metal_grate_rusty', { scale: 1.6, tint: '#b0a49a', glow: 0.2, metal: 0.4, rough: 0.8 }),
+    concrete: surface('concrete_wall_008', { scale: 3, tint: '#a8a6a0', glow: 0.18 }),
+    stone: surface('rock_wall_08', { scale: 2.5, tint: '#a09890', glow: 0.18 }),
+    planks: surface('brown_planks_05', { scale: 2.2, tint: '#b0a090', glow: 0.18 }),
+    deck: surface('dark_wooden_planks', { scale: 2.2, tint: '#a09080', glow: 0.18 }),
     hullTop: moonlit(wallMats.hull && wallMats.hull.map, '#8a4a40', '#3a2420', { roughness: 0.85, metalness: 0.3 }),
-    ice: new THREE.MeshStandardMaterial({ color: '#9ec4dc', roughness: 0.3, emissive: new THREE.Color('#2a5878') }),
+    ice: surface('snow_02', { scale: 3, tint: '#a8cce8', glow: 0.25, rough: 0.35 }),
   };
+  looks.scaffold = looks.grate;
   const batches = new Map();
   const get = (k) => { if (!batches.has(k)) batches.set(k, new BoxBatch()); return batches.get(k); };
   const posts = new BoxBatch();
   const groundAt = (x, z) => { for (const t of map.terrains) if (t.contains(x, z)) return t.heightAt(x, z); return 0; };
+  // where a leg comes down on: the ground, or a roof, a floor or a deck below (never through them)
+  const allBoxes = map.structures.flatMap((st) => st.boxes.filter((b) => b.kind !== 'rail').map((b) => ({ b, id: st.id })));
+  const roofs = map.rooms.filter((r) => !r.virtual).map((r) => ({ rect: r.rect, top: (r.y || 0) + (r.height || 3) }));
+  const supportAt = (x, z, below, self) => {
+    let g = groundAt(x, z);
+    for (const { b, id } of allBoxes) if (id !== self && b.maxY < below && b.maxY > g && x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) g = b.maxY;
+    for (const r of roofs) if (r.top < below && r.top > g && x >= r.rect[0] - 0.3 && x <= r.rect[2] + 0.3 && z >= r.rect[1] - 0.3 && z <= r.rect[3] + 0.3) g = r.top;
+    return g;
+  };
   for (const s of map.structures) {
     for (const b of s.boxes) {
       const look = b.look || s.look || 'steel';
       if (look === 'hidden') continue;   // (a model draws it: the galleon's decks)
+      if (b.kind === 'rail' && look === 'stone') { get('stone').add({ ...b, maxY: b.minY + 0.95, minX: b.minX - 0.1, maxX: b.maxX + 0.1, minZ: b.minZ - 0.1, maxZ: b.maxZ + 0.1 }); continue; }
       if (b.kind === 'rail') {
         // a railing: a top bar and posts
         const along = b.maxX - b.minX > b.maxZ - b.minZ;
@@ -343,20 +360,29 @@ export function buildStructures(out, group, map, mats, M, wallMats) {
       get(look).add(b, { skip: b.minY < -0.5 ? new Set([3]) : null });
     }
     // catwalks and platforms up on legs
+    if (s.kind === 'deck' && s.y > 2 && s.look === 'stone') {
+      // a stone bridge: square piers every few metres
+      const [x0, z0, x1, z1] = s.rect, along = x1 - x0 > z1 - z0, L = along ? x1 - x0 : z1 - z0, n = Math.max(1, Math.round(L / 6));
+      for (let i = 1; i < n; i++) {
+        const u = (along ? x0 : z0) + L * i / n, cx = along ? u : (x0 + x1) / 2, cz = along ? (z0 + z1) / 2 : u;
+        const g = supportAt(cx, cz, s.y - 0.35, s.id);
+        if (s.y - 0.3 - g > 0.6) get('stone').add({ minX: cx - 0.45, maxX: cx + 0.45, minZ: cz - 0.45, maxZ: cz + 0.45, minY: g - 0.2, maxY: s.y - 0.3 });
+      }
+    }
     if (s.kind === 'deck' && s.y > 2 && /grate|scaffold|steel/.test(s.look || '')) {
       const [x0, z0, x1, z1] = s.rect;
       const legs = [];
       const nx = Math.max(1, Math.round((x1 - x0) / 4)), nz = Math.max(1, Math.round((z1 - z0) / 4));
       for (let i = 0; i <= nx; i++) for (let k = 0; k <= nz; k++) if (i === 0 || k === 0 || i === nx || k === nz) legs.push([x0 + 0.15 + (x1 - x0 - 0.3) * i / nx, z0 + 0.15 + (z1 - z0 - 0.3) * k / nz]);
       for (const [x, z] of legs) {
-        const g = groundAt(x, z);
+        const g = supportAt(x, z, s.y - 0.35, s.id);
         if (s.y - 0.3 - g < 0.6) continue;
         posts.add({ minX: x - 0.07, maxX: x + 0.07, minY: g - 0.2, maxY: s.y - 0.3, minZ: z - 0.07, maxZ: z + 0.07 });
       }
     }
   }
   for (const [k, b] of batches) { const m = new THREE.Mesh(b.build(), looks[k] || steel); m.userData.noBake = true; group.add(m); }
-  const pm = new THREE.Mesh(posts.build(), steel); pm.userData.noBake = true; group.add(pm);
+  const pm = new THREE.Mesh(posts.build(), looks.steel); pm.userData.noBake = true; group.add(pm);
 }
 
 function grateTexture() {

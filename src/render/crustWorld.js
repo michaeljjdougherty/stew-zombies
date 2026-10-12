@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { buildGround, buildStructures, buildRides, buildDecor, buildPines } from './crustTerrain.js';
 import { buildModels, updateMovers } from './crustModels.js';
+import { surface } from './crustSurfaces.js';
 import { loadModel } from './gltfLite.js';
 import { ATMOS, PARTICLES, spaceTexture } from './crustThemes.js';
 import * as T from './textures.js';
@@ -295,16 +296,21 @@ export function crustMaterials(M, wallMats, applyBake) {
   M.rock = applyBake(std({ map: cliffTexture(), roughness: 1, color: '#9aa2ae' }));
   M.stoneCeil = applyBake(std({ map: rep(CT.stoneTexture({ dressed: true, base: [84, 82, 80], seed: 66 }), 1 / 3) }));
   M.bunkerCeil = applyBake(std({ map: rep(concreteTexture(95), 1 / 3), color: '#8a8880' }));
-  const cliff = std({ map: cliffTexture(), roughness: 1, color: '#848c98' });
-  cliff.bumpMap = cliff.map; cliff.bumpScale = 3;
-  wallMats.cliff = applyBake(cliff);
-  wallMats.trench = applyBake(std({ map: rep(CT.boardsTexture({ seed: 4, base: [76, 60, 42] }), 1 / 2.4) }));
-  wallMats.cabin = applyBake(std({ map: rep(logTexture(), 1 / 2.2) }));
+  wallMats.cliff = applyBake(surface('lichen_rock', { scale: 4, tint: '#9a9490', normal: 1.3 }));
+  wallMats.trench = applyBake(surface('wood_planks_dirt', { scale: 2.4, tint: '#b09880' }));
+  wallMats.cabin = applyBake(surface('brown_planks_05', { scale: 2.2, tint: '#a89480' }));
   wallMats.hull = applyBake(std({ map: rep(hullTexture(), 1 / 3), roughness: 0.8, metalness: 0.35 }));
-  wallMats.stone = applyBake(std({ map: rep(CT.stoneTexture({ dressed: true, base: [104, 100, 96], seed: 61 }), 1 / 2.5) }));
-  wallMats.tin = applyBake(std({ map: rep(tinTexture(), 1 / 3), roughness: 0.7, metalness: 0.4 }));
-  wallMats.bunker = applyBake(std({ map: rep(concreteTexture(), 1 / 3) }));
+  wallMats.stone = applyBake(surface('rock_wall_08', { scale: 2.5, tint: '#b0a8a0' }));
+  wallMats.tin = applyBake(surface('corrugated_iron', { scale: 2.5, tint: '#9aa0a8', metal: 0.5, rough: 0.7 }));
+  wallMats.bunker = applyBake(surface('concrete_wall_008', { scale: 3, tint: '#a8a6a0' }));
   wallMats.canvas = applyBake(std({ map: rep(canvasTexture(), 1 / 4), side: THREE.DoubleSide }));
+  // the floors in the buildings and on the decks
+  M.duckboard = applyBake(surface('dark_wooden_planks', { scale: 2.2, tint: '#b0a090' }));
+  M.planks = applyBake(surface('brown_planks_05', { scale: 2.2, tint: '#b8a898' }));
+  M.deck = applyBake(surface('metal_plate_02', { scale: 2, tint: '#a8a8ac', metal: 0.3, rough: 0.8 }));
+  M.flagstone = applyBake(surface('stone_floor', { scale: 3, tint: '#b0a498' }));
+  M.bunkerCeil = applyBake(surface('concrete_wall_008', { scale: 3, tint: '#8a8880' }));
+  M.stoneCeil = applyBake(surface('rock_wall_08', { scale: 3, tint: '#8a8480' }));
 }
 
 // The element colours: Fire, Ice, Wind, Lightning.
@@ -1248,48 +1254,54 @@ function buildProps(out, root, world, r, mats, mv0) {
 // pillar, and four sockets glowing with the four elements (each facing the
 // island its War Hammer comes from). The rituals will come together here.
 function buildAnvil(out, group, cx, cz, w, h, mats, mv, blank = false) {
+  // The Anvil: a stepped stone plinth in the middle of the forge pit, and on it
+  // the anvil itself, black iron, its four sockets waiting for the War Hammers.
   const g = new THREE.Group();
-  const tiers = [[w, 1.6], [w * 0.82, 1.4], [w * 0.64, 1.2]];
+  const stone = surface('rock_wall_08', { scale: 2.2, tint: '#b8aca0', glow: 0.16 });
+  const slab = surface('stone_floor', { scale: 2.2, tint: '#a89888', glow: 0.16 });
+  const iron = surface('metal_plate_02', { scale: 1.5, tint: '#5a5a62', metal: 0.85, rough: 0.55, glow: 0.05 });
+  const tiers = [[w, 1.2, stone], [w * 0.76, 1.0, stone], [w * 0.6, 0.45, slab]];
   let y = 0;
-  for (const [s, th] of tiers) { const t = new THREE.Mesh(new THREE.BoxGeometry(s, th, s), mats.stone); t.position.y = y + th / 2; g.add(t); y += th; const sn = new THREE.Mesh(new THREE.BoxGeometry(s * 0.98, 0.08, s * 0.98), mats.snowCap); sn.position.y = y + 0.02; g.add(sn); }
-  const rune = CT.runeTexture(77, '#ffd27a');
-  const pillar = new THREE.Mesh(new THREE.BoxGeometry(w * 0.36, h * 0.42, w * 0.36), new THREE.MeshStandardMaterial({ map: rune, emissive: new THREE.Color('#ffffff'), emissiveMap: rune, emissiveIntensity: 0.9, roughness: 1 }));
-  pillar.position.y = y + h * 0.21; g.add(pillar);
-  y += h * 0.42;
-  // the anvil itself: feet, waist, face and horn
-  const iron = new THREE.MeshStandardMaterial({ color: '#1e2024', roughness: 0.45, metalness: 0.9 });
-  const feet = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 1.0, w * 0.42), iron); feet.position.y = y + 0.5; g.add(feet);
-  const waist = new THREE.Mesh(new THREE.BoxGeometry(w * 0.34, 1.8, w * 0.26), iron); waist.position.y = y + 1.9; g.add(waist);
-  const face = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.5, w * 0.34), iron); face.position.y = y + 3.55; g.add(face);
-  const horn = new THREE.Mesh(new THREE.ConeGeometry(w * 0.17, w * 0.45, 16).rotateZ(-Math.PI / 2), iron); horn.position.set(w * 0.43 + w * 0.22, y + 3.7, 0); g.add(horn);
-  const sn = new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, 0.1, w * 0.32), mats.snowCap); sn.position.y = y + 4.33; g.add(sn);
-  // the four sockets (N ice, E lightning, S fire, W wind)
+  for (const [s2, th, m] of tiers) { const t = new THREE.Mesh(new THREE.BoxGeometry(s2, th, s2), m); t.position.y = y + th / 2; g.add(t); y += th; }
+  const top = y;
+  // the anvil: feet, waist, face and horn
+  const feet = new THREE.Mesh(new THREE.BoxGeometry(w * 0.44, 0.8, w * 0.26), iron); feet.position.y = y + 0.4; g.add(feet);
+  const waist = new THREE.Mesh(new THREE.BoxGeometry(w * 0.2, 1.4, w * 0.15), iron); waist.position.y = y + 1.5; g.add(waist);
+  const face = new THREE.Mesh(new THREE.BoxGeometry(w * 0.52, 1.0, w * 0.22), iron); face.position.y = y + 2.7; g.add(face);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(w * 0.1, w * 0.3, 16).rotateZ(-Math.PI / 2), iron); horn.position.set(w * 0.26 + w * 0.15, y + 2.85, 0); g.add(horn);
+  // the face glows from the last thing hammered on it
+  const hot = new THREE.Mesh(new THREE.BoxGeometry(w * 0.3, 0.04, w * 0.16), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.8, 0.2) }));
+  hot.position.y = y + 3.22; g.add(hot);
+  mv.addVirtualLight({ x: cx, y: y + 4, z: cz }, 0xff9a4a, 26, 16, 1.6);
+  // the four sockets (N wind, E lightning, S fire, W ice) on the plinth's corners: iron braziers
   const socket = [['wind', 0, -1], ['lightning', 1, 0], ['fire', 0, 1], ['ice', -1, 0]];
-  for (const [el, sx, sz] of socket) {
+  const sy = 1.2 + 1.0;
+  for (const [el, sx2, sz2] of socket) {
     const E = ELEMENT[el];
-    const px = sx * w * 0.41, pz = sz * w * 0.41, py = 3.2;
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.45, 0.5, 12), iron); cup.position.set(px, py, pz); g.add(cup);
+    const px = sx2 * w * 0.33, pz = sz2 * w * 0.33;
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.38, 0.55, 14), iron); cup.position.set(px, sy + 0.28, pz); g.add(cup);
     if (blank) {
-      // empty: a dark socket waiting for its War Hammer, a faint rune of its element
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.42, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#030304' }));
-      hole.position.set(px, py + 0.26, pz); g.add(hole);
-      const rune = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.7, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: E.color.clone().multiplyScalar(0.18) }));
-      rune.position.set(px, py + 0.27, pz); g.add(rune);
+      // empty: dark coals waiting for its War Hammer core, a faint ring of its element
+      const coals = new THREE.Mesh(new THREE.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#0a0606' }));
+      coals.position.set(px, sy + 0.54, pz); g.add(coals);
+      const rune = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.72, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: E.color.clone().multiplyScalar(0.3) }));
+      rune.position.set(px, sy + 0.56, pz); g.add(rune);
       continue;
     }
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), new THREE.MeshBasicMaterial({ color: E.color })); gem.position.set(px, py + 0.6, pz); g.add(gem);
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), new THREE.MeshBasicMaterial({ color: E.color })); gem.position.set(px, sy + 1.1, pz); g.add(gem);
     out.spin.push({ obj: gem, rate: 1.2 });
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: E.color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    halo.scale.setScalar(2.4); halo.position.set(px, py + 0.6, pz); g.add(halo);
+    halo.scale.setScalar(2.4); halo.position.set(px, sy + 1.1, pz); g.add(halo);
     out.glows.push({ s: halo, base: 2.4, rate: 1.5 });
-    mv.addVirtualLight({ x: cx + px * 1.25, y: py + 0.6, z: cz + pz * 1.25 }, E.light, 14, 12, 1.6);
+    mv.addVirtualLight({ x: cx + px * 1.25, y: sy + 1.1, z: cz + pz * 1.25 }, E.light, 14, 12, 1.6);
   }
-  g.position.set(cx, 0, cz);
+  g.position.set(cx, 0.3, cz);
   group.add(g);
-  // a ring of runes cut into the floor round it
+  void top; void h;
+  // runes cut into the dais round it
   const ringTex = CT.runeTexture(19, '#ffd27a');
-  const ring = new THREE.Mesh(new THREE.RingGeometry(w * 0.62, w * 0.7, 64, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: ringTex, color: new THREE.Color(1.4, 1.1, 0.6), transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  ring.position.set(cx, 0.02, cz); group.add(ring);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(w * 0.66, w * 0.76, 64, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: ringTex, color: new THREE.Color(1.4, 1.0, 0.5), transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  ring.position.set(cx, 0.32, cz); group.add(ring);
   out.spin.push({ obj: ring, rate: 0.05 });
 }
 

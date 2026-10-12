@@ -211,17 +211,8 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   check(log.some((e) => e.type === 'rideStart') && log.some((e) => e.type === 'rideEnd'), '  ride events');
 }
 
-// --- the ice slide: step into its mouth on the rim, out at the bottom of the pit
-{
-  const { me, step, put, walk } = game();
-  const R = CRUST.rides.find((r) => r.id === 'slide_hub');
-  put(R.pts[0][0] - 2.5, R.pts[0][2], 9);
-  walk(R.pts[0][0], R.pts[0][2], 3);
-  check(!!me.ride && me.ride.id === 'slide_hub', 'step into the ice slide on the rim and it takes you');
-  for (let i = 0; i < 60 * 6 && me.ride; i++) step({}, 1);
-  step({}, 60);
-  check(!me.ride && me.pos.y < 0.2, `  down into the pit (y ${me.pos.y.toFixed(2)})`);
-}
+// --- no slide in the hub any more (the spawn is the forge)
+check(!CRUST.rides.some((r) => r.id === 'slide_hub'), 'no ice slide in the hub');
 
 // --- the guns on the walls and the box
 {

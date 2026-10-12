@@ -26,6 +26,7 @@
 // =============================================================================
 import { buildIslands } from './islandKit.js';
 import { Terrain, K, STEP, shape, arcPts, wobble, deck, flight, flightPortals, spiral } from './terrain.js';
+import { SOLIDS } from './crustSolids.js';
 
 const T = 0.5;
 const R = (seed) => { let x = seed >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
@@ -142,12 +143,14 @@ function hub() {
   // anywhere and you'll tumble down it)
   t.paint(shape.ring(0, 0, 13, 23, 1.2), { kind: K.ROCK, mat: 'rock', h: (x, z) => Math.max(0.6, RIMH - 0.4 - (22.6 - Math.hypot(x, z)) * 1.3 + wobble(x, z, 0.5, 0.9)) });
   // the rim walkway, wider at the launch decks and the depot
-  t.paint(shape.ring(0, 0, 22.5, 31, 1.4), { h: RIMH, zone: RIM });
+  t.paint(shape.ring(0, 0, 22.5, 31, 1.4), { h: RIMH, zone: RIM, mat: 'flagstone' });
   for (const [x, z] of [[0, -28], [28, 0], [0, 28], [-28, 0]]) t.paint(shape.circle(x, z, 6.5, 1), { h: RIMH, zone: RIM });
   t.paint(shape.circle(22, -22, 8.5, 1.2), { h: RIMH, zone: RIM });
   // the pit floor
-  t.paint(shape.circle(0, 0, 15.5, 1.5), { h: F, zone: PIT, mat: 'snow' });
-  t.paint(shape.circle(0, 0, 8.5, 0.6), { h: F, zone: PIT, mat: 'flagstone', spawn: false });
+  t.paint(shape.circle(0, 0, 15.5, 1.5), { h: F, zone: PIT, mat: 'cobble' });
+  t.paint(shape.circle(0, 0, 8.6, 0.6), { h: F + 0.3, zone: PIT, mat: 'flagstone', spawn: false });
+  // a channel of molten iron round the dais (four bridges over it)
+  for (const a0 of [12, 102, 192, 282]) t.paint(shape.arc(0, 0, 9.0, 10.1, a0, a0 + 66), { kind: K.ROCK, mat: 'lava', h: F - 0.45 });
   // two terraces half way up, west and east: their outer edge is the rim's
   // cliff (jump down from the rim), their inner edge a drop to the floor
   t.paint(shape.arc(0, 0, 15.5, 22.6, 140, 220, 1.2), { h: TER, zone: TW, only: (k) => k === K.ROCK });
@@ -166,11 +169,9 @@ function hub() {
   for (const [a0, a1] of [[101, 121], [281, 301]]) {
     t.paint(shape.arc(0, 0, 14.6, 15.9, a0, a1), { kind: K.ROCK, mat: 'rock', h: (x, z, old) => Math.max(old, 0) + 2.4, only: (k) => k !== K.SEA });
   }
-  // an ice slide off the west rim down a chute into the pit
-  I.rides.push({ id: 'slide_hub', kind: 'slide', mouth: 1.4, pts: [[-25.3, RIMH, -6.6], [-21.5, 7.6, -5.6], [-17.6, 4.9, -4.5], [-14.0, 2.0, -3.6], [-10.6, 0.25, -2.6], [-8.2, 0.05, -2.0]] });
   // scaffold catwalks across the pit between the terraces, north and south of the Anvil
   for (const [id, z] of [['cat_n', -9], ['cat_s', 9]]) {
-    I.add(deck(id, [-19, z - 1.2, 19, z + 1.2], TER, { zone: CATS, look: 'scaffold' }), { connect: 'nswe' });
+    I.add(deck(id, [-14.4, z - 1.2, 14.4, z + 1.2], TER, { zone: CATS, look: 'stone', rails: 'ns' }), { connect: 'we' });
   }
   // debris across the bottoms of the ramps
   I.freeDoors.push({ id: 'debris_hub_west', kind: 'debris', x: Math.cos(100 * Math.PI / 180) * 17.6, z: Math.sin(100 * Math.PI / 180) * 17.6, axis: 'z', width: 4.4, height: 3.2, zones: [PIT, RAMPS], label: 'THE RAMPS' });
@@ -182,7 +183,7 @@ function hub() {
   I.wallBuys.push({ weapon: 'PM64', room: 'depot', side: 'n', t: 0.5 });
   I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2 });
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
-  I.prop('anvil', -5, -5, 5, 5, 22, { blank: true });
+  I.prop('anvil', -4.2, -4.2, 4.2, 4.2, 6.5, { blank: true });
   // a ring of rune stones round it
   const runes = ['Runic_1', 'Runic_2', 'Runic_3', 'Runic_4', 'Runic_5', 'Runic_6', 'Runic_7'];
   runes.forEach((k, i) => {
@@ -214,6 +215,34 @@ function hub() {
   I.pads.push({ id: 'pad_hub_e', x: 28, z: 0, to: 'pad_research', label: 'the Research Base' });
   I.pads.push({ id: 'pad_hub_s', x: 0, z: 28, to: 'pad_trench', label: 'the Trench Front' });
   I.pads.push({ id: 'pad_hub_w', x: -28, z: 0, to: 'pad_caves', label: 'the Ice Caves' });
+  // the forge's curtain wall round the rim: tall dressed stone with battlements and
+  // round towers, down to a parapet where the launchers fling you over it
+  {
+    const WALLH = RIMH + 6.5, deg = (a) => a * Math.PI / 180;
+    const pads = [0, 90, 180, 270];
+    const angOf = (x, z) => ((Math.atan2(z, x) * 180 / Math.PI) + 360) % 360;
+    const near = (a, b, w) => Math.abs(((a - b + 540) % 360) - 180) < w;
+    const depot = [16.4, -26.6, 26.6, -18.4];
+    const notDepot = (x, z) => !(x > depot[0] && x < depot[2] && z > depot[1] && z < depot[3]);
+    t.paint(shape.ring(0, 0, 31.2, 33.8, 0.9), {
+      kind: K.ROCK, mat: 'wall', only: (k, c) => k !== K.SEA && notDepot(t.cx(c % t.nx), t.cz(Math.floor(c / t.nx))),
+      h: (x, z) => {
+        const a = angOf(x, z);
+        if (pads.some((p) => near(a, p, 10))) return RIMH + 1.1;
+        const arc = (a * Math.PI / 180) * 32.5;
+        return WALLH + (Math.floor(arc / 1.7) % 2 ? 1.2 : 0);
+      },
+    });
+    // outside the wall the rock falls away (nothing up there to get stranded on)
+    t.paint(shape.ring(0, 0, 33.8, 44, 0.6), {
+      kind: K.ROCK, mat: 'rock', only: (k, c) => k !== K.SEA && k !== K.ROCK && notDepot(t.cx(c % t.nx), t.cz(Math.floor(c / t.nx))),
+      h: (x, z) => Math.max(0.8, RIMH - 1.6 - (Math.hypot(x, z) - 33.8) * 0.95 + wobble(x, z, 0.6, 0.5)),
+    });
+    for (const a of [45, 135, 225, ...pads.flatMap((p) => [p - 13, p + 13])]) {
+      const x = Math.cos(deg(a)) * 32.6, z = Math.sin(deg(a)) * 32.6;
+      t.paint(shape.circle(x, z, 2.7, 0.8), { kind: K.ROCK, mat: 'wall', h: (px, pz) => WALLH + 3 + (Math.floor((Math.atan2(pz - z, px - x) + Math.PI) / (Math.PI / 4)) % 2 ? 1.1 : 0) });
+    }
+  }
   // the ancient forge: torches round the pit floor and flanking the launch decks,
   // broken pillars on the terraces, rubble walls along the rim's edge, stone
   // arches standing out on the slopes, an old well in the pit
@@ -241,7 +270,7 @@ function hub() {
   I.model({ a: 'well', x: -11.5, y: F, z: -2, yaw: 0.4, fit: { h: 2.8 } }, { collide: [-11.5, -2, 1.5, 1.5, 2.2] });
   I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5]];
   I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
-  I.playerSpawns = [{ x: -3, z: 11, yaw: Math.PI }, { x: 3, z: 11, yaw: Math.PI }, { x: -3, z: 13, yaw: Math.PI }, { x: 3, z: 13, yaw: Math.PI }];
+  I.playerSpawns = [{ x: -3, z: 12.5, yaw: 0 }, { x: 3, z: 12.5, yaw: 0 }, { x: -3, z: 14, yaw: 0 }, { x: 3, z: 14, yaw: 0 }];
   return I;
 }
 
@@ -623,6 +652,41 @@ function trench() {
   return I;
 }
 
+// A solid model's collision: its height grid as boxes (rows merged where the
+// heights match), standing on the ground. `skip` rects get none (a hold you walk
+// in); within a `floors` rect only what stands above that floor counts (rails,
+// masts, cabins on a deck). The tall parts block the zombies' paths too.
+function modelSolid(t, m) {
+  const S = SOLIDS[m.solid];
+  if (!S) return [];
+  const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
+  const boxes = [];
+  const lift = m.minLift ?? 0.2;
+  S.rows.forEach((row, k) => {
+    const hs = row.split(',').map(Number);
+    let run = null;
+    const flush = () => { if (run) boxes.push(run); run = null; };
+    for (let i = 0; i < S.nx; i++) {
+      const x = S.x0 + (i + 0.5) * S.cell, z = S.z0 + (k + 0.5) * S.cell;
+      let h = hs[i] / 10;
+      if (hs[i] < 0 || (m.skip || []).some((r) => inR(r, x, z))) { flush(); continue; }
+      const c = t.cellAt(x, z);
+      const g = c >= 0 ? t.h[c] : 0;
+      let lo = g - 0.3;
+      const fl = (m.floors || []).find(([r]) => inR(r, x, z));
+      if (fl) { if (h <= fl[1] + 0.6) { flush(); continue; } lo = fl[1]; }
+      if (h < g + lift) { flush(); continue; }
+      if (m.cap != null) h = Math.min(h, m.cap);
+      if (c >= 0 && !fl && h > g + 1 && t.kind[c] === K.GROUND) { t.kind[c] = K.ROOM; t.spawn[c] = 0; }
+      if (run && Math.abs(run.maxY - h) <= 0.15 && run.minY === lo && Math.abs(run.maxX - (x - S.cell / 2)) < 1e-6) { run.maxX = x + S.cell / 2; run.maxY = Math.max(run.maxY, h); continue; }
+      flush();
+      run = { minX: x - S.cell / 2, maxX: x + S.cell / 2, minZ: z - S.cell / 2, maxZ: z + S.cell / 2, minY: lo, maxY: h, kind: 'model', terrain: t.id };
+    }
+    flush();
+  });
+  return boxes;
+}
+
 // distance from a point to the edge of a polygon
 function polyEdge(pts, x, z) {
   let d = Infinity;
@@ -782,6 +846,9 @@ for (const I of ISLES) {
     t.paint(shape.rect(p.x0 - 0.3, p.z0 - 0.3, p.x1 + 0.3, p.z1 + 0.3), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });
   }
   for (const f of I.later) f();
+  // the models you can't walk through: their height grids (tools/crust/solids.mjs) as boxes
+  const solidBoxes = [];
+  for (const m of I.models || []) if (m.solid) solidBoxes.push(...modelSolid(t, m));
   t.fillPits();
   // where a deck runs out over ground at its own height (a catwalk's ends on
   // the terraces), the deck owns that bit (no two places in one spot)
@@ -914,7 +981,7 @@ for (const I of ISLES) {
     const room = ROOMS.rooms.find((q) => q.id === b.room);
     out.boxSpots.push({ ...b, y: b.y ?? (room ? room.y || 0 : t.heightAt(b.x, b.z)) });
   }
-  out.terrainBoxes.push(...t.boxes(), ...gateBoxes);
+  out.terrainBoxes.push(...t.boxes(), ...gateBoxes, ...solidBoxes);
   for (const { s } of I.structs) {
     out.terrainBoxes.push(...s.boxes);
     out.structures.push({ island: I.id, id: s.id, look: s.look, boxes: s.boxes, rails: s.rails, rect: s.rect, y: s.y, kind: s.parts ? 'spiral' : s.dir ? 'flight' : 'deck', dir: s.dir, size: s.size, cx: s.cx, cz: s.cz, y0: s.y0, y1: s.y1 });

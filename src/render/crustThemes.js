@@ -9,6 +9,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as T from './textures.js';
+import { surface } from './crustSurfaces.js';
 
 const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 
@@ -65,50 +66,67 @@ function mat({ map, glow }, o = {}) {
 }
 
 // The ground materials for each island, by surface: top (where you walk),
-// rocktop (on top of the rock), cliff (its faces), and the special ones.
+// rocktop (on top of the rock), cliff (its faces: walls never look like the
+// floor), the special floors (cobble, flagstone, mud, planks, duckboard, lava,
+// ice), the trench walls, the cave ceilings and the rock underneath.
+// Photo surfaces (src/render/crustSurfaces.js); the lava and the glowing
+// cracks in the Trench Front's ground are still painted.
 let cache = null;
 export function themeMaterials(base) {
   if (cache) return cache;
   const ember = 'rgba(255,120,30,0.95)';
-  const forgeTop = groundTex(11, { base: [34, 30, 36], vary: 10, flecks: '90,80,70', cracks: { count: 40, width: 1.6, dark: 'rgba(10,8,8,0.8)', glow: 'rgba(255,190,90,0.85)' }, glowK: 0.28 });
-  const forgeRock = groundTex(12, { base: [40, 36, 40], vary: 16, flecks: '120,110,100', strata: '10,8,10', glowK: 0.24, cracks: { count: 14, width: 1, dark: null, glow: 'rgba(255,150,60,0.6)' } });
-  const scorched = groundTex(21, { base: [44, 30, 24], vary: 16, flecks: '110,100,96', cracks: { count: 70, width: 2.2, dark: 'rgba(12,6,4,0.9)', glow: ember }, glowK: 0.26 });
-  const scorchRock = groundTex(22, { base: [58, 38, 30], vary: 18, strata: '20,10,6', flecks: '30,20,16', glowK: 0.24, cracks: { count: 20, width: 1.4, dark: null, glow: 'rgba(255,110,30,0.7)' } });
+  const scorched = groundTex(21, { base: [44, 30, 24], vary: 16, flecks: '110,100,96', cracks: { count: 70, width: 2.2, dark: 'rgba(12,6,4,0.9)', glow: ember }, glowK: 0.0 });
   const lava = groundTex(23, { base: [255, 110, 20], vary: 50, flecks: '255,220,120', cracks: { count: 60, width: 4, dark: 'rgba(60,10,0,0.9)', glow: 'rgba(80,20,0,0.9)' }, glowK: 1 });
-  const metal = groundTex(31, { base: [52, 56, 70], vary: 12, flecks: '150,160,190', cracks: { count: 22, width: 1, dark: 'rgba(16,16,24,0.6)', glow: 'rgba(170,120,255,0.75)' }, glowK: 0.3 });
-  const metalRock = groundTex(32, { base: [44, 46, 60], vary: 16, strata: '20,20,34', flecks: '120,120,160', glowK: 0.26, cracks: { count: 10, width: 1, dark: null, glow: 'rgba(160,110,255,0.55)' } });
-  const dust = groundTex(41, { base: [128, 112, 90], vary: 18, flecks: '70,60,50', glowK: 0.34 });
-  const sandstone = groundTex(42, { base: [116, 100, 82], vary: 16, strata: '60,48,36', flecks: '150,136,110', glowK: 0.3 });
-  const mud = groundTex(43, { base: [98, 80, 62], vary: 14, cracks: { count: 120, width: 1.6, dark: 'rgba(40,30,22,0.9)', glow: null }, glowK: 0.3 });
+  scorched.glow.repeat.set(1 / 6, 1 / 6);
   cache = {
-    hub: { top: mat(forgeTop, { rough: 0.7, metal: 0.15 }), rocktop: mat(forgeRock), cliff: mat(forgeRock, { rep: 1 / 5, bump: 2 }), flagstone: base.flagstone },
-    trench: { top: mat(scorched, { bump: 1 }), rocktop: mat(scorchRock), cliff: mat(scorchRock, { rep: 1 / 5, bump: 2 }), lava: mat(lava, { glowColor: '#ffffff', glowI: 1.6, rough: 0.6 }) },
-    research: { top: mat(metal, { rough: 0.7, metal: 0.25 }), rocktop: mat(metalRock), cliff: mat(metalRock, { rep: 1 / 5, bump: 2 }) },
-    ship: { top: mat(dust, { bump: 1 }), rocktop: mat(sandstone), cliff: mat(sandstone, { rep: 1 / 5, bump: 2 }), mud: mat(mud) },
-    caves: {},
+    hub: {
+      top: surface('stone_floor', { scale: 2.5, tint: '#b8a898', glow: 0.18 }),
+      cobble: surface('cobblestone_floor_08', { scale: 2.2, tint: '#a8a0a0', glow: 0.16 }),
+      flagstone: surface('stone_floor', { scale: 4, tint: '#9a8c80', glow: 0.18 }),
+      rocktop: surface('lichen_rock', { scale: 5, tint: '#8a8078', glow: 0.14 }),
+      cliff: surface('rock_wall_10', { scale: 3.2, tint: '#a89888', glow: 0.16, normal: 1.4 }),
+      wall: surface('rock_wall_08', { scale: 2.6, tint: '#b8aca0', glow: 0.17, normal: 1.3 }),
+      wallTop: surface('stone_floor', { scale: 2.5, tint: '#a09080', glow: 0.16 }),
+      under: surface('lichen_rock', { scale: 9, tint: '#6a6058', glow: 0.1, side: THREE.DoubleSide }),
+    },
+    trench: {
+      top: surface('brown_mud_dry', { scale: 3, tint: '#8a6656', glowMap: scorched.glow, glowColor: '#ffffff', glowI: 1 }),
+      duckboard: surface('dark_wooden_planks', { scale: 2.2, tint: '#a08870', glow: 0.18 }),
+      trench: surface('wood_planks_dirt', { scale: 2.4, tint: '#a08870', glow: 0.16 }),
+      rocktop: surface('rock_face', { scale: 4, tint: '#8a5a48', glow: 0.14 }),
+      cliff: surface('rock_face', { scale: 4, tint: '#7a4c3c', glow: 0.14, normal: 1.3 }),
+      lava: mat(lava, { glowColor: '#ffffff', glowI: 1.6, rough: 0.6 }),
+      under: surface('rock_face', { scale: 9, tint: '#5a3a30', glow: 0.1, side: THREE.DoubleSide }),
+    },
+    research: {
+      top: surface('concrete_floor_02', { scale: 4, tint: '#a8a8b4', glow: 0.18 }),
+      concrete: surface('concrete_wall_008', { scale: 3, tint: '#a0a0a8', glow: 0.18 }),
+      rocktop: surface('rock_face_03', { scale: 4, tint: '#8a88a0', glow: 0.14 }),
+      cliff: surface('rock_face_03', { scale: 4, tint: '#7a7890', glow: 0.14, normal: 1.3 }),
+      under: surface('rock_face_03', { scale: 9, tint: '#55546a', glow: 0.1, side: THREE.DoubleSide }),
+    },
+    ship: {
+      top: surface('coast_sand_01', { scale: 3.5, tint: '#c8b8a0', glow: 0.18 }),
+      mud: surface('muddy_tracks', { scale: 3, tint: '#8a7a68', glow: 0.14 }),
+      planks: surface('brown_planks_05', { scale: 2.5, tint: '#c0b0a0', glow: 0.18 }),
+      rocktop: surface('coast_land_rocks_01', { scale: 4, tint: '#a09484', glow: 0.14 }),
+      cliff: surface('coast_land_rocks_01', { scale: 4, tint: '#8a7c6c', glow: 0.14, normal: 1.3 }),
+      under: surface('coast_land_rocks_01', { scale: 9, tint: '#5a5248', glow: 0.1, side: THREE.DoubleSide }),
+    },
+    caves: {
+      top: surface('snow_02', { scale: 3, tint: '#dce4f0', glow: 0.22 }),
+      rocktop: surface('snow_02', { scale: 4, tint: '#c4cede', glow: 0.2 }),
+      ice: surface('snow_02', { scale: 4, tint: '#9cc4e4', glow: 0.22, rough: 0.35, metal: 0.05, normal: 0.6 }),
+      iceside: surface('rock_face_03', { scale: 3, tint: '#a8cce8', glow: 0.22, rough: 0.4, normal: 1.2 }),
+      cave: surface('rock_face_03', { scale: 3, tint: '#6a88a4', glow: 0.18 }),
+      cliff: surface('lichen_rock', { scale: 4, tint: '#8a98b0', glow: 0.14, normal: 1.3 }),
+      planks: surface('dark_wooden_planks', { scale: 2.2, tint: '#a09080', glow: 0.18 }),
+      under: surface('rock_face_03', { scale: 9, tint: '#506478', glow: 0.1, side: THREE.DoubleSide }),
+    },
   };
-  // the photographed dry dirt under the trench front and the ship graveyard (the
-  // glowing cracks stay): swapped in once it's loaded
-  photoGround('assets/crust/dirt.webp', [[cache.trench.top, '#9a6a58'], [cache.ship.top, '#d8c4a4'], [cache.ship.mud, '#8a7462']]);
   return cache;
 }
 
-function photoGround(url, uses) {
-  new THREE.TextureLoader().load(url, (t) => {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
-    for (const [m, tint] of uses) {
-      const tex = t.clone();
-      tex.repeat.copy(m.map.repeat);
-      tex.needsUpdate = true;
-      m.map = tex;
-      m.color = new THREE.Color(tint);
-      if (m.bumpMap) m.bumpMap = tex;
-      m.needsUpdate = true;
-    }
-  });
-}
 
 // The sky out in space: stars all round, a nebula band, no horizon.
 export function spaceTexture() {
