@@ -8,6 +8,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { loadModel } from './gltfLite.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 const BASE = 'assets/crust/';
 const sanitize = (s) => String(s || '').replace(/\s/g, '_').replace(/[[\]\.:\/]/g, '');
@@ -79,6 +80,34 @@ export function buildModels(out, group, map) {
       const size = b.getSize(new THREE.Vector3());
       // its foot at the origin, centred
       const T0 = new THREE.Matrix4().makeTranslation(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+      // a model that moves (a wind turbine's blades, a rat): a copy each, and its clips playing
+      if (G.list[0].anim) {
+        for (const s of G.list) {
+          let k = s.scale ?? 1;
+          if (s.fit) k = s.fit.h ? s.fit.h / size.y : s.fit.len ? s.fit.len / Math.max(size.x, size.z) : s.fit.w ? s.fit.w / Math.min(size.x, size.z) : k;
+          const holder = new THREE.Group();
+          holder.position.set(s.x, s.y ?? 0, s.z);
+          holder.rotation.set(s.rx || 0, s.yaw || 0, s.rz || 0, 'YXZ');
+          holder.scale.setScalar(k);
+          const c = cloneSkinned(gltf.scene);
+          c.position.set(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+          c.traverse((o) => { if (o.isMesh) { o.material = Array.isArray(o.material) ? o.material.map((mm) => settle(mm, G.look)) : settle(o.material, G.look); o.frustumCulled = false; o.userData.noBake = true; } });
+          holder.add(c);
+          root.add(holder);
+          if (gltf.animations && gltf.animations.length) {
+            const mixer = new THREE.AnimationMixer(c);
+            const clips = s.clip ? gltf.animations.filter((a) => a.name.includes(s.clip)) : gltf.animations;
+            for (const clip of clips.length ? clips : gltf.animations.slice(0, 1)) mixer.clipAction(clip).play();
+            mixer.timeScale = s.animSpeed ?? 1;
+            mixer.update(Math.random() * 10);
+            (out.mixers || (out.mixers = [])).push(mixer);
+          }
+          if (s.tag) (out.tagged || (out.tagged = {}))[s.tag] = holder;
+          // a critter that runs along a path (round a room, up and down a trench)
+          if (s.path) (out.movers || (out.movers = [])).push({ holder, path: s.path, speed: s.speed || 1, d: (s.phase || 0) * 3, pingpong: !!s.pingpong, y: s.y ?? 0, turn: s.turn ?? -Math.PI / 2 });
+        }
+        return;
+      }
       const placements = G.list.map((s) => {
         let k = s.scale ?? 1;
         if (s.fit) k = s.fit.h ? s.fit.h / size.y : s.fit.len ? s.fit.len / Math.max(size.x, size.z) : s.fit.w ? s.fit.w / Math.min(size.x, size.z) : k;
@@ -106,5 +135,29 @@ export function buildModels(out, group, map) {
         root.add(im);
       }
     });
+  }
+}
+
+// Move the critters along their paths (a loop, or there and back).
+export function updateMovers(out, dt) {
+  for (const M of out.movers || []) {
+    const P = M.path;
+    if (!M.len) {
+      M.segs = [];
+      const pts = M.pingpong ? P : [...P, P[0]];
+      for (let i = 0; i < pts.length - 1; i++) M.segs.push([pts[i], pts[i + 1], Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])]);
+      M.len = M.segs.reduce((a, s) => a + s[2], 0) || 1;
+    }
+    M.d += dt * M.speed;
+    let d = M.d % (M.pingpong ? M.len * 2 : M.len), back = false;
+    if (M.pingpong && d > M.len) { d = M.len * 2 - d; back = true; }
+    for (const [a, b, l] of M.segs) {
+      if (d > l) { d -= l; continue; }
+      const u = l ? d / l : 0;
+      M.holder.position.set(a[0] + (b[0] - a[0]) * u, M.y, a[1] + (b[1] - a[1]) * u);
+      const dx = (b[0] - a[0]) * (back ? -1 : 1), dz = (b[1] - a[1]) * (back ? -1 : 1);
+      M.holder.rotation.y = Math.atan2(dx, dz) + (M.turn || 0);
+      break;
+    }
   }
 }

@@ -12,7 +12,8 @@
 // =============================================================================
 import * as THREE from 'three';
 import { buildGround, buildStructures, buildRides, buildDecor, buildPines } from './crustTerrain.js';
-import { buildModels } from './crustModels.js';
+import { buildModels, updateMovers } from './crustModels.js';
+import { loadModel } from './gltfLite.js';
 import { ATMOS, PARTICLES, spaceTexture } from './crustThemes.js';
 import * as T from './textures.js';
 import * as CT from './crustTextures.js';
@@ -418,6 +419,57 @@ function islandsOf(map) {
 }
 
 // --- the sky: a dome that follows the camera, with planets in it ---------------------------
+// Out in space: the planets (assets/crust/planets.glb), hung round the sky,
+// each turning slowly, its clouds a little faster.
+function spacePlanets(out, sky) {
+  out.planets = [];
+  const place = [
+    ['planet_gas', [0.75, 0.38, -0.6], 34], ['planet_smac', [-0.6, 0.62, -0.4], 12], ['planet_continental', [-0.4, 0.22, 0.9], 18],
+    ['planet_frozen', [0.85, 0.16, 0.5], 10], ['planet_lava', [0.1, 0.55, 0.85], 8], ['planet_', [-0.9, 0.1, -0.1], 15],
+  ];
+  loadModel('assets/crust/planets.glb').then((g) => {
+    if (!g) return;
+    g.scene.updateMatrixWorld(true);
+    const roots = g.scene.children[0] ? (g.scene.children[0].children.length > 3 ? g.scene.children[0].children : g.scene.children) : [];
+    const groups = new Map();   // planet -> its meshes (the body and its clouds)
+    let deep = roots;
+    while (deep.length === 1 && deep[0].children.length) deep = deep[0].children;
+    for (const n of deep) {
+      const key = n.name.replace(/_?(cloud|clouds)[^_]*/i, '').replace(/(_\d+)+$/, '');
+      if (!groups.has(key)) groups.set(key, []);
+      n.traverse((o) => { if (o.isMesh) groups.get(key).push({ o, cloud: /cloud/i.test(n.name) }); });
+    }
+    const used = new Set();
+    for (const [want, dir, size] of place) {
+      const key = [...groups.keys()].find((k) => k.startsWith(want) && !used.has(k));
+      if (!key) continue;
+      used.add(key);
+      const parts = groups.get(key);
+      const box = new THREE.Box3();
+      for (const { o } of parts) box.expandByObject(o);
+      const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2 || 1;
+      const holder = new THREE.Group();
+      holder.position.copy(new THREE.Vector3(...dir).normalize().multiplyScalar(175));
+      holder.scale.setScalar(size / r);
+      for (const { o, cloud } of parts) {
+        const m = new THREE.Mesh(o.geometry, [].concat(o.material).map((mm) => {
+          const k = mm.clone();
+          k.fog = false;
+          if (k.map && !cloud) { k.emissiveMap = k.map; k.emissive = new THREE.Color(0.55, 0.55, 0.6); }
+          return k;
+        })[0]);
+        m.matrixAutoUpdate = false;
+        m.matrix.copy(o.matrixWorld).premultiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+        m.renderOrder = -9;
+        const spin = new THREE.Group(); spin.add(m); holder.add(spin);
+        out.planets.push({ g: spin, rate: (cloud ? 0.02 : 0.008) * (0.6 + Math.random()) });
+      }
+      holder.rotation.set(Math.random() * 0.6, Math.random() * 6, 0.3);
+      sky.add(holder);
+    }
+  });
+}
+
 function buildSky(out, group, fog, space = false) {
   const sky = new THREE.Group();
   sky.renderOrder = -10;
@@ -439,9 +491,12 @@ function buildSky(out, group, fog, space = false) {
       sky.add(rg);
     }
   };
-  planet('ringed', [0.75, 0.42, -0.6], 26, true);
-  planet('red', [-0.6, 0.7, -0.35], 9);
-  planet('moon', [-0.35, 0.3, 0.88], 14);
+  if (space) spacePlanets(out, sky);
+  else {
+    planet('ringed', [0.75, 0.42, -0.6], 26, true);
+    planet('red', [-0.6, 0.7, -0.35], 9);
+    planet('moon', [-0.35, 0.3, 0.88], 14);
+  }
   group.add(sky);
   out.sky = sky;
   const moon = new THREE.DirectionalLight(0x9fb4e0, 0.55);
@@ -1357,6 +1412,9 @@ function buildSnow(out, group, r) {
 function updateCrust(W, dt, eye, time) {
   if (!eye) return;
   W.sky.position.copy(eye);
+  for (const m of W.mixers || []) m.update(dt);
+  updateMovers(W, dt);
+  for (const P of W.planets || []) P.g.rotation.y += P.rate * dt;
   W.ring.position.set(eye.x, 0, eye.z);
   if (W.atmos) updateAtmosphere(W, dt, eye, time);
   // the plant: never further than D away (pulled in toward the eye, same size on screen)

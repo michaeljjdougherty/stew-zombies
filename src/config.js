@@ -1028,6 +1028,64 @@ export const CONFIG = {
       cooldown: 45,          // s after that before you can call again
     },
     voidY: -30,              // fall below this (off an island, into space) and you're gone
+    // the egg: each island's titan guards its War Hammer core (src/sim/crustEgg.js)
+    egg: {
+      reward: 2500,          // points to everyone still in the game when a titan falls
+      carrySlow: 0.92,       // walking speed while you carry a core, the clapper, the cutters
+      pushDecay: 4,          // how fast a shove (a gust, a slam) dies away (1/s)
+      // The Drowned Captain (Ship Graveyard): a giant pirate head that spits skeletons
+      ship: {
+        waves: [6, 9, 12, 16], perPlayer: 3,   // skeletons a wave (+ per extra player)
+        spitEvery: [0.7, 1.4],  // s between skeletons out of its mouth
+        flight: 1.3,            // s a skeleton flies before it lands
+        maxUp: 14,              // skeletons up at once
+        health: 0.9,            // x a zombie's health this round
+        between: 7,             // s of quiet between waves
+        inhaleEvery: [16, 24],  // s between its breaths
+        inhaleWarn: 1.8,        // s of it rearing back first
+        inhaleTime: 3.4,        // s it pulls at you (toward the edge)
+        pull: 5.2,              // m/s at the edge of the island (less further off)
+        reach: 75,              // m it pulls from
+        exhaleTime: 1.0, push: 9, // and the gust back out
+      },
+      // The Warden (Research Base): a shielded walker only the tesla coils can hurt
+      research: {
+        strikes: 4,             // coil strikes to overload it
+        charge: 2.4,            // s to hold [F] at a coil's console to charge it
+        coilRange: 7.5,         // m: a charged coil fires when the Warden walks this close
+        recharge: 9,            // s before a coil can be charged again
+        stun: 5,                // s it stands smoking after a strike
+        speed: 2.7,             // m/s
+        stompRange: 4.6, stompWarn: 0.9, stompDamage: 75, stompPush: 8,
+        laserEvery: [6, 9], laserWarn: 1.3, laserLen: 32, laserWidth: 1.5, laserDamage: 60,
+        addsEvery: 10, adds: 2, // lab zombies it calls in
+      },
+      // The Glacier Golem (Ice Caves): only falling ice cracks it; a knife finishes the job
+      caves: {
+        hearts: 3,              // knife blows to its exposed heart
+        fall: 0.9,              // s for an icicle cluster to come down
+        hitRadius: 3.6,         // m from where it lands that it catches the golem
+        crushRadius: 2.4, crushDamage: 70,   // (and anyone under it)
+        stun: 7,                // s it kneels, heart showing
+        regrow: 32,             // s for a cluster to grow back
+        speed: 2.4,
+        slamRange: 3.8, slamWarn: 1.0, slamDamage: 80, slamPush: 9,
+        shardsEvery: [5, 8], shards: 3, shardWarn: 1.3, shardRadius: 2.0, shardDamage: 45,
+        novaEvery: [14, 18], novaWarn: 1.2, novaRadius: 9, slow: 0.45, slowTime: 2.5,
+      },
+      // The Molten Fiend (Trench Front): bullets do nothing; the field guns do
+      trench: {
+        hits: 5,                // field-gun shells to put it down
+        flight: 1.8,            // s from the gun to the bang
+        hitRadius: 4.2,         // m: where the shell lands vs where it is
+        reload: 8,              // s between shots from one gun
+        range: 90,              // m the guns reach
+        speed: 2.3,
+        lobEvery: [4.5, 7], lobs: 3, lobWarn: 1.5, lobRadius: 2.6, lobDamage: 55,
+        burnTime: 6, burnRadius: 2.0, burnDps: 22,
+        eruptEvery: [11, 15], eruptTime: 4.2, eruptRadius: 11, eruptDamage: 95,
+      },
+    },
     // ziplines and ice slides
     ride: {
       hang: 2.0,             // m your feet hang below a zipline's cable

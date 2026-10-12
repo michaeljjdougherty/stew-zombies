@@ -1,29 +1,27 @@
 // =============================================================================
 // MAP DATA — Call of the Crust (Map 2).
 //
-// A frozen sea on a snow planet, and five islands in it, each its own place
-// with high ground and low ground, ramps and stairs and ledges you can jump
-// off when a train gets away from you:
+// Five islands adrift in space, each on its own meteor with its own air, its
+// own dead and its own War Hammer element (step off an edge and you're gone):
 //
-//                          SHIP GRAVEYARD  (Ice)
-//          a lighthouse with a zipline down to an icebreaker you can walk,
-//          a capsized hull to walk along and drop into, pack ice up onto roofs
+//                          SHIP GRAVEYARD  (Wind)
+//          a lighthouse on a mesa, a zipline down to a wrecked galleon,
+//          a capsized hull, wind turbines; a giant head sleeps past the cliffs
 //                                   ^
-//   ICE CAVES  (Wind)   <-----   THE ANVIL   ----->   RESEARCH BASE  (Lightning)
-//   a great cavern, ice shelves   a sunken quarry:    a radio mast with two
-//   up toppled pillars, a frozen  you start at the    platforms, the observatory's
-//   waterfall to climb out to     bottom, ramps wind  ramp up to the telescope,
-//   the Wind Summit               up to the rim       tesla catwalks
+//   ICE CAVES  (Ice)    <-----   THE ANVIL   ----->   RESEARCH BASE  (Lightning)
+//   a great cavern, ice shelves   an ancient forge:   a radio mast, the observatory,
+//   up toppled pillars, a frozen  a quarry pit with   tesla coils in a storm; the
+//   waterfall up to the summit    torches and ruins   Warden powered down
 //                                   |
 //                                   v
 //                           TRENCH FRONT  (Fire)
-//          zig-zag trenches facing the sea, communication trenches to a
-//          concrete fort: two floors, a sandbagged roof, a radio lookout
+//          a molten battlefield: you keep to the trenches (up top is shelled
+//          and wired off), the fort, the field guns, a crater with a fiend in it
 //
 // The ground is sculpted on a grid (src/map/terrain.js); buildings are rooms
 // (src/map/islandKit.js) standing on it; decks, stairs and spiral stairs go on
 // top. Launchers fling you between the Anvil's rim and each island. Later:
-// build an island's War Hammer and an ice bridge forms back to the hub.
+// beat an island's titan for its War Hammer core; ice bridges back to the hub.
 // Axes: +X east, +Y up, -Z north. Metres.
 // =============================================================================
 import { buildIslands } from './islandKit.js';
@@ -54,6 +52,15 @@ class Isle {
   model(spec, { collide } = {}) {
     (this.models ||= []).push(spec);
     if (collide) { const [x, z, hw, hd, h] = collide; this.prop('model', x - hw, z - hd, x + hw, z + hd, h); }
+  }
+  // a burning torch: its model, a box round it, its fire's light
+  torch(zone, x, z, o = {}) {
+    const h = o.h ?? 2.6;
+    this.later.push(() => {
+      const y = o.y ?? this.t.heightAt(x, z);
+      this.model({ a: 'torch', x, y, z, yaw: x * 1.7, fit: { h }, look: { glowK: 0.25 } }, { collide: [x, z, 0.22, 0.22, h] });
+      this.zones.get(zone).fixtures.push({ x, y: y + h - 0.15, z, lit: true, flicker: 0.6, kind: 'torch' });
+    });
   }
   // a portal between whatever's at two points ([x, z, y]): `at` where it is
   portal(a, b, at, axis, width, o = {}) { this.portalSpecs.push({ a, b, at, axis, width, ...o }); }
@@ -207,6 +214,31 @@ function hub() {
   I.pads.push({ id: 'pad_hub_e', x: 28, z: 0, to: 'pad_research', label: 'the Research Base' });
   I.pads.push({ id: 'pad_hub_s', x: 0, z: 28, to: 'pad_trench', label: 'the Trench Front' });
   I.pads.push({ id: 'pad_hub_w', x: -28, z: 0, to: 'pad_caves', label: 'the Ice Caves' });
+  // the ancient forge: torches round the pit floor and flanking the launch decks,
+  // broken pillars on the terraces, rubble walls along the rim's edge, stone
+  // arches standing out on the slopes, an old well in the pit
+  const deg = (a) => a * Math.PI / 180;
+  for (const a of [20, 120, 165, 195, 240, 300, 335]) I.torch(PIT, Math.cos(deg(a)) * 13.4, Math.sin(deg(a)) * 13.4);
+  for (const a of [-13, 13, 77, 103, 167, 193, 257, 283]) I.torch(RIM, Math.cos(deg(a)) * 26.8, Math.sin(deg(a)) * 26.8, { h: 2.9 });
+  for (const a of [172, 188, 352, 8]) {
+    const x = Math.cos(deg(a)) * 20.4, z = Math.sin(deg(a)) * 20.4;
+    I.model({ a: 'pillar', x, y: TER - 0.1, z, yaw: a, fit: { h: 5.5 + (a % 3) }, look: { tint: '#8a7e78' } }, { collide: [x, z, 0.85, 0.85, 7] });
+  }
+  I.later.push(() => {
+    [[30, 'wall2'], [125, 'wall3'], [145, 'wall2'], [215, 'wall3'], [235, 'wall2'], [60, 'wall3']].forEach(([a, w], i) => {
+      const x = Math.cos(deg(a)) * 31.4, z = Math.sin(deg(a)) * 31.4;
+      I.model({ a: w, x, y: t.heightAt(x, z) - 0.35, z, yaw: -deg(a) + Math.PI / 2 + (i % 2 ? Math.PI : 0), fit: { len: 7.5 }, look: { tint: '#7a7070' } });
+    });
+    for (const [a, r] of [[135, 37], [225, 37], [45, 39]]) {
+      const x = Math.cos(deg(a)) * r, z = Math.sin(deg(a)) * r;
+      I.model({ a: 'gate', x, y: t.heightAt(x, z) - 0.6, z, yaw: -deg(a), fit: { h: 6.5 }, look: { tint: '#9a9088' } });
+    }
+    for (const [a, r] of [[160, 36], [205, 35]]) {
+      const x = Math.cos(deg(a)) * r, z = Math.sin(deg(a)) * r;
+      I.model({ a: 'wall1', x, y: t.heightAt(x, z) - 0.5, z, yaw: -deg(a) + Math.PI / 2, fit: { h: 3.6 }, look: { tint: '#857a74' } });
+    }
+  });
+  I.model({ a: 'well', x: -11.5, y: F, z: -2, yaw: 0.4, fit: { h: 2.8 } }, { collide: [-11.5, -2, 1.5, 1.5, 2.2] });
   I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5]];
   I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
   I.playerSpawns = [{ x: -3, z: 11, yaw: Math.PI }, { x: 3, z: 11, yaw: Math.PI }, { x: -3, z: 13, yaw: Math.PI }, { x: 3, z: 13, yaw: Math.PI }];
@@ -322,6 +354,15 @@ function ship() {
   I.prop('barrel', 33.65, -186.35, 34.35, -185.65, 0.95, { fire: true });
   I.lamp(PIER, 6, -118); I.lamp(VIL, -26, -140, { flicker: 0.15 }); I.lamp(PT, -30, -180, { flicker: 0.1 });
   I.lamp(WRK, 34, -140, { flicker: 0.3 }); I.lamp(HAR, -4, -168, { flicker: 0.2 });
+  // wind turbines turning on the rocks, fencing along the village and the pier,
+  // planks blown off the wrecks
+  I.later.push(() => {
+    for (const [x, z, h] of [[14, -204, 15], [46, -194, 17], [53, -168, 13], [-50, -168, 12]]) I.model({ a: 'turbine', anim: true, animSpeed: 0.7 + (x % 3) * 0.1, x, y: t.heightAt(x, z) - 0.3, z, yaw: 0.2, fit: { h } }, { collide: [x, z, 0.6, 0.6, h * 0.6] });
+  });
+  for (const [x, z, yaw] of [[-27, -120, 0], [-48, -132, 1.57], [11, -116, 0.3]]) I.model({ a: 'fence', x, y: G, z, yaw, fit: { h: 1.3 }, look: { tint: '#6a6058' } });
+  for (const [x, z, yaw] of [[32, -152, 0.4], [24, -176, 2.1], [-14, -150, 1.1], [6, -186, 2.8]]) I.model({ a: 'planks', x, y: BAS + 0.05, z, yaw, fit: { len: 4.5 }, look: { tint: '#8a7a68' } });
+  // the Drowned Captain, sleeping out in the dark past the north cliffs
+  I.model({ a: 'pirathead', x: 9, y: -1.5, z: -221, yaw: -Math.PI / 2 + 0.15, rx: 0.1, fit: { h: 13 }, look: { glow: '#5a6a58' } });
   I.pads.push({ id: 'pad_ship', x: 0, z: -114, to: 'pad_hub_n', label: 'the Anvil' });
   return I;
 }
@@ -431,6 +472,12 @@ function research() {
   I.prop('crate', 125, 22, 126.2, 23.2, 1.1); I.prop('crate', 125, 23.4, 126.2, 24.6, 0.8);
   I.prop('barrel', 120.65, 12.65, 121.35, 13.35, 0.95, { fire: true });
   I.lamp(HELI, 118, -8); I.lamp(HELI, 118, 8, { flicker: 0.3 }); I.lamp(RADIO, 175, -18); I.lamp(TES, 140, 30, { flicker: 0.5 }); I.lamp(EAST, 194, 2, { flicker: 0.2 });
+  // the Warden: the base's guard walker, powered down by the helipad
+  I.model({ a: 'robot', x: 107, y: G, z: -20, yaw: Math.PI - 0.5, fit: { h: 7 }, look: { glowK: 0.25 } }, { collide: [107, -20, 2.6, 2.6, 6.5] });
+  // cockroaches on the lab floors
+  for (const [x0, z0, x1, z1, ph] of [[130, -18, 146, -5, 0], [130, 5, 144, 16, 1.7], [150, -18, 164, -5, 3.1], [130, -1.5, 164, 1.5, 0.6], [148, 5, 164, 16, 2.3], [174, 11, 186, 22, 4]]) {
+    I.model({ a: 'roach', anim: true, clip: 'Crawl', x: x0, y: G + 0.02, z: z0, fit: { len: 0.22 }, path: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], speed: 0.9, phase: ph });
+  }
   I.pads.push({ id: 'pad_research', x: 112, z: 0, to: 'pad_hub_e', label: 'the Anvil' });
   return I;
 }
@@ -562,6 +609,16 @@ function trench() {
   I.craters = [[-18, 143, 3], [-30, 120, 2.4], [-8, 162, 2], [36, 158, 2.6], [18, 118, 2.2], [-40, 165, 1.8], [44, 140, 2.4]].map(([x, z, r]) => ({ x, z, r, y: G }));
   I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 120, { flicker: 0.15 }); I.lamp(YARD, -11, 137, { flicker: 0.3 }); I.lamp(YARD, 11, 155, { flicker: 0.2 });
   for (const [x, z, f] of [[-30, 129, 0.3], [10, 129, 0.2], [-24, 160, 0.3], [24, 145, 0.2], [-32, 173, 0.4], [0, 173, 0.2], [32, 173, 0.3], [-12, 167, 0.25], [16, 167, 0.3]]) I.lamp(TR, x, z, { h: 2.1, flicker: f });
+  // the molten crater out in no-man's-land (something sleeps in it), a lava pool,
+  // planks and log revetments round the trenches, rats running along them
+  I.model({ a: 'lavafield', x: 40, y: G - 0.35, z: 118, yaw: 0.6, fit: { w: 10 } });
+  I.model({ a: 'lavamonster', x: 40.5, y: G - 3.2, z: 118.5, yaw: Math.PI + 0.3, fit: { h: 7.5 }, look: { glowK: 0.4 } });
+  I.model({ a: 'lavafield', x: -43, y: G - 0.35, z: 161, yaw: 2.2, fit: { w: 7 } });
+  for (const [x, z, yaw] of [[-11, 119, 0.3], [9, 152, 1.9], [-10, 136, 2.6]]) I.model({ a: 'planks', x, y: G + 0.02, z, yaw, fit: { len: 3.6 }, look: { tint: '#5a4436' } });
+  for (const [x, z, yaw] of [[-36, 137, 0.2], [36, 137, Math.PI - 0.2], [-1, 186, 0], [-32, 184, 0.3], [32, 184, -0.3]]) I.model({ a: 'woodscan', x, y: G - 0.15, z, yaw, fit: { w: 4.2 }, look: { tint: '#6a5040' } });
+  for (const [path, ph] of [[[[-35, 129], [35, 129]], 0], [[[24, 140], [30, 140], [30, 152], [24, 152], [24, 166]], 2], [[[-44, 167], [-36, 167], [-36, 173], [-28, 173], [-28, 167], [-20, 167]], 5], [[[4, 167], [12, 167], [12, 173], [20, 173], [20, 167], [28, 167]], 1], [[[-24, 140], [-30, 140], [-30, 152], [-24, 152]], 7]]) {
+    I.model({ a: 'rat', anim: true, x: path[0][0], y: TF + 0.02, z: path[0][1], fit: { len: 0.4 }, path, speed: 2.2, phase: ph, pingpong: true });
+  }
   I.pads.push({ id: 'pad_trench', x: 0, z: 115, to: 'pad_hub_s', label: 'the Anvil' });
   return I;
 }

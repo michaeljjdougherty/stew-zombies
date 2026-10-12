@@ -26,6 +26,15 @@ for (const node of root.listNodes()) {
     const P = prim.getAttribute('POSITION'), N = prim.getAttribute('NORMAL');
     const pos = [], nrm = [], e = [];
     for (let i = 0; i < P.getCount(); i++) { P.getElement(i, e); pos.push(new THREE.Vector3(...e).applyMatrix4(M)); if (N) { N.getElement(i, e); nrm.push(new THREE.Vector3(...e).applyMatrix3(NM).normalize()); } }
+    if (!N) {
+      // (no normals in the file: work them out)
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos.flatMap((v) => v.toArray()), 3));
+      if (prim.getIndices()) g.setIndex(Array.from(prim.getIndices().getArray()));
+      g.computeVertexNormals();
+      const na = g.attributes.normal;
+      for (let i = 0; i < na.count; i++) nrm.push(new THREE.Vector3(na.getX(i), na.getY(i), na.getZ(i)));
+    }
     parts.push({ node, prim, pos, nrm });
   }
 }
@@ -138,6 +147,6 @@ for (const p of parts) {
   p.prim.setAttribute('WEIGHTS_0', doc.createAccessor().setType('VEC4').setArray(we).setBuffer(buffer));
 }
 for (const p of parts) { p.node.setTranslation([0, 0, 0]).setRotation([0, 0, 0, 1]).setScale([1, 1, 1]).setSkin(skin); }
-await doc.transform(prune());
+await doc.transform(prune({ keepAttributes: true }));
 await io.write(dst, doc);
 console.log('wrote', dst, V.length, 'verts', 'joints', Object.fromEntries(['Hips', 'Head', 'LeftArm', 'LeftHand', 'LeftFoot'].map((n) => [n, J[n].toArray().map((x) => +x.toFixed(1))])));

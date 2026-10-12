@@ -67,6 +67,14 @@ function loadTexture(file, srgb) {
   });
 }
 
+async function loadTemplate(id) {
+  const [meta, bin] = await fetchPair(id);
+  const files = [...new Set(meta.meshes.flatMap((m) => [m.material.map, m.material.normalMap, m.material.emissiveMap]).filter(Boolean))];
+  const tex = {};
+  await Promise.all(files.map(async (f) => { tex[f] = await loadTexture(f, !/_n\d/.test(f)); }));
+  return new Template(meta, bin, tex);
+}
+
 // --- one character: shared geometry and materials, cloned per zombie --------
 class Template {
   constructor(meta, bin, textures) {
@@ -185,11 +193,7 @@ export class ZombieModelLib {
         this.clips = buildClips(am, ab);
         const loaded = await Promise.all(ZOMBIE_CAST.map(async (c) => {
           try {
-            const [meta, bin] = await fetchPair(c.id);
-            const files = [...new Set(meta.meshes.flatMap((m) => [m.material.map, m.material.normalMap, m.material.emissiveMap]).filter(Boolean))];
-            const tex = {};
-            await Promise.all(files.map(async (f) => { tex[f] = await loadTexture(f, !/_n\d/.test(f)); }));
-            const t = new Template(meta, bin, tex);
+            const t = await loadTemplate(c.id);
             t.weight = c.weight;
             t.island = c.island || null;
             return t;
@@ -205,6 +209,14 @@ export class ZombieModelLib {
       return this;
     })();
     return this.promise;
+  }
+
+  // A rigged character outside the cast (the Crust's bosses: the golem, the
+  // lava monster), loaded once on first ask; null if it can't be.
+  extra(id) {
+    if (!this.extras) this.extras = new Map();
+    if (!this.extras.has(id)) this.extras.set(id, this.load().then(() => (this.clips ? loadTemplate(id) : null)).catch((e) => { console.warn('model', id, e.message); return null; }));
+    return this.extras.get(id);
   }
 
   // the clips, minus tracks for bones this character doesn't have (cached)

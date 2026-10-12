@@ -87,7 +87,27 @@ export function themeMaterials(base) {
     ship: { top: mat(dust, { bump: 1 }), rocktop: mat(sandstone), cliff: mat(sandstone, { rep: 1 / 5, bump: 2 }), mud: mat(mud) },
     caves: {},
   };
+  // the photographed dry dirt under the trench front and the ship graveyard (the
+  // glowing cracks stay): swapped in once it's loaded
+  photoGround('assets/crust/dirt.webp', [[cache.trench.top, '#9a6a58'], [cache.ship.top, '#d8c4a4'], [cache.ship.mud, '#8a7462']]);
   return cache;
+}
+
+function photoGround(url, uses) {
+  new THREE.TextureLoader().load(url, (t) => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    for (const [m, tint] of uses) {
+      const tex = t.clone();
+      tex.repeat.copy(m.map.repeat);
+      tex.needsUpdate = true;
+      m.map = tex;
+      m.color = new THREE.Color(tint);
+      if (m.bumpMap) m.bumpMap = tex;
+      m.needsUpdate = true;
+    }
+  });
 }
 
 // The sky out in space: stars all round, a nebula band, no horizon.
@@ -117,7 +137,21 @@ export function spaceTexture() {
     g.fillRect(x, y, s, s);
     if (b > 0.997) { g.fillStyle = `rgba(${tint},0.25)`; g.fillRect(x - 3, y + s / 2, 6 + s, 0.8); g.fillRect(x + s / 2, y - 3, 0.8, 6 + s); }
   }
-  return T.toTexture(c, { repeat: false });
+  const tex = T.toTexture(c, { repeat: false });
+  // the photographed star field underneath it all, once it's loaded
+  const img = new Image();
+  img.onload = () => {
+    const [c2, g2] = T.makeCanvas(W, H);
+    g2.drawImage(img, 0, 0, W, H);
+    g2.globalCompositeOperation = 'lighter';
+    g2.globalAlpha = 0.85;
+    g2.drawImage(c, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.drawImage(c2, 0, 0);
+    tex.needsUpdate = true;
+  };
+  img.src = 'assets/crust/stars.webp';
+  return tex;
 }
 
 // The particles for each island's air: how they look and move.

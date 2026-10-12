@@ -1284,6 +1284,8 @@ export class MapView {
             rod.position.set(x, 0.6, 0); grp.add(rod);
           }
           if (!f.lit && Math.random() < 0.15) { grp.rotation.z = 0.25; grp.position.y -= 0.2; }
+        } else if (f.kind === 'torch') {
+          // (a torch's model is drawn with the map's models: just its fire's light here)
         } else if (f.kind === 'lamp') {
           // outdoor lamp post: the light hangs off an arm
           const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, f.y + 0.3, 8), this.mats.rustMetal);
@@ -1302,6 +1304,11 @@ export class MapView {
         const lamp = f.kind === 'lamp';
         const fx = { data: f, orig: f, grp, tubeMat, beam: null, on: !!f.lit, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, onAt: null, lamp };
         const tall = f.y > 6;
+        if (f.kind === 'torch') {
+          fx.v = this.addVirtualLight({ x: f.x, y: f.y, z: f.z }, 0xff8a3a, 34 * (this.map.lampScale ?? 1), 13, 1.7, fx);
+          this.fixtures.push(fx);
+          continue;
+        }
         fx.v = this.addVirtualLight({ x: f.x, y: f.y - 0.3, z: f.z }, lamp ? 0xffb86a : 0xffe7c0, (tall ? 120 : lamp ? 40 : 26) * (this.map.lampScale ?? 1), tall ? 22 : lamp ? 16 : 11, tall ? 1.8 : 1.7, fx);
         const h = tall ? 6.5 : f.y - 0.1;
         const beam = new THREE.Mesh(
