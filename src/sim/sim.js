@@ -28,6 +28,7 @@ import { createQuest, questInteractables, questOnEvent, updateQuest } from './qu
 import { createCauldron, cauldronTargets } from './cauldron.js';
 import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js';
 import { createCrew } from './crew.js';
+import { createRides, ZiplineInteractable } from './rides.js';
 import { LaunchInteractable } from './launchers.js';
 
 export class GameSim {
@@ -81,6 +82,8 @@ export class GameSim {
       ...questInteractables(this),
       ...(map.launchers || []).map((pad) => new LaunchInteractable(pad, map.launchers.find((q) => q.id === pad.to))),
     ];
+    this.rides = createRides(map);   // ziplines and ice slides (Call of the Crust)
+    for (const r of this.rides) if (r.kind === 'zip') this.interactables.push(new ZiplineInteractable(r, cfg));
     this.pa = createPA(this);
     this.crew = map.quest ? createCrew() : null;   // the crew's walkie-talkies (the school)
     this.stewEgg = createStewEgg();

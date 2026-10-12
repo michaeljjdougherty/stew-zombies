@@ -23,7 +23,7 @@ export class DoorInteractable {
     this.id = 'use_' + door.id;
     this.kind = door.kind;
     this.requireLook = true;
-    this.pos = { x: door.center.x, y: 1.3, z: door.center.z };
+    this.pos = { x: door.center.x, y: (door.center.y || 0) + 1.3, z: door.center.z };
   }
   get range() { return 2.1; }
   distanceTo(sim, p) {
@@ -134,7 +134,7 @@ export class BoxInteractable {
   place() {
     const s = this.spot;
     this.facing = { x: Math.sin(s.yaw), z: Math.cos(s.yaw) };
-    this.pos = { x: s.x, y: 0.8, z: s.z };
+    this.pos = { x: s.x, y: (s.y || 0) + 0.8, z: s.z };
     this.stand = { x: s.x + this.facing.x * 1.0, z: s.z + this.facing.z * 1.0 };
   }
   emit(sim, type, e = {}) { sim.emit(type, { ...e, boxId: this.id }); }

@@ -26,7 +26,7 @@ export class WindowInteractable {
     this.kind = 'window';
     this.range = 0;
     this.requireLook = false;
-    this.pos = { x: win.center.x + win.normal.x * 0.5, y: 1.2, z: win.center.z + win.normal.z * 0.5 };
+    this.pos = { x: win.center.x + win.normal.x * 0.5, y: (win.center.y || 0) + 1.2, z: win.center.z + win.normal.z * 0.5 };
   }
 
   // Distance measured to a point just inside the window.

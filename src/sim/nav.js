@@ -11,6 +11,34 @@
 // =============================================================================
 
 const BUCKET = 6;
+const area = (r) => (r.rect[2] - r.rect[0]) * (r.rect[3] - r.rect[1]);
+
+// A small binary heap of [priority, value].
+class MinHeap {
+  constructor() { this.a = []; }
+  get size() { return this.a.length; }
+  push(k, v) {
+    const a = this.a; a.push([k, v]);
+    let i = a.length - 1;
+    while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break; [a[p], a[i]] = [a[i], a[p]]; i = p; }
+  }
+  pop() {
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length) {
+      a[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1, r = l + 1;
+        let m = i;
+        if (l < a.length && a[l][0] < a[m][0]) m = l;
+        if (r < a.length && a[r][0] < a[m][0]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]]; i = m;
+      }
+    }
+    return top;
+  }
+}
 
 export class Nav {
   constructor(sim) {
@@ -39,7 +67,7 @@ export class Nav {
     }
   }
 
-  invalidate() { this.cache.clear(); }
+  invalidate() { this.cache.clear(); this.toward = new Map(); this.reach = new Map(); }
 
   regionAt(p, fallback = null) {
     const key = Math.floor(p.x / BUCKET) * 100003 + Math.floor(p.z / BUCKET);
@@ -52,9 +80,12 @@ export class Nav {
       if (!(p.x >= x0 - 0.05 && p.x <= x1 + 0.05 && p.z >= z0 - 0.05 && p.z <= z1 + 0.05)) continue;
       // how far your feet are from this region's floor
       const s = y < r.y0 - 0.6 ? (r.y0 - y) * 2 : y > r.y1 + 0.6 ? y - r.y1 : 0;
-      if (s < bs || (s === bs && best && r.y0 > best.y0 && r.y0 <= y + 0.6)) { bs = s; best = r; }
+      // a tie: the higher floor you're up on, else the smaller (more particular) place
+      if (s < bs || (s === bs && best && ((r.y0 > best.y0 && r.y0 <= y + 0.6) || (r.y0 === best.y0 && area(r) < area(best))))) { bs = s; best = r; }
     }
     if (!best) return fallback;
+    // (nowhere near anything here: a ledge's edge, mid-fall; keep to where you were)
+    if (bs > 3 && fallback) return fallback;
     return best.id;
   }
 
@@ -68,6 +99,13 @@ export class Nav {
   // First portal on the shortest open route from region a to region b (null if none).
   // drops: may this walker jump down ledges?
   firstPortal(a, b, drops = false) {
+    if (a === b) return null;
+    // a big map (Call of the Crust: thousands of places) searches back from
+    // the target once for everyone; a small one searches from each zombie
+    if (this.regions.length > 400) return this.towards(b, drops).get(a) || null;
+    return this.searchFrom(a, b, drops);
+  }
+  searchFrom(a, b, drops = false) {
     const key = a + '>' + b + (drops ? '!' : '');
     if (this.cache.has(key)) return this.cache.get(key);
     const dist = new Map([[a, 0]]);
@@ -103,6 +141,77 @@ export class Nav {
     const res = first.get(b) || null;
     this.cache.set(key, res);
     return res;
+  }
+
+  // For every region that can get to b: the portal to take first. One search
+  // backwards from b serves every zombie heading there (they all chase the
+  // same few players).
+  towards(b, drops = false) {
+    if (!this.toward) this.toward = new Map();
+    const key = b + (drops ? '!' : '');
+    let res = this.toward.get(key);
+    if (res) return res;
+    res = new Map();
+    // the portals into each region (the reverse of `out`)
+    if (!this.into) {
+      this.into = new Map(this.regions.map((r) => [r.id, []]));
+      for (const p of this.portals) {
+        if (this.into.has(p.b)) this.into.get(p.b).push(p);
+        if (!p.oneWay && this.into.has(p.a)) this.into.get(p.a).push(p);
+      }
+    }
+    const dist = new Map([[b, 0]]);
+    const pos = new Map([[b, null]]);
+    const done = new Set();
+    const heap = new MinHeap();
+    heap.push(0, b);
+    while (heap.size) {
+      const [d, cur] = heap.pop();
+      if (done.has(cur) || d > dist.get(cur)) continue;
+      done.add(cur);
+      for (const p of this.into.get(cur) || []) {
+        if (!this.portalOpen(p)) continue;
+        if (p.drop && !drops) continue;
+        const prev = p.oneWay ? p.a : (p.a === cur ? p.b : p.a);
+        if (prev === cur || done.has(prev)) continue;
+        const from = pos.get(cur);
+        const step = from ? Math.hypot(from.x - p.x, from.z - p.z) : 0;
+        const nd = d + step + 0.01 + (p.drop ? 2 : 0);
+        if (!dist.has(prev) || nd < dist.get(prev)) {
+          dist.set(prev, nd);
+          pos.set(prev, { x: p.x, z: p.z });
+          res.set(prev, p);
+          heap.push(nd, prev);
+        }
+      }
+    }
+    this.toward.set(key, res);
+    return res;
+  }
+
+  // Can you walk from region a to region b (through open doors; jumping down
+  // ledges only if `drops`)?
+  canReach(a, b, drops = false) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (!this.reach) this.reach = new Map();
+    const key = a + (drops ? '!' : '');
+    let set = this.reach.get(key);
+    if (!set) {
+      set = new Set([a]);
+      const stack = [a];
+      while (stack.length) {
+        const cur = stack.pop();
+        for (const p of this.out.get(cur) || []) {
+          if (!this.portalOpen(p)) continue;
+          if (p.drop && !drops) continue;
+          const next = p.a === cur ? p.b : p.a;
+          if (!set.has(next)) { set.add(next); stack.push(next); }
+        }
+      }
+      this.reach.set(key, set);
+    }
+    return set.has(b);
   }
 
   // Where an agent in `region` at `from` should walk to reach `to` (in `toRegion`).

@@ -67,12 +67,14 @@ export function buildIslands(def) {
   // overlaps are mistakes
   for (let i = 0; i < areas.length; i++) for (let j = i + 1; j < areas.length; j++) {
     const A = areas[i].rect, B = areas[j].rect;
+    if ((areas[i].y || 0) !== (areas[j].y || 0)) continue;   // (one floor over another)
     if (A[0] < B[2] - 0.01 && B[0] < A[2] - 0.01 && A[1] < B[3] - 0.01 && B[1] < A[3] - 0.01) throw new Error(`areas overlap: ${areas[i].id} / ${areas[j].id}`);
   }
 
   // every touching pair
   const edges = [];
   for (let i = 0; i < areas.length; i++) for (let j = i + 1; j < areas.length; j++) {
+    if ((areas[i].y || 0) !== (areas[j].y || 0)) continue;
     const s = shared(areas[i], areas[j]);
     if (s) edges.push({ a: areas[i], b: areas[j], ...s });
   }
@@ -86,6 +88,7 @@ export function buildIslands(def) {
   // who owns each shared wall
   const linksFor = new Map();
   for (const l of def.links) {
+    if (l.out) continue;   // (an opening to the ground outside, below)
     const e = edgeOf(l.a, l.b);
     const key = [e.a.id, e.b.id].join('|');
     if (!linksFor.has(key)) linksFor.set(key, []);
@@ -137,6 +140,30 @@ export function buildIslands(def) {
   // openings and portals
   const doors = [], gaps = [], portals = [];
   for (const l of def.links) {
+    if (l.out) {
+      // an opening in a building's outside wall, onto the ground (or a deck)
+      // round it: the map works out what's on the far side (portal.outside)
+      const A = byId.get(l.a);
+      if (!A) throw new Error('no area ' + l.a);
+      const side = l.out;
+      const [x0, z0, x1, z1] = A.rect;
+      const along = side === 'n' || side === 's' ? x0 + (x1 - x0) * (l.t ?? 0.5) : z0 + (z1 - z0) * (l.t ?? 0.5);
+      const line = side === 'n' ? z0 - T / 2 : side === 's' ? z1 + T / 2 : side === 'w' ? x0 - T / 2 : x1 + T / 2;
+      const out = side === 'n' || side === 'w' ? -1 : 1;
+      const axis = side === 'n' || side === 's' ? 'z' : 'x';
+      const pos = axis === 'z' ? { x: along, z: line } : { x: line, z: along };
+      const outside = axis === 'z' ? { x: along, z: line + out * (T / 2 + 0.6) } : { x: line + out * (T / 2 + 0.6), z: along };
+      const width = l.width ?? (l.type === 'gap' ? 2.4 : 2.6);
+      const height = l.height ?? Math.min(A.height, l.type === 'gap' ? 3 : 3.2);
+      if (l.type === 'door' || l.type === 'debris') {
+        doors.push({ id: l.id, kind: l.type, room: A.id, side, at: along, width, height, zones: [A.zone, l.zone || A.zone], label: l.label || (l.name || 'OUTSIDE').toUpperCase() });
+        portals.push({ a: A.id, b: null, ...pos, axis, width, door: l.id, dirAB: out, outside, to: l.to });
+      } else {
+        gaps.push({ room: A.id, side, at: along, width, height });
+        portals.push({ a: A.id, b: null, ...pos, axis, width, dirAB: out, outside, to: l.to });
+      }
+      continue;
+    }
     const e = edgeOf(l.a, l.b);
     const along = e.s0 + (e.s1 - e.s0) * (l.t ?? 0.5);
     const pos = e.cross === 'x' ? { x: e.line, z: along } : { x: along, z: e.line };
@@ -181,7 +208,7 @@ export function buildIslands(def) {
     });
     return best;
   };
-  const navPortals = portals.map((p) => ({ ...p, a: regionNear(p.a, p), b: regionNear(p.b, p) }));
+  const navPortals = portals.map((p) => ({ ...p, a: regionNear(p.a, p), b: p.b == null ? null : regionNear(p.b, p) }));
   for (const A of areas) for (const p of A.innerPortals || []) navPortals.push({ ...p, a: `${A.id}_${p.a}`, b: `${A.id}_${p.b}` });
 
   // ground spawns: zombies claw up out of the snow and ice

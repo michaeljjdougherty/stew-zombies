@@ -91,6 +91,18 @@ function pickSpawn(sim) {
   const act = sim.activeZones();
   const cands = sim.spawnWindows().map((w) => ({ win: w, pos: w.center, weight: 1 / (1 + w.queue.length * 0.5) }));
   for (const g of sim.world.groundSpawns) if (act.has(g.zone)) cands.push({ ground: g, pos: g, weight: sim.cfg.zombie.groundSpawnWeight });
+  // sculpted ground (Call of the Crust): only where they could walk to someone from
+  // (not behind debris nobody's cleared, not on another island)
+  if (sim.mapData.terrainBoxes && cands.length) {
+    const regs = sim.players.filter((p) => p.alive && !p.launch).map((p) => p.region || sim.nav.regionAt(p.pos));
+    const ok = cands.filter((c) => {
+      if (!c.ground) return true;
+      const g = c.ground;
+      if (g.region === undefined) g.region = sim.nav.regionAt(g);
+      return regs.some((r) => sim.nav.canReach(g.region, r));
+    });
+    cands.splice(0, cands.length, ...ok);
+  }
   if (!cands.length) return null;
   // on a big open map, only spawn points near someone (else zombies take ages to arrive)
   const rad = sim.mapData.openField ? sim.cfg.crust.spawnRadius : 0;

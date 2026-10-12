@@ -1012,6 +1012,16 @@ export const CONFIG = {
     thunderEvery: [7, 16],   // s between distant thunderclaps
     artilleryEvery: [3, 9],  // s between far-off shells landing
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
+    // ziplines and ice slides
+    ride: {
+      hang: 2.0,             // m your feet hang below a zipline's cable
+      zipStart: 4,           // m/s as you push off
+      zipSpeed: 13,          // m/s top speed on a zipline
+      zipAccel: 9,           // m/s² getting there
+      slideMin: 6,           // m/s an ice slide never goes slower than
+      slideMax: 17,          // m/s nor faster than
+      slideDrag: 1.5,        // m/s² of friction on the ice
+    },
     // the launchers between the hub and the islands
     launch: {
       cost: 0,               // points per launch (free while the map's being built)

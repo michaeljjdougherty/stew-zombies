@@ -14,7 +14,7 @@ export class LaunchInteractable {
     this.id = 'use_' + pad.id;
     this.kind = 'launcher';
     this.requireLook = false;
-    this.pos = { x: pad.x, y: 0.4, z: pad.z };
+    this.pos = { x: pad.x, y: (pad.y || 0) + 0.4, z: pad.z };
   }
   get range() { return this.cfgRange ?? 2.2; }
   distanceTo(sim, p) { this.cfgRange = sim.cfg.crust.launch.range; return flat(p.pos, this.pos); }
@@ -37,7 +37,7 @@ export function startLaunch(sim, p, from, to) {
   if (p.loadout && p.loadout.reloading) sim.cancelReload(p);
   p.launch = {
     from: { x: p.pos.x, y: p.pos.y, z: p.pos.z },
-    to: { x: to.x, y: 0, z: to.z },
+    to: { x: to.x, y: to.y || 0, z: to.z },
     t: 0, time: L.time, apex: L.apex,
     toId: to.id,
   };
@@ -60,12 +60,12 @@ export function updateLaunch(sim, p, dt) {
   p.grounded = false;
   p.moveSpeed = 0;
   if (u >= 1) {
-    p.pos.x = L.to.x; p.pos.y = 0; p.pos.z = L.to.z;
+    p.pos.x = L.to.x; p.pos.y = L.to.y; p.pos.z = L.to.z;
     p.vel.x = p.vel.y = p.vel.z = 0;
     p.grounded = true;
     p.launch = null;
     p.launchReady = sim.time + sim.cfg.crust.launch.cooldown;
     p.region = sim.nav.regionAt(p.pos, null);
-    sim.emit('playerLaunchLand', { playerId: p.id, pos: { x: p.pos.x, y: 0, z: p.pos.z } });
+    sim.emit('playerLaunchLand', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z } });
   }
 }

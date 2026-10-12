@@ -108,6 +108,14 @@ export function buildMap(map, cfg = CONFIG) {
   // --- doors (solid until opened)
   const doorBoxes = new Map();
   const doors = map.doors.map((d) => {
+    // a debris pile standing on its own across a path (Call of the Crust's terrain)
+    if (d.free) {
+      const Y = d.y || 0, half = d.width / 2, t = T / 2;
+      const b = d.axis === 'x' ? box(d.x - half, Y, d.z - t, d.x + half, Y + d.height, d.z + t, 'door', { doorId: d.id }) : box(d.x - t, Y, d.z - half, d.x + t, Y + d.height, d.z + half, 'door', { doorId: d.id });
+      doorBoxes.set(d.id, b);
+      const normal = d.axis === 'x' ? { x: 0, z: 1 } : { x: 1, z: 0 };
+      return { ...d, box: b, center: { x: d.x - normal.x * t, y: Y, z: d.z - normal.z * t }, normal, axis: d.axis };
+    }
     const room = roomById.get(d.room);
     const si = sideInfo(room.rect, d.side, T);
     const Y = room.y || 0;
@@ -137,6 +145,8 @@ export function buildMap(map, cfg = CONFIG) {
 
   // --- wall weapons
   const wallBuys = (map.wallBuys || []).map((wb, i) => {
+    // one hung on a rock face or a post (no room wall): its own spot and facing
+    if (wb.pos) return { id: 'wall_' + wb.weapon + '_' + i, weapon: wb.weapon, room: wb.room, zone: wb.zone || (roomById.get(wb.room) || {}).zone, pos: { ...wb.pos }, normal: wb.normal };
     const room = roomById.get(wb.room);
     const si = sideInfo(room.rect, wb.side, T);
     const p = wallPoint(room.rect, wb.side, wb.at);
@@ -180,7 +190,9 @@ export function buildMap(map, cfg = CONFIG) {
     breakers: map.quest.breakers.map((b) => ({ ...b, ...onWall(b, 0.05) })),
   } : null;
   const traps = (map.traps || []).map((t) => ({ ...t, lever: onWall(t.lever, 0.05), zone: roomById.get(t.lever.room).zone }));
-  const groundSpawns = (map.groundSpawns || []).map((g) => ({ ...g, zone: roomById.get(g.room).zone }));
+  const groundSpawns = (map.groundSpawns || []).map((g) => ({ ...g, zone: g.zone || roomById.get(g.room).zone }));
+  // an upper floor stands on a slab (the ground floor's ceiling)
+  const slabs = map.rooms.filter((r) => r.y > 0 && !r.virtual && r.slab !== false).map((r) => box(r.rect[0] - T, r.y - 0.3, r.rect[1] - T, r.rect[2] + T, r.y, r.rect[3] + T, 'floor', { room: r.id }));
 
   return {
     map,
@@ -201,7 +213,7 @@ export function buildMap(map, cfg = CONFIG) {
     traps,
     groundSpawns,
     // mutable collision lists
-    solids: [...walls, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values(), ...perkMachines.map((m) => m.box), ...(startSpot ? [startSpot.collider] : [])],
+    solids: [...walls, ...slabs, ...propBoxes, ...bleacherBoxes, ...doorBoxes.values(), ...perkMachines.map((m) => m.box), ...(startSpot ? [startSpot.collider] : [])],
     playerBlockers: windows.map((w) => w.blocker),
     navRegions: map.navRegions,
     portals: map.portals,

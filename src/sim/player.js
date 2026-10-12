@@ -8,6 +8,7 @@ import { clamp } from '../core/math.js';
 import { perkMult, updateDrinking } from './perks.js';
 import { goDown } from './laststand.js';
 import { updateLaunch } from './launchers.js';
+import { updateRide, checkSlides } from './rides.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -32,7 +33,7 @@ export function createPlayer(sim, id, name, spawn) {
   const cfg = sim.cfg.player;
   return {
     id, name,
-    pos: { x: spawn.x, y: 0, z: spawn.z },
+    pos: { x: spawn.x, y: spawn.y || 0, z: spawn.z },
     vel: { x: 0, y: 0, z: 0 },
     yaw: spawn.yaw, pitch: 0,
     radius: cfg.radius,
@@ -123,7 +124,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (downed) speed = sim.cfg.lastStand.crawlSpeed;
   if (p.landSlowTimer > 0) { speed *= cfg.landSlowdownMult; p.landSlowTimer -= dt; }
   // Call of the Crust: wading through deep mud (not on the duckboards)
-  p.inMud = !!(sim.mapData.mud && p.pos.y < 0.3 && inDeepMud(sim.mapData, p.pos.x, p.pos.z));
+  p.inMud = !!(sim.mapData.mud && inDeepMud(sim.mapData, p.pos.x, p.pos.z, p.pos.y));
   if (p.inMud && !downed) speed *= sim.cfg.crust.mudSpeed;
 
   const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
@@ -153,24 +154,27 @@ export function updatePlayer(sim, p, cmd, dt) {
     sim.emit('playerJump', { playerId: p.id });
   }
 
-  // --- move & collide
+  // --- move & collide (or ride a zipline or an ice slide: you can still shoot)
   const before = { x: p.pos.x, z: p.pos.z };
-  const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain], cfg.gravity);
-  if (res.landed) {
-    p.landSlowTimer = res.impact > 4 ? cfg.landSlowdownTime : 0;
-    p.lastLandImpact = res.impact;
-    sim.emit('playerLand', { playerId: p.id, impact: res.impact });
-  }
-
-  // zombies are solid: they body-block you
-  for (const z of sim.zombies) {
-    if (z.state !== 'chase') continue;
-    if (Math.abs(z.pos.y - p.pos.y) > 1.2) continue;
-    separateCircles(p.pos, p.radius, z.pos, sim.cfg.zombie.radius * 0.9, 1);
-  }
-  // other players too
-  for (const o of sim.players) {
-    if (o !== p && o.alive) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
+  if (sim.rides.length && !p.ride && !downed) checkSlides(sim, p);
+  if (p.ride) updateRide(sim, p, cmd, dt);
+  else {
+    const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain], cfg.gravity);
+    if (res.landed) {
+      p.landSlowTimer = res.impact > 4 ? cfg.landSlowdownTime : 0;
+      p.lastLandImpact = res.impact;
+      sim.emit('playerLand', { playerId: p.id, impact: res.impact });
+    }
+    // zombies are solid: they body-block you
+    for (const z of sim.zombies) {
+      if (z.state !== 'chase') continue;
+      if (Math.abs(z.pos.y - p.pos.y) > 1.2) continue;
+      separateCircles(p.pos, p.radius, z.pos, sim.cfg.zombie.radius * 0.9, 1);
+    }
+    // other players too
+    for (const o of sim.players) {
+      if (o !== p && o.alive && Math.abs(o.pos.y - p.pos.y) < 1.6) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
+    }
   }
 
   const moved = Math.hypot(p.pos.x - before.x, p.pos.z - before.z);
@@ -258,9 +262,9 @@ export function damagePlayer(sim, p, amount, source) {
 }
 
 // Is (x, z) in a patch of deep mud, and not on the duckboards?
-export function inDeepMud(map, x, z) {
+export function inDeepMud(map, x, z, y = 0) {
   let mud = false;
-  for (const m of map.mud) if ((x - m.x) ** 2 + (z - m.z) ** 2 < m.r * m.r) { mud = true; break; }
+  for (const m of map.mud) if ((x - m.x) ** 2 + (z - m.z) ** 2 < m.r * m.r && y < (m.y || 0) + 0.3) { mud = true; break; }
   if (!mud) return false;
   for (const r of map.duckboards || []) if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) return false;
   return true;

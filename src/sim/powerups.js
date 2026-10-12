@@ -47,7 +47,7 @@ function pickType(sim) {
 
 export function spawnPowerup(sim, type, pos) {
   const P = sim.powerups;
-  const d = { id: sim.nextId++, type, pos: { x: pos.x, y: 0, z: pos.z }, t: sim.cfg.powerups.life };
+  const d = { id: sim.nextId++, type, pos: { x: pos.x, y: pos.y || 0, z: pos.z }, t: sim.cfg.powerups.life };
   P.drops.push(d);
   P.last = type;
   sim.emit('powerupSpawn', { id: d.id, ptype: type, pos: { ...d.pos } });

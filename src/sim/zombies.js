@@ -285,11 +285,11 @@ export function updateZombies(sim, dt) {
         const t = Math.min(1, z.climbT);
         z.pos.x = win.exterior.x + (win.interior.x - win.exterior.x) * t;
         z.pos.z = win.exterior.z + (win.interior.z - win.exterior.z) * t;
-        if (win.center.y) z.pos.y = win.center.y;
+        const base = win.center.y || 0;
         // up and over a fence (they hang off the top), or a hop through a window
-        z.pos.y = fence ? Math.sin(Math.PI * Math.min(1, t * 1.15)) * 2.3 : Math.sin(Math.PI * t) * 0.75;
+        z.pos.y = base + (fence ? Math.sin(Math.PI * Math.min(1, t * 1.15)) * 2.3 : Math.sin(Math.PI * t) * 0.75);
         if (t >= 1) {
-          z.pos.y = 0;
+          z.pos.y = base;
           win.climbing = null;
           setState(sim, z, 'chase');
           z.grounded = true;
@@ -470,7 +470,9 @@ function blocked(sim, z, dx, dz, dist) {
   const px = z.pos.x + dx * dist, pz = z.pos.z + dz * dist;
   const r = z.radius * 0.9, y0 = z.pos.y + z.stepHeight, y1 = z.pos.y + z.height;
   for (const b of [...sim.world.solids, ...sim.world.terrain.near(px, pz, r)]) {
-    if (b.maxY <= y0 || b.minY >= y1) continue;
+    // (stairs and slopes ahead rise as you go: not in the way)
+    const climb = b.kind === 'stairs' || b.kind === 'ground' || b.kind === 'deck' ? dist * 0.7 : 0;
+    if (b.maxY <= y0 + climb || b.minY >= y1) continue;
     const cx = px < b.minX ? b.minX : px > b.maxX ? b.maxX : px;
     const cz = pz < b.minZ ? b.minZ : pz > b.maxZ ? b.maxZ : pz;
     if ((px - cx) ** 2 + (pz - cz) ** 2 < r * r) return true;
