@@ -1020,6 +1020,7 @@ export const CONFIG = {
     end: 60.5,               // s: the trailer's over
     fps: 30,                 // frames a second for a recorded export
     letterbox: 2.39,         // the picture's shape between the bars (2.39:1)
+    exposure: 1.8,           // brighter than in play: it's lit like a film
     // the perk machines it shows off (rename them to the real ones when they're in)
     perks: [
       { key: 'trailerPerk1', name: 'Belly Flop Bisque', color: '#9b4dff', glyph: 'F' },

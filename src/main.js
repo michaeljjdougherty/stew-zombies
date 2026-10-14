@@ -468,6 +468,12 @@ function startTrailer({ silent = false, recording = false } = {}) {
   hud.show(false);
   sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   sim.power = true;
+  // the best picture this machine can make, full screen (for recording it)
+  if (!recording) {
+    renderer.applySettings({ ...settings, ...CONFIG.graphics.presets.ultra });
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  }
   const T = renderer.startTrailer();
   T.recording = recording;
   trailerUI.show(CONFIG.trailer.letterbox);
@@ -492,6 +498,8 @@ function updateTrailer() {
 }
 function finishTrailer() {
   renderer.endEnding();
+  renderer.applySettings(settings);
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   trailerUI.hide();
   if (trailerSong) { trailerSong.pause(); trailerSong = null; }
   restart('zombies');
