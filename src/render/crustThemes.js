@@ -15,12 +15,14 @@ const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 214748
 
 // The air on each island (lerped as you move between them).
 export const ATMOS = {
-  hub: { fog: '#1d1512', density: 0.0045, sky: '#b08a68', ground: '#2a160c', amb: 0.85, particles: 'embers' },
-  trench: { fog: '#2c140a', density: 0.0075, sky: '#d07848', ground: '#3a1408', amb: 0.8, particles: 'ash' },
-  research: { fog: '#16142a', density: 0.006, sky: '#8a7ed0', ground: '#1c1830', amb: 0.8, particles: 'sparks' },
-  ship: { fog: '#26303a', density: 0.0075, sky: '#a4b0bc', ground: '#2e2a26', amb: 0.85, particles: 'wind' },
-  caves: { fog: '#1c2534', density: 0.006, sky: '#8fa6c8', ground: '#2a2a34', amb: 0.8, particles: 'snow' },
-  void: { fog: '#0c0c16', density: 0.003, sky: '#7f8db0', ground: '#2a2a34', amb: 0.75, particles: 'none' },
+  // key: the light from the brightest thing in this island's sky (a nebula, a
+  // burning horizon, the storm), keyI its strength
+  hub: { fog: '#1d1512', density: 0.0045, sky: '#c09878', ground: '#3a2214', amb: 1.0, key: '#ffc898', keyI: 1.25, particles: 'embers' },
+  trench: { fog: '#2c140a', density: 0.0065, sky: '#d88858', ground: '#40180a', amb: 0.95, key: '#ffa070', keyI: 1.2, particles: 'ash' },
+  research: { fog: '#16142a', density: 0.0055, sky: '#9a8ee0', ground: '#24203a', amb: 0.95, key: '#c0c8ff', keyI: 1.2, particles: 'sparks' },
+  ship: { fog: '#26303a', density: 0.0065, sky: '#b4c0cc', ground: '#3a342e', amb: 1.0, key: '#d8e4f4', keyI: 1.2, particles: 'wind' },
+  caves: { fog: '#1c2534', density: 0.0055, sky: '#9fb6d8', ground: '#323440', amb: 0.95, key: '#c8e0ff', keyI: 1.2, particles: 'snow' },
+  void: { fog: '#0c0c16', density: 0.003, sky: '#7f8db0', ground: '#2a2a34', amb: 0.85, key: '#b0c0e8', keyI: 0.9, particles: 'none' },
 };
 
 // A ground texture: noise and flecks over a base colour, and its glow (the
@@ -74,10 +76,9 @@ function mat({ map, glow }, o = {}) {
 let cache = null;
 export function themeMaterials(base) {
   if (cache) return cache;
-  const ember = 'rgba(255,120,30,0.95)';
-  const scorched = groundTex(21, { base: [44, 30, 24], vary: 16, flecks: '110,100,96', cracks: { count: 70, width: 2.2, dark: 'rgba(12,6,4,0.9)', glow: ember }, glowK: 0.0 });
+    const scorched = groundTex(21, { base: [44, 30, 24], vary: 16, flecks: '110,100,96', cracks: { count: 9, width: 1.8, dark: 'rgba(12,6,4,0.9)', glow: 'rgba(255,110,30,0.7)' }, glowK: 0.0 });
   const lava = groundTex(23, { base: [255, 110, 20], vary: 50, flecks: '255,220,120', cracks: { count: 60, width: 4, dark: 'rgba(60,10,0,0.9)', glow: 'rgba(80,20,0,0.9)' }, glowK: 1 });
-  scorched.glow.repeat.set(1 / 6, 1 / 6);
+  scorched.glow.repeat.set(1 / 18, 1 / 18);   // (a few fissures, far apart)
   cache = {
     hub: {
       top: surface('stone_floor', { scale: 2.5, tint: '#b8a898', glow: 0.18 }),

@@ -11,7 +11,7 @@
 // buildCrust() in place of the school's exterior; update() runs every frame.
 // =============================================================================
 import * as THREE from 'three';
-import { buildGround, buildStructures, buildRides, buildDecor, buildPines } from './crustTerrain.js';
+import { buildGround, buildStructures, buildRides, buildDecor, buildPines, buildRails } from './crustTerrain.js';
 import { buildModels, updateMovers } from './crustModels.js';
 import { surface } from './crustSurfaces.js';
 import { loadModel } from './gltfLite.js';
@@ -366,6 +366,7 @@ export function buildCrust(mv) {
     // the sculpted islands (src/render/crustTerrain.js)
     buildGround(out, group, map, mv.mats, mv.wallMats);
     buildStructures(out, group, map, mats, mv.mats, mv.wallMats);
+    buildRails(out, group, map);
     buildRides(out, group, map, mats);
     if (!map.space) buildPines(out, group, map, mats);
     buildModels(out, group, map);
@@ -508,6 +509,7 @@ function buildSky(out, group, fog, space = false) {
   const moon = new THREE.DirectionalLight(0x9fb4e0, 0.55);
   moon.position.set(-0.35, 0.6, 0.7).multiplyScalar(50);
   group.add(moon); group.add(moon.target);
+  out.moon = moon;
 }
 
 // --- the frozen sea, out to the horizon, cracked between the islands -------------------------
@@ -1536,6 +1538,12 @@ function updateAtmosphere(W, dt, eye, time) {
   if (mv.hemi) {
     mv.hemi.color.copy(A.sky).lerp(new THREE.Color(1.6, 1.4, 2.2), A.flash);
     mv.hemi.groundColor.copy(A.ground);
+  }
+  // the key light: this island's
+  if (W.moon) {
+    if (!A.key) { A.key = new THREE.Color(tgt.key); A.keyI = tgt.keyI; }
+    A.key.lerp(new THREE.Color(tgt.key), k); A.keyI += (tgt.keyI - A.keyI) * k;
+    W.moon.color.copy(A.key); W.moon.intensity = A.keyI * (1 + A.flash * 1.5);
   }
   // particles in the air: this island's kind
   const style = tgt.particles;

@@ -385,6 +385,120 @@ export function buildStructures(out, group, map, mats, M, wallMats) {
   const pm = new THREE.Mesh(posts.build(), looks.steel); pm.userData.noBake = true; group.add(pm);
 }
 
+// --- guard rails along the ledges and round the decks (map.rails), and the gaps
+// left to dive off (map.dives). Each island its own kind: a stone parapet round
+// the forge, timber fencing at the shipwreck and the caves, yellow pipe rails
+// at the research base, sandbags along the trenches.
+export function buildRails(out, group, map) {
+  if (!map.rails || !map.rails.length) return;
+  const mats = {
+    stone: surface('rock_wall_08', { scale: 1.6, tint: '#b0a498', glow: 0.18 }),
+    cap: surface('stone_floor', { scale: 1.6, tint: '#b8aca0', glow: 0.18 }),
+    wood: surface('dark_wooden_planks', { scale: 1.2, tint: '#a08a74', glow: 0.16 }),
+    metal: new THREE.MeshStandardMaterial({ color: '#c49a2c', roughness: 0.55, metalness: 0.35, emissive: new THREE.Color('#2a2008') }),
+    sandbag: surface('coast_sand_01', { scale: 0.9, tint: '#a8966c', glow: 0.14, normal: 1.5 }),
+  };
+  const stone = new BoxBatch(), cap = new BoxBatch();
+  const bars = { wood: [], metal: [] }, bags = [];
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  // a box from point a to point b (a bar, a post), w by h thick
+  const bar = (list, ax, ay, az, bx, by, bz, w, h) => list.push([ax, ay, az, bx, by, bz, w, h]);
+  for (const r of map.rails) {
+    const along = r.axis === 'z';                         // (it runs along x)
+    const inset = -r.side * 0.07;                          // on the high side of the edge
+    const P = (a, y) => along ? [a, y, r.line + inset] : [r.line + inset, y, a];
+    const yAt = (a) => r.ys[Math.min(r.ys.length - 1, Math.max(0, Math.floor((a - r.a0) / r.step + 1e-6)))];
+    if (r.style === 'stone') {
+      // a parapet: a box per level stretch, a capstone along its top
+      let k0 = 0;
+      for (let k = 1; k <= r.ys.length; k++) {
+        if (k < r.ys.length && Math.abs(r.ys[k] - r.ys[k0]) < 0.06) continue;
+        const a0 = r.a0 + k0 * r.step, a1 = Math.min(r.a1, r.a0 + k * r.step), y = r.ys[k0];
+        const l0 = r.side > 0 ? r.line - 0.42 : r.line, l1 = r.side > 0 ? r.line : r.line + 0.42;
+        const bx = along ? { minX: a0, maxX: a1, minZ: l0, maxZ: l1 } : { minX: l0, maxX: l1, minZ: a0, maxZ: a1 };
+        stone.add({ ...bx, minY: y - 0.3, maxY: y + 0.88 });
+        const c = along ? { minX: a0 - 0.02, maxX: a1 + 0.02, minZ: l0 - 0.05, maxZ: l1 + 0.05 } : { minX: l0 - 0.05, maxX: l1 + 0.05, minZ: a0 - 0.02, maxZ: a1 + 0.02 };
+        cap.add({ ...c, minY: y + 0.88, maxY: y + 1.0 });
+        k0 = k;
+      }
+      continue;
+    }
+    if (r.style === 'sandbag') {
+      // three courses of sandbags, each course offset half a bag
+      const L = r.a1 - r.a0, n = Math.max(1, Math.round(L / 0.56));
+      for (let row = 0; row < 3; row++) for (let i = 0; i < n + (row % 2 ? 0 : 0); i++) {
+        const a = r.a0 + (i + (row % 2 ? 0.75 : 0.25)) * (L / n);
+        if (a > r.a1 - 0.1) continue;
+        const y = yAt(a) + 0.15 + row * 0.27;
+        bags.push([...P(a, y), along, (i * 7 + row * 3) % 5]);
+      }
+      continue;
+    }
+    // posts and two bars (timber or pipe)
+    const list = bars[r.style] || bars.metal;
+    const L = r.a1 - r.a0, n = Math.max(1, Math.ceil(L / 1.6));
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const a = r.a0 + (L * i) / n; pts.push([a, yAt(Math.min(a, r.a1 - 0.01))]); }
+    const thick = r.style === 'wood' ? 0.13 : 0.06;
+    for (const [a, y] of pts) bar(list, ...P(a, y - 0.1), ...P(a, y + 1.05), thick, thick);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [a0, y0] = pts[i], [a1, y1] = pts[i + 1];
+      for (const h of r.style === 'wood' ? [0.5, 0.98] : [0.52, 1.02]) bar(list, ...P(a0, y0 + h), ...P(a1, y1 + h), r.style === 'wood' ? 0.07 : 0.05, r.style === 'wood' ? 0.15 : 0.05);
+    }
+  }
+  const addBatch = (b, m) => { if (!b.count) return; const mesh = new THREE.Mesh(b.build(), m); mesh.userData.noBake = true; group.add(mesh); };
+  addBatch(stone, mats.stone); addBatch(cap, mats.cap);
+  for (const [style, list] of Object.entries(bars)) {
+    if (!list.length) continue;
+    const geo = style === 'wood' ? new THREE.BoxGeometry(1, 1, 1) : new THREE.CylinderGeometry(0.5, 0.5, 1, 8).rotateX(Math.PI / 2);
+    const im = new THREE.InstancedMesh(geo, mats[style], list.length);
+    list.forEach(([ax, ay, az, bx, by, bz, w, h], i) => {
+      const d = v.set(bx - ax, by - ay, bz - az), len = d.length();
+      // box/cylinder's long axis is z: turn z onto the bar
+      q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), d.clone().normalize());
+      // (keep the bar's "height" upright for timber)
+      m4.compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), q, sc.set(w, h, len));
+      im.setMatrixAt(i, m4);
+    });
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.userData.noBake = true;
+    group.add(im);
+  }
+  if (bags.length) {
+    const geo = new THREE.SphereGeometry(0.5, 10, 6);
+    const im = new THREE.InstancedMesh(geo, mats.sandbag, bags.length);
+    bags.forEach(([x, y, z, along, j], i) => {
+      q.setFromAxisAngle(up, (along ? 0 : Math.PI / 2) + (j - 2) * 0.06);
+      m4.compose(v.set(x, y, z), q, sc.set(0.6, 0.3, 0.42));
+      im.setMatrixAt(i, m4);
+    });
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.userData.noBake = true;
+    group.add(im);
+  }
+  // the dive spots: a chevron on the lip pointing over the edge, a faint violet glow
+  const chev = chevronTexture();
+  for (const d of map.dives || []) {
+    const p = (map.portals || []).filter((pp) => pp.drop && Math.hypot(pp.x - d.x, pp.z - d.z) < 3).sort((a, b) => Math.hypot(a.x - d.x, a.z - d.z) - Math.hypot(b.x - d.x, b.z - d.z))[0];
+    if (!p) continue;
+    const dx = p.axis === 'x' ? p.dirAB : 0, dz = p.axis === 'z' ? p.dirAB : 0;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: chev, color: new THREE.Color(1.6, 0.9, 2.4), transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
+    m.position.set(p.x - dx * 0.95, d.y + 0.04, p.z - dz * 0.95);
+    m.rotation.y = Math.atan2(-dx, -dz);
+    group.add(m);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: new THREE.Color(0.9, 0.4, 1.6), transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.scale.setScalar(2.2); glow.position.set(p.x - dx * 0.9, d.y + 0.5, p.z - dz * 0.9);
+    group.add(glow);
+    (out.glows || (out.glows = [])).push({ s: glow, base: 2.2, rate: 1.1 });
+  }
+}
+
+function chevronTexture() {
+  const [c, g] = T.makeCanvas(128, 128);
+  g.clearRect(0, 0, 128, 128);
+  g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 12; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const y of [34, 70]) { g.beginPath(); g.moveTo(28, y + 30); g.lineTo(64, y); g.lineTo(100, y + 30); g.stroke(); }
+  return T.toTexture(c);
+}
+
 function grateTexture() {
   const [c, g] = T.makeCanvas(64, 64);
   g.fillStyle = '#3a3e44'; g.fillRect(0, 0, 64, 64);

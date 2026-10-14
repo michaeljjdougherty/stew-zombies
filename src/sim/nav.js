@@ -81,7 +81,9 @@ export class Nav {
       // how far your feet are from this region's floor
       const s = y < r.y0 - 0.6 ? (r.y0 - y) * 2 : y > r.y1 + 0.6 ? y - r.y1 : 0;
       // a tie: the higher floor you're up on, else the smaller (more particular) place
-      if (s < bs || (s === bs && best && ((r.y0 > best.y0 && r.y0 <= y + 0.6) || (r.y0 === best.y0 && area(r) < area(best))))) { bs = s; best = r; }
+      // (floors within a centimetre are the same floor: the ground's heights are float32)
+      const same = best && Math.abs(r.y0 - best.y0) < 0.01;
+      if (s < bs || (s === bs && best && ((!same && r.y0 > best.y0 && r.y0 <= y + 0.6) || (same && area(r) < area(best))))) { bs = s; best = r; }
     }
     if (!best) return fallback;
     // (nowhere near anything here: a ledge's edge, mid-fall; keep to where you were)

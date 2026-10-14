@@ -297,6 +297,7 @@ function hub() {
 function ship() {
   const I = new Isle('ship', 'Ship Graveyard', 'wind', { x0: -60, z0: -212, x1: 60, z1: -104 });
   I.railStyle = 'wood';
+  I.rampart = { w: 4, h: [4.5, 9], keep: [[-41, -127, -32, -116]] };   // (crags round the rim: hide the void, stop the walking off)
   const t = I.t;
   const SHORE = I.zone('shore', 'The Shore');
   const PIER = I.zone('pier', 'The Pier');
@@ -356,8 +357,8 @@ function ship() {
   const gst = I.add(flight('gallery_stairs', [LX - 11.2, LZ - 4, LX - 9.4, LZ + 4], MESA, PORCH, 'n', { zone: LH, look: 'planks' }), { footprint: MESA });
   I.portalSpecs.push({ flight: gst, belowAt: [LX - 10.3, LZ + 4.6, MESA], aboveId: 'gallery_top' });
   I.decor.push({ kind: 'beacon', x: LX, y: MESA + 14.8, z: LZ });
-  // dive off the mesa onto the shore, off the net shed's roof
-  I.dive(-50, -188, { label: 'the shore' }); I.dive(-35, -174.2, { label: 'the village' });
+  // dive off the mesa, off the capsized keel, off the net shed's roof
+  I.dive(-35, -174.2, { label: 'the village' }); I.dive(42.5, -179.2, { label: 'the wreck yard' });
   I.dive(-30, -138, { label: 'the village' });
 
   // the galleon, wrecked in the dry harbor (it lies east-west, bow east). Its
@@ -451,6 +452,7 @@ function ship() {
 function research() {
   const I = new Isle('research', 'Research Base', 'lightning', { x0: 98, z0: -54, x1: 208, z1: 54 });
   I.railStyle = 'metal';
+  I.rampart = { w: 4, h: [4, 8.5] };   // (crags round the rim: hide the void, stop the walking off)
   const t = I.t;
   const CMP = I.zone('compound', 'The Compound');
   const HELI = I.zone('helipad', 'Helipad');
@@ -572,6 +574,7 @@ function research() {
 function trench() {
   const I = new Isle('trench', 'Trench Front', 'fire', { x0: -60, z0: 102, x1: 60, z1: 196 });
   I.railStyle = 'sandbag';
+  I.rampart = { w: 4, h: [4, 8], keep: [[-37, 176, -27, 185], [-5, 178, 5, 187], [27, 176, 37, 185]] };   // (crags round the rim: hide the void, stop the walking off)
   const t = I.t;
   const LZ = I.zone('lz', 'Landing Zone');
   const YARD = I.zone('fortyard', 'Fort Yard');
@@ -590,13 +593,11 @@ function trench() {
   t.paint(shape.rect(-41, 133, -31, 143), { h: G, zone: GUNW });
   t.paint(shape.rect(31, 133, 41, 143), { h: G, zone: GUNE });
   for (const [x0, z0, x1, z1] of [[-35, 178, -29, 183], [-3, 180, 3, 185], [29, 178, 35, 183]]) t.paint(shape.rect(x0, z0, x1, z1), { h: G, zone: SAPS });
-  // the trenches: 2 m wide, square-cut (the trench kit's sections line them)
-  const segs = [];
+  // the trenches: 2 m wide, square-cut, timber revetments down their walls
   const dig = (pts) => {
     for (let i = 0; i < pts.length - 1; i++) {
       const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
       t.paint(shape.rect(Math.min(ax, bx) - 1, Math.min(az, bz) - 1, Math.max(ax, bx) + 1, Math.max(az, bz) + 1), { h: TF, zone: TR, mat: 'duckboard' });
-      segs.push([ax, az, bx, bz]);
     }
   };
   dig([[-36, 129], [36, 129]]);                                                     // the traverse behind the landing zone
@@ -622,15 +623,7 @@ function trench() {
   // no-man's-land is wired off (the Fire quest will open it)
   I.gated = { zone: NML, door: 'gate_nml' };
   I.shelled = [NML, GUNW, GUNE, SAPS];
-  // the trench kit along every trench; the pillboxes, the tank, the dead trees
-  for (const [ax, az, bx, bz] of segs) {
-    const along = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(along / 3.25));
-    const yaw = ax === bx ? 0 : Math.PI / 2;
-    for (let k = 0; k < n; k++) {
-      const u = (k + 0.5) / n;
-      I.model({ a: 'trenchset', pick: ['Box019_Straight'], x: ax + (bx - ax) * u, y: TF - 0.05, z: az + (bz - az) * u, yaw, scale: [0.95, 1, along / n / 3.25 * 1.02] });
-    }
-  }
+  // the pillboxes, the tank, the dead trees (the trenches' walls are timber revetments, sandbags along the top)
   for (const [x, z, yaw] of [[-16, 179, 0.1], [16, 180, -0.15], [44, 176, 0.4]]) I.model({ a: 'fieldbunker', x, y: G - 0.4, z, yaw, scale: 1 }, { collide: [x, z, 3.4, 5.6, 2.7] });
   I.model({ a: 'trenchset', pick: ['Object359_Bunker'], x: -44, y: G - 2.3, z: 148, yaw: Math.PI / 2 });
   I.model({ a: 'trenchset', pick: ['Sphere002_Bunker'], x: 44, y: G - 2.0, z: 150, yaw: -Math.PI / 2 });
@@ -701,6 +694,46 @@ function trench() {
   // dive off the fort's roof into no man's land, over the parapet into the trench
   I.dive(0, 138.7, { label: "no man's land" }); I.dive(-25, 159.5, { label: 'the trench' });
   return I;
+}
+
+// The island's rampart: rock heaped up round its rim (a few metres in from the
+// edge), tall enough to hide what's beyond and stop you walking off into space.
+// Not over the launchers' flight paths, nor where `keep` says ([x, z, r] or a rect).
+function rampart(I) {
+  const t = I.t, o = I.rampart;
+  const W = o.w ?? 3.5, [h0, h1] = o.h ?? [4, 8];
+  // how far each cell is from the edge (the void), in cells
+  const n = t.nx * t.nz, dist = new Int16Array(n).fill(9999), q = [];
+  for (let c = 0; c < n; c++) if (t.kind[c] === K.SEA) { dist[c] = 0; q.push(c); }
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi], ix = c % t.nx, iz = (c - ix) / t.nx;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const jx = ix + dx, jz = iz + dz;
+      if (jx < 0 || jz < 0 || jx >= t.nx || jz >= t.nz) continue;
+      const m = t.i(jx, jz);
+      if (dist[m] > dist[c] + 1) { dist[m] = dist[c] + 1; q.push(m); }
+    }
+  }
+  // the launchers' paths out
+  const lanes = I.pads.map((p) => {
+    const to = ISLES.flatMap((J) => J.pads).find((d) => d.id === p.to);
+    const L = Math.hypot(to.x - p.x, to.z - p.z);
+    return { x: p.x, z: p.z, dx: (to.x - p.x) / L, dz: (to.z - p.z) / L };
+  });
+  const inLane = (x, z) => lanes.some((l) => { const u = (x - l.x) * l.dx + (z - l.z) * l.dz, v = Math.abs((x - l.x) * l.dz - (z - l.z) * l.dx); return (u > -6 && u < 60 && v < 7) || Math.hypot(x - l.x, z - l.z) < 8; });
+  const kept = (x, z) => (o.keep || []).some((k) => k.length === 3 ? Math.hypot(x - k[0], z - k[1]) < k[2] : x >= k[0] && x <= k[2] && z >= k[1] && z <= k[3]);
+  for (let c = 0; c < n; c++) {
+    const d = dist[c];
+    if (d < 1 || d > W || t.kind[c] !== K.GROUND || t.smooth[c]) continue;
+    const x = t.cx(c % t.nx), z = t.cz(Math.floor(c / t.nx));
+    if (inLane(x, z) || kept(x, z)) continue;
+    // jagged crags, highest at the very edge
+    const k = 1 - (d - 1) / Math.max(1, W);
+    const crag = 0.5 + 0.5 * Math.sin(x * 0.61 + Math.cos(z * 0.37) * 2.1) * Math.cos(z * 0.53 - x * 0.19);
+    t.kind[c] = K.ROCK; t.spawn[c] = 0;
+    t.mat[c] = o.mat || 'rock';
+    t.h[c] = t.h[c] + (h0 + (h1 - h0) * crag) * (0.55 + 0.45 * k) + wobble(x, z, 0.8, 0.9);
+  }
 }
 
 // A solid model's collision: its height grid as boxes (rows merged where the
@@ -911,6 +944,7 @@ for (const I of ISLES) {
   const t = I.t;
   const pre = I.id + '_';
   // what stands on the ground: buildings, things on legs
+  if (I.rampart) rampart(I);
   for (const a of I.areas) if (!a.upper) t.building(a.rect, a.y || 0);
   for (const { s, footprint } of I.structs) {
     if (footprint == null) continue;

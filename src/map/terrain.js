@@ -223,6 +223,7 @@ export class Terrain {
         let drop;
         if (this.kind[n] === K.SEA) { if (!this.openEdges) continue; drop = Infinity; }
         else if (this.walkable(n)) drop = this.h[c] - this.h[n];
+        else if (this.kind[n] === K.ROCK && this.noFence[n]) drop = this.h[c] - this.h[n];   // (a slope you'd tumble down)
         else continue;      // (rock: its invisible fence already stops you)
         if (drop < minDrop) continue;
         if (skip(this.cx(ix) + dx * this.cell / 2, this.cz(iz) + dz * this.cell / 2, this.h[c])) continue;
