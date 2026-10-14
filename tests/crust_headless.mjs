@@ -64,7 +64,7 @@ const at = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.P
 // --- you start at the bottom of the pit, by the Anvil
 {
   const { sim, me, log, step } = game();
-  check(sim.zoneOf(me.pos) === 'pit' && me.pos.y < 0.1, `you start at the bottom of the quarry pit (${sim.zoneOf(me.pos)}, y ${me.pos.y.toFixed(1)})`);
+  check(sim.zoneOf(me.pos) === 'pit' && me.pos.y < 0.5, `you start at the bottom of the quarry pit, on the Anvil's dais (${sim.zoneOf(me.pos)}, y ${me.pos.y.toFixed(1)})`);
   const pitGuns = sim.world.wallBuys.filter((w) => w.zone === 'pit');
   check(pitGuns.length === 2, `two guns on the pit's rock walls (${pitGuns.map((w) => w.weapon).join(', ')})`);
   check(CRUST.props.some((p) => p.kind === 'anvil' && p.blank), "the Anvil's four sockets are empty, waiting for the War Hammers");

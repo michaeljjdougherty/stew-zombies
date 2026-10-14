@@ -46,6 +46,16 @@ class Isle {
     this.railGaps = [];           // rects left without rails (a hole you're meant to drop through)
     this.railStyle = 'metal';     // how its rails look: stone, wood, metal, sandbag
   }
+  // cover out in the open: a crag of the island's rock (r across, h tall), or a
+  // concrete blast wall (a rect)
+  outcrop(x, z, r, h, o = {}) {
+    const t = this.t, base = o.base ?? t.heightAt(x, z);
+    t.paint(shape.circle(x, z, r, Math.min(0.9, r * 0.3)), { kind: K.ROCK, mat: o.mat || 'rock', only: (k) => k === K.GROUND, h: (px, pz) => base + h * (1 - 0.45 * (Math.hypot(px - x, pz - z) / r) ** 2) + wobble(px, pz, h * 0.12, 1.1) });
+  }
+  barrier(x0, z0, x1, z1, h, o = {}) {
+    const t = this.t, base = o.base ?? t.heightAt((x0 + x1) / 2, (z0 + z1) / 2);
+    t.paint(shape.rect(x0, z0, x1, z1), { kind: K.ROCK, mat: o.mat || 'concrete', only: (k) => k === K.GROUND, h: base + h });
+  }
   // a gap in the rails at a ledge worth diving off
   dive(x, z, o = {}) { this.dives.push({ x, z, ...o }); }
   zone(id, name, o = {}) { this.zones.set(id, { id, name, reverb: 0.3, fixtures: [], ...o }); return id; }
@@ -280,7 +290,8 @@ function hub() {
   I.model({ a: 'well', x: -11.5, y: F, z: -2, yaw: 0.4, fit: { h: 2.8 } }, { collide: [-11.5, -2, 1.5, 1.5, 2.2] });
   I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5]];
   I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
-  I.playerSpawns = [{ x: -3, z: 12.5, yaw: 0 }, { x: 3, z: 12.5, yaw: 0 }, { x: -3, z: 14, yaw: 0 }, { x: 3, z: 14, yaw: 0 }];
+  // (you start on the dais, right up at the Anvil)
+  I.playerSpawns = [{ x: -3.6, z: 6.6, yaw: 0 }, { x: -1.2, z: 6.9, yaw: 0 }, { x: 1.2, z: 6.9, yaw: 0 }, { x: 3.6, z: 6.6, yaw: 0 }];
   return I;
 }
 
@@ -360,6 +371,8 @@ function ship() {
   // dive off the mesa, off the capsized keel, off the net shed's roof
   I.dive(-35, -174.2, { label: 'the village' }); I.dive(42.5, -179.2, { label: 'the wreck yard' });
   I.dive(-30, -138, { label: 'the village' });
+  // sea stacks and wreck-heaps out on the open shore: cover, and something to hide behind
+  for (const [x, z, r, h] of [[16, -135.5, 3.2, 6.5], [27.5, -142, 2.3, 4.5], [13, -181, 3, 7.5], [2.5, -178, 2, 4], [-13.5, -143, 2.8, 6.5], [12.5, -190.5, 2.6, 5.5], [-28, -167.5, 2.4, 5.5], [-13.5, -160, 2.1, 4], [-16.5, -129.5, 2.3, 5], [-4.5, -186, 2.2, 4.5], [-21.5, -152, 1.9, 3.8]]) I.outcrop(x, z, r, h, { base: G });
 
   // the galleon, wrecked in the dry harbor (it lies east-west, bow east). Its
   // decks are where the model's are: the waist amidships, up the two ladders
@@ -558,6 +571,8 @@ function research() {
   I.pads.push({ id: 'pad_research', x: 112, z: 0, to: 'pad_hub_e', label: 'the Anvil' });
   // dive off the mast's first platform, off the tesla catwalks
   I.dive(177.7, -28, { label: 'the yard' }); I.dive(147.7, 33, { label: 'the coils' }); I.dive(170.3, 33, { label: 'the coils' });
+  // blast walls across the open yards (not the helipad: it's for landing on)
+  for (const [x0, z0, x1, z1] of [[176, -11, 183, -9.8], [165, -34, 166.2, -27], [146, -37, 152, -35.8], [126, -32, 131, -30.8], [172, -19.5, 177, -18.3], [137.5, -30, 138.7, -25], [138, 24.5, 142, 25.7], [186, -17, 189, -15.8]]) I.barrier(x0, z0, x1, z1, 3.4, { base: G });
   return I;
 }
 
@@ -693,6 +708,8 @@ function trench() {
   I.pads.push({ id: 'pad_trench', x: 0, z: 115, to: 'pad_hub_s', label: 'the Anvil' });
   // dive off the fort's roof into no man's land, over the parapet into the trench
   I.dive(0, 138.7, { label: "no man's land" }); I.dive(-25, 159.5, { label: 'the trench' });
+  // shattered rock thrown up across no man's land: cover from the guns
+  for (const [x, z, r, h] of [[36.5, 157, 2.6, 4.2], [-19.5, 118.5, 2.2, 3.5], [16.5, 120, 2.4, 3.8], [-16.5, 143, 2.6, 4.5], [16.5, 143, 2.4, 4.2], [-15.5, 160, 2.4, 3.6], [-41.5, 144, 2.2, 3.8], [43.5, 141, 2, 3.4], [16.5, 162.5, 1.8, 3]]) I.outcrop(x, z, r, h, { base: G });
   return I;
 }
 

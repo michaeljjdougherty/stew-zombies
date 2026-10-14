@@ -17,7 +17,7 @@ const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 214748
 export const ATMOS = {
   // key: the light from the brightest thing in this island's sky (a nebula, a
   // burning horizon, the storm), keyI its strength
-  hub: { fog: '#1d1512', density: 0.0045, sky: '#c09878', ground: '#3a2214', amb: 1.0, key: '#ffc898', keyI: 1.25, particles: 'embers' },
+  hub: { fog: '#1a1618', density: 0.0045, sky: '#aaa0b0', ground: '#2c2220', amb: 1.0, key: '#ffc898', keyI: 1.25, particles: 'embers' },
   trench: { fog: '#2c140a', density: 0.0065, sky: '#d88858', ground: '#40180a', amb: 0.95, key: '#ffa070', keyI: 1.2, particles: 'ash' },
   research: { fog: '#16142a', density: 0.0055, sky: '#9a8ee0', ground: '#24203a', amb: 0.95, key: '#c0c8ff', keyI: 1.2, particles: 'sparks' },
   ship: { fog: '#26303a', density: 0.0065, sky: '#b4c0cc', ground: '#3a342e', amb: 1.0, key: '#d8e4f4', keyI: 1.2, particles: 'wind' },
@@ -81,12 +81,12 @@ export function themeMaterials(base) {
   scorched.glow.repeat.set(1 / 18, 1 / 18);   // (a few fissures, far apart)
   cache = {
     hub: {
-      top: surface('stone_floor', { scale: 2.5, tint: '#b8a898', glow: 0.18 }),
-      cobble: surface('cobblestone_floor_08', { scale: 2.2, tint: '#a8a0a0', glow: 0.16 }),
-      flagstone: surface('stone_floor', { scale: 4, tint: '#9a8c80', glow: 0.18 }),
+      top: surface('stone_floor', { scale: 2.5, tint: '#aaa8aa', glow: 0.18 }),
+      cobble: surface('cobblestone_floor_08', { scale: 2.2, tint: '#a0a0a8', glow: 0.16 }),
+      flagstone: surface('stone_floor', { scale: 4, tint: '#a4a0a0', glow: 0.18 }),
       rocktop: surface('lichen_rock', { scale: 5, tint: '#8a8078', glow: 0.14 }),
       cliff: surface('rock_wall_10', { scale: 3.2, tint: '#a89888', glow: 0.16, normal: 1.4 }),
-      wall: surface('rock_wall_08', { scale: 2.6, tint: '#b8aca0', glow: 0.17, normal: 1.3 }),
+      wall: surface('rock_wall_08', { scale: 2.6, tint: '#a8acb8', glow: 0.17, normal: 1.3 }),
       wallTop: surface('stone_floor', { scale: 2.5, tint: '#a09080', glow: 0.16 }),
       under: surface('lichen_rock', { scale: 9, tint: '#6a6058', glow: 0.1, side: THREE.DoubleSide }),
     },
@@ -102,6 +102,7 @@ export function themeMaterials(base) {
     research: {
       top: surface('concrete_floor_02', { scale: 4, tint: '#a8a8b4', glow: 0.18 }),
       concrete: surface('concrete_wall_008', { scale: 3, tint: '#a0a0a8', glow: 0.18 }),
+      concreteTop: surface('concrete_floor_02', { scale: 3, tint: '#8a8a94', glow: 0.16 }),
       rocktop: surface('rock_face_03', { scale: 4, tint: '#8a88a0', glow: 0.14 }),
       cliff: surface('rock_face_03', { scale: 4, tint: '#7a7890', glow: 0.14, normal: 1.3 }),
       under: surface('rock_face_03', { scale: 9, tint: '#55546a', glow: 0.1, side: THREE.DoubleSide }),

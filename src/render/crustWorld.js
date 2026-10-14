@@ -302,7 +302,7 @@ export function crustMaterials(M, wallMats, applyBake) {
   wallMats.hull = applyBake(std({ map: rep(hullTexture(), 1 / 3), roughness: 0.8, metalness: 0.35 }));
   wallMats.stone = applyBake(surface('rock_wall_08', { scale: 2.5, tint: '#b0a8a0' }));
   wallMats.tin = applyBake(surface('corrugated_iron', { scale: 2.5, tint: '#9aa0a8', metal: 0.5, rough: 0.7 }));
-  wallMats.bunker = applyBake(surface('concrete_wall_008', { scale: 3, tint: '#a8a6a0' }));
+  wallMats.bunker = applyBake(surface('concrete_wall_008', { scale: 3, tint: '#7e766c' }));
   wallMats.canvas = applyBake(std({ map: rep(canvasTexture(), 1 / 4), side: THREE.DoubleSide }));
   // the floors in the buildings and on the decks
   M.duckboard = applyBake(surface('dark_wooden_planks', { scale: 2.2, tint: '#b0a090' }));
@@ -330,7 +330,9 @@ export function buildCrust(mv) {
   const mats = {
     snow: new THREE.MeshStandardMaterial({ color: '#d8e0ec', roughness: 0.95, emissive: new THREE.Color('#202a3c'), emissiveIntensity: 1 }),
     terrain: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, emissive: new THREE.Color('#121a28'), flatShading: false }),
-    snowCap: new THREE.MeshStandardMaterial({ color: '#eef2f8', roughness: 0.9, emissive: new THREE.Color('#141a26') }),
+    // (out in space nothing's under snow: tarred roofing, weathered)
+    snowCap: map.space ? surface('concrete_floor_02', { scale: 2.5, tint: '#5e5a56', glow: 0.12, rough: 0.9 }) : new THREE.MeshStandardMaterial({ color: '#eef2f8', roughness: 0.9, emissive: new THREE.Color('#141a26') }),
+    scorch: new THREE.MeshStandardMaterial({ color: '#1e1814', roughness: 1, emissive: new THREE.Color('#0c0604') }),
     rock: new THREE.MeshStandardMaterial({ color: '#4c525a', roughness: 1, flatShading: true }),
     stone: new THREE.MeshStandardMaterial({ map: CT.stoneTexture({ dressed: true, base: [96, 94, 92], seed: 71 }), roughness: 1 }),
     darkStone: new THREE.MeshStandardMaterial({ color: '#2e3036', roughness: 1 }),
@@ -404,7 +406,7 @@ export function buildCrust(mv) {
     const g = new THREE.CircleGeometry(c.r, 20).rotateX(-Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 1, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
     m.position.set(c.x, (c.y || 0) + 0.012, c.z); group.add(m);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(c.r, 0.25, 6, 20).rotateX(Math.PI / 2), mats.snowCap);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(c.r, 0.25, 6, 20).rotateX(Math.PI / 2), mats.scorch);
     rim.scale.y = 0.6; rim.position.set(c.x, (c.y || 0) + 0.05, c.z); group.add(rim);
   }
 
