@@ -17,11 +17,11 @@ const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 214748
 export const ATMOS = {
   // key: the light from the brightest thing in this island's sky (a nebula, a
   // burning horizon, the storm), keyI its strength
-  hub: { fog: '#1a1618', density: 0.0045, sky: '#aaa0b0', ground: '#2c2220', amb: 1.0, key: '#ffc898', keyI: 1.25, particles: 'embers' },
-  trench: { fog: '#2c140a', density: 0.0065, sky: '#d88858', ground: '#40180a', amb: 0.95, key: '#ffa070', keyI: 1.2, particles: 'ash' },
-  research: { fog: '#16142a', density: 0.0055, sky: '#9a8ee0', ground: '#24203a', amb: 0.95, key: '#c0c8ff', keyI: 1.2, particles: 'sparks' },
-  ship: { fog: '#26303a', density: 0.0065, sky: '#b4c0cc', ground: '#3a342e', amb: 1.0, key: '#d8e4f4', keyI: 1.2, particles: 'wind' },
-  caves: { fog: '#1c2534', density: 0.0055, sky: '#9fb6d8', ground: '#323440', amb: 0.95, key: '#c8e0ff', keyI: 1.2, particles: 'snow' },
+  hub: { fog: '#1a1618', density: 0.0045, sky: '#aaa0b0', ground: '#2c2220', amb: 1.0, key: '#ffc898', keyI: 1.25, mist: { color: '#6a4c3c', opacity: 0.42, glow: '#ff7a30' }, particles: 'embers' },
+  trench: { fog: '#2c140a', density: 0.0065, sky: '#d88858', ground: '#40180a', amb: 0.95, key: '#ffa070', keyI: 1.2, mist: { color: '#5c3424', opacity: 0.55, glow: '#ff4a10' }, particles: 'ash' },
+  research: { fog: '#16142a', density: 0.0055, sky: '#9a8ee0', ground: '#24203a', amb: 0.95, key: '#c0c8ff', keyI: 1.2, mist: { color: '#5c4ca8', opacity: 0.45, glow: '#a070ff' }, particles: 'sparks' },
+  ship: { fog: '#26303a', density: 0.0065, sky: '#b4c0cc', ground: '#3a342e', amb: 1.0, key: '#d8e4f4', keyI: 1.2, mist: { color: '#9cabb8', opacity: 0.4, glow: null }, particles: 'wind' },
+  caves: { fog: '#1c2534', density: 0.0055, sky: '#9fb6d8', ground: '#323440', amb: 0.95, key: '#c8e0ff', keyI: 1.2, mist: { color: '#d0e2f4', opacity: 0.55, glow: '#80c8ff' }, particles: 'snow' },
   void: { fog: '#0c0c16', density: 0.003, sky: '#7f8db0', ground: '#2a2a34', amb: 0.85, key: '#b0c0e8', keyI: 0.9, particles: 'none' },
 };
 

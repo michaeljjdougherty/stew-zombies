@@ -1013,6 +1013,17 @@ export const CONFIG = {
   },
   crust: {
     islandZombies: 0.45,     // share of the zombies on an island that are its own kind (lab zombies, skeletons...)
+    // the mist round each island's rim and under it (colours: ATMOS in src/render/crustThemes.js)
+    mist: {
+      spacing: 6,            // m between puffs along an island's edge
+      out: [1, 9],           // m out from the edge
+      size: [12, 24],        // m across a puff
+      layers: 3,             // puffs stacked at each spot on the edge
+      below: [-14, 3],       // m below/above the edge's ground a puff sits
+      under: 26,             // puffs drifting under each island
+      near: [5, 20],         // m: puffs fade out closer than this to you (no fog in your face)
+      drift: 2.2,            // m a puff wanders
+    },
     // guard rails along the ledges (src/map/terrain.js), but for the marked places to dive off
     rails: {
       drop: 1.3,             // m: a ledge higher than this gets a rail

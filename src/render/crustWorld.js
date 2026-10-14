@@ -16,6 +16,8 @@ import { buildModels, updateMovers } from './crustModels.js';
 import { surface } from './crustSurfaces.js';
 import { loadModel } from './gltfLite.js';
 import { ATMOS, PARTICLES, spaceTexture } from './crustThemes.js';
+import { buildMist, updateMist } from './crustMist.js';
+import { CONFIG } from '../config.js';
 import * as T from './textures.js';
 import * as CT from './crustTextures.js';
 
@@ -411,6 +413,7 @@ export function buildCrust(mv) {
   }
 
   if (map.space) setupAtmosphere(out, map, group);
+  if (map.space) buildMist(out, group, map, CONFIG.crust.mist);
   out.onEvent = (e) => crustEvent(out, e);
   out.update = (dt, eye, time) => updateCrust(out, dt, eye, time);
   return out;
@@ -1435,6 +1438,7 @@ function updateCrust(W, dt, eye, time) {
   for (const P of W.planets || []) P.g.rotation.y += P.rate * dt;
   W.ring.position.set(eye.x, 0, eye.z);
   if (W.atmos) updateAtmosphere(W, dt, eye, time);
+  updateMist(W, dt, time, W.atmos ? W.atmos.flash : 0);
   // the plant: never further than D away (pulled in toward the eye, same size on screen)
   const P = W.plant, d = Math.hypot(P.center.x - eye.x, P.center.z - eye.z);
   const k = d > P.D ? P.D / d : 1;
