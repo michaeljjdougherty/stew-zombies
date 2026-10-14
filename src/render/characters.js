@@ -532,7 +532,9 @@ function braceletMesh(r, { colors, chunky }) {
 const cache = new Map();
 
 export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jersey = null } = {}) {
-  let def = CHARACTERS[id] || CHARACTERS.kearns;
+  // (a whole definition can be passed in place of an id: a variant of someone)
+  let def = id && typeof id === 'object' ? id : (CHARACTERS[id] || CHARACTERS.kearns);
+  if (typeof id === 'object') id = def.id || 'kearns';
   // the team's green-and-gold game jersey with a number (the intro cutscene)
   if (jersey != null) def = { ...def, top: { type: 'tank', color: '#1d5a2e', trim: '#d8b84a', number: String(jersey) }, layer: undefined, idle: def.idle === 'manic' ? 'relaxed' : def.idle };
   const skin = SKIN[def.skin] || SKIN.light;

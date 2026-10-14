@@ -1005,6 +1005,12 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   // Call of the Crust (Map 2): numbers for the battlefield
   // ---------------------------------------------------------------------------
+  // Big Evil Zach: what The Schnitz made of Zach (src/render/evilZach.js)
+  bigZach: {
+    scale: 2.6,              // x a normal character's size
+    eyeGlow: [0.45, 3.4, 0.6],   // the Schnitz eyes' colour (HDR: they burn)
+    lightRange: 9,           // m: the green light they throw
+  },
   crust: {
     islandZombies: 0.45,     // share of the zombies on an island that are its own kind (lab zombies, skeletons...)
     // guard rails along the ledges (src/map/terrain.js), but for the marked places to dive off
