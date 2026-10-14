@@ -200,7 +200,7 @@ function hub() {
   I.wallBuys.push({ weapon: 'PM64', room: 'depot', side: 'n', t: 0.5 });
   I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2 });
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
-  I.prop('anvil', -4.2, -4.2, 4.2, 4.2, 6.5, { blank: true });
+  I.prop('anvil', -3.3, -3.3, 3.3, 3.3, 6.5, { blank: true });
   // a ring of rune stones round it
   const runes = ['Runic_1', 'Runic_2', 'Runic_3', 'Runic_4', 'Runic_5', 'Runic_6', 'Runic_7'];
   runes.forEach((k, i) => {

@@ -1263,9 +1263,9 @@ function buildAnvil(out, group, cx, cz, w, h, mats, mv, blank = false) {
   // The Anvil: a stepped stone plinth in the middle of the forge pit, and on it
   // the anvil itself, black iron, its four sockets waiting for the War Hammers.
   const g = new THREE.Group();
-  const stone = surface('rock_wall_08', { scale: 2.2, tint: '#b8aca0', glow: 0.16 });
-  const slab = surface('stone_floor', { scale: 2.2, tint: '#a89888', glow: 0.16 });
-  const iron = surface('metal_plate_02', { scale: 1.5, tint: '#5a5a62', metal: 0.85, rough: 0.55, glow: 0.05 });
+  const stone = surface('rock_wall_08', { scale: 2.2, tint: '#c8bcb0', glow: 0.32 });
+  const slab = surface('stone_floor', { scale: 2.2, tint: '#c0b0a0', glow: 0.32 });
+  const iron = surface('metal_plate_02', { scale: 1.5, tint: '#8a8a96', metal: 0.7, rough: 0.5, glow: 0.18 });
   const tiers = [[w, 1.2, stone], [w * 0.76, 1.0, stone], [w * 0.6, 0.45, slab]];
   let y = 0;
   for (const [s2, th, m] of tiers) { const t = new THREE.Mesh(new THREE.BoxGeometry(s2, th, s2), m); t.position.y = y + th / 2; g.add(t); y += th; }
