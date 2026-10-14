@@ -41,6 +41,7 @@ import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer } from './ui/careerUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
+import { TrailerUI } from './ui/trailerUI.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
 import { OnlineSession } from './net/online.js';
@@ -172,6 +173,7 @@ const menus = new Menus(settings, {
   quit: () => { if (online) leaveOnline(); restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
+  trailer: () => startTrailer(),
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
@@ -449,6 +451,55 @@ function startIntro(then = 'play') {
   cutsceneUI.show(`${glyph('skip')} skip`);
 }
 
+// The Call of the Crust trailer (Main menu > Watch Trailer): the real map, a
+// scripted camera, the song. No HUD, no menus; the mouse brings up Skip.
+const trailerUI = new TrailerUI(() => renderer.ending && renderer.ending.skip());
+let trailerSong = null;
+function startTrailer({ silent = false, recording = false } = {}) {
+  audio.init(); audio.applyVolumes();
+  titleMusic.stop(0.4);
+  if (jukebox.playing) jukebox.stop(0.3);
+  restart('zombies', 'crust');
+  menus.hideAll();
+  mode = 'trailer';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  hud.show(false);
+  sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
+  sim.power = true;
+  const T = renderer.startTrailer();
+  T.recording = recording;
+  trailerUI.show(CONFIG.trailer.letterbox);
+  if (!silent) {
+    trailerSong = new Audio(CONFIG.trailer.song);
+    trailerSong.volume = Math.min(1, (settings.master ?? 1) * Math.max(0.6, settings.music ?? 1));
+    trailerSong.play().catch(() => {});
+  }
+  return T;
+}
+function updateTrailer() {
+  const T = renderer.ending;
+  if (!T) return;
+  trailerUI.update(T, T.recording);
+  // the song: in step with the picture, fading out at the end
+  if (trailerSong) {
+    const [f0, f1] = CONFIG.trailer.fadeOut;
+    const k = Math.min(1, Math.max(0, (T.t - f0) / (f1 - f0)));
+    trailerSong.volume = Math.max(0, Math.min(1, (settings.master ?? 1) * Math.max(0.6, settings.music ?? 1)) * (1 - k));
+    if (Math.abs(trailerSong.currentTime - T.t) > 0.25 && !trailerSong.paused) trailerSong.currentTime = T.t;
+  }
+}
+function finishTrailer() {
+  renderer.endEnding();
+  trailerUI.hide();
+  if (trailerSong) { trailerSong.pause(); trailerSong = null; }
+  restart('zombies');
+  mode = 'title';
+  menus.show('title');
+  startTitleMusic();
+}
+
 function finishIntro() {
   renderer.endEnding();
   cutsceneUI.hide();
@@ -579,7 +630,7 @@ window.addEventListener('keydown', (e) => {
     if (mode === 'play') { if (sim.mode === 'explore') openExplorePanel(); else openRangePanel(); }
     else if (mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); }
   }
-  if ((mode === 'ending' || mode === 'intro') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
   if (e.code === 'Escape' && mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
@@ -803,7 +854,7 @@ function padFrame(fdt) {
     if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
   }
   const playing = mode === 'play';
-  if ((mode === 'ending' || mode === 'intro') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
   // menus first (no menu is up while playing, so this only tracks the screen)
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
@@ -851,6 +902,7 @@ function frame(now) {
   if (mode === 'play' && endingAt != null && time >= endingAt) startEnding();
   if (mode === 'ending' && renderer.ending && renderer.ending.done) finishEnding();
   if (mode === 'intro' && renderer.ending && renderer.ending.done) finishIntro();
+  if (mode === 'trailer') { if (renderer.ending && renderer.ending.done) finishTrailer(); else updateTrailer(); }
 
   if (mode === 'dying') {
     dyingT += fdt;
@@ -868,7 +920,7 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
-  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' ? 'ending' : 'play'));
+  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
@@ -914,6 +966,17 @@ window.STEW = {
     ending(at = 0) { if (mode !== 'ending') startEnding(); renderer.ending.t = at; },
     // jump into the intro at `at` seconds (for testing)
     intro(at = 0) { if (mode !== 'intro') startIntro('title'); renderer.ending.t = at; },
+    // the trailer: start it (silent for recording), or render one frame of it at
+    // time t (frame by frame, for a recorded export: call with rising t)
+    trailer(opts = {}) { return startTrailer(opts); },
+    trailerFrame(t, dt = 1 / 30) {
+      const T = renderer.ending;
+      if (!T || mode !== 'trailer') return 'no trailer';
+      T.t = t - dt;
+      renderer.render(dt, 1, { pitch: 0, yaw: 0, dx: 0, dy: 0 }, null, t, 'ending');
+      trailerUI.update(T, true);
+      return T.shot ? T.shot.id : '';
+    },
     // start a zombies game on a map straight away (tests: 'crust')
     play(mapId = 'lastbell') { menus.hideAll(); restart('zombies', mapId); startPlaying(); },
     // put the local player somewhere (tests, screenshots)

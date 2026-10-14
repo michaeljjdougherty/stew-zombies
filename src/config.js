@@ -1005,6 +1005,88 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   // Call of the Crust (Map 2): numbers for the battlefield
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // The Call of the Crust trailer (src/render/trailer.js, src/ui/trailerUI.js):
+  // Main menu > Watch Trailer. Everything before the drop is timed in seconds
+  // (`at`, `len`); everything after it in beats from the drop (`beat`,
+  // `beats`), so moving `drop` moves the whole second half with it.
+  // Shots run back to back: each lasts until the next one starts.
+  // ---------------------------------------------------------------------------
+  trailer: {
+    song: 'assets/music/design_in_malice.mp3',
+    drop: 20.18,             // s: where the beat drops in the song (trailerDropTime)
+    bpm: 90,                 // the song's tempo after the drop (a beat = 60 / bpm s)
+    fadeOut: [58, 60],       // s: the music fades out over this
+    end: 60.5,               // s: the trailer's over
+    fps: 30,                 // frames a second for a recorded export
+    letterbox: 2.39,         // the picture's shape between the bars (2.39:1)
+    // the perk machines it shows off (rename them to the real ones when they're in)
+    perks: [
+      { key: 'trailerPerk1', name: 'Belly Flop Bisque', color: '#9b4dff', glyph: 'F' },
+      { key: 'trailerPerk2', name: 'Stone Soup', color: '#3fd0c8', glyph: 'S' },
+    ],
+    // the guns in the "7 NEW GUNS" montage, and who fires each
+    guns: [['Komando', 'ryan'], ['SPAZ-13', 'brian'], ['HK22', 'pit'], ['Dragunoff', 'kearns'], ['Galill', 'rocco'], ['AK-75u', 'ryan'], ['L97A1', 'brian']],
+    // everyone's gun when they're just fighting
+    loadout: { rocco: 'Fucci Gun', brian: 'AK-75u', ryan: 'M17', kearns: 'M15', pit: 'PM64' },
+    // the shots, in order (ids: see SHOTS in src/render/trailer.js)
+    shots: [
+      { id: 'black', at: 0 },
+      { id: 'space', at: 1.0 },
+      { id: 'black', at: 5.2 },
+      { id: 'zachReveal', at: 7.8 },
+      { id: 'black', at: 11.2 },
+      { id: 'basePan', at: 13.0 },
+      { id: 'black', at: 15.4 },
+      { id: 'squadFog', at: 17.0 },
+      { id: 'black', at: 18.9 },
+      // ---- the drop ----
+      { id: 'black', beat: 0 },
+      { id: 'hubFly', beat: 2 },
+      { id: 'roccoHero', beat: 4 },
+      { id: 'slideUnder', beat: 7 },
+      { id: 'gunMontage', beat: 9 },
+      { id: 'zachRoar', beat: 13 },
+      { id: 'shipFly', beat: 15 },
+      { id: 'brianHero', beat: 17 },
+      { id: 'researchFly', beat: 20 },
+      { id: 'perks', beat: 22 },
+      { id: 'ryanHero', beat: 25 },
+      { id: 'trenchFly', beat: 28 },
+      { id: 'explosives', beat: 30 },
+      { id: 'zachStomp', beat: 33 },
+      { id: 'kearnsHero', beat: 35 },
+      { id: 'hammers', beat: 38 },
+      { id: 'cavesFly', beat: 42 },
+      { id: 'pitHero', beat: 44 },
+      { id: 'slideCover', beat: 47 },
+      { id: 'zachSwing', beat: 49 },
+      { id: 'finale', beat: 51 },
+      { id: 'black', beat: 56 },
+    ],
+    // the words on screen. style: card (on black, fades), slam (on black, punches
+    // in), overlay (slams over the action), name (a hero's name, beside them),
+    // title (the last cards)
+    cards: [
+      { text: 'The Schnitz has taken possession of Crust.', style: 'card', at: 5.4, len: 2.2 },
+      { text: 'To save him, and everyone else...', style: 'card', at: 11.3, len: 1.6 },
+      { text: '...someone will have to make the ultimate sacrifice.', style: 'card', at: 15.5, len: 1.45 },
+      { text: '5 Leonards will walk in.', style: 'card', at: 18.95, len: 0.75 },
+      { text: 'Only 4 will walk out.', style: 'slam', beat: 0, beats: 2 },
+      { text: 'ROCCO FUCCI', style: 'name', side: 'left', beat: 4.5, beats: 2.5 },
+      { text: '7 NEW GUNS', style: 'overlay', beat: 9, beats: 4 },
+      { text: 'BRIAN', style: 'name', side: 'right', beat: 17.5, beats: 2.5 },
+      { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 22, beats: 3 },
+      { text: 'RYAN', style: 'name', side: 'left', beat: 25.5, beats: 2.5 },
+      { text: '2 NEW EXPLOSIVES', style: 'overlay', beat: 30, beats: 3 },
+      { text: 'KEARNS', style: 'name', side: 'right', beat: 35.5, beats: 2.5 },
+      { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 38, beats: 4 },
+      { text: 'PIT', style: 'name', side: 'left', beat: 44.5, beats: 2.5 },
+      { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
+      { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },
+    ],
+  },
+
   // Big Evil Zach: what The Schnitz made of Zach (src/render/evilZach.js)
   bigZach: {
     scale: 2.6,              // x a normal character's size

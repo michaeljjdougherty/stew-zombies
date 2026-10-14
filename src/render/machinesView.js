@@ -364,7 +364,7 @@ export class MachinesView {
     const t = this.time, sim = this.sim;
     // perk machines: glow when available, flicker on, shake when bought
     for (const pv of this.perks) {
-      const on = this.perkOn(pv);
+      const on = pv.force != null ? pv.force : this.perkOn(pv);   // (the trailer turns its own on)
       const target = on ? 1 : 0;
       if (on && pv.level < 0.05 && target) pv.flick = 0.8;
       pv.level += (target - pv.level) * Math.min(1, dt * 3);

@@ -398,12 +398,19 @@ export function buildRails(out, group, map) {
     metal: new THREE.MeshStandardMaterial({ color: '#c49a2c', roughness: 0.55, metalness: 0.35, emissive: new THREE.Color('#2a2008') }),
     sandbag: surface('coast_sand_01', { scale: 0.9, tint: '#a8966c', glow: 0.14, normal: 1.5 }),
   };
+  // (one set of meshes per island, so each can be culled on its own)
+  const islands = [...new Set(map.rails.map((r) => r.island))];
+  for (const isl of islands) buildRailSet(group, map.rails.filter((r) => r.island === isl), mats);
+  buildDives(out, group, map);
+}
+
+function buildRailSet(group, rails, mats) {
   const stone = new BoxBatch(), cap = new BoxBatch();
   const bars = { wood: [], metal: [] }, bags = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   // a box from point a to point b (a bar, a post), w by h thick
   const bar = (list, ax, ay, az, bx, by, bz, w, h) => list.push([ax, ay, az, bx, by, bz, w, h]);
-  for (const r of map.rails) {
+  for (const r of rails) {
     const along = r.axis === 'z';                         // (it runs along x)
     const inset = -r.side * 0.07;                          // on the high side of the edge
     const P = (a, y) => along ? [a, y, r.line + inset] : [r.line + inset, y, a];
@@ -464,7 +471,7 @@ export function buildRails(out, group, map) {
     group.add(im);
   }
   if (bags.length) {
-    const geo = new THREE.SphereGeometry(0.5, 10, 6);
+    const geo = new THREE.SphereGeometry(0.5, 7, 4);
     const im = new THREE.InstancedMesh(geo, mats.sandbag, bags.length);
     bags.forEach(([x, y, z, along, j], i) => {
       q.setFromAxisAngle(up, (along ? 0 : Math.PI / 2) + (j - 2) * 0.06);
@@ -474,7 +481,10 @@ export function buildRails(out, group, map) {
     im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.userData.noBake = true;
     group.add(im);
   }
-  // the dive spots: a chevron on the lip pointing over the edge, a faint violet glow
+}
+
+// the dive spots: a chevron on the lip pointing over the edge, a faint violet glow
+function buildDives(out, group, map) {
   const chev = chevronTexture();
   for (const d of map.dives || []) {
     const p = (map.portals || []).filter((pp) => pp.drop && Math.hypot(pp.x - d.x, pp.z - d.z) < 3).sort((a, b) => Math.hypot(a.x - d.x, a.z - d.z) - Math.hypot(b.x - d.x, b.z - d.z))[0];

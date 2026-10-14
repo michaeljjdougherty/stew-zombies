@@ -61,8 +61,10 @@ export function buildModels(out, group, map) {
   if (!specs.length) return;
   // group by model and pieces: each group becomes instanced meshes
   const groups = new Map();
+  // (each island's copies apart, so a whole island's worth can be culled at once)
+  const islandOf = (x, z) => { for (const I of map.islands || []) { const [x0, z0, x1, z1] = I.bounds; if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return I.id; } return ''; };
   for (const s of specs) {
-    const key = s.a + '|' + (s.pick ? s.pick.join(',') : '*') + '|' + (s.look ? JSON.stringify(s.look) : '');
+    const key = s.a + '|' + (s.pick ? s.pick.join(',') : '*') + '|' + (s.look ? JSON.stringify(s.look) : '') + '|' + islandOf(s.x, s.z);
     if (!groups.has(key)) groups.set(key, { a: s.a, pick: s.pick, look: s.look, list: [] });
     groups.get(key).list.push(s);
   }

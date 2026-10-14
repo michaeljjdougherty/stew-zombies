@@ -23,6 +23,7 @@ import { LoreView } from './loreView.js';
 import { QuestView } from './questView.js';
 import { Ending } from './ending.js';
 import { Intro } from './intro.js';
+import { Trailer } from './trailer.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 import { applyQuality, AutoRes } from './quality.js';
@@ -419,6 +420,13 @@ export class GameRenderer {
     return this.ending;
   }
 
+  // The Call of the Crust trailer, through the same slot.
+  startTrailer() {
+    this.ending = new Trailer(this, this.sim, this.cfg);
+    this.endingScene = this.scene;
+    return this.ending;
+  }
+
   endEnding() {
     if (!this.ending) return;
     this.ending.dispose();
@@ -429,14 +437,16 @@ export class GameRenderer {
 
   renderEnding(dt, time) {
     const sim = this.sim;
-    this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: 0 });
-    this.zombies.update(sim, dt, 1, time);
-    this.machines.update(dt);
-    this.quest.update(dt, this.camera);
-    this.effects.update(dt);
+    // (a cutscene can slow the world down, and pick its own lens)
+    const sdt = dt * (this.ending.slow ?? 1);
+    this.map.update(sdt, this.camera.position, { round: sim.rounds.round, kills: 0 });
+    this.zombies.update(sim, sdt, 1, time);
+    this.machines.update(sdt);
+    this.quest.update(sdt, this.camera);
+    this.effects.update(sdt);
     const scene = this.ending.update(dt, time);
     if (scene !== this.endingScene) { this.post.setScene(scene); this.endingScene = scene; }
-    const vFov = 52;
+    const vFov = this.ending.fov || 52;
     if (this.camera.fov !== vFov || this.camera.aspect !== this.aspect) { this.camera.fov = vFov; this.camera.aspect = this.aspect; this.camera.updateProjectionMatrix(); }
     this.viewmodel.root.visible = false;
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);

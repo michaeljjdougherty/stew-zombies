@@ -19,6 +19,7 @@ export class Menus {
     $('btn-explore').addEventListener('click', () => this.h.explore());
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
     $('btn-extras').addEventListener('click', () => this.h.extras());
+    $('btn-trailer').addEventListener('click', () => this.h.trailer());
     $('btn-chars').addEventListener('click', () => this.h.characters());
     $('btn-career').addEventListener('click', () => this.h.career());
     $('btn-extras-back').addEventListener('click', () => this.h.extrasBack());

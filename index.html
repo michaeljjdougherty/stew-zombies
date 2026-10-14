@@ -624,6 +624,30 @@
   body[data-input="xbox"] .menu button:focus::after, body[data-input="ps"] .menu button:focus::after { width: 100%; }
   body[data-input="xbox"] input[type=checkbox]:focus, body[data-input="ps"] input[type=checkbox]:focus { outline-offset: 2px; }
   body[data-input="xbox"] #game, body[data-input="ps"] #game { cursor: none; }
+
+  /* --- the Call of the Crust trailer ------------------------------------------------ */
+  @font-face { font-family: 'Anton'; src: url('assets/fonts/anton.woff2') format('woff2'); font-display: block; }
+  #trailer-ui { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+  #trailer-ui[hidden] { display: none; }
+  body.trailer-on #hud, body.trailer-on #crosshair, body.trailer-on .screen, body.trailer-on #cutscene, body.trailer-on .pn-overlay { display: none !important; }
+  body.trailer-on { cursor: none; }
+  .tr-bar { position: absolute; left: 0; right: 0; background: #000; }
+  .tr-top { top: 0; } .tr-bottom { bottom: 0; }
+  .tr-black { position: absolute; inset: 0; background: #000; opacity: 0; }
+  .tr-card { position: absolute; left: 0; right: 0; top: 50%; margin-top: -0.7em; text-align: center; color: #f4efe6; opacity: 0; will-change: transform, opacity; font-family: 'Anton', var(--display); }
+  .tr-text { font-size: clamp(22px, 3.4vw, 54px); letter-spacing: 0.04em; text-shadow: 0 0 24px rgba(0,0,0,0.85); padding: 0 8vw; }
+  .tr-sub { font-size: clamp(14px, 1.6vw, 26px); letter-spacing: 0.32em; margin-top: 0.5em; color: #ffd27a; }
+  .tr-card.tr-slam .tr-text { font-size: clamp(30px, 5vw, 84px); text-transform: uppercase; letter-spacing: 0.06em; }
+  .tr-card.tr-overlay { top: auto; bottom: 22%; }
+  .tr-card.tr-overlay .tr-text { font-size: clamp(34px, 6.2vw, 104px); text-transform: uppercase; letter-spacing: 0.05em; color: #fff; text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 6px rgba(255,200,120,0.6); }
+  .tr-card.tr-name { top: auto; bottom: 24%; padding: 0 9vw; }
+  .tr-card.tr-name.tr-left { text-align: left; } .tr-card.tr-name.tr-right { text-align: right; }
+  .tr-card.tr-name .tr-text { font-size: clamp(40px, 7.5vw, 128px); letter-spacing: 0.08em; padding: 0; color: #fff; text-shadow: 0 0 40px rgba(0,0,0,0.9); }
+  .tr-card.tr-title .tr-text { font-size: clamp(34px, 6vw, 100px); letter-spacing: 0.14em; color: #f4efe6; text-shadow: 0 0 40px rgba(120,255,140,0.35); }
+  .tr-skip { position: absolute; right: 28px; bottom: 28px; z-index: 2; pointer-events: auto; font: 600 15px var(--body); letter-spacing: 0.08em; color: #fff; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.35); border-radius: 4px; padding: 9px 16px; opacity: 0; transition: opacity .3s; cursor: pointer; }
+  .tr-skip:not(.on) { pointer-events: none; }
+  .tr-skip.on { opacity: 1; }
+  body.trailer-on.trailer-moved { cursor: default; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -817,6 +841,7 @@
       <button id="btn-explore" type="button">Explore</button>
       <button id="btn-chars" type="button">Characters</button>
       <button id="btn-career" type="button">Career &amp; Achievements</button>
+      <button id="btn-trailer" type="button">Watch Trailer</button>
       <button id="btn-extras" type="button">Extras</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>

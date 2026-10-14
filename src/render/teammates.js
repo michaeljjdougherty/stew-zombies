@@ -36,7 +36,7 @@ function tagTexture(text, color) {
   return t;
 }
 
-class Teammate {
+export class Teammate {
   constructor(scene, p, cfg) {
     this.cfg = cfg;
     this.id = p.id;
