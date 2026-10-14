@@ -792,13 +792,16 @@ export const SHOTS = {
   slideCover: {
     enter(T) { for (let i = 0; i < 5; i++) T.zombie(35.5 + (i % 3) * 1.2, -146 - Math.floor(i / 3) * 1.6 + i * 0.3); },
     frame(T, u, d, k) {
-      const x = lerp(20.5, 24.6, sm(0, 0.6, k)), z = lerp(-137, -139.4, sm(0, 0.6, k));
-      T.pose('rocco', { x, z, slide: k < 0.6, crouch: true, pitch: 0.05 });
+      // a slide in behind the stack, then up on one knee firing round it
+      const sk = sm(0, 0.45, k);
+      const x = lerp(19.2, 23.4, sk), z = lerp(-136.2, -138.3, sk);
+      T.pose('rocco', { x, z, slide: k < 0.45, crouch: k >= 0.45, pitch: 0.05 });
       T.face('rocco', 34, -146);
-      if (k > 0.4) T.fire('rocco', V(34, 1.2, -146), 0.15);
-      T.zs.forEach((zz, i) => T.moveZ(zz, lerp(35.5, 32, k) + (i % 3) * 1.2, -146 - Math.floor(i / 3) * 1.6 + i * 0.3, { yaw: Math.atan2(x - zz.pos.x, z - zz.pos.z) }));
+      if (k > 0.35) T.fire('rocco', V(T.zs[0] && !T.zs[0].dead ? T.zs[0].pos.x : 34, 1.2, T.zs[0] && !T.zs[0].dead ? T.zs[0].pos.z : -146), 0.12);
+      T.zs.forEach((zz, i) => !zz.dead && T.moveZ(zz, lerp(35.5, 31, k) + (i % 3) * 1.2, -146 - Math.floor(i / 3) * 1.6 + i * 0.3, { yaw: Math.atan2(x - zz.pos.x, z - zz.pos.z) }));
+      T.zs.forEach((zz, i) => { if (k > 0.5 + i * 0.09 && !zz.dead) T.kill(zz, V(x, 0, z), { kind: 'bullet', dist: 2, up: 0.6 }); });
       T.light(0.8, '#e0ecff', [x - 6, 8, z + 4]);
-      T.look(x - 3.2, 1.2, z + 2.6, x + 3, 1.0, z - 2.5, 50);
+      T.look(x - 3.4, 1.2, z + 2.8, x + 3, 1.0, z - 2.5, 50);
     },
   },
 

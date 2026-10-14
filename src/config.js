@@ -1023,8 +1023,8 @@ export const CONFIG = {
     exposure: 1.8,           // brighter than in play: it's lit like a film
     // the perk machines it shows off (rename them to the real ones when they're in)
     perks: [
-      { key: 'trailerPerk1', name: 'Belly Flop Bisque', color: '#9b4dff', glyph: 'F' },
-      { key: 'trailerPerk2', name: 'Stone Soup', color: '#3fd0c8', glyph: 'S' },
+      { key: 'trailerPerk1', name: 'PHD Gaylor', color: '#9b4dff', glyph: 'P' },
+      { key: 'trailerPerk2', name: 'Milton Kick', color: '#3fdc5a', glyph: 'M' },
     ],
     // the guns in the "7 NEW GUNS" montage, and who fires each
     guns: [['Komando', 'ryan'], ['SPAZ-13', 'brian'], ['HK22', 'pit'], ['Dragunoff', 'kearns'], ['Galill', 'rocco'], ['AK-75u', 'ryan'], ['L97A1', 'brian']],
@@ -1042,8 +1042,7 @@ export const CONFIG = {
       { id: 'squadFog', at: 17.0 },
       { id: 'black', at: 18.9 },
       // ---- the drop ----
-      { id: 'black', beat: 0 },
-      { id: 'hubFly', beat: 2 },
+      { id: 'hubFly', beat: 0 },
       { id: 'roccoHero', beat: 4 },
       { id: 'slideUnder', beat: 7 },
       { id: 'gunMontage', beat: 9 },
@@ -1072,17 +1071,10 @@ export const CONFIG = {
       { text: 'The Schnitz has taken possession of Crust.', style: 'card', at: 5.4, len: 2.2 },
       { text: 'To save him, and everyone else...', style: 'card', at: 11.3, len: 1.6 },
       { text: '...someone will have to make the ultimate sacrifice.', style: 'card', at: 15.5, len: 1.45 },
-      { text: '5 Leonards will walk in.', style: 'card', at: 18.95, len: 0.75 },
-      { text: 'Only 4 will walk out.', style: 'slam', beat: 0, beats: 2 },
-      { text: 'ROCCO FUCCI', style: 'name', side: 'left', beat: 4.5, beats: 2.5 },
       { text: '7 NEW GUNS', style: 'overlay', beat: 9, beats: 4 },
-      { text: 'BRIAN', style: 'name', side: 'right', beat: 17.5, beats: 2.5 },
       { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 22, beats: 3 },
-      { text: 'RYAN', style: 'name', side: 'left', beat: 25.5, beats: 2.5 },
       { text: '2 NEW EXPLOSIVES', style: 'overlay', beat: 30, beats: 3 },
-      { text: 'KEARNS', style: 'name', side: 'right', beat: 35.5, beats: 2.5 },
       { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 38, beats: 4 },
-      { text: 'PIT', style: 'name', side: 'left', beat: 44.5, beats: 2.5 },
       { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
       { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },
     ],
