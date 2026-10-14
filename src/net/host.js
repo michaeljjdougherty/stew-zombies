@@ -10,6 +10,7 @@ import { damageZombie } from '../sim/zombies.js';
 import { windBlast } from '../sim/wind.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
+import { crustEggShot, knifeTitan } from '../sim/crustEgg.js';
 import { worldState, diff, inventorySig } from './state.js';
 
 export class NetHost {
@@ -125,6 +126,8 @@ export class NetHost {
       case 'boom': explode(sim, a.pos, a.kind, p.id); break;
       case 'wind': { const def = sim.cfg.weapons[a.weapon]; if (def && def.wind) windBlast(sim, p, a.origin, a.dir, def, a.weapon); break; }
       case 'quest': if (isValve(a.id)) cauldronShot(sim, a.id, p); break;
+      case 'titan': crustEggShot(sim, String(a.id), p); break;
+      case 'titanKnife': knifeTitan(sim, p); break;
     }
   }
 }

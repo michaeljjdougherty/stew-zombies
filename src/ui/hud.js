@@ -7,6 +7,7 @@ import { glyphify, glyph } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 import { questObjective } from '../sim/quest.js';
+import { crustEggObjective } from '../sim/crustEgg.js';
 import { CREW } from '../lore/crew.js';
 
 const $ = (id) => document.getElementById(id);
@@ -35,7 +36,7 @@ export class HUD {
     this.hits = [];          // damage direction arcs { from, t, el }
     this.lyricSource = null; // () => current song line
     this.onNoteRead = null;
-    this.el.quest = $('quest'); this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
+    this.el.quest = $('quest'); this.el.titan = $('titanbar'); this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
   }
 
   // Big centered message (power on, new upgraded gun, perk).
@@ -159,6 +160,39 @@ export class HUD {
         break;
       case 'erikRevealed':
         this.toast('Erik Madsen', 'sealed in the Press Box', '#7fe08a', 4);
+        break;
+      // --- the titans (Call of the Crust)
+      case 'titanWake': {
+        const how = { ship: 'hold off its crew', research: 'only the tesla coils can hurt it', caves: 'drop the icicles on it', trench: 'bullets do nothing: man the field guns' }[e.id];
+        this.toast(e.name, this.hint(how), '#ff5a30', 4);
+        break;
+      }
+      case 'titanWave':
+        if (!e.cleared) this.toast(`Wave ${e.wave} of ${e.of}`, e.wave === e.of ? 'the last of its crew' : 'its crew is coming', '#7fd8b0', 2.4);
+        break;
+      case 'coilCharged':
+        this.toast('Coil charged', this.hint('lead the Warden to it'), '#9fd0ff', 2.2);
+        break;
+      case 'coilStrike':
+        this.toast('Overload', `${e.strikes} of ${e.of}`, '#9fd0ff', 2.2);
+        break;
+      case 'titanKneel':
+        this.toast('It\'s down!', this.hint('knife its heart'), '#8fd8ff', 2.4);
+        break;
+      case 'titanHeart':
+        this.toast('Its heart cracks', `${e.hearts} of ${e.of}`, '#8fd8ff', 2.2);
+        break;
+      case 'titanHurt':
+        this.toast('Direct hit', `${e.hits} of ${e.of}`, '#ffb050', 2.2);
+        break;
+      case 'titanDown':
+        this.toast(`${e.name} falls`, `+${this.cfg.crust.egg.reward} to everyone`, '#ffd23a', 4);
+        break;
+      case 'titanCore':
+        this.toast('War Hammer core', `${e.count} of 4`, '#ffd23a', 3.5);
+        break;
+      case 'titanRetreat':
+        this.toast(`${e.name} sleeps again`, 'everyone left its island', '#c04040', 3);
         break;
       case 'bossStart':
         this.toast('The Intercom Showdown', 'Erik is calling the plays', '#ff4030', 4);
@@ -418,9 +452,21 @@ export class HUD {
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
     // the quest's current objective, top left
-    const obj = sim.quest && !this.hardcore ? questObjective(sim) : null;
+    const titan = sim.crustEgg && sim.crustEgg.active ? sim.crustEgg.titans[sim.crustEgg.active] : null;
+    const obj = sim.quest && !this.hardcore ? questObjective(sim) : titan ? crustEggObjective(sim) : null;
+    // a titan's bar: one pip for each blow it has left (each wave, for the Captain)
+    const bar = titan ? `${titan.name}|${titan.of}|${titan.done}|${titan.state}` : '';
+    if (bar !== this.last.titanBar) {
+      this.last.titanBar = bar;
+      this.el.titan.hidden = !titan || titan.state === 'dead';
+      if (titan) {
+        this.el.titan.querySelector('b').textContent = titan.name;
+        this.el.titan.querySelector('.pips').innerHTML = Array.from({ length: titan.of }, (_, i) => `<i class="${i < titan.done ? 'gone' : ''}"></i>`).join('');
+      }
+    }
     if (obj !== this.last.objective) {
       this.last.objective = obj;
+      this.el.quest.querySelector('b').textContent = titan ? titan.name : 'The Final Whistle';
       this.el.quest.hidden = !obj;
       this.el.quest.querySelector('span').textContent = obj || '';
       this.el.quest.classList.remove('new'); void this.el.quest.offsetWidth; this.el.quest.classList.add('new');
@@ -519,7 +565,10 @@ export class HUD {
       this.el.downed.querySelector('.bar i').style.background = self ? '#3fa9f5' : '';
     }
     this.set('reviveHidden', this.el.revive, !p.reviving, 'hidden');
-    if (p.reviving) this.el.revive.querySelector('.bar i').style.width = `${p.reviving.frac * 100}%`;
+    if (p.reviving) {
+      this.el.revive.querySelector('.bar i').style.width = `${p.reviving.frac * 100}%`;
+      this.set('reviveLabel', this.el.revive.querySelector('span'), p.reviving.label || 'Reviving');
+    }
     let hint = '';
     if (p.drinking) hint = '';
     else if (p.throwing && p.throwing.phase === 'cook') hint = `Cooking ${Math.max(0, this.cfg.equipment.frag.fuse - p.throwing.t).toFixed(1)}`;

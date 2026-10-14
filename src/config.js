@@ -1132,6 +1132,21 @@ export const CONFIG = {
       reward: 2500,          // points to everyone still in the game when a titan falls
       carrySlow: 0.92,       // walking speed while you carry a core, the clapper, the cutters
       pushDecay: 4,          // how fast a shove (a gust, a slam) dies away (1/s)
+      wakeTime: { ship: 5, research: 3.5, caves: 3.5, trench: 4 },   // s from waking it to the fight
+      dyingTime: 4.5,        // s it takes to go down
+      leash: 20,             // s with nobody on its island before it goes back to sleep
+      // stuck, or you're somewhere it can't walk to: it leaps (the Fiend burrows) to open ground near you
+      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8 },
+      // where bullets spark off them: [height up its body, radius] (m)
+      // how each one's drawn (src/render/titanView.js): its eyes' glow (m up, m forward),
+      // which way its model faces, its walk, how far it sinks to wake and kneel
+      look: {
+        ship: { eyeY: 8.5, eyeZ: 7.5, eyeSize: 7, light: 40, lightRange: 50, heat: 1.5, face: -Math.PI / 2 },
+        research: { eyeY: 6.7, eyeZ: 2.6, eyeSize: 2.2, light: 18, lightRange: 22, heat: 1.2, face: Math.PI / 2, stride: 0.6, bob: 0.3, leanWalk: 0.05, roll: 0.04, wakeSink: 0.9, kneelSink: 0 },
+        caves: { eyeY: 6.1, eyeZ: 1.0, eyeSize: 1.8, light: 14, lightRange: 18, heat: 1.0, face: 0, stride: 1.2, bob: 0.26, leanWalk: 0.08, roll: 0.06, wakeSink: 1.8, kneelSink: 2.3, heartY: 4.2, heartZ: 1.3 },
+        trench: { eyeY: 8.3, eyeZ: 0.9, eyeSize: 3, light: 32, lightRange: 28, heat: 1.6, face: Math.PI / 2, stride: 1.0, bob: 0.35, leanWalk: 0.06, roll: 0.05, wakeSink: 0, kneelSink: 0 },
+      },
+      hitSpheres: { research: [[2.2, 1.9], [5.0, 2.4], [7.2, 2.2]], caves: [[2.0, 1.7], [4.4, 2.0], [6.4, 1.5]], trench: [[2.4, 2.0], [5.6, 2.5], [8.6, 1.8]] },
       // The Drowned Captain (Ship Graveyard): a giant pirate head that spits skeletons
       ship: {
         waves: [6, 9, 12, 16], perPlayer: 3,   // skeletons a wave (+ per extra player)
@@ -1146,6 +1161,10 @@ export const CONFIG = {
         pull: 5.2,              // m/s at the edge of the island (less further off)
         reach: 75,              // m it pulls from
         exhaleTime: 1.0, push: 9, // and the gust back out
+        rise: 7,                // m it comes up out of the dark when it wakes
+        mouth: [0, 4.0, 9.5],   // its mouth, from where it sits (m: x, up, z)
+        landReach: 70,          // m from it its crew can land
+        landMin: 3,             // m from you, at the closest
       },
       // The Warden (Research Base): a shielded walker only the tesla coils can hurt
       research: {
@@ -1155,9 +1174,12 @@ export const CONFIG = {
         recharge: 9,            // s before a coil can be charged again
         stun: 5,                // s it stands smoking after a strike
         speed: 2.7,             // m/s
-        stompRange: 4.6, stompWarn: 0.9, stompDamage: 75, stompPush: 8,
+        stompRange: 5.5, stompWarn: 0.9, stompDamage: 75, stompPush: 8,
         laserEvery: [6, 9], laserWarn: 1.3, laserLen: 32, laserWidth: 1.5, laserDamage: 60,
         addsEvery: 10, adds: 2, // lab zombies it calls in
+        addsMax: 8,             // (no more than this many of them up at once)
+        eyeHeight: 7.0,         // m: where the laser comes from
+        leapTime: 1.8,          // s in the air on its jump jets
       },
       // The Glacier Golem (Ice Caves): only falling ice cracks it; a knife finishes the job
       caves: {
@@ -1168,9 +1190,14 @@ export const CONFIG = {
         stun: 7,                // s it kneels, heart showing
         regrow: 32,             // s for a cluster to grow back
         speed: 2.4,
-        slamRange: 3.8, slamWarn: 1.0, slamDamage: 80, slamPush: 9,
+        slamRange: 4.6, slamWarn: 1.0, slamDamage: 80, slamPush: 9,
         shardsEvery: [5, 8], shards: 3, shardWarn: 1.3, shardRadius: 2.0, shardDamage: 45,
         novaEvery: [14, 18], novaWarn: 1.2, novaRadius: 9, slow: 0.45, slowTime: 2.5,
+        novaDamage: 15,
+        riseTime: 1.6,          // s to get back up off its knees
+        knifeReach: 2.2,        // m past its bulk you can reach the heart
+        clusterRadius: 1.3,     // m: how big a target a cluster is
+        leapTime: 2.0,
       },
       // The Molten Fiend (Trench Front): bullets do nothing; the field guns do
       trench: {
@@ -1183,6 +1210,11 @@ export const CONFIG = {
         lobEvery: [4.5, 7], lobs: 3, lobWarn: 1.5, lobRadius: 2.6, lobDamage: 55,
         burnTime: 6, burnRadius: 2.0, burnDps: 22,
         eruptEvery: [11, 15], eruptTime: 4.2, eruptRadius: 11, eruptDamage: 95,
+        stagger: 2.2,           // s it reels after a shell
+        hitPoints: 250,         // to whoever fired the shell
+        handHeight: 8,          // m: where the magma comes from
+        burrowTime: 2.6,        // s under the rock when it moves on
+        groundY: 2.3,           // the battlefield's height (a shot at the sky comes down here)
       },
     },
     // ziplines and ice slides

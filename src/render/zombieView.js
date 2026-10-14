@@ -90,7 +90,8 @@ export class ZombieViews {
   // --- rigged (Mixamo) zombies --------------------------------------------------
   buildRigged(z) {
     const r = (k) => hash(z.seed + k * 7919);
-    const t = this.models.pick(r(1), this.islandAt(z.pos), r(11), this.cfg && this.cfg.crust ? this.cfg.crust.islandZombies : 0);
+    // (a titan's own: the Captain's skeletons, the Warden's lab dead)
+    const t = (z.cast && this.models.byId(z.cast)) || this.models.pick(r(1), this.islandAt(z.pos), r(11), this.cfg && this.cfg.crust ? this.cfg.crust.islandZombies : 0);
     const inst = t.instance();
     inst.model.scale.setScalar(0.01 * z.scale);
     for (const m of inst.meshes) m.boundingSphere = RIG_SPHERE;
@@ -222,6 +223,8 @@ export class ZombieViews {
       this.play(v, 'crawl', 0.3, attacking ? 1.6 : k);
     } else if (z.state === 'rising') {
       this.play(v, 'attack', 0.2, 1.3);
+    } else if (z.state === 'flung') {
+      this.play(v, 'attack', 0.15, 1.8);   // (spat out by the Drowned Captain: flailing through the air)
     } else if (z.state === 'tearing') {
       this.play(v, v.tearName, 0.25, v.tearName === 'reach' ? (attacking ? 1.5 : 1.1) : 1.15);
     } else if (attacking) {

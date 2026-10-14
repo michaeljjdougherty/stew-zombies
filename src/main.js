@@ -31,6 +31,7 @@ import { voiceSprites } from './lore/voice.js';
 import { ExploreUI } from './ui/explore.js';
 import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
 import { exploreJumpToRound } from './sim/rounds.js';
+import { wakeTitan } from './sim/crustEgg.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
@@ -120,8 +121,26 @@ const exploreUI = new ExploreUI(CONFIG, {
   round: (n) => { exploreJumpToRound(sim, n); updateExploreHud(); },
   zombies: (on) => { sim.setExploreZombies(on); updateExploreHud(); exploreUI.refresh(); },
   skip: (id) => exploreSkip(id),
+  titan: (id) => exploreTitan(id),
   close: () => closeExplorePanel(),
 });
+
+// Call of the Crust: go straight to a titan and wake it (any one already up goes back to sleep).
+function exploreTitan(id) {
+  const E = sim.crustEgg;
+  if (!E) return;
+  const s = sim.mapData.titans.find((t) => t.id === id);
+  if (E.active) { const T = E.titans[E.active]; Object.assign(T.pos, T.home); T.state = 'asleep'; T.act = null; E.active = null; E.hazards.length = 0; }
+  const T = E.titans[id];
+  if (T.state === 'dead') { T.state = 'asleep'; Object.assign(T.pos, T.home); }
+  const p = player;
+  // stand back from it, facing it (the Captain: on the north shore)
+  const w = s.wake, back = id === 'ship' ? 0 : w.r + 4;
+  p.pos.x = w.x + back; p.pos.z = w.z + (id === 'ship' ? 2 : 0); p.pos.y = (w.y || 0) + 1.5;
+  p.vel.x = p.vel.y = p.vel.z = 0; p.region = null;
+  input.setLook(Math.atan2(-(T.home.x - p.pos.x), -(T.home.z - p.pos.z)), 0.15);
+  wakeTitan(sim, id, p);
+}
 
 // Jump to part of the egg. Going back (or redoing the part you're on) starts Explore over first.
 function exploreSkip(id) {

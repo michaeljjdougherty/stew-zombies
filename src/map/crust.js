@@ -450,7 +450,9 @@ function ship() {
   for (const [x, z, yaw] of [[-27, -120, 0], [-48, -132, 1.57], [11, -116, 0.3]]) I.model({ a: 'fence', x, y: G, z, yaw, fit: { h: 1.3 }, look: { tint: '#6a6058' } });
   for (const [x, z, yaw] of [[32, -152, 0.4], [24, -176, 2.1], [-14, -150, 1.1], [6, -186, 2.8]]) I.model({ a: 'planks', x, y: BAS + 0.05, z, yaw, fit: { len: 4.5 }, look: { tint: '#8a7a68' } });
   // the Drowned Captain, sleeping out in the dark past the north cliffs
-  I.model({ a: 'pirathead', x: 9, y: -1.5, z: -221, yaw: -Math.PI / 2 + 0.15, rx: 0.1, fit: { h: 13 }, look: { glow: '#5a6a58' } });
+  I.model({ a: 'pirathead', anim: true, tag: 'titan_ship', x: 9, y: -4, z: -225, yaw: -Math.PI / 2 + 0.15, rx: 0.1, fit: { h: 18 }, look: { glow: '#5a6a58' } });
+  // (wake it from the north shore; it spits its crew onto the island: src/sim/crustEgg.js)
+  I.titan = { id: 'ship', home: { x: 9, y: -4, z: -225, yaw: -Math.PI / 2 + 0.15 }, wake: { x: 9, y: G, z: -198.5, r: 4.5 } };
   I.pads.push({ id: 'pad_ship', x: 0, z: -114, to: 'pad_hub_n', label: 'the Anvil' });
   return I;
 }
@@ -563,7 +565,10 @@ function research() {
   I.prop('barrel', 120.65, 12.65, 121.35, 13.35, 0.95, { fire: true });
   I.lamp(HELI, 118, -8); I.lamp(HELI, 118, 8, { flicker: 0.3 }); I.lamp(RADIO, 175, -18); I.lamp(TES, 140, 30, { flicker: 0.5 }); I.lamp(EAST, 194, 2, { flicker: 0.2 });
   // the Warden: the base's guard walker, powered down by the helipad
-  I.model({ a: 'robot', x: 107, y: G, z: -20, yaw: Math.PI - 0.5, fit: { h: 7 }, look: { glowK: 0.25 } }, { collide: [107, -20, 2.6, 2.6, 6.5] });
+  I.model({ a: 'robot', anim: true, tag: 'titan_research', x: 114, y: G, z: -20, yaw: Math.PI - 0.5, fit: { h: 9.5 }, look: { glowK: 0.25 } });
+  // (only the tesla coils hurt it: a console at each one's foot charges it)
+  I.titan = { id: 'research', home: { x: 114, y: G, z: -20, yaw: Math.PI - 0.5 }, wake: { x: 114, y: G, z: -20, r: 5 },
+    coils: coils.map(([x, z]) => ({ x, y: G + 8.3, z, con: { x, y: G, z: z - 2.6 } })) };
   // cockroaches on the lab floors
   for (const [x0, z0, x1, z1, ph] of [[130, -18, 146, -5, 0], [130, 5, 144, 16, 1.7], [150, -18, 164, -5, 3.1], [130, -1.5, 164, 1.5, 0.6], [148, 5, 164, 16, 2.3], [174, 11, 186, 22, 4]]) {
     I.model({ a: 'roach', anim: true, clip: 'Crawl', x: x0, y: G + 0.02, z: z0, fit: { len: 0.22 }, path: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], speed: 0.9, phase: ph });
@@ -698,7 +703,10 @@ function trench() {
   // the molten crater out in no-man's-land (something sleeps in it), a lava pool,
   // planks and log revetments round the trenches, rats running along them
   I.model({ a: 'lavafield', x: 40, y: G - 0.35, z: 118, yaw: 0.6, fit: { w: 10 } });
-  I.model({ a: 'lavamonster', x: 40.5, y: G - 3.2, z: 118.5, yaw: Math.PI + 0.3, fit: { h: 7.5 }, look: { glowK: 0.4 } });
+  I.model({ a: 'lavamonster', anim: true, tag: 'titan_trench', x: 40.5, y: G - 4.5, z: 118.5, yaw: Math.PI + 0.3, fit: { h: 10.5 }, look: { glowK: 0.4 } });
+  // (bullets do nothing: the field guns in the pits do. A shell into the crater wakes it)
+  I.titan = { id: 'trench', home: { x: 40.5, y: G - 4.5, z: 118.5, yaw: Math.PI + 0.3 }, ground: G,
+    guns: [{ x: -36.5, y: G + 1.6, z: 138 }, { x: 36.5, y: G + 1.6, z: 138 }] };
   I.model({ a: 'lavafield', x: -43, y: G - 0.35, z: 161, yaw: 2.2, fit: { w: 7 } });
   for (const [x, z, yaw] of [[-11, 119, 0.3], [9, 152, 1.9], [-10, 136, 2.6]]) I.model({ a: 'planks', x, y: G + 0.02, z, yaw, fit: { len: 3.6 }, look: { tint: '#5a4436' } });
   for (const [x, z, yaw] of [[-36, 137, 0.2], [36, 137, Math.PI - 0.2], [-1, 186, 0], [-32, 184, 0.3], [32, 184, -0.3]]) I.model({ a: 'woodscan', x, y: G - 0.15, z, yaw, fit: { w: 4.2 }, look: { tint: '#6a5040' } });
@@ -905,7 +913,10 @@ function caves() {
   // the ice: a glacier over the summit, a golem guarding the shrine, ice walls at
   // the mouth, formations in the cavern, icicles off every ceiling, snowy trees
   I.model({ a: 'glacier', x: -176, y: SUMH - 1.5, z: -46, yaw: 0.4, scale: 1.1 });
-  I.model({ a: 'golem', x: -164.5, y: SUMH, z: -36.5, yaw: -2.4, fit: { h: 5.2 } }, { collide: [-164.5, -36.5, 1.6, 1.6, 5] });
+  I.model({ a: 'golem', anim: true, tag: 'titan_caves', x: -164.5, y: SUMH, z: -36.5, yaw: -2.4, fit: { h: 7.5 } });
+  // (only falling ice cracks it: the big icicle clusters under the cavern's and the lake's roofs)
+  I.titan = { id: 'caves', home: { x: -164.5, y: SUMH, z: -36.5, yaw: -2.4 }, wake: { x: -164.5, y: SUMH, z: -36.5, r: 4.2 },
+    clusters: [[-157, 1, 11.2], [-151, -4, 11.2], [-145, 1, 11.2], [-151, 5, 11.2], [-185, 5, 9.2], [-179, 2, 9.2]].map(([x, z, y]) => ({ x, y, z })) };
   I.model({ a: 'icewall', pick: ['Object_0', 'Object_4', 'Object_7'], x: -112, y: 0.4, z: -21, yaw: 1.4, scale: 0.9 });
   I.model({ a: 'icewall', pick: ['Object_2', 'Object_5', 'Object_9'], x: -113, y: 0.4, z: 21, yaw: -1.5, scale: 0.9 });
   for (const [x, z, yaw] of [[-150, 3, 0.3], [-155, 4.5, 2.1], [-178, 8, 1.1]]) I.model({ a: 'iceformations', pick: ['Object_3'], x, y: F - 0.3, z, yaw, scale: 0.7 }, { collide: [x, z, 1.3, 1.3, 1.2] });
@@ -952,7 +963,7 @@ for (const r of ROOMS.navRegions) { const rm = ROOMS.rooms.find((q) => q.id === 
 const out = {
   rooms: [...ROOMS.rooms], navRegions: [...ROOMS.navRegions], portals: ROOMS.portals.filter((p) => p.b != null),
   doors: [...ROOMS.doors], wallBuys: [...ROOMS.wallBuys], groundSpawns: [], props: [], launchers: [], boxSpots: [],
-  terrainBoxes: [], terrains: [], structures: [], rides: [], decor: [], mud: [], craters: [], islands: [], models: [], shelled: [], ceasefire: null,
+  terrainBoxes: [], terrains: [], structures: [], rides: [], decor: [], mud: [], craters: [], islands: [], models: [], shelled: [], ceasefire: null, titans: [],
   rails: [], dives: [],
 };
 const roomIsle = new Map(ISLES.flatMap((I) => I.areas.map((a) => [a.id, I])));
@@ -1142,6 +1153,7 @@ for (const I of ISLES) {
   }
   if (I.shelled) out.shelled.push(...I.shelled);
   if (I.ceasefire) out.ceasefire = I.ceasefire;
+  if (I.titan) out.titans.push({ ...I.titan, island: I.id, name: I.name });
   out.models.push(...(I.models || []));
   // zombies claw up out of the snow and ice (not under a launcher, not in a prop)
   const avoid = [...I.pads.map((p) => [p.x - 3.5, p.z - 3.5, p.x + 3.5, p.z + 3.5]), ...(I.spawnAvoid || []), ...I.props.map((p) => [p.x0 - 1.2, p.z0 - 1.2, p.x1 + 1.2, p.z1 + 1.2])];
@@ -1230,6 +1242,7 @@ export const CRUST = {
   rails: out.rails,              // guard rails along the ledges and decks (drawn by src/render/crustTerrain.js)
   dives: out.dives,              // the gaps in them: ledges to dive off
   ceasefire: out.ceasefire,      // the field telephone in the fort
+  titans: out.titans,            // each island's titan, for the egg (src/sim/crustEgg.js)
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [
     { x: -33, z: -330, h: 96 },

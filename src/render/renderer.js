@@ -3,6 +3,7 @@
 // It reads the simulation and events; it never changes game state.
 // =============================================================================
 import * as THREE from 'three';
+import { TitanView } from './titanView.js';
 import { setAnisotropy } from './textures.js';
 import { setSurfaceAnisotropy } from './surfaces.js';
 import { MapView } from './mapView.js';
@@ -93,6 +94,8 @@ export class GameRenderer {
         quest: new QuestView(scene, sim, cfg, map),
         teammates: new TeammateViews(scene, cfg),
       };
+      // Call of the Crust's titans
+      if (sim.mapData.titans) w.titans = new TitanView(scene, sim, cfg, map, effects);
       w.quest.effects = effects;
       w.box.onLand = (spot) => {
         for (let i = 0; i < 8; i++) {
@@ -109,7 +112,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
+    Object.assign(this, { titans: w.titans || null, scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(sim.mapData.fog ? sim.mapData.fog.color : cfg.graphics.fogColor);
     this.fogDensity = sim.mapData.fog ? sim.mapData.fog.density : cfg.graphics.fogDensity;
@@ -144,6 +147,7 @@ export class GameRenderer {
     this.lore.reset(sim);
     this.quest.setSim(sim);
     this.teammates.clear();
+    if (this.titans) this.titans.setSim(sim);
   }
 
   setSim(sim) {
@@ -190,6 +194,15 @@ export class GameRenderer {
     if (this.autoRes.sample(dt, targetFps)) this.resize();
   }
 
+  // Shake the camera: k at pos (falling off over `range` m), or k anywhere.
+  shake(k, pos = null, range = 30) {
+    const p = this.sim && this.sim.playerById(this.localId);
+    if (!p) return;
+    const d = pos ? Math.hypot(pos.x - p.pos.x, (pos.y || 0) - p.pos.y, pos.z - p.pos.z) : 0;
+    const f = Math.max(0, 1 - d / range);
+    this.rig.shake = Math.min(1.6, Math.max(this.rig.shake || 0, k * f * 1.4));
+  }
+
   // Called before each simulation step, to interpolate between steps.
   beginStep(sim) {
     this.zombies.beginStep(sim);
@@ -221,6 +234,7 @@ export class GameRenderer {
       this.cheddars.onEvent(e);
       this.lore.onEvent(e, this.effects);
       this.quest.onEvent(e);
+      if (this.titans) this.titans.onEvent(e, this);
       switch (e.type) {
         case 'shot': {
           let from;
@@ -527,6 +541,7 @@ export class GameRenderer {
     this.cheddars.update(sim, this.zombies.prev, dt, alpha, time);
     this.lore.update(dt);
     this.quest.update(dt, this.camera);
+    if (this.titans) this.titans.update(dt, time, this.camera);
     this.teammates.update(sim, this.localId, dt, alpha, time, this.camera);
     if (watch && watch.tag) watch.tag.visible = false;   // no name tag in your face while spectating
 

@@ -126,11 +126,14 @@ export function updatePlayer(sim, p, cmd, dt) {
   // Call of the Crust: wading through deep mud (not on the duckboards)
   p.inMud = !!(sim.mapData.mud && inDeepMud(sim.mapData, p.pos.x, p.pos.z, p.pos.y));
   if (p.inMud && !downed) speed *= sim.cfg.crust.mudSpeed;
+  if (p.slowUntil && sim.time < p.slowUntil) speed *= p.slowMult || 1;   // a titan's frost
 
   const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
   // forward = (-sin, -cos), right = (cos, -sin)
-  const wx = (-sy * my + cy * mx) * speed;
-  const wz = (-cy * my - sy * mx) * speed;
+  let wx = (-sy * my + cy * mx) * speed;
+  let wz = (-cy * my - sy * mx) * speed;
+  // shoved (a titan's breath, a slam): it carries you whatever you're doing
+  if (p.shove && !p.ride) { wx += p.shove.x; wz += p.shove.z; }
 
   // --- knife lunge overrides movement briefly
   if (p.melee.lunge > 0 && p.melee.lungeDir) {
@@ -142,7 +145,7 @@ export function updatePlayer(sim, p, cmd, dt) {
     approach(p.vel, wx, wz, rate * dt);
   } else {
     // limited air control, no air friction
-    if (mx * mx + my * my > 0.001) approach(p.vel, wx, wz, cfg.airAccel * dt);
+    if (mx * mx + my * my > 0.001 || p.shove) approach(p.vel, wx, wz, cfg.airAccel * dt);
   }
 
   // --- jump

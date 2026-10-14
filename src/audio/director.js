@@ -377,6 +377,35 @@ export class SoundDirector {
         A.play(S.powerOn, {}, { pos: { ...e.pos, y: 2 }, ref: 8, gain: 0.9, reverb: 0.6 });
         break;
       case 'bossOverload': A.play(S.thunder, { near: 0.6 }, { gain: 1, reverb: 0.8 }); break;
+      // --- the titans (Call of the Crust)
+      case 'titanWake': A.play(S.titanRoar, { f0: e.id === 'caves' ? 58 : e.id === 'trench' ? 40 : 46, dur: 2.8 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 30, gain: 1.4, reverb: 0.8 }); A.play(S.roundStartSting, {}, { bus: 'music', gain: 1, reverb: 0.6, delay: 0.4 }); break;
+      case 'titanRoar': A.play(S.titanRoar, { f0: e.id === 'caves' ? 60 : 44 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 30, gain: 1.3, reverb: 0.8 }); break;
+      case 'titanWindup':
+        if (e.kind === 'laser') A.play(S.trapBuzz, { duration: e.warn }, { gain: 0.6, reverb: 0.4 });
+        else if (e.kind === 'erupt') A.play(S.distantShell, { size: 2 }, { pos: e.pos, ref: 20, gain: 1.2, reverb: 0.6 });
+        else if (e.kind === 'nova') A.play(S.steamHiss, { dur: e.warn + 0.4 }, { pos: e.pos, ref: 12, gain: 1, reverb: 0.7 });
+        break;
+      case 'titanSmash': A.play(S.explosion, { big: 1.2 }, { pos: e.pos, ref: 14, gain: 1, reverb: 0.6 }); break;
+      case 'titanLaser': A.play(S.electrocute, {}, { pos: e.from, ref: 20, gain: 1.2, reverb: 0.5 }); A.play(S.smallBoom, {}, { pos: e.to, ref: 8, gain: 0.8 }); break;
+      case 'coilCharged': A.play(S.powerOn, {}, { pos: e.pos, ref: 14, gain: 1, reverb: 0.6 }); break;
+      case 'coilStrike': A.play(S.thunder, { near: 1 }, { pos: e.to, ref: 30, gain: 1.4, reverb: 0.8 }); A.play(S.titanRoar, { f0: 70, dur: 1.4 }, { pos: e.to, ref: 30, gain: 1, reverb: 0.7, delay: 0.3 }); break;
+      case 'clusterFall': A.play(S.glassShatter, {}, { pos: e.from, ref: 16, gain: 0.8, reverb: 0.9 }); break;
+      case 'clusterLand': A.play(S.glassShatter, {}, { pos: e.pos, ref: 20, gain: 1.3, reverb: 0.9 }); A.play(S.explosion, { big: 0.8 }, { pos: e.pos, ref: 14, gain: 0.7, reverb: 0.8 }); if (e.hit) A.play(S.titanRoar, { f0: 64, dur: 1.6 }, { pos: e.pos, ref: 30, gain: 1.2, reverb: 0.9, delay: 0.2 }); break;
+      case 'titanHeart': A.play(S.glassShatter, {}, { pos: e.pos, ref: 14, gain: 1.4, reverb: 0.9 }); A.play(S.titanRoar, { f0: 70, dur: 1.8 }, { pos: e.pos, ref: 30, gain: 1.3, reverb: 0.9, delay: 0.1 }); break;
+      case 'titanNova': A.play(S.boxWhoosh, {}, { pos: e.pos, ref: 14, gain: 1.2, reverb: 0.8 }); break;
+      case 'titanHazardHit': if (e.kind === 'shard') A.play(S.glassShatter, {}, { pos: e, ref: 10, gain: 0.8, reverb: 0.7 }); else if (e.kind === 'lob') A.play(S.smallBoom, {}, { pos: e, ref: 12, gain: 1, reverb: 0.5 }); break;
+      case 'titanErupt': A.play(S.explosion, { big: 2 }, { pos: e.pos, ref: 30, gain: 1.4, reverb: 0.7 }); break;
+      case 'titanHurt': A.play(S.titanRoar, { f0: 38, dur: 1.6 }, { pos: { ...e.pos, y: e.pos.y + 6 }, ref: 30, gain: 1.3, reverb: 0.7, delay: 0.2 }); break;
+      case 'fieldGunFire': A.play(S.explosion, { big: 1.4 }, { pos: e.from, ref: 16, gain: 1.1, reverb: 0.5 }); A.play(S.distantShell, {}, { pos: e.to, ref: 30, gain: 0.8, delay: Math.max(0, e.dur - 1.2) }); break;
+      case 'titanLeap': A.play(e.burrow ? S.dirtRise : S.boxWhoosh, {}, { pos: e.from, ref: 16, gain: 1.2, reverb: 0.6 }); break;
+      case 'titanLand': A.play(S.explosion, { big: 1 }, { pos: e.pos, ref: 18, gain: 1, reverb: 0.6 }); break;
+      case 'titanBreath': if (e.phase === 'in') A.play(S.spaceWind, { dur: e.dur }, { gain: 1.2, reverb: 0.5 }); else if (e.phase === 'out') A.play(S.boxWhoosh, {}, { gain: 1.4, reverb: 0.6 }); else A.play(S.titanRoar, { f0: 40, dur: e.dur }, { gain: 1.1, reverb: 0.9 }); break;
+      case 'titanSpit': A.play(S.boxWhoosh, {}, { pos: e.from, ref: 30, gain: 0.7, reverb: 0.7 }); break;
+      case 'skeletonLand': A.play(S.land, { impact: 6, surface: 'gym' }, { pos: e.pos, ref: 6, gain: 0.8 }); break;
+      case 'titanWave': A.play(e.cleared ? S.roundEndSting : S.roundStartSting, {}, { bus: 'music', gain: 0.9, reverb: 0.5 }); break;
+      case 'titanDown': A.play(S.titanRoar, { f0: 34, dur: 3.5 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 40, gain: 1.5, reverb: 0.9 }); A.play(S.explosion, { big: 2 }, { pos: e.pos, ref: 30, gain: 1.2, reverb: 0.8, delay: 1.2 }); break;
+      case 'titanCore': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.4, bus: 'music' }); break;
+      case 'titanRetreat': A.play(S.powerDown, {}, { gain: 0.8, reverb: 0.8 }); break;
       case 'pressBoxBlast':
         A.play(S.glassShatter, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 10, gain: 0.7, reverb: 0.8 });
         A.play(S.electrocute, {}, { pos: { x: 0, y: 6.2, z: 0 }, ref: 8, gain: 0.9, reverb: 0.6, delay: 0.1 });

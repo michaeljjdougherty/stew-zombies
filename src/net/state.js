@@ -41,6 +41,7 @@ const ZOMBIE_SKIP = new Set(['region', 'stuckT', 'avoidSign', 'sidestep', 'sideS
 const PROJ_SKIP = new Set(['hitIds', 'gravity', 'bounce', 'friction']);
 const WINDOW_KEYS = ['boards', 'climbing', 'rebuild', 'queue'];
 const QUEST_SKIP = new Set(['standBox', 'need']);
+const EGG_SKIP = new Set(['shipLand']);
 
 export function playerState(p) {
   const s = clean(p, PLAYER_SKIP);
@@ -68,6 +69,7 @@ export function worldState(sim) {
     traps: byId(sim.traps, (t) => clean({ state: t.state, timer: t.timer, ownerId: t.ownerId })),
     madDog: sim.madDog ? clean({ state: sim.madDog.state, timer: sim.madDog.timer, ownerId: sim.madDog.ownerId, weapon: sim.madDog.weapon }) : null,
     quest: sim.quest ? clean(sim.quest, QUEST_SKIP) : null,
+    crustEgg: sim.crustEgg ? clean(sim.crustEgg, EGG_SKIP) : null,
     powerups: { drops: byId(sim.powerups.drops, (d) => clean(d)), active: clean(sim.powerups.active) },
     stewEgg: clean(sim.stewEgg),
   };
@@ -215,6 +217,7 @@ export function applyMirror(sim, M, localId) {
   }
   Object.assign(box, { phase: B.phase, timer: B.timer, weapon: B.weapon, buyerId: B.buyerId, uses: B.uses, totalUses: B.totalUses, paid: B.paid, moveAt: B.moveAt });
   if (sim.cauldron && M.cauldron) deepAssign(sim.cauldron, M.cauldron);
+  if (sim.crustEgg && M.crustEgg) deepAssign(sim.crustEgg, M.crustEgg);
   if (sim.jukebox && M.jukebox) Object.assign(sim.jukebox, M.jukebox);
   for (const b of sim.saleBoxes || []) {
     const S = M.saleBoxes && M.saleBoxes[b.id];

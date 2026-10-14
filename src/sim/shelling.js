@@ -17,7 +17,8 @@ export function updateShelling(sim, dt) {
   const S = sim.shelling;
   if (!S) return;
   const c = sim.cfg.crust.shelling;
-  const quiet = sim.time < S.ceasefireUntil;
+  // (quiet while the Molten Fiend is up: every gun's on it)
+  const quiet = sim.time < S.ceasefireUntil || !!(sim.crustEgg && sim.crustEgg.active === 'trench');
   if (S.wasQuiet && !quiet) sim.emit('ceasefireOver', {});
   S.wasQuiet = quiet;
   for (const p of sim.players) {

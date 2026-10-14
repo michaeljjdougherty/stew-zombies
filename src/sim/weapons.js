@@ -5,6 +5,7 @@
 // Weapon stats come from CONFIG.weapons; nothing here is weapon-specific.
 // =============================================================================
 import { cauldronShot, isValve } from './cauldron.js';
+import { crustEggShot, knifeTitan } from './crustEgg.js';
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
@@ -210,6 +211,7 @@ function fire(sim, p, slot, def, side) {
       }
     }
     for (const h of impacts) if (h.targetId && isValve(h.targetId)) { if (sim.replica) netAct(sim, { k: 'quest', id: h.targetId }); else cauldronShot(sim, h.targetId, p); }
+    else if (h.targetId && sim.crustEgg) { if (sim.replica) netAct(sim, { k: 'titan', id: h.targetId }); else crustEggShot(sim, h.targetId, p); }
     for (const [id, acc] of perZombie) {
       const z = sim.zombieById(id);
       if (!z) continue;
@@ -459,7 +461,10 @@ function updateMelee(sim, p, cmd, dt, def) {
       m.hitPending = false;
       const c = knifeCandidates(sim, p, mc.range, 50);
       const pick = c.find((e) => e.z.id === m.targetId) || c[0];
-      if (pick) {
+      // (the Glacier Golem's heart, when it's on its knees, comes first)
+      if (sim.crustEgg && sim.replica && sim.crustEgg.active === 'caves') netAct(sim, { k: 'titanKnife' });
+      if (sim.crustEgg && !sim.replica && knifeTitan(sim, p)) sim.emit('meleeHit', { playerId: p.id, titan: true });
+      else if (pick) {
         const dmg = mc.damage * (def.meleeMult || 1);
         hurt(sim, pick.z, dmg, { playerId: p.id, part: 'torso', kind: 'knife', dir: { x: -Math.sin(p.yaw), y: 0, z: -Math.cos(p.yaw) }, point: { x: pick.z.pos.x, y: pick.z.pos.y + (pick.z.crawler ? 0.35 : 1.2), z: pick.z.pos.z } });
         sim.emit('meleeHit', { playerId: p.id, zombieId: pick.z.id });

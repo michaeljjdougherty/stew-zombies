@@ -234,6 +234,8 @@ export class ZombieModelLib {
 
   // a character for this zombie (r = 0..1, from its seed). On an island with
   // its own dead, `share` of them are those; the rest are the usual cast.
+  byId(id) { return this.templates.find((t) => t.id === id) || null; }
+
   pick(r, island = null, r2 = 1, share = 0) {
     const own = island ? this.templates.filter((t) => t.island === island) : [];
     const pool = own.length && r2 < share ? own : this.templates.filter((t) => !t.island);

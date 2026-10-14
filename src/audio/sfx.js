@@ -1203,6 +1203,18 @@ export function thunder(A, out, t, p = {}) {
 }
 
 // [VOICE PLACEHOLDER: hounds] growl / bark / yelp, formant-filtered buzz
+// A titan's roar: a huge, low, gritty voice over a rumble.
+export function titanRoar(A, out, t, p = {}) {
+  const dur = p.dur || 2.2;
+  voice(A, out, t, { f0: p.f0 || 46, dur, formants: [[280, 3, 1], [650, 4, 0.7], [1500, 6, 0.3]], grit: 1, breath: 0.6, vib: 6, vibDepth: 0.14, peak: 0.8 });
+  voice(A, out, t + 0.05, { f0: (p.f0 || 46) * 1.5, dur: dur * 0.9, formants: [[420, 4, 1], [1100, 6, 0.4]], grit: 0.9, breath: 0.5, vib: 9, vibDepth: 0.1, peak: 0.35 });
+  const n = A.noiseSource('brown', t, dur + 0.6);
+  const lp = A.filter('lowpass', 140, 0.7);
+  const g = A.gain(0); A.env(g, t, 0.15, dur * 0.6, 0.9);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  return dur + 0.7;
+}
+
 export function dogGrowl(A, out, t, p = {}) {
   voice(A, out, t, { f0: p.f0 || 75, dur: p.dur || 0.9, formants: [[350, 4, 1], [900, 5, 0.6], [2200, 7, 0.25]], grit: 0.95, breath: 0.45, vib: 13, vibDepth: 0.1, peak: 0.5 });
   return (p.dur || 0.9) + 0.2;

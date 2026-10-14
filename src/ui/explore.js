@@ -45,22 +45,40 @@ export class ExploreUI {
     $('ep-round-inc5').addEventListener('click', () => bump(5));
     $('ep-round-go').addEventListener('click', () => { this.h.round(this.round); this.h.close(); });
     $('ep-zombies').addEventListener('change', (e) => this.h.zombies(e.target.checked));
+    this.eggButtons('quest');
+    $('ep-close').addEventListener('click', () => this.h.close());
+  }
+
+  // the egg's buttons: the school's quest steps, or Call of the Crust's titans
+  eggButtons(mode, sim = null) {
+    this.eggMode = mode;
     const egg = $('ep-egg');
     egg.textContent = '';
-    QUEST_SKIPS.forEach((s, i) => {
+    if (mode === 'quest') {
+      QUEST_SKIPS.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'sm'; b.dataset.skip = s.id;
+        b.textContent = `${i + 1}. ${s.name}`;
+        b.addEventListener('click', () => { this.h.skip(s.id); this.h.close(); });
+        egg.appendChild(b);
+      });
+      return;
+    }
+    for (const id of Object.keys(sim.crustEgg.titans)) {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'sm'; b.dataset.skip = s.id;
-      b.textContent = `${i + 1}. ${s.name}`;
-      b.addEventListener('click', () => { this.h.skip(s.id); this.h.close(); });
+      b.type = 'button'; b.className = 'sm';
+      b.textContent = 'Fight ' + sim.crustEgg.titans[id].name;
+      b.addEventListener('click', () => { this.h.titan(id); this.h.close(); });
       egg.appendChild(b);
-    });
-    $('ep-close').addEventListener('click', () => this.h.close());
+    }
   }
 
   open(sim, p) {
     this.sim = sim; this.p = p;
     this.round = Math.max(1, sim.rounds.round || 1);
-    $('ep-egg').parentElement.hidden = !sim.quest;   // (the egg skips are the school's)
+    $('ep-egg').parentElement.hidden = !sim.quest && !sim.crustEgg;   // (the egg skips are the school's; the titans are Call of the Crust's)
+    const mode = sim.crustEgg ? 'titans' : 'quest';
+    if (this.eggMode !== mode) this.eggButtons(mode, sim);
     this.refresh();
     this.panel.hidden = false;
   }
@@ -88,6 +106,7 @@ export class ExploreUI {
     $('ep-zombies').checked = !!(sim.explore && sim.explore.zombies);
     // the egg: where you are now
     const q = sim.quest;
+    if (!q) { $('ep-slots').textContent = p.loadout.slots.map((s, i) => `${i + 1}: ${this.cfg.weapons[s.id].name}`).join('   '); return; }
     const now = q ? QUEST_STEPS.indexOf(q.step) : -1;
     for (const b of $('ep-egg').querySelectorAll('button')) {
       const s = QUEST_SKIPS.find((x) => x.id === b.dataset.skip);

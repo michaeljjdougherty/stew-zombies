@@ -32,6 +32,7 @@ import { createRides, ZiplineInteractable } from './rides.js';
 import { LaunchInteractable } from './launchers.js';
 import { updateVoid } from './void.js';
 import { createShelling, updateShelling, CeasefireInteractable } from './shelling.js';
+import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets } from './crustEgg.js';
 import { setFloor } from './physics.js';
 
 export class GameSim {
@@ -88,6 +89,8 @@ export class GameSim {
     ];
     this.shelling = createShelling(this);   // the guns over the Trench Front
     if (map.ceasefire) this.interactables.push(new CeasefireInteractable(map.ceasefire));
+    this.crustEgg = createCrustEgg(this);   // the titans (Call of the Crust)
+    this.interactables.push(...crustEggInteractables(this));
     this.rides = createRides(map);   // ziplines and ice slides (Call of the Crust)
     for (const r of this.rides) if (r.kind === 'zip') this.interactables.push(new ZiplineInteractable(r, cfg));
     this.pa = createPA(this);
@@ -270,11 +273,12 @@ export class GameSim {
     let wall = this.raycastWorld(o, d, range);
     // the cauldron's valves stop a bullet like a wall does
     const targets = cauldronTargets(this);
+    if (this.crustEgg) targets.push(...crustEggTargets(this));
     if (targets.length) {
       for (const tg of targets) {
         const t = raySphere(o, d, tg.c, tg.r);
         if (t >= 0 && t < (wall ? wall.t : range)) {
-          wall = { t, normal: v3(-d.x, -d.y, -d.z), box: { kind: tg.id.startsWith('valve') ? 'metal' : 'wire' }, point: v3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t), targetId: tg.id };
+          wall = { t, normal: v3(-d.x, -d.y, -d.z), box: { kind: tg.surface || (tg.id.startsWith('valve') ? 'metal' : 'wire') }, point: v3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t), targetId: tg.id };
         }
       }
     }
@@ -335,6 +339,7 @@ export class GameSim {
     updateZombies(this, dt);
     if (this.mapData.space) updateVoid(this);
     if (this.shelling) updateShelling(this, dt);
+    if (this.crustEgg) updateCrustEgg(this, dt);
     this.cheddarChatter(dt);
     updateJukebox(this);
     updateProjectiles(this, dt);
@@ -344,6 +349,7 @@ export class GameSim {
     if (this.mode === 'range') updateRange(this, dt);
     // (no rounds during Erik's showdown or after it: that fight is its own thing)
     else if (this.quest && this.quest.boss) { /* the quest spawns its own */ }
+    else if (this.crustEgg && this.crustEgg.active) { /* a titan's awake: it brings its own */ }
     else if (this.mode !== 'explore' || this.explore.zombies) updateRounds(this, dt);
 
     if (this.players.length && !anyoneStanding(this)) {

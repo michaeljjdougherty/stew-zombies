@@ -240,6 +240,13 @@
   body.range-mode #pa { display: none; }
   #quest { position: absolute; left: max(16px, 2.2vw); top: calc(max(14px, 2vh) + 22px); max-width: min(420px, 60vw); display: grid; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 6px #000; transition: opacity .4s; }
   #quest[hidden] { display: none; }
+  /* a titan's fight: its name and what's left of it, top middle */
+  #titanbar { position: absolute; left: 50%; top: calc(max(14px, 2vh) + 4px); transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; pointer-events: none; text-shadow: 0 1px 2px #000, 0 0 8px #000; }
+  #titanbar[hidden] { display: none; }
+  #titanbar b { font-family: 'Anton', Impact, sans-serif; font-size: clamp(16px, 2.2vw, 26px); letter-spacing: 3px; text-transform: uppercase; color: #ffd8c0; font-weight: 400; }
+  #titanbar .pips { display: flex; gap: 6px; }
+  #titanbar .pips i { width: clamp(26px, 3.4vw, 46px); height: 8px; border-radius: 2px; background: #ff4a2a; box-shadow: 0 0 8px #ff4a2a99; transition: background .4s, box-shadow .4s; }
+  #titanbar .pips i.gone { background: #ffffff22; box-shadow: none; }
   #quest b { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #7fe08a; font-weight: 700; }
   #quest.new span { animation: questNew 1.2s ease-out; }
   @keyframes questNew { 0% { color: #c8ffd0; text-shadow: 0 0 12px #3fdc5a, 0 1px 2px #000; } 100% { } }
@@ -703,6 +710,7 @@
   <div id="dmgdir"></div>
   <div id="pa"><i></i>PA · Erik Madsen</div>
   <div id="quest" hidden><b>The Final Whistle</b><span></span></div>
+  <div id="titanbar" hidden><b></b><div class="pips"></div></div>
   <div id="eggs" hidden aria-label="Stew items found"><span>S</span><span>T</span><span>W</span></div>
   <div id="subs" aria-live="polite"></div>
   <div id="notecard" hidden><h3></h3><div class="where"></div><div class="body"></div><div class="close">walk away to put it down</div></div>
