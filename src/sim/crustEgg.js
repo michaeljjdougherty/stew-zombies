@@ -161,6 +161,14 @@ export function updateCrustEgg(sim, dt) {
   updateClusters(sim, dt);
   updateShells(sim);
   for (const T of Object.values(E.titans)) {
+    if (T.bulk && T.state !== 'dead') {
+      // (it's solid, asleep or awake: you can't walk through it)
+      for (const p of sim.players) {
+        if (!p.alive || p.launch || Math.abs(p.pos.y - T.pos.y) > T.height) continue;
+        const dx = p.pos.x - T.pos.x, dz = p.pos.z - T.pos.z, dd = Math.hypot(dx, dz), rr = T.bulk + p.radius;
+        if (dd < rr && dd > 1e-4) { p.pos.x = T.pos.x + (dx / dd) * rr; p.pos.z = T.pos.z + (dz / dd) * rr; }
+      }
+    }
     if (T.state === 'asleep' || T.state === 'dead') continue;
     T.t += dt;
     if (T.state === 'waking') {
@@ -191,12 +199,6 @@ export function updateCrustEgg(sim, dt) {
     else if (T.id === 'caves') updateGolem(sim, T, dt, here);
     else updateFiend(sim, T, dt, here);
     if (T.state === 'fight' && T.done >= T.of) beaten(sim, T);
-    if (T.bulk) for (const p of sim.players) {
-      // (it's solid: you can't walk through it)
-      if (!p.alive || p.launch || Math.abs(p.pos.y - T.pos.y) > T.height) continue;
-      const dx = p.pos.x - T.pos.x, dz = p.pos.z - T.pos.z, dd = Math.hypot(dx, dz), rr = T.bulk + p.radius;
-      if (dd < rr && dd > 1e-4) { p.pos.x = T.pos.x + (dx / dd) * rr; p.pos.z = T.pos.z + (dz / dd) * rr; }
-    }
   }
   updateHazards(sim, dt);
 }
