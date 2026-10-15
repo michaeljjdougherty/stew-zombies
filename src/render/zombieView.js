@@ -7,6 +7,7 @@ const _drip = new THREE.Vector3();
 import * as T from './textures.js';
 import { zombieKit } from './zombieKit.js';
 import { zombieModels } from './zombieModels.js';
+import { CONFIG } from '../config.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 const RIG_SPHERE = new THREE.Sphere(new THREE.Vector3(0, 90, 0), 170);   // generous, in model units
@@ -202,7 +203,7 @@ export class ZombieViews {
     const k = this.cfg.flameLook ? this.cfg.flameLook.char : 0.25;
     v.root.traverse((o) => {
       if (!o.isMesh || !o.material) return;
-      const one = (m) => { const c = m.clone(); if (c.color) c.color.multiplyScalar(k); if (c.emissive) c.emissive.setRGB(0, 0, 0); return c; };
+      const one = (m) => { const c = m.clone(); if (c.color) c.color.multiplyScalar(k); if (c.emissive) c.emissive.setRGB(0, 0, 0); c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = m.customProgramCacheKey; return c; };   // (keeps dead eyes black)
       o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material);
     });
     v.smolder = 1.8;
@@ -542,10 +543,21 @@ export class ZombieViews {
     const cache = this.deadEyes || (this.deadEyes = new WeakMap());
     let d = cache.get(mat);
     if (!d) {
+      // pitch black: the glow off, and the eyes themselves (where the glow map
+      // was lit; the whole of a separate eyeball) painted out, shine and all
       d = mat.clone();
       d.emissive = new THREE.Color(0, 0, 0);
       d.emissiveIntensity = 0;
       d.userData.deadEye = true;
+      const whole = !mat.emissiveMap || mat.emissiveMap === mat.map;
+      const [lo, hi] = CONFIG.zombie.deadEyeMask;
+      d.onBeforeCompile = (sh) => {
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <emissivemap_fragment>', whole ? 'float deadEye = 1.0;'
+            : `vec3 deadEyeTex = texture2D( emissiveMap, vEmissiveMapUv ).rgb;\nfloat deadEye = smoothstep( ${lo.toFixed(3)}, ${hi.toFixed(3)}, max( deadEyeTex.r, max( deadEyeTex.g, deadEyeTex.b ) ) );`)
+          .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.rgb *= 1.0 - deadEye;');
+      };
+      d.customProgramCacheKey = () => 'deadEye' + (whole ? 1 : 0);
       cache.set(mat, d);
     }
     return d;
