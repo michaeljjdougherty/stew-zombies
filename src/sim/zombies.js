@@ -7,6 +7,7 @@ import { rotY, angleWrap, dist2D } from '../core/math.js';
 import { zombieHealthForRound } from '../config.js';
 import { maybeDrop, powerupActive } from './powerups.js';
 import { activeLure } from './projectiles.js';
+import { recycleZombie, seenByAnyone } from './rounds.js';
 
 let _hitboxCache = [];
 
@@ -327,10 +328,15 @@ export function updateZombies(sim, dt) {
           if (!target || !reachable(sim, z, target)) {
             z.strandedT = (z.strandedT || 0) + dt;
             if (z.strandedT > sim.cfg.crust.strandedTime) {
-              setState(sim, z, 'dead');
-              sim.emit('zombieRemoved', { id: z.id });
-              if (sim.rounds.phase === 'active' && !sim.rounds.cheddar) sim.rounds.toSpawn++;
-              break;
+              // the round's own: back up near the players now (once nobody's looking at it)
+              if (z.recycle && seenByAnyone(sim, z)) z.strandedT = sim.cfg.crust.strandedTime;
+              else if (z.recycle && recycleZombie(sim, z)) break;
+              else {
+                setState(sim, z, 'dead');
+                sim.emit('zombieRemoved', { id: z.id });
+                if (sim.rounds.phase === 'active' && !sim.rounds.cheddar) sim.rounds.toSpawn++;
+                break;
+              }
             }
           } else z.strandedT = 0;
         }
@@ -584,6 +590,19 @@ function pullZombie(sim, z, dt) {
   }
   faceToward(z, -dx, -dz, 6, dt);   // (back first into it, arms out)
   z.region = sim.nav.regionAt(z.pos, z.region) || z.region;
+}
+
+// Gone without dying (pulled off the map to come back somewhere else): no corpse.
+export function removeZombie(sim, z) {
+  if (z.state === 'dead') return;
+  const win = sim.windowById(z.windowId);
+  if (win) {
+    const qi = win.queue.indexOf(z.id);
+    if (qi >= 0) win.queue.splice(qi, 1);
+    if (win.climbing === z.id) win.climbing = null;
+  }
+  z.state = 'dead';
+  sim.emit('zombieRemoved', { id: z.id });
 }
 
 export function killZombie(sim, z, info = {}) {

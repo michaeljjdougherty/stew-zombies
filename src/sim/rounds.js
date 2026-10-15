@@ -3,7 +3,7 @@
 // =============================================================================
 import { createLoadout } from './weapons.js';
 import { zombieCountForRound, zombieHealthForRound } from '../config.js';
-import { spawnZombie, spawnRising, spawnCheddar } from './zombies.js';
+import { spawnZombie, spawnRising, spawnCheddar, removeZombie } from './zombies.js';
 import { resetRoundDrops, spawnPowerup } from './powerups.js';
 import { dist2D } from '../core/math.js';
 
@@ -141,6 +141,7 @@ export function updateRounds(sim, dt) {
     if (R.timer <= 0) startRound(sim, R.round + 1);
     return;
   }
+  updateRecycle(sim, dt);
   if (R.cheddar) { updateCheddarRound(sim, dt); return; }
   // active
   const alive = sim.zombies.length;
@@ -149,8 +150,8 @@ export function updateRounds(sim, dt) {
     if (R.spawnTimer <= 0) {
       const sp = pickSpawn(sim);
       if (sp) {
-        if (sp.ground) spawnRising(sim, sp.ground, R.round);
-        else spawnZombie(sim, sp.win, R.round);
+        const z = sp.ground ? spawnRising(sim, sp.ground, R.round) : spawnZombie(sim, sp.win, R.round);
+        z.recycle = true;
         R.toSpawn--;
       }
       R.spawnTimer = R.spawnInterval * sim.rng.range(0.7, 1.3);
@@ -163,6 +164,76 @@ export function updateRounds(sim, dt) {
   }
 }
 
+// --- far-off zombies: pulled, and back up near the players ------------------
+// A round's zombie that's stayed far from everyone (another island, the far end
+// of the map) for a while is taken off and comes straight back up at a spawn
+// point near someone, keeping its health. Never one somebody's looking at, and
+// only when there's a spot much nearer. Once the round's down to its last few,
+// "far" is nearer and the wait shorter, so the round never ends in a hunt.
+// Numbers: CONFIG.rounds.recycle.
+function nearestPlayerDist(sim, pos) {
+  let d = Infinity;
+  for (const p of sim.players) if (p.alive) d = Math.min(d, dist2D(p.pos, pos) + Math.abs((p.pos.y || 0) - (pos.y || 0)));
+  return d;
+}
+
+export function seenByAnyone(sim, z) { return inSight(sim, z, sim.cfg.rounds.recycle); }
+
+function inSight(sim, z, rc) {
+  for (const p of sim.players) {
+    if (!p.alive) continue;
+    const dx = z.pos.x - p.pos.x, dz = z.pos.z - p.pos.z, l = Math.hypot(dx, dz);
+    if (l > rc.seenDist) continue;
+    if (l < 1e-3 || (-Math.sin(p.yaw) * dx - Math.cos(p.yaw) * dz) / l > rc.seenDot) return true;
+  }
+  return false;
+}
+
+export function recycleZombie(sim, z, within = Infinity, rc = sim.cfg.rounds.recycle) {
+  let pos = null, sp = null;
+  if (z.type === 'cheddar') {
+    pos = strikePoint(sim);
+    if (!pos || nearestPlayerDist(sim, pos) > within) return false;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < rc.tries; i++) {
+      const c = pickSpawn(sim);
+      if (!c) break;
+      const d = nearestPlayerDist(sim, c.pos);
+      if (d < best) { best = d; sp = c; }
+    }
+    if (!sp || best > within) return false;
+  }
+  removeZombie(sim, z);
+  const R = sim.rounds;
+  const n = pos ? spawnCheddar(sim, pos, z.maxHealth) : sp.ground ? spawnRising(sim, sp.ground, R.round) : spawnZombie(sim, sp.win, R.round);
+  n.maxHealth = Math.max(n.maxHealth, z.maxHealth);
+  n.health = Math.min(n.maxHealth, z.health);
+  n.recycle = true;
+  sim.emit('zombieRecycled', { from: z.id, to: n.id, pos: { ...n.pos } });
+  return true;
+}
+
+export function updateRecycle(sim, dt) {
+  const R = sim.rounds, rc = sim.cfg.rounds.recycle;
+  if (!rc || R.phase !== 'active' || (R.cheddar && R.preTimer > 0)) return;
+  R.recycleT = (R.recycleT || 0) - dt;
+  if (R.recycleT > 0) return;
+  R.recycleT = rc.checkEvery;
+  if (!sim.players.some((p) => p.alive)) return;
+  const live = sim.zombies.filter((z) => z.state !== 'dead');
+  const few = R.toSpawn <= 0 && live.length <= rc.lastFew;
+  const far = few ? rc.lastFewDist : rc.dist, wait = few ? rc.lastFewTime : rc.time;
+  for (const z of live) {
+    if (!z.recycle || z.state === 'dead') continue;
+    const d = nearestPlayerDist(sim, z.pos);
+    if (d < far || inSight(sim, z, rc)) { z.farT = 0; continue; }
+    z.farT = (z.farT || 0) + rc.checkEvery;
+    if (z.farT < wait) continue;
+    if (!recycleZombie(sim, z, d - rc.closerBy, rc)) z.farT = wait * 0.5;   // nowhere nearer just now: look again soon
+  }
+}
+
 function updateCheddarRound(sim, dt) {
   const R = sim.rounds, ch = sim.cfg.cheddar;
   if (R.preTimer > 0) { R.preTimer -= dt; return; }
@@ -171,7 +242,7 @@ function updateCheddarRound(sim, dt) {
     R.spawnTimer -= dt;
     if (R.spawnTimer <= 0) {
       const pos = strikePoint(sim);
-      if (pos) { spawnCheddar(sim, pos, cheddarHealth(sim, R.cheddarIndex)); R.toSpawn--; }
+      if (pos) { spawnCheddar(sim, pos, cheddarHealth(sim, R.cheddarIndex)).recycle = true; R.toSpawn--; }
       R.spawnTimer = sim.rng.range(ch.spawnInterval[0], ch.spawnInterval[1]);
     }
   }

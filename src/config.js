@@ -269,6 +269,20 @@ export const CONFIG = {
     spawnIntervalDecay: 0.95, // multiplied each round
     spawnIntervalMin: 0.35,
     firstSpawnDelay: 0.8,
+    // zombies left far from everyone (another island, the far end of the map)
+    // are pulled and come back up near the players, so a round never ends in a hunt
+    recycle: {
+      dist: 40,              // m from the nearest player (height difference counts) that's too far
+      time: 8,               // s it has to stay that far
+      lastFew: 4,            // once only this many are left (none still to come)...
+      lastFewDist: 22,       // ...this is too far
+      lastFewTime: 3,        // ...after this long
+      seenDist: 60,          // in front of someone and nearer than this: left alone (nothing vanishes in plain sight)
+      seenDot: 0.55,         // cos of the half-angle that counts as "in front of"
+      closerBy: 8,           // only moved when the new spot is at least this much nearer someone
+      tries: 8,              // spawn points looked at for a nearer one
+      checkEvery: 0.5,       // s between checks
+    },
   },
 
   // ---------------------------------------------------------------------------
@@ -279,6 +293,7 @@ export const CONFIG = {
     height: 1.8,
     stepHeight: 0.5,
     dropChance: 0.25,        // share of plain walkers that will jump down a ledge after you (runners always do)
+    deadEyeMask: [0.03, 0.2], // a dead zombie's eyes go black where its glow map is brighter than this (soft edge)
 
     healthBase: 150,
     healthAddPerRound: 100,
