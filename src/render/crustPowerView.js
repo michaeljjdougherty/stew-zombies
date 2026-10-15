@@ -34,7 +34,7 @@ export class CrustPowerView {
       chrome: new THREE.MeshStandardMaterial({ color: '#b8b6b0', roughness: 0.2, metalness: 0.9 }),
       ceramic: new THREE.MeshStandardMaterial({ color: '#e8e2d4', roughness: 0.35 }),
       copper: new THREE.MeshStandardMaterial({ color: '#c8743a', roughness: 0.3, metalness: 0.9, emissive: new THREE.Color('#5ab8ff'), emissiveIntensity: 0 }),
-      char: new THREE.MeshStandardMaterial({ color: '#1c1612', roughness: 0.95 }),
+      char: new THREE.MeshStandardMaterial({ color: '#2e221a', roughness: 0.95, emissive: new THREE.Color('#ff5a1a'), emissiveIntensity: 0.35 }),   // (still smouldering)
       sign: dangerSign(),
     };
     this.glowTex = TX.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
