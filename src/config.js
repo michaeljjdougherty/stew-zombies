@@ -1213,6 +1213,7 @@ export const CONFIG = {
   trailer: {
     song: 'assets/music/design_in_malice.mp3',
     songWait: 8,             // s to wait for the song to load before running without it
+    touchPreset: 'medium',   // the graphics on a phone or tablet (a computer gets ultra)
     drop: 20.18,             // s: where the beat drops in the song (trailerDropTime)
     bpm: 90,                 // the song's tempo after the drop (a beat = 60 / bpm s)
     fadeOut: [58, 60],       // s: the music fades out over this

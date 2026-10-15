@@ -509,13 +509,17 @@ function startTrailer({ silent = false, recording = false } = {}) {
   sim.power = true;
   // the best picture this machine can make, full screen (for recording it)
   if (!recording) {
-    renderer.applySettings({ ...settings, ...CONFIG.graphics.presets.ultra });
+    // (a phone or tablet gets a lighter picture, so it keeps up with the song)
+    const touch = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
+    renderer.applySettings({ ...settings, ...CONFIG.graphics.presets[touch ? CONFIG.trailer.touchPreset : 'ultra'] });
     const el = document.documentElement;
     if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
   }
   const T = renderer.startTrailer();
   T.recording = recording;
   trailerUI.show(CONFIG.trailer.letterbox);
+  // iPhone: play the song even with the ringer on silent (it's a video, not a beep)
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* older Safari */ }
   if (!silent && audio.ctx) {
     // the song is the clock: the picture follows it (no seeking it back to the picture)
     const song = trailerSong = new TrailerSong(audio.ctx, CONFIG.trailer.song);
