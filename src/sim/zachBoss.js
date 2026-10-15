@@ -119,7 +119,13 @@ function keepInPit(sim, F, c) {
   const spec = sim.mapData.forge, A = spec.anvil;
   let dx = F.pos.x - A.x, dz = F.pos.z - A.z, d = Math.hypot(dx, dz) || 1e-3;
   if (d > c.pitRadius) { F.pos.x = A.x + dx / d * c.pitRadius; F.pos.z = A.z + dz / d * c.pitRadius; }
-  else if (d < c.anvilRadius) { F.pos.x = A.x + dx / d * c.anvilRadius; F.pos.z = A.z + dz / d * c.anvilRadius; }
+  // (between the two scaffold catwalks: he's too tall to go under them)
+  F.pos.z = Math.max(A.z - c.band, Math.min(A.z + c.band, F.pos.z));
+  dx = F.pos.x - A.x; dz = F.pos.z - A.z; d = Math.hypot(dx, dz) || 1e-3;
+  if (d < c.anvilRadius) { F.pos.x = A.x + dx / d * c.anvilRadius; F.pos.z = A.z + dz / d * c.anvilRadius; }
+  // (and he leaves Pit be)
+  const P = spec.pit, px = F.pos.x - P.x, pz = F.pos.z - P.z, pd = Math.hypot(px, pz) || 1e-3;
+  if (pd < c.pitClear) { F.pos.x = P.x + px / pd * c.pitClear; F.pos.z = P.z + pz / pd * c.pitClear; }
   // (the pit floor's height where he stands)
   const g = groundHeight(F.pos.x, F.pos.z, 0.3, 3, [sim.world.terrain]);
   if (Number.isFinite(g) && g > -2) F.pos.y = g;
@@ -146,7 +152,7 @@ function updateAct(sim, F, dt, c) {
     else if (a.kind === 'swipe') {
       const cosA = Math.cos(c.swipe.angle * Math.PI / 180), fx = Math.sin(a.yaw), fz = Math.cos(a.yaw);
       for (const p of sim.players) {
-        if (!p.alive || p.downed || Math.abs(p.pos.y - F.pos.y) > 4) continue;
+        if (!p.alive || p.downed || Math.abs(p.pos.y - F.pos.y) > H * F.scale * 0.75) continue;
         const dx = p.pos.x - F.pos.x, dz = p.pos.z - F.pos.z, d = Math.hypot(dx, dz);
         if (d > c.swipe.range || (d > 1 && (dx * fx + dz * fz) / d < cosA)) continue;
         sim.damagePlayer(p, c.swipe.damage, { pos: { x: F.pos.x, z: F.pos.z } });
@@ -205,6 +211,7 @@ export function zachHammerHit(sim, p, element, land, dir) {
   const c = sim.cfg.crust.finale;
   const reach = c.hitReach + c.radius * F.scale / c.scale[3];
   const dx = F.pos.x - p.pos.x, dz = F.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+  if (Math.abs(p.pos.y - F.pos.y) > H * F.scale * 0.85) return false;   // (from the catwalks you can reach his head)
   if (d > reach || (d > 1 && (dx * dir.x + dz * dir.z) / d < 0.35)) return false;
   const want = c.order[F.phase];
   if (element !== want) { sim.emit('zachShrug', { element, want, playerId: p.id, pos: { ...land } }); return false; }

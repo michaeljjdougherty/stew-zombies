@@ -308,3 +308,16 @@ export function forgeInteractables(sim) {
   if (!spec || !sim.crustEgg || !sim.crustEgg.forge) return [];
   return [new BenchInteractable(spec), ...HAMMER_ELEMENTS.map((el) => new SocketInteractable(spec, el)), new AnvilInteractable(spec)];
 }
+
+// Explore mode: every core in and every War Hammer on the Anvil, right now
+export function forgeAllNow(sim) {
+  const E = sim.crustEgg, F = E && E.forge;
+  if (!F) return;
+  for (const [id, el] of Object.entries(CORE_ELEMENT)) {
+    const h = sim.mapData.forge.sockets[el];
+    E.cores[id] = { state: 'forged', x: h.x, y: h.y, z: h.z, home: { x: h.x, y: h.y, z: h.z }, by: null, element: el };
+    F.hammers[el].forged = true;
+  }
+  F.work = null; F.queue.length = 0;
+  sim.emit('hammersAll', {});
+}

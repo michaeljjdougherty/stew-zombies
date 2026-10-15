@@ -13,6 +13,7 @@ import { handModel } from './handModel.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { gltfLoader, fetchGlb as fetchModel } from './gltfLite.js';
 import { addShaderPatch } from './shaderPatch.js';
+import { buildWarHammer } from './warHammer.js';
 
 // --- real gun models ----------------------------------------------------------
 // Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
@@ -1175,7 +1176,33 @@ function chopper(m) {
   };
 }
 
+// A War Hammer in first person (Call of the Crust): the haft up the middle of
+// your hands (both round it, the left above the right), the head up past
+// your shoulder. The hammer itself is src/render/warHammer.js.
+const FP_HAMMER = 0.78;   // its size in your hands (x the real thing)
+function warHammerFp(el) {
+  return (m) => {
+    const g = new THREE.Group();
+    const H = buildWarHammer(el, { halo: true });
+    H.group.rotation.x = -Math.PI / 2;    // (its haft runs along +Z: stand it up the grip axis)
+    H.group.scale.setScalar(FP_HAMMER);
+    g.add(H.group);
+    // the hands need something as thick as a grip to close round
+    const wrap = new THREE.MeshStandardMaterial({ color: '#2a1a12', roughness: 0.9 });
+    for (const y of [0, 0.2]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 12), wrap); c.position.y = y; g.add(c); }
+    return {
+      group: g, parts: { head: H.head }, muzzleAt: [0, 0.82 * FP_HAMMER, 0],
+      right: { pos: [0.0, 0.0, 0.0], rot: [0, 0, 0], kind: 'grip' },
+      left: { pos: [0.0, 0.2, 0.0], rot: [0, 0, 0], kind: 'vgrip' },
+      hip: { x: 0.24, y: -0.36, z: -0.55, rx: -0.45, ry: 0.35, rz: 0.3 },
+      aim: { y: -0.3, z: -0.5 },
+      hammer: el,
+    };
+  };
+}
+
 const BUILDERS = {
+  warhammer_fire: warHammerFp('fire'), warhammer_ice: warHammerFp('ice'), warhammer_wind: warHammerFp('wind'), warhammer_lightning: warHammerFp('lightning'),
   fucci, chopper,
   pistol, revolver, rifle, doubleBarrel, smg, carbine,
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,
@@ -1499,6 +1526,7 @@ function addHands(spec, m, rightOnly = false, model = null) {
   const lk = realGunsOn && REAL_GUNS[model] && REAL_GUNS[model].lk;
   if (lk === 'vgrip') lh.add(fpHand(m, 'vgrip', [-0.3, -0.5, 1], true));
   else if (spec.left.kind === 'under') lh.add(fpHand(m, 'under', [-0.6, -0.42, 1], true));
+  else if (spec.left.kind === 'vgrip') lh.add(fpHand(m, 'vgrip', [-0.3, -0.5, 1], true));
   else {
     const R0 = spec.right.pos, L0 = spec.left.pos;
     lh.add(fpHand(m, 'cup', [-0.5, -0.6, 1], false, { pos: [R0[0] - L0[0], R0[1] - L0[1], R0[2] - L0[2]], rot: spec.right.rot }));

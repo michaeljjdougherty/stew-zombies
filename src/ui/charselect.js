@@ -42,19 +42,21 @@ export class CharSelect {
 
   unlocked(id) {
     const c = CHARACTERS[id];
-    return !!(c && (c.playable || (c.unlock === 'quest' && this.questDone())));
+    return !!(c && (c.playable || (c.unlock === 'quest' && this.questDone()) || (c.rescue === 'crust' && this.crustDone())));
   }
 
   questDone() { return !!(this.h.questDone && this.h.questDone()); }
+  crustDone() { return !!(this.h.crustDone && this.h.crustDone()); }
 
   // Zach: after The Final Whistle he's on the list, but you can't pick him
-  isMissing(id) { const c = CHARACTERS[id]; return !!(c && c.missing === 'quest' && this.questDone()); }
+  // (and once he's back from Call of the Crust, he's just playable)
+  isMissing(id) { const c = CHARACTERS[id]; return !!(c && c.missing === 'quest' && this.questDone() && !(c.rescue === 'crust' && this.crustDone())); }
 
   open() {
     // Brian: locked until you've finished The Final Whistle
     for (const b of this.cards) {
       const id = b.dataset.id, ok = this.unlocked(id);
-      if (CHARACTERS[id].missing) {
+      if (CHARACTERS[id].missing && !ok) {
         // not even a hint he exists until the quest is done
         const m = this.isMissing(id);
         b.hidden = !m;

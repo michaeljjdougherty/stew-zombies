@@ -1945,3 +1945,58 @@ export function refWhistle(A, out, t) {
   }
   return 1;
 }
+
+// ---------------------------------------------------------------------------
+// Call of the Crust: the War Hammers and Pit's forge
+// ---------------------------------------------------------------------------
+// A War Hammer coming round: a heavy whoosh, falling in pitch.
+export function hammerSwing(A, out, t, p = {}) {
+  const n = A.noiseSource('pink', t, 0.45);
+  const bp = A.filter('bandpass', 900, 1.1);
+  bp.frequency.setValueAtTime(1300, t); bp.frequency.exponentialRampToValueAtTime(260, t + 0.32);
+  const g = A.gain(0); A.env(g, t, 0.12, 0.25, 0.75);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  if (p.upgraded) { const o = A.osc('sine', 180, t, 0.4); o.frequency.exponentialRampToValueAtTime(90, t + 0.35); const og = A.gain(0); A.env(og, t, 0.1, 0.25, 0.25); o.connect(og); og.connect(out); }
+  return 0.5;
+}
+
+// ...and its head hitting the ground: a deep thud, iron ringing, then the element.
+export function hammerImpact(A, out, t, p = {}) {
+  const el = p.element || 'fire';
+  const o = A.osc('sine', 95, t, 0.5);
+  o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+  const og = A.gain(0); A.env(og, t, 0.002, 0.4, 1.3);
+  o.connect(og); og.connect(out);
+  const n = A.noiseSource('brown', t, 0.4);
+  const lp = A.filter('lowpass', 700, 0.8);
+  const ng = A.gain(0); A.env(ng, t, 0.002, 0.3, 1.0);
+  n.connect(lp); lp.connect(ng); ng.connect(out);
+  for (const [f, a] of [[310, 0.12], [747, 0.08], [1290, 0.05]]) {
+    const r = A.osc('sine', f, t, 1.2); const rg = A.gain(0); A.env(rg, t, 0.001, 1.0, a); r.connect(rg); rg.connect(out);
+  }
+  if (el === 'ice') {
+    for (let i = 0; i < 6; i++) { const th = t + 0.04 + i * 0.05; const c = A.osc('sine', 2200 + Math.random() * 2600, th, 0.5); const cg = A.gain(0); A.env(cg, th, 0.001, 0.45, 0.07); c.connect(cg); cg.connect(out); }
+    const w = A.noiseSource('white', t + 0.05, 0.8); const hp = A.filter('highpass', 3500, 0.7); const wg = A.gain(0); A.env(wg, t + 0.05, 0.05, 0.7, 0.25); w.connect(hp); hp.connect(wg); wg.connect(out);
+  } else if (el === 'lightning') {
+    for (let i = 0; i < 5; i++) { const th = t + i * 0.035; const z = A.noiseSource('white', th, 0.05); const hp = A.filter('highpass', 1800, 0.7); const zg = A.gain(0); A.env(zg, th, 0.001, 0.04, 0.7); z.connect(hp); hp.connect(zg); zg.connect(out); }
+    const b = A.osc('sawtooth', 70, t, 0.4); const bl = A.filter('lowpass', 600, 2); const bg = A.gain(0); A.env(bg, t, 0.002, 0.35, 0.25); b.connect(bl); bl.connect(bg); bg.connect(out);
+  } else if (el === 'wind') {
+    const w = A.noiseSource('pink', t, 1.2); const bp = A.filter('bandpass', 500, 0.8);
+    bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(1600, t + 0.5); bp.frequency.exponentialRampToValueAtTime(300, t + 1.1);
+    const wg = A.gain(0); A.env(wg, t, 0.06, 1.0, 0.8); w.connect(bp); bp.connect(wg); wg.connect(out);
+  } else {
+    const f = A.noiseSource('brown', t + 0.02, 1.0); const fl = A.filter('lowpass', 1400, 0.6); const fg = A.gain(0); A.env(fg, t + 0.02, 0.03, 0.9, 0.9); f.connect(fl); fl.connect(fg); fg.connect(out);
+    for (let i = 0; i < 8; i++) { const th = t + 0.1 + Math.random() * 0.7; const c = A.noiseSource('white', th, 0.02); const ch = A.filter('bandpass', 2500 + Math.random() * 2000, 2); const cg = A.gain(0); A.env(cg, th, 0.001, 0.015, 0.3); c.connect(ch); ch.connect(cg); cg.connect(out); }
+  }
+  return 1.3;
+}
+
+// Pit's hammer on the bench anvil: a bright clang that rings out.
+export function anvilClang(A, out, t, p = {}) {
+  const k = p.pitch || 1;
+  for (const [f, a, d] of [[880, 0.3, 0.9], [1340, 0.18, 0.7], [2210, 0.12, 0.5], [3130, 0.07, 0.35]]) {
+    const o = A.osc('sine', f * k, t, d + 0.1); const g = A.gain(0); A.env(g, t, 0.001, d, a); o.connect(g); g.connect(out);
+  }
+  const n = A.noiseSource('white', t, 0.04); const hp = A.filter('highpass', 3000, 0.7); const ng = A.gain(0); A.env(ng, t, 0.001, 0.03, 0.5); n.connect(hp); hp.connect(ng); ng.connect(out);
+  return 1.0;
+}

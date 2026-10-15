@@ -23,7 +23,7 @@ export const MAPS = [
   },
   {
     id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
-    blurb: 'Five islands adrift in space. You come to in the Anvil\'s ancient forge pit; launchers on the rim fling you to the windswept Ship Graveyard, the storm-wracked Research Base, the molten Trench Front and the Ice Caves. Each island has its own dead, and a titan guarding its War Hammer core. Ride ziplines and ice slides, keep to the trenches when the shells come in, and don\'t step off the edge. The season isn\'t over.',
+    blurb: 'Five islands adrift in space. You come to in the Anvil\'s ancient forge pit; launchers on the rim fling you to the windswept Ship Graveyard, the storm-wracked Research Base, the molten Trench Front and the Ice Caves. Each island has its own dead, and a titan guarding its War Hammer core: bring the cores back to Pit at his forge and he\'ll make the hammers that can free Zach. Ride ziplines and ice slides, keep to the trenches when the shells come in, and don\'t step off the edge. The season isn\'t over.',
     facts: ['Map 2 · early build', 'Solo for now', 'Developers only'],
   },
   {

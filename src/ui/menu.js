@@ -154,7 +154,10 @@ export class Menus {
     });
   }
 
-  showVictory(round, p, unlocked = false) {
+  // (o: the map's own words: eyebrow, big, unlock, note; the school's are the defaults in index.html)
+  showVictory(round, p, unlocked = false, o = {}) {
+    if (!this.winDefaults) this.winDefaults = { eyebrow: $('win-eyebrow').innerHTML, big: $('win-big').innerHTML, unlock: $('win-unlock').innerHTML, note: $('win-note').innerHTML };
+    for (const k of ['eyebrow', 'big', 'unlock', 'note']) $('win-' + k).innerHTML = o[k] ?? this.winDefaults[k];
     $('win-unlock').hidden = !unlocked;
     $('win-rounds').textContent = String(round);
     $('win-kills').textContent = String(p.kills);

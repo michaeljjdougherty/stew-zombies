@@ -170,7 +170,7 @@ const forgeAll = (g) => {
     }
   };
   const n0 = g.log.length;
-  g.me.pos.x = Z.pos.x; g.me.pos.z = Z.pos.z + 7; g.me.pos.y = Z.pos.y + 0.05; g.me.yaw = 0; g.me.pitch = 0.1;
+  { const r = Math.hypot(Z.pos.x, Z.pos.z) || 1; g.me.pos.x = Z.pos.x * (1 + 4.6 / r); g.me.pos.z = Z.pos.z * (1 + 4.6 / r); g.me.pos.y = Z.pos.y + 0.05; g.me.yaw = Math.atan2(-(Z.pos.x - g.me.pos.x), -(Z.pos.z - g.me.pos.z)); g.me.pitch = 0.1; }
   g.step({ fire: true, firePressed: true }); g.step({}, 3);
   g.me.pitch = 0;
   check(g.log.slice(n0).some((e) => e.type === 'zachSpark'), 'bullets spark off him');

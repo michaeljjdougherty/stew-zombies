@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { Teammate } from './teammates.js';
 import { buildEvilZach } from './evilZach.js';
+import { buildWarHammer } from './warHammer.js';
 import { makeZombie } from '../sim/zombies.js';
 import * as T from './textures.js';
 
@@ -396,27 +397,8 @@ function perkFront(pk) {
   return T.toTexture(c, { repeat: false });
 }
 
-// A War Hammer: a long iron haft, a heavy head bound in its element's glow.
-function buildHammer(el) {
-  const g = new THREE.Group();
-  const col = new THREE.Color(ELEMENT[el]);
-  const iron = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.45, metalness: 0.85 });
-  const wood = new THREE.MeshStandardMaterial({ color: '#3a2618', roughness: 0.8 });
-  const glow = new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(2.2), toneMapped: false });
-  const haft = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 1.0, 10).rotateX(Math.PI / 2), wood);
-  haft.position.z = 0.32; g.add(haft);
-  const head = new THREE.Group(); head.position.z = 0.82; g.add(head);
-  const block = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.17), iron); head.add(block);
-  for (const s of [-1, 1]) {
-    const face = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.2), iron); face.position.x = s * 0.18; head.add(face);
-    const band = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.175, 0.175), glow); band.position.x = s * 0.1; head.add(band);
-  }
-  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), glow); core.position.y = 0.09; head.add(core);
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
-  halo.scale.setScalar(0.7); head.add(halo);
-  const grip = new THREE.Object3D(); grip.position.z = 0.3; g.add(grip);
-  return { group: g, head, grip };
-}
+// (the War Hammers: src/render/warHammer.js, the same ones as in the game)
+const buildHammer = (el) => buildWarHammer(el);
 
 // =============================================================================
 // The shots. enter(T) sets the stage; frame(T, u, d, k): u seconds into the

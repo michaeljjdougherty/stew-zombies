@@ -71,6 +71,14 @@ export class ExploreUI {
       b.addEventListener('click', () => { this.h.titan(id); this.h.close(); });
       egg.appendChild(b);
     }
+    // the rest of the egg: all four War Hammers forged on the Anvil, then the finale
+    for (const [label, step] of [['Forge all four War Hammers', 'hammers'], ['Fight Big Evil Zach', 'zach']]) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sm';
+      b.textContent = label;
+      b.addEventListener('click', () => { if (this.h.crust) this.h.crust(step); this.h.close(); });
+      egg.appendChild(b);
+    }
   }
 
   open(sim, p) {

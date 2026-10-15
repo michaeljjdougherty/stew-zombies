@@ -1391,6 +1391,8 @@ export const CONFIG = {
       speed: [2.2, 2.6, 3.0, 3.4],   // m/s, phase by phase (he gets angrier)
       pitRadius: 13.5,       // m: he stays in the pit
       anvilRadius: 5.2,      // m: and off the Anvil
+      band: 5.4,             // m either side of the Anvil (north-south): between the scaffold catwalks, which he's too tall for
+      pitClear: 3.8,         // m: he keeps off Pit and his bench
       every: [2.4, 4.0],     // s between attacks
       stomp: { warn: 1.1, radius: 7, damage: 55, push: 9 },
       swipe: { warn: 0.8, range: 7.5, angle: 70, damage: 45, push: 11 },

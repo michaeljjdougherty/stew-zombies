@@ -300,7 +300,7 @@ function hub() {
       pit: { x: -7.85, y: F + 0.3, z: 2.9, yaw: -Math.PI / 2 },
       anvil: { x: 0, z: 0, w: 6.6, r: 4.6 },
       sockets: { wind: { x: 0, y: SY, z: -sk }, lightning: { x: sk, y: SY, z: 0 }, fire: { x: 0, y: SY, z: sk }, ice: { x: -sk, y: SY, z: 0 } },
-      zach: { x: 0, y: F, z: -12.5 },
+      zach: { x: 9.5, y: F, z: 0 },
     };
     I.prop('model', -7.0, 1.6, -5.6, 4.2, 0.95);      // (the bench: drawn by src/render/forgeView.js)
     I.prop('model', -8.15, 2.6, -7.55, 3.2, 1.8);     // (Pit)

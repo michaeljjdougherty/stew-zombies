@@ -254,6 +254,7 @@ export class SoundDirector {
     switch (e.type) {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
+        if (def.hammer) { A.play(S.hammerSwing, { upgraded: !!def.upgraded }, local ? { gain: 0.9, reverb: 0.2 } : { pos: e.origin, ref: 3, reverb: 0.3 }); break; }
         const voice = GUN_VOICES[baseWeaponId(e.weapon)];
         A.play(S.gunshot, { ...def.sound, voice, upgraded: !!def.upgraded }, local ? { reverb: voice?.reverb ?? 0.3, gain: 0.85 } : { pos: e.origin, reverb: voice?.reverb ?? 0.45, ref: 4 });
         if (local && e.action) {
@@ -412,6 +413,22 @@ export class SoundDirector {
       case 'skeletonLand': A.play(S.land, { impact: 6, surface: 'gym' }, { pos: e.pos, ref: 6, gain: 0.8 }); break;
       case 'titanWave': A.play(e.cleared ? S.roundEndSting : S.roundStartSting, {}, { bus: 'music', gain: 0.9, reverb: 0.5 }); break;
       case 'titanDown': A.play(S.titanRoar, { f0: 34, dur: 3.5 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 40, gain: 1.5, reverb: 0.9 }); A.play(S.explosion, { big: 2 }, { pos: e.pos, ref: 30, gain: 1.2, reverb: 0.8, delay: 1.2 }); break;
+      // --- Call of the Crust: the War Hammers, Pit's forge, Big Evil Zach
+      case 'hammerSlam': A.play(S.hammerImpact, { element: e.element }, e.playerId === this.localId ? { gain: 1.0, reverb: 0.4 } : { pos: e.pos, ref: 4, reverb: 0.5 }); break;
+      case 'hammerChain': A.play(S.thunder, { near: 0.35 }, { pos: e.points[0], ref: 6, gain: 0.6, reverb: 0.4 }); break;
+      case 'zombieShatter': A.play(S.hammerImpact, { element: 'ice' }, { pos: e.pos, ref: 3, gain: 0.35, reverb: 0.3 }); break;
+      case 'forgeStrike': { const f = sim.mapData.forge; if (f) A.play(S.anvilClang, { pitch: 0.94 + (e.n % 3) * 0.04 }, { pos: { x: f.pit.x + 1, y: 1.2, z: f.pit.z }, ref: 3, reverb: 0.6, gain: 0.8 }); break; }
+      case 'corePicked': case 'coreGiven': A.play(S.stewItemGet, { count: 1 }, { gain: 0.7, reverb: 0.4, bus: 'music' }); break;
+      case 'hammerForged': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.5, bus: 'music' }); break;
+      case 'hammersAll': case 'anvilRung': A.play(S.anvilClang, { pitch: 0.5 }, { gain: 1.2, reverb: 1 }); A.play(S.anvilClang, { pitch: 0.75 }, { gain: 0.8, reverb: 1, delay: 0.05 }); break;
+      case 'zachDescend': A.play(S.thunder, { near: 1 }, { gain: 1.1, reverb: 0.9 }); break;
+      case 'zachLand': A.play(S.explosion, { big: 2 }, { gain: 1.2, reverb: 0.7 }); A.play(S.titanRoar, { f0: 52, dur: 2.6 }, { pos: e.pos, ref: 12, gain: 1.2, reverb: 0.7, delay: 0.6 }); break;
+      case 'zachStomp': A.play(S.explosion, { big: 1.4 }, { pos: e.pos, ref: 10, gain: 1.0, reverb: 0.6 }); break;
+      case 'zachSwipe': A.play(S.hammerSwing, {}, { pos: e.pos, ref: 8, gain: 1.2, reverb: 0.4 }); break;
+      case 'zachAttack': if (e.kind === 'summon') A.play(S.titanRoar, { f0: 44, dur: 1.6 }, { pos: e.pos, ref: 12, gain: 0.9, reverb: 0.7 }); break;
+      case 'zachHit': A.play(S.titanRoar, { f0: 60, dur: 0.9 }, { pos: e.pos, ref: 12, gain: 0.8, reverb: 0.6 }); break;
+      case 'zachKneel': A.play(S.titanRoar, { f0: 40, dur: 2.4 }, { gain: 1.0, reverb: 0.8 }); break;
+      case 'schnitzTorn': A.play(S.thunder, { near: 1 }, { gain: 1.2, reverb: 1 }); A.play(S.boxWhoosh, {}, { gain: 0.9, reverb: 0.9, delay: 0.3 }); break;
       case 'titanCore': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.4, bus: 'music' }); break;
       case 'titanRetreat': A.play(S.powerDown, {}, { gain: 0.8, reverb: 0.8 }); break;
       case 'pressBoxBlast':
@@ -577,7 +594,7 @@ export class SoundDirector {
       }
       case 'crewSays': {
         const v = (CREW[e.who] && CREW[e.who].voice) || {};
-        const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;
+        const radio = e.live ? false : this.localCharacter ? e.who !== this.localCharacter : e.radio;
         const key = voiceKey(e.who, e.text);
         if (key && A.hasSample(key)) A.play(S.liveVoice, { key, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: 1 });
         else A.play(S.crewVoice, { text: e.text, dur: e.dur, f0: v.f0, grit: v.grit, radio }, { bus: 'voice', reverb: radio ? 0.05 : 0.15, gain: radio ? 0.8 : 0.9 });

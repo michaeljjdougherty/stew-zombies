@@ -32,6 +32,8 @@ import { ExploreUI } from './ui/explore.js';
 import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
 import { exploreJumpToRound } from './sim/rounds.js';
 import { wakeTitan } from './sim/crustEgg.js';
+import { forgeAllNow } from './sim/forge.js';
+import { startFinale } from './sim/zachBoss.js';
 import { Pads, BTN } from './input/gamepad.js';
 import { setDevice, applyGlyphs, controlsList, glyph, legend } from './input/glyphs.js';
 import { MenuNav } from './ui/menunav.js';
@@ -122,6 +124,7 @@ const exploreUI = new ExploreUI(CONFIG, {
   zombies: (on) => { sim.setExploreZombies(on); updateExploreHud(); exploreUI.refresh(); },
   skip: (id) => exploreSkip(id),
   titan: (id) => exploreTitan(id),
+  crust: (step) => exploreCrust(step),
   close: () => closeExplorePanel(),
 });
 
@@ -142,6 +145,18 @@ function exploreTitan(id) {
   wakeTitan(sim, id, p);
 }
 
+// Call of the Crust's egg past the titans: the four War Hammers on the Anvil, or straight to Big Evil Zach.
+function exploreCrust(step) {
+  const E = sim.crustEgg;
+  if (!E || !E.forge) return;
+  if (E.active) { const T = E.titans[E.active]; Object.assign(T.pos, T.home); T.state = 'asleep'; T.act = null; E.active = null; E.hazards.length = 0; }
+  forgeAllNow(sim);
+  const p = player, f = sim.mapData.forge;
+  p.pos.x = 0; p.pos.z = 6.5; p.pos.y = f.y + 0.5; p.vel.x = p.vel.y = p.vel.z = 0; p.region = null;
+  input.setLook(0, 0);
+  if (step === 'zach') { E.forge.rung = true; startFinale(sim); }
+}
+
 // Jump to part of the egg. Going back (or redoing the part you're on) starts Explore over first.
 function exploreSkip(id) {
   const s = QUEST_SKIPS.find((x) => x.id === id);
@@ -160,7 +175,7 @@ const cutsceneUI = new CutsceneUI();
 // Who you're playing (Brian only once The Final Whistle is done).
 function playableCharacter() {
   const id = settings.character;
-  const ok = CHARACTERS[id] && (CHARACTERS[id].playable || (CHARACTERS[id].unlock === 'quest' && progress.questDone));
+  const ok = CHARACTERS[id] && (CHARACTERS[id].playable || (CHARACTERS[id].unlock === 'quest' && progress.questDone) || (CHARACTERS[id].rescue === 'crust' && progress.crustDone));
   return ok ? id : 'kearns';
 }
 
@@ -200,6 +215,7 @@ const menus = new Menus(settings, {
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
   questDone: () => !!progress.questDone,
+  crustDone: () => !!progress.crustDone,
   done: (s) => {
     saveSettings(s); renderer.showcase.hide();
     renderer.setCharacter(playableCharacter(), s.shirt);
@@ -560,6 +576,25 @@ function finishEnding() {
   startTitleMusic();
 }
 
+// Call of the Crust is done: Zach's free (and playable from now on)
+function crustVictory() {
+  mode = 'over';
+  input.enabled = false;
+  input.releaseLock();
+  hud.show(false);
+  const firstTime = !progress.crustDone;
+  if (firstTime) { progress.crustDone = true; saveProgress(progress); }
+  if (sim.mode === 'zombies' && sim.rounds.round > progress.bestRound) { progress.bestRound = sim.rounds.round; saveProgress(progress); }
+  menus.showVictory(sim.rounds.round, player, firstTime, {
+    eyebrow: 'Call of the Crust · complete',
+    big: 'Zach is <em>back</em>. The Schnitz isn\'t done.',
+    unlock: '<b style="color:#7fe08a">Zach is now playable.</b> Pick him under Characters.',
+    note: 'Pit forged the War Hammers. To be continued.',
+  });
+  onlineOverButtons();
+  startTitleMusic();
+}
+
 function updateExploreHud() {
   const el = document.getElementById('explorehud');
   el.hidden = sim.mode !== 'explore';
@@ -621,6 +656,9 @@ function installSim(s) {
   player = sim.playerById(localId);
   renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
   hud.localCharacter = sound.localCharacter = player.character;
+  // (Call of the Crust: Pit's at his forge, so whoever picked him is someone else there)
+  if (!renderer.character || renderer.character.id !== player.character) renderer.setCharacter(player.character, settings.shirt);
+  hud.localName = CHARACTERS[player.character] ? CHARACTERS[player.character].name : hud.localName;
   renderer.setSim(sim);
   if (mapChanged) {
     renderer.zombies.onFootstep = (z) => sound.zombieFootstep(z);
@@ -726,6 +764,7 @@ function tick(cmd) {
     if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
     if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
     if (e.type === 'bossEnd') endingAt = time + 2.4;
+    if (e.type === 'crustVictory' && mode === 'play') crustVictory();
     if (device !== 'kbm' && settings.rumble !== false) safely('rumble', () => rumbleFor(e));
   }
 }

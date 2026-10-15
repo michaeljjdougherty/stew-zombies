@@ -4,6 +4,8 @@
 // =============================================================================
 import * as THREE from 'three';
 import { TitanView } from './titanView.js';
+import { ForgeView } from './forgeView.js';
+import { ZachView } from './zachView.js';
 import { setAnisotropy } from './textures.js';
 import { setSurfaceAnisotropy } from './surfaces.js';
 import { MapView } from './mapView.js';
@@ -96,6 +98,8 @@ export class GameRenderer {
       };
       // Call of the Crust's titans
       if (sim.mapData.titans) w.titans = new TitanView(scene, sim, cfg, map, effects);
+      // ...Pit's forge, the War Hammers' effects, and Big Evil Zach
+      if (sim.mapData.forge) { w.forge = new ForgeView(scene, sim, cfg, map, effects); w.zach = new ZachView(scene, sim, cfg, map, effects); }
       w.quest.effects = effects;
       w.box.onLand = (spot) => {
         for (let i = 0; i < 8; i++) {
@@ -112,7 +116,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { titans: w.titans || null, scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
+    Object.assign(this, { forge: w.forge || null, zach: w.zach || null, titans: w.titans || null, scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(sim.mapData.fog ? sim.mapData.fog.color : cfg.graphics.fogColor);
     this.fogDensity = sim.mapData.fog ? sim.mapData.fog.density : cfg.graphics.fogDensity;
@@ -148,6 +152,7 @@ export class GameRenderer {
     this.quest.setSim(sim);
     this.teammates.clear();
     if (this.titans) this.titans.setSim(sim);
+    if (this.forge) { this.forge.setSim(sim); this.zach.setSim(sim); }
   }
 
   setSim(sim) {
@@ -235,6 +240,7 @@ export class GameRenderer {
       this.lore.onEvent(e, this.effects);
       this.quest.onEvent(e);
       if (this.titans) this.titans.onEvent(e, this);
+      if (this.forge) { this.forge.onEvent(e, this); this.zach.onEvent(e, this); }
       switch (e.type) {
         case 'shot': {
           let from;
@@ -542,6 +548,7 @@ export class GameRenderer {
     this.lore.update(dt);
     this.quest.update(dt, this.camera);
     if (this.titans) this.titans.update(dt, time, this.camera);
+    if (this.forge) { this.forge.update(dt, time); this.zach.update(dt, time); }
     this.teammates.update(sim, this.localId, dt, alpha, time, this.camera);
     if (watch && watch.tag) watch.tag.visible = false;   // no name tag in your face while spectating
 

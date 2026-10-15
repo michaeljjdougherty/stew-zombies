@@ -121,7 +121,7 @@ export class Viewmodel {
     let pair = this.models.get(id);
     if (!pair) {
       const camo = def.view.camo || null;
-      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual, camo });
+      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual || !!def.hammer, camo });
       this.root.add(R.group);
       pair = { R };
       if (def.dual) {
@@ -139,6 +139,7 @@ export class Viewmodel {
     if (pair.L) pair.L.muzzle.add(this.flash.L);
     this.current = pair;
     this.currentId = id;
+    this.hammerT = -1;
     this.reload = null;
     this.slideLocked = false;
     this.actionT = -1;
@@ -274,6 +275,7 @@ export class Viewmodel {
     const def = this.currentId ? this.cfg.weapons[this.currentId] : null;
     switch (e.type) {
       case 'shot': {
+        if (def && def.hammer) { this.hammerT = 0; break; }   // a War Hammer: the overhead swing (update)
         const side = e.side === 'L' ? 'L' : 'R';
         const k = ((def && def.recoil.viewKick) || 1) * ((this.cfg.recoil && this.cfg.recoil.gunKick) ?? 1);
         if (side === 'L') this.kickL.v += 5.5 * Math.sqrt(k);
@@ -733,6 +735,15 @@ export class Viewmodel {
         if (this.realBottle) { if (!this.realCork) this.realBottle.traverse((o) => { if (o.name === 'cork') this.realCork = o; }); if (this.realCork) this.realCork.visible = t < 0.3; }
       }
     } else this.drinkArm.visible = false;
+
+    // --- a War Hammer's swing: up, then down hard across you, then back
+    if (this.hammerT >= 0) {
+      this.hammerT += dt;
+      const s = keyPath(this.hammerT, [[0, 0], [0.11, 1], [0.22, -1], [0.38, -1], [0.75, 0]]);
+      if (s > 0) { o.rx += s * 0.55; o.y += s * 0.07; o.z += s * 0.05; o.rz -= s * 0.15; }
+      else { o.rx += s * 1.45; o.y += s * 0.2; o.x += s * 0.12; o.z += s * 0.08; o.rz -= s * 0.45; }
+      if (this.hammerT >= 0.75) this.hammerT = -1;
+    }
 
     // --- place the gun(s)
     const place = (m, mirror, kick) => {

@@ -10,6 +10,10 @@ import { questObjective } from '../sim/quest.js';
 import { crustEggObjective } from '../sim/crustEgg.js';
 import { CREW } from '../lore/crew.js';
 
+// the War Hammers' colours and names (Call of the Crust)
+const HAMMER_HUE = { wind: '#d8f0e0', lightning: '#b98aff', ice: '#8fe4ff', fire: '#ff6a1a' };
+const HAMMER_NAME = { wind: 'Wind', lightning: 'Lightning', ice: 'Ice', fire: 'Fire' };
+
 const $ = (id) => document.getElementById(id);
 
 export class HUD {
@@ -189,7 +193,46 @@ export class HUD {
         this.toast(`${e.name} falls`, `+${this.cfg.crust.egg.reward} to everyone`, '#ffd23a', 4);
         break;
       case 'titanCore':
-        this.toast('War Hammer core', `${e.count} of 4`, '#ffd23a', 3.5);
+        this.toast(`The ${e.name} core`, 'pick it up and take it to Pit', HAMMER_HUE[e.element], 4);
+        break;
+      case 'corePicked':
+        if (e.playerId === this.localId) this.toast(`You have the ${HAMMER_NAME[e.element]} core`, 'take it to Pit at the Anvil', HAMMER_HUE[e.element], 3);
+        break;
+      case 'coreReturned':
+        this.toast(`The ${HAMMER_NAME[e.element]} core fell`, 'it\'s back where the titan dropped it', '#c04040', 3);
+        break;
+      case 'hammerForged':
+        this.toast(`The ${e.name}`, `forged · ${e.count} of 4 · on the Anvil`, HAMMER_HUE[e.element], 4);
+        break;
+      case 'hammerTaken':
+        if (e.playerId === this.localId) this.toast(this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer`].name, 'swing it: no ammo, no sights', HAMMER_HUE[e.element], 3);
+        break;
+      case 'hammerReturned':
+        if (e.playerId === this.localId) this.toast(`The ${HAMMER_NAME[e.element]} Hammer`, 'back on the Anvil', HAMMER_HUE[e.element], 2.2);
+        break;
+      case 'hammerTempered':
+        this.toast(e.name, 'tempered by Pit', HAMMER_HUE[e.element], 3.5);
+        break;
+      case 'hammersAll':
+        this.toast('Four War Hammers', 'ring the Anvil', '#ffd23a', 4.5);
+        break;
+      case 'characterSwapped':
+        if (e.playerId === this.localId) this.toast(`Pit's at his forge on this map`, `you're ${CREW[e.to] ? CREW[e.to].name : e.to}`, '#ffd23a', 4);
+        break;
+      case 'zachDescend':
+        this.toast('Big Evil Zach', 'only a War Hammer gets through', '#50ff70', 4.5);
+        break;
+      case 'zachShrug':
+        if (e.playerId === this.localId) this.toast('Wrong hammer', `he's open to ${HAMMER_NAME[e.want].toLowerCase()}`, HAMMER_HUE[e.want], 1.8);
+        break;
+      case 'zachKneel':
+        this.toast('He\'s on his knees', 'The Schnitz is losing its grip', HAMMER_HUE[e.element], 3);
+        break;
+      case 'zachRise':
+        this.toast(`Now the ${HAMMER_NAME[e.element]} Hammer`, 'he glows the colour he can\'t take', HAMMER_HUE[e.element], 3);
+        break;
+      case 'schnitzTorn':
+        this.toast('Zach is free', 'The Schnitz let go', '#50ff70', 5);
         break;
       case 'titanRetreat':
         this.toast(`${e.name} sleeps again`, 'everyone left its island', '#c04040', 3);
@@ -256,7 +299,7 @@ export class HUD {
       case 'crewSays': {
         // whoever you're playing talks out loud; the rest are on the walkie
         const name = CREW[e.who] ? CREW[e.who].name : e.who;
-        const radio = this.localCharacter ? e.who !== this.localCharacter : e.radio;   // (online: only your own lines are out loud)
+        const radio = e.live ? false : this.localCharacter ? e.who !== this.localCharacter : e.radio;   // (online: only your own lines are out loud; Pit at his forge and Zach are there in person)
         this.say(radio ? 'stew radio' : 'stew', radio ? `${name} · radio` : name, e.text, 0, e.dur);
         break;
       }
@@ -452,8 +495,11 @@ export class HUD {
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
     // the quest's current objective, top left
-    const titan = sim.crustEgg && sim.crustEgg.active ? sim.crustEgg.titans[sim.crustEgg.active] : null;
-    const obj = sim.quest && !this.hardcore ? questObjective(sim) : titan ? crustEggObjective(sim) : null;
+    let titan = sim.crustEgg && sim.crustEgg.active ? sim.crustEgg.titans[sim.crustEgg.active] : null;
+    // (the finale: Big Evil Zach's bar has a pip for every phase)
+    const Z = sim.crustEgg && sim.crustEgg.finale;
+    if (!titan && Z && (Z.state === 'fight' || Z.state === 'kneel' || Z.state === 'descend')) titan = { name: 'Big Evil Zach', of: 4, done: Z.phase + (Z.state === 'kneel' ? 1 : 0), state: Z.state };
+    const obj = sim.quest && !this.hardcore ? questObjective(sim) : sim.crustEgg ? crustEggObjective(sim, this.localId) : null;
     // a titan's bar: one pip for each blow it has left (each wave, for the Captain)
     const bar = titan ? `${titan.name}|${titan.of}|${titan.done}|${titan.state}` : '';
     if (bar !== this.last.titanBar) {
@@ -466,7 +512,7 @@ export class HUD {
     }
     if (obj !== this.last.objective) {
       this.last.objective = obj;
-      this.el.quest.querySelector('b').textContent = titan ? titan.name : 'The Final Whistle';
+      this.el.quest.querySelector('b').textContent = titan ? titan.name : sim.crustEgg ? 'The War Hammers' : 'The Final Whistle';
       this.el.quest.hidden = !obj;
       this.el.quest.querySelector('span').textContent = obj || '';
       this.el.quest.classList.remove('new'); void this.el.quest.offsetWidth; this.el.quest.classList.add('new');
@@ -492,14 +538,14 @@ export class HUD {
     const def = this.cfg.weapons[slot.id];
     this.set('wname', this.el.wname, def.name);
     this.set('wcolor', this.el.wname.style, def.view.camo || '', 'color');
-    this.set('clip', this.el.clip, String(slot.clip));
+    this.set('clip', this.el.clip, def.infinite ? '∞' : String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
     this.set('grenades', this.el.grenades, '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('scopeThermal', this.el.scope, scoped && def.thermal ? 'thermal' : '', 'className');
-    this.set('reserve', this.el.reserve, String(slot.reserve));
-    const low = slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
+    this.set('reserve', this.el.reserve, def.infinite ? '' : String(slot.reserve));
+    const low = !def.infinite && slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
     this.set('lowclass', this.el.ammo, low ? 'low' : '', 'className');
 
     // crosshair gap from current spread
