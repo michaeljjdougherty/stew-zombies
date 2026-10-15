@@ -19,7 +19,17 @@ export class Menus {
     $('btn-explore').addEventListener('click', () => this.h.explore());
     $('btn-title-settings').addEventListener('click', () => this.openSettings('title'));
     $('btn-extras').addEventListener('click', () => this.h.extras());
-    $('btn-trailer').addEventListener('click', () => this.h.trailer());
+    // the trailer: pick its graphics first (lower plays smoother on a slower machine)
+    const pick = $('trailer-pick');
+    $('btn-trailer').addEventListener('click', () => {
+      pick.hidden = !pick.hidden;
+      if (pick.hidden) return;
+      const q = this.h.trailerQuality();
+      for (const b of pick.querySelectorAll('button')) b.setAttribute('aria-current', String(b.dataset.q === q));
+      const cur = pick.querySelector('button[aria-current="true"]');
+      if (cur) cur.focus();
+    });
+    for (const b of pick.querySelectorAll('button')) b.addEventListener('click', () => { pick.hidden = true; this.h.trailer({ quality: b.dataset.q }); });
     $('btn-chars').addEventListener('click', () => this.h.characters());
     $('btn-career').addEventListener('click', () => this.h.career());
     $('btn-extras-back').addEventListener('click', () => this.h.extrasBack());

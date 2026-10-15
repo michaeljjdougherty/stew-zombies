@@ -26,47 +26,6 @@ export const ATMOS = {
 };
 
 // A ground texture: noise and flecks over a base colour, and its glow (the
-// light it gives off: a little of its own colour, plus glowing cracks).
-function groundTex(seed, { base, vary = 18, flecks = null, cracks = null, strata = null, glowK = 0.32, size = 512 }) {
-  const r = R(seed);
-  const [c, g] = T.makeCanvas(size, size), [gc, gg] = T.makeCanvas(size, size);
-  g.fillStyle = `rgb(${base})`; g.fillRect(0, 0, size, size);
-  // blotches
-  for (let i = 0; i < 900; i++) {
-    const x = r() * size, y = r() * size, rad = 4 + r() * 40, d = (r() - 0.5) * vary * 2;
-    const col = base.map((v) => Math.max(0, Math.min(255, v + d)));
-    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
-    gr.addColorStop(0, `rgba(${col},0.35)`); gr.addColorStop(1, `rgba(${col},0)`);
-    g.fillStyle = gr;
-    for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) g.fillRect(x - rad + ox, y - rad + oy, rad * 2, rad * 2);
-  }
-  if (strata) for (let y = 0; y < size; y += 3 + r() * 9) { g.fillStyle = `rgba(${strata},${0.08 + r() * 0.14})`; g.fillRect(0, y, size, 1 + r() * 3); }
-  if (flecks) for (let i = 0; i < 3000; i++) { g.fillStyle = `rgba(${flecks},${0.2 + r() * 0.5})`; g.fillRect(r() * size, r() * size, 1 + r() * 2, 1 + r() * 2); }
-  // the glow: the texture, dimmed
-  gg.globalAlpha = glowK; gg.drawImage(c, 0, 0); gg.globalAlpha = 1;
-  if (cracks) {
-    for (let i = 0; i < cracks.count; i++) {
-      let x = r() * size, y = r() * size, a = r() * 6.28;
-      const w = cracks.width * (0.5 + r());
-      const pts = [[x, y]];
-      for (let s = 0; s < 8 + r() * 14; s++) { a += (r() - 0.5) * 1.2; x += Math.cos(a) * (6 + r() * 14); y += Math.sin(a) * (6 + r() * 14); pts.push([x, y]); }
-      for (const [ctx, col, ww] of [[g, cracks.dark, w], [gg, cracks.glow, w * 0.8]]) {
-        if (!col) continue;
-        ctx.strokeStyle = col; ctx.lineWidth = ww; ctx.lineCap = 'round';
-        for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
-          ctx.beginPath(); pts.forEach(([px, py], k) => (k ? ctx.lineTo(px + ox, py + oy) : ctx.moveTo(px + ox, py + oy))); ctx.stroke();
-        }
-      }
-    }
-  }
-  return { map: T.toTexture(c), glow: T.toTexture(gc) };
-}
-
-function mat({ map, glow }, o = {}) {
-  map.repeat.set(o.rep ?? 1 / 6, o.rep ?? 1 / 6); glow.repeat.copy(map.repeat);
-  return new THREE.MeshStandardMaterial({ map, emissiveMap: glow, emissive: new THREE.Color(o.glowColor || '#ffffff'), emissiveIntensity: o.glowI ?? 1, roughness: o.rough ?? 0.95, metalness: o.metal ?? 0, color: o.color || '#ffffff', bumpMap: o.bump ? map : null, bumpScale: o.bump || 0 });
-}
-
 // The ground materials for each island, by surface: top (where you walk),
 // rocktop (on top of the rock), cliff (its faces: walls never look like the
 // floor), the special floors (cobble, flagstone, mud, planks, duckboard, lava,
@@ -76,9 +35,6 @@ function mat({ map, glow }, o = {}) {
 let cache = null;
 export function themeMaterials(base) {
   if (cache) return cache;
-    const scorched = groundTex(21, { base: [44, 30, 24], vary: 16, flecks: '110,100,96', cracks: { count: 9, width: 1.8, dark: 'rgba(12,6,4,0.9)', glow: 'rgba(255,110,30,0.7)' }, glowK: 0.0 });
-  const lava = groundTex(23, { base: [255, 110, 20], vary: 50, flecks: '255,220,120', cracks: { count: 60, width: 4, dark: 'rgba(60,10,0,0.9)', glow: 'rgba(80,20,0,0.9)' }, glowK: 1 });
-  scorched.glow.repeat.set(1 / 18, 1 / 18);   // (a few fissures, far apart)
   cache = {
     hub: {
       top: surface('stone_floor', { scale: 2.5, tint: '#aaa8aa', glow: 0.18 }),
@@ -91,12 +47,13 @@ export function themeMaterials(base) {
       under: surface('lichen_rock', { scale: 9, tint: '#6a6058', glow: 0.1, side: THREE.DoubleSide }),
     },
     trench: {
-      top: surface('brown_mud_dry', { scale: 3, tint: '#8a6656', glowMap: scorched.glow, glowColor: '#ffffff', glowI: 1 }),
+      // (the ground's cooled lava crust, glowing at its seams; molten lava in the cracks, flowing)
+      top: surface('lava_crust', { scale: 6, tint: '#8a7a74', glowTex: true, glowColor: '#ff6a24', glowI: 0.42, normal: 1.3, pulse: 0.15 }),
       duckboard: surface('dark_wooden_planks', { scale: 2.2, tint: '#a08870', glow: 0.18 }),
       trench: surface('wood_planks_dirt', { scale: 2.4, tint: '#a08870', glow: 0.16 }),
       rocktop: surface('rock_face', { scale: 4, tint: '#8a5a48', glow: 0.14 }),
       cliff: surface('rock_face', { scale: 4, tint: '#7a4c3c', glow: 0.14, normal: 1.3 }),
-      lava: mat(lava, { glowColor: '#ffffff', glowI: 1.6, rough: 0.6 }),
+      lava: surface('lava_molten', { scale: 3.5, nTex: 'lava_crust', rTex: 'lava_crust', glowTex: true, glowColor: '#ffb070', glowI: 2.6, normal: 0.5, flow: [0.012, 0.02], pulse: 0.2 }),
       under: surface('rock_face', { scale: 9, tint: '#5a3a30', glow: 0.1, side: THREE.DoubleSide }),
     },
     research: {

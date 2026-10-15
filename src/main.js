@@ -212,7 +212,9 @@ const menus = new Menus(settings, {
   quit: () => { if (online) leaveOnline(); restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
-  trailer: () => startTrailer(),
+  trailer: (o = {}) => startTrailer(o),
+  // the trailer's graphics: whatever was picked last time, else what suits this device
+  trailerQuality: () => settings.trailerQuality || (isTouch() ? CONFIG.trailer.touchPreset : 'high'),
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
@@ -495,7 +497,8 @@ function startIntro(then = 'play') {
 // scripted camera, the song. No HUD, no menus; the mouse brings up Skip.
 const trailerUI = new TrailerUI(() => renderer.ending && renderer.ending.skip());
 let trailerSong = null;
-function startTrailer({ silent = false, recording = false } = {}) {
+const isTouch = () => (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
+function startTrailer({ silent = false, recording = false, quality = null } = {}) {
   audio.init(); audio.applyVolumes();
   titleMusic.stop(0.4);
   if (jukebox.playing) jukebox.stop(0.3);
@@ -509,11 +512,11 @@ function startTrailer({ silent = false, recording = false } = {}) {
   sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   sim.power = true;
   powerAllOn(sim);
-  // the best picture this machine can make, full screen (for recording it)
+  // the picture: the graphics picked for it (remembered), full screen
   if (!recording) {
-    // (a phone or tablet gets a lighter picture, so it keeps up with the song)
-    const touch = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
-    renderer.applySettings({ ...settings, ...CONFIG.graphics.presets[touch ? CONFIG.trailer.touchPreset : 'ultra'] });
+    if (quality) { settings.trailerQuality = quality; saveSettings(settings); }
+    const q = quality || settings.trailerQuality || (isTouch() ? CONFIG.trailer.touchPreset : 'ultra');
+    renderer.applySettings({ ...settings, ...CONFIG.graphics.presets[q] });
     const el = document.documentElement;
     if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
   }

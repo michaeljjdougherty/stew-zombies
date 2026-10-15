@@ -157,5 +157,23 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
   check(g.me.perks.includes('phdGaylor'), 'with the Front\'s power on it works');
 }
 
+// --- lying flat, your head's a body-length out in front of you: it stays out of walls
+{
+  const g = game(CRUST);
+  const PR = g.sim.cfg.player.prone;
+  const m = g.sim.world.perkMachines[0], n = m.normal, b = m.box;
+  // in front of the machine, facing it, close enough that lying down would put your head in it
+  const face = { x: m.center.x + n.x * 0.45, z: m.center.z + n.z * 0.45 };
+  g.me.pos.x = face.x + n.x * 0.4; g.me.pos.z = face.z + n.z * 0.4; g.me.pos.y = m.center.y + 0.02; g.me.region = null;
+  g.me.yaw = Math.atan2(n.x, n.z);   // (facing -normal: at the machine)
+  g.step({}, 5);
+  g.me.prone = { t: 0 };
+  g.step({}, 10);
+  const o = { x: g.me.pos.x, y: g.me.pos.y + PR.clearHeight, z: g.me.pos.z };
+  const hit = g.sim.raycastWorld(o, { x: -Math.sin(g.me.yaw), y: 0, z: -Math.cos(g.me.yaw) }, PR.reach + 0.5);
+  check(hit && hit.t >= PR.reach - 0.02, `lying flat facing a perk machine: pushed back so your head's clear (${hit ? hit.t.toFixed(2) : 'nothing'} m to it, needs ${PR.reach})`);
+  void b;
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall dive checks passed');
 process.exit(fails ? 1 : 0);

@@ -580,6 +580,12 @@
   .menu button:hover, .menu button:focus-visible { color: #fff; }
   .menu button:hover::after, .menu button:focus-visible::after { width: 100%; }
   .menu button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
+  /* the trailer's graphics, picked before it plays */
+  .trailer-pick { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: -2px 0 6px 18px; }
+  .trailer-pick span, .trailer-pick small { font-family: var(--display); color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 14px; }
+  .trailer-pick small { flex-basis: 100%; font-size: 12px; text-transform: none; letter-spacing: .5px; }
+  .menu .trailer-pick button { font-size: clamp(16px, 1.8vw, 20px); }
+  .menu .trailer-pick button[aria-current="true"] { color: var(--blood-hi); }
   body:not([data-ready="1"]) #btn-play, body:not([data-ready="1"]) #btn-range, body:not([data-ready="1"]) #btn-explore { opacity: .4; pointer-events: none; }
   body:not([data-ready="1"]) #btn-play::before { content: "Loading… "; }
   .keys { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; color: var(--muted); margin: 0; }
@@ -862,6 +868,11 @@
       <button id="btn-chars" type="button">Characters</button>
       <button id="btn-career" type="button">Career &amp; Achievements</button>
       <button id="btn-trailer" type="button">Watch Trailer</button>
+      <div id="trailer-pick" class="trailer-pick" hidden>
+        <span>Graphics</span>
+        <button type="button" data-q="low">Low</button><button type="button" data-q="medium">Medium</button><button type="button" data-q="high">High</button><button type="button" data-q="ultra">Ultra</button>
+        <small>Lower plays smoother</small>
+      </div>
       <button id="btn-extras" type="button">Extras</button>
       <button id="btn-title-settings" type="button">Settings</button>
     </nav>

@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { buildGround, buildStructures, buildRides, buildDecor, buildPines, buildRails } from './crustTerrain.js';
 import { buildModels, updateMovers } from './crustModels.js';
-import { surface } from './crustSurfaces.js';
+import { surface, updateSurfaces } from './crustSurfaces.js';
 import { loadModel } from './gltfLite.js';
 import { ATMOS, PARTICLES, spaceTexture } from './crustThemes.js';
 import { buildMist, updateMist } from './crustMist.js';
@@ -1436,6 +1436,7 @@ function buildSnow(out, group, r) {
 
 function updateCrust(W, dt, eye, time) {
   if (!eye) return;
+  updateSurfaces(dt, time);   // (the Trench Front's lava flowing)
   W.sky.position.copy(eye);
   for (const m of W.mixers || []) m.update(dt);
   updateMovers(W, dt);

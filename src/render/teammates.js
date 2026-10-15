@@ -122,7 +122,9 @@ export class Teammate {
     // how high the gun is held: level when aiming, angled down to sprint or reload
     this.raise = approach(this.raise ?? 1.35, sprint ? 0.7 : busy ? 1.05 : 1.35, 8, dt);
 
-    this.root.position.set(pos.x, pos.y + 0.28 * this.dive, pos.z);
+    // (lying flat, the body's middle is where they are: it pivots from the feet, so shift it back)
+    const back = this.cfg.player.prone.bodyOffset * Math.sin(1.3 * this.dive) / Math.sin(1.3);
+    this.root.position.set(pos.x + Math.sin(yaw) * back, pos.y + 0.28 * this.dive, pos.z + Math.cos(yaw) * back);
     // a dolphin dive: flat out, face down, gun first
     this.root.rotation.set(1.3 * this.dive, yaw + Math.PI, 0, 'YXZ');
 

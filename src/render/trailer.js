@@ -584,7 +584,7 @@ export const SHOTS = {
       const top = T.ground(26, -0.6), low = T.ground(17.6, -0.6), z = -0.6;
       T.slow = k > 0.3 && k < 0.66 ? 0.4 : 1;
       const run = sm(0, 0.3, k), fly = sm(0.3, 0.62, k);
-      const x0 = 29.5, edge = 21.7, land = 17.3;
+      const x0 = 29.5, edge = 21.7, land = 18.6;   // (lying flat his head's a metre ahead of him: clear of the terrace's rail)
       const x = fly > 0 ? lerp(edge, land, fly) : lerp(x0, edge, run);
       const y = fly > 0 ? lerp(top, low, fly * fly) + Math.sin(fly * Math.PI) * 1.1 : top;
       const air = k > 0.3 && k < 0.62, prone = k >= 0.62 && k < 0.9;
@@ -637,10 +637,12 @@ export const SHOTS = {
       const i = Math.min(3, Math.floor(k * 4)), lk = k * 4 - i;
       if (i !== T.titCut) { T.titCut = i; T.wakeTitan(ids[i]); T.fx.clear(); }
       const shots = {
-        ship: [[10, 2.6, -199, 9, 9, -225], [6.5, 2.1, -200.5, 9, 11, -225], 50, '#a0ffd0'],
+        // (from out over the void beside him: he's past the cliffs, and from the island the rock hides him)
+        ship: [[32, 9, -219, 9, 7, -225], [27, 7.5, -220.5, 9, 9, -225], 50, '#a0ffd0'],
         research: [[124.5, 1.3, -10.5, 114, 4.5, -20], [122, 1.0, -12.5, 114, 6, -20], 46, '#ffb0a0'],
         trench: [[29, 4.6, 130.5, 40.5, 4, 118.5], [31.5, 3.6, 128, 40.5, 6, 118.5], 48, '#ffc080'],
-        caves: [[-169, 11.6, -26, -164.5, 13.5, -36.5], [-172, 11.2, -31, -164.5, 14.5, -36.5], 48, '#b0e0ff'],
+        // (from the summit's north-west side: clear of the shrine and the standing stones)
+        caves: [[-174.5, 13.8, -41.5, -164.5, 13.5, -36.5], [-173, 13.2, -40.5, -164.5, 14.5, -36.5], 50, '#b0e0ff'],
       };
       const [a, b, fov, col] = shots[ids[i]];
       T.path(a, b, sm(0, 1, lk), fov);
@@ -680,8 +682,9 @@ export const SHOTS = {
     },
   },
 
-  // Rocco steps onto the Anvil's north launcher and it flings him up and out
-  // over the void toward the Ship Graveyard; the camera chases him up.
+  // The launcher, from its base: Rocco runs onto the Anvil's north pad, crouches,
+  // and it throws him up over the wall toward the Ship Graveyard; the camera
+  // stays low by the launcher and tilts up after him into the sky.
   launchPad: {
     enter(T) { T.launched = false; },
     frame(T, u, d, k) {
@@ -689,29 +692,37 @@ export const SHOTS = {
       const A = pads.find((q) => q.id === 'pad_hub_n'), B = pads.find((q) => q.id === 'pad_ship');
       if (!A || !B) return;
       const L = T.cfg.crust.launch;
-      // (the first part of the flight, sped up a little: off the pad and up into the sky)
-      const go = 0.16, uu = Math.max(0, (k - go) / (1 - go)) * 0.5;
-      const e = 1 - Math.pow(1 - uu, 1.6);
-      const x = lerp(A.x, B.x, e), z = lerp(A.z, B.z, e);
-      const y = A.y + (B.y - A.y) * uu + L.apex * 4 * uu * (1 - uu);
-      T.pose('rocco', { x, z, y, launch: k > go, crouch: k > go - 0.06 && k <= go, pitch: 0 });
+      const go = 0.3, run = sm(0, 0.22, k);
+      let x, y, z;
+      if (k <= go) { x = lerp(A.x - 0.6, A.x, run); z = lerp(A.z + 3.8, A.z, run); y = A.y; }
+      else {
+        // (the first half of the flight, sped up: off the pad, up and over the wall)
+        const uu = (k - go) / (1 - go) * 0.55, e = 1 - Math.pow(1 - uu, 1.6);
+        x = lerp(A.x, B.x, e); z = lerp(A.z, B.z, e);
+        y = A.y + (B.y - A.y) * uu + L.apex * 4 * uu * (1 - uu);
+      }
+      T.pose('rocco', { x, z, y, sprint: k < 0.22, launch: k > go, crouch: k > 0.22 && k <= go, pitch: 0 });
       T.face('rocco', B.x, B.z);
       if (k > go && !T.launched) {
         T.launched = true;
         const p = V(A.x, A.y + 0.2, A.z);
-        T.fx.energyBurst(p, '#7fd8ff', 3.2);
-        for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; T.fx.puff(p.clone().add(V(Math.cos(a) * 0.8, 0, Math.sin(a) * 0.8)), { color: 0xc8d8e8, size: 0.6, grow: 2.6, life: 1.1, alpha: 0.5, vel: V(Math.cos(a) * 5, 0.8, Math.sin(a) * 5), shade: false }); }
-        T.shake = 1;
+        T.fx.energyBurst(p, '#7fd8ff', 3.6);
+        for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; T.fx.puff(p.clone().add(V(Math.cos(a) * 0.8, 0, Math.sin(a) * 0.8)), { color: 0xc8d8e8, size: 0.6, grow: 2.6, life: 1.2, alpha: 0.55, vel: V(Math.cos(a) * 5, 0.8, Math.sin(a) * 5), shade: false }); }
+        T.shake = 1.2;
       }
       if (k < 0.05) T.launched = false;
-      // low beside the pad, watching him go; then chasing him up from behind
-      const near = V(A.x + 4.5, A.y + 1.2, A.z + 5.5), at = V(x, y + 1, z);
-      const chase = V(x + 1.1, y + 0.1, z + 3);
-      const c = near.clone().lerp(chase, sm(0.45, 0.85, k));
-      const look = at.clone().lerp(V(B.x, B.y + 6, B.z), sm(0.75, 1, k) * 0.15);
-      T.look(c.x, c.y, c.z, look.x, look.y, look.z, lerp(46, 54, sm(0.3, 0.8, k)));
+      // low at the launcher's base, just off the pad: the pad and Rocco on it; when
+      // it fires the camera cranes up off the base after him (close behind, the
+      // Anvil dropping away under them and the Graveyard out ahead)
+      const F = T.C.launchCam;
+      const base = V(A.x + F.base[0], A.y + F.base[1], A.z + F.base[2]);
+      const chase = V(x + F.chase[0], y + F.chase[1], z + F.chase[2]);
+      const c = base.lerp(chase, ease(sm(go, go + F.catchUp, k)));
+      const him = V(x, y + 0.9, z), ahead = V(x, y - F.ahead[0], z - F.ahead[1]);
+      const look = k <= go ? V(lerp(A.x - 0.3, A.x, run), A.y + lerp(1.0, 1.3, run), lerp(A.z + 1.8, A.z, run)) : him.lerp(ahead, sm(go + F.catchUp, 1, k) * 0.35);
+      T.look(c.x, c.y, c.z, look.x, look.y, look.z, lerp(F.fov[0], F.fov[1], sm(go, 0.85, k)));
       // (the key light goes up with him: up there nothing else lights him)
-      T.light(1.2, '#e4f0ff', [x + 3, y + 3, z + 5]);
+      T.light(F.light, '#e4f0ff', [x + 2, y + 2.5, z + 4]);
       T.far = 420;
     },
   },
@@ -824,13 +835,14 @@ export const SHOTS = {
   zachRoar: {
     frame(T, u, d, k) {
       const r = sm(0.15, 0.4, k);
-      const Z = T.zachAt(117.5, 5.5, { yaw: Math.PI / 2, size: 1.0, headX: -0.24 - r * 0.55, lean: 0.2 - r * 0.35 });
+      const [zx, zz] = T.C.zachRoarAt;   // (clear of the launcher and its power switch: he stood in them)
+      const Z = T.zachAt(zx, zz, { yaw: Math.PI / 2, size: 1.0, headX: -0.24 - r * 0.55, lean: 0.2 - r * 0.35 });
       Z.armL.shoulder.rotation.set(-0.25 - r * 0.6, 0, 0.24 + r * 0.9); Z.armR.shoulder.rotation.set(-0.25 - r * 0.6, 0, -0.24 - r * 0.9);
       if (k > 0.3) T.shake = Math.max(T.shake, 0.9 * (1 - k));
-      if (k > 0.3 && !T.roared) { T.roared = true; T.fx.energyBurst(V(117.5, 5.4, 5.5), '#5aff70', 3); }
+      if (k > 0.3 && !T.roared) { T.roared = true; T.fx.energyBurst(V(zx, 5.4, zz), '#5aff70', 3); }
       if (k < 0.1) T.roared = false;
-      T.light(0.9, '#c0ffd0', [126, 4, 10]);
-      T.look(123.5, T.ground(123.5, 7.8) + 0.4, 7.8, 117.5, 3.8, 5.5, 60, 0.05);   // (from just off the ground: never under it)
+      T.light(0.9, '#c0ffd0', [zx + 8.5, 4, zz + 4.5]);
+      T.look(zx + 6, T.ground(zx + 6, zz + 2.3) + 0.4, zz + 2.3, zx, 3.8, zz, 60, 0.05);   // (from just off the ground: never under it)
     },
   },
 
@@ -916,7 +928,7 @@ export const SHOTS = {
     enter(T) { T.hamCut = -1; },
     frame(T, u, d, k) {
       const els = ['fire', 'ice', 'wind', 'lightning'], who = ['ryan', 'brian', 'kearns', 'rocco'];
-      const spots = [[-25.5, 120.5], [-114.5, -6.5], [-21.5, -138.5], [160.5, -36.5]];
+      const spots = [[-25.5, 120.5], [-114, 7], [-21.5, -138.5], [160.5, -36.5]];   // (the caves one clear of its power switch and the snow tree)
       const i = Math.min(3, Math.floor(k * 4)), lk = k * 4 - i;
       const [x, z] = spots[i], y = T.ground(x, z);
       if (i !== T.hamCut) {
@@ -946,7 +958,7 @@ export const SHOTS = {
   zachSwing: {
     frame(T, u, d, k) {
       const s2 = sm(0.1, 0.55, k);
-      const zx = 112, zz = 0, bx = 118.5, bz = -1, rx = 119, rz = 1.6;
+      const [zx, zz] = T.C.zachSwingAt, bx = zx + 6.5, bz = zz - 1, rx = zx + 7, rz = zz + 1.6;   // (off the launcher pad: he stood in it)
       const Z = T.zachAt(zx, zz, { yaw: Math.atan2(bx - zx, bz - zz), size: 1.6, headX: -0.15, lean: 0.3 });
       Z.armR.shoulder.rotation.set(-0.25 - 1.6 * (1 - s2) - s2 * 0.2, 0, -0.24 - 1.2 * (1 - s2) + s2 * 1.3);
       Z.torso.rotation.y = lerp(0.5, -0.6, s2);
@@ -955,7 +967,7 @@ export const SHOTS = {
       if (k > 0.3) { T.fire('brian', V(zx, 6, zz), 0.1); T.fire('ryan', V(zx, 7, zz), 0.12); }
       if (k > 0.5) T.shake = Math.max(T.shake, 0.7);
       T.light(0.8, '#a0ffb0', [zx + 8, 10, zz + 6]);
-      T.look(122.5, T.ground(122.5, 3) + 0.4, 3, zx, 5.2, zz, 62);
+      T.look(zx + 10.5, T.ground(zx + 10.5, zz + 3) + 0.4, zz + 3, zx, 5.2, zz, 62);
     },
   },
 

@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   effects: 'high',          // particles, dust, snow, marks, bodies: low / medium / high
   zombieModels: 'detailed', // 'simple' = the low-poly zombies, no skinning
   gunModels: 'detailed',    // 'simple' = the built-in low-poly guns
+  trailerQuality: null,     // the trailer's graphics (picked when you watch it; null: what suits the device)
   questHints: 'walkthrough',   // the Easter egg: 'walkthrough' shows each step, 'hardcore' doesn't
 };
 

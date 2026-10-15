@@ -128,7 +128,10 @@ export const CONFIG = {
     // prone: flat on your belly. A dive ends in it (you have to get up); hold
     // crouch to go down on purpose. Jump, crouch or sprint gets you up again
     // (it takes getUpTime). You crawl at speedMult, and hold your aim steadier.
-    prone: { height: 0.6, eyeHeight: 0.42, speedMult: 0.22, holdTime: 0.4, getUpTime: 0.4, minTime: 0.2, spreadMult: 0.6, swayMult: 0.5 },
+    prone: { height: 0.6, eyeHeight: 0.42, speedMult: 0.22, holdTime: 0.4, getUpTime: 0.4, minTime: 0.2, spreadMult: 0.6, swayMult: 0.5,
+      reach: 0.95,           // m lying flat, your head's ahead of you (and your feet behind): kept out of walls and rails
+      bodyOffset: 0.8,       // m the drawn body's middle sits at you (it lies along where you face, not from your feet)
+      clearHeight: 0.35 },   // m up, where that's checked
     // falls hurt: landing faster than minImpact m/s (about a 3 m drop) costs perMs
     // health per m/s over it, up to max (PHD Gaylor: nothing)
     fallDamage: { minImpact: 11, perMs: 5.5, max: 80 },
@@ -1248,6 +1251,15 @@ export const CONFIG = {
     guns: [['Komando', 'ryan'], ['SPAZ-13', 'brian'], ['HK22', 'kearns'], ['Dragunoff', 'rocco'], ['Galill', 'rocco'], ['AK-75u', 'ryan'], ['L97A1', 'brian']],
     // everyone's gun when they're just fighting
     loadout: { rocco: 'Fucci Gun', brian: 'AK-75u', ryan: 'M17', kearns: 'M15' },
+    // the launcher shot: the camera low at the pad's base (offset from the pad),
+    // then craning up after Rocco (offset from him) over catchUp of the shot; it
+    // drifts to look `ahead` (down, forward) of him as he goes; fov from, to;
+    // light: the key light that goes up with him
+    launchCam: { base: [2.4, 0.45, 3.3], chase: [1.1, 0.35, 3.0], catchUp: 0.16, ahead: [3, 10], fov: [50, 58], light: 2.2 },
+    // where Zach roars and swings on the Research Base's helipad (x, z): clear of
+    // the launcher and its power switch
+    zachRoarAt: [117, 14.5],
+    zachSwingAt: [116, 17],
     // the shots, in order (ids: see SHOTS in src/render/trailer.js)
     shots: [
       { id: 'black', at: 0 },
@@ -1268,9 +1280,9 @@ export const CONFIG = {
       { id: 'titans', beat: 16 },
       { id: 'zipline', beat: 20 },
       { id: 'launchPad', beat: 22 },
-      { id: 'perks', beat: 24 },
-      { id: 'zachRoar', beat: 26 },
-      { id: 'maisy', beat: 28 },
+      { id: 'perks', beat: 25 },
+      { id: 'zachRoar', beat: 27 },
+      { id: 'maisy', beat: 28.5 },
       { id: 'lbd', beat: 31 },
       { id: 'pitForge', beat: 33 },
       { id: 'hammers', beat: 35 },
@@ -1292,8 +1304,8 @@ export const CONFIG = {
       { text: '7 NEW GUNS', style: 'overlay', beat: 10, beats: 3 },
       { text: 'M2 FLAMETHROWER', style: 'overlay', beat: 13, beats: 3 },
       { text: '4 TITANS', style: 'overlay', beat: 16, beats: 4 },
-      { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 24, beats: 2 },
-      { text: '2 NEW EXPLOSIVES', sub: 'MAISY DOG · LBD', style: 'overlay', beat: 28, beats: 5 },
+      { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 25, beats: 2 },
+      { text: '2 NEW EXPLOSIVES', sub: 'MAISY DOG · LBD', style: 'overlay', beat: 28.5, beats: 4.5 },
       { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 35, beats: 4 },
       { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
       { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },

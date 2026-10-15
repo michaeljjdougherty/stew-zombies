@@ -225,6 +225,9 @@ export function updatePlayer(sim, p, cmd, dt) {
     for (const o of sim.players) {
       if (o !== p && o.alive && Math.abs(o.pos.y - p.pos.y) < 1.6) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
     }
+    // lying flat (prone, or skidding out of a dive): your head and feet are a body-length
+    // apart either side of you, so keep both out of the walls and the rails
+    if ((p.prone || (p.dive && p.dive.phase !== 'air')) && p.grounded) keepBodyClear(sim, p, cfg.prone);
   }
 
   const moved = Math.hypot(p.pos.x - before.x, p.pos.z - before.z);
@@ -237,6 +240,18 @@ export function updatePlayer(sim, p, cmd, dt) {
   // online, the host does the buying, prompts and health for you
   if (sim.replica) return;
   updateUseAndHealth(sim, p, cmd, dt);
+}
+
+// Push someone lying flat back (or forward) so neither end of them is in a wall.
+function keepBodyClear(sim, p, PR) {
+  const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+  const o = { x: p.pos.x, y: p.pos.y + PR.clearHeight, z: p.pos.z };
+  const f = sim.raycastWorld(o, { x: fx, y: 0, z: fz }, PR.reach);
+  const b = sim.raycastWorld(o, { x: -fx, y: 0, z: -fz }, PR.reach);
+  const ff = f ? PR.reach - f.t : 0, bb = b ? PR.reach - b.t : 0;
+  if (ff > 0 && bb > 0) return;   // (wedged in a gap shorter than you: nothing to do)
+  if (ff > 0) { p.pos.x -= fx * ff; p.pos.z -= fz * ff; }
+  else if (bb > 0) { p.pos.x += fx * bb; p.pos.z += fz * bb; }
 }
 
 // How flat you are (0 standing .. 1 prone): getting up runs it back down.
