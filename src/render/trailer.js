@@ -11,7 +11,9 @@
 import * as THREE from 'three';
 import { Teammate } from './teammates.js';
 import { buildEvilZach } from './evilZach.js';
-import { buildWarHammer } from './warHammer.js';
+import { buildWarHammer, hammerClock } from './warHammer.js';
+import { maisyDog, lbdBaby, blackHole, updateHole } from './gadgetView.js';
+import { ridePoint } from '../sim/rides.js';
 import { makeZombie } from '../sim/zombies.js';
 import * as T from './textures.js';
 
@@ -19,7 +21,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, k) => a + (b - a) * k;
 const ease = (k) => 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);
-const CREW = ['rocco', 'brian', 'ryan', 'kearns', 'pit'];
+const CREW = ['rocco', 'brian', 'ryan', 'kearns'];   // (Pit isn't playable on the Crust: he's at his forge)
 const ELEMENT = { fire: '#ff6a1a', ice: '#8fe4ff', wind: '#d8f0e0', lightning: '#b98aff' };
 
 // When each shot and card starts (seconds), from the config.
@@ -93,12 +95,20 @@ export class Trailer {
     for (const t of this.terrains) if (t.contains(x, z)) return t.heightAt(x, z);
     return 0;
   }
+  // The real floor at x, z: whatever's solid under `from` (decks, rocks, trench
+  // boards), not just the ground's shape (people standing on air before).
+  ground(x, z, from = 30) {
+    const h = this.sim.raycastWorld({ x, y: from, z }, { x: 0, y: -1, z: 0 }, from + 40);
+    return h ? h.point.y : this.gy(x, z);
+  }
 
   // Put a crew member somewhere (and leave everyone else as they were).
   pose(id, o) {
     const a = this.crew[id];
     a.on = true;
-    if (o.x != null) a.pos.set(o.x, o.y ?? this.gy(o.x, o.z), o.z);
+    if (o.x != null) a.pos.set(o.x, o.y ?? this.ground(o.x, o.z), o.z);
+    a.p.dive = o.dive ? { phase: 'air' } : null;
+    a.p.ride = o.zip ? { zip: true } : null;
     if (o.yaw != null) a.yaw = o.yaw;
     a.pitch = o.pitch ?? 0;
     a.p.sprinting = !!o.sprint;
@@ -128,9 +138,30 @@ export class Trailer {
     this.fx.zombieHit(end, dir, Math.random() < 0.3 ? 'head' : 'torso');
   }
 
+  // The flamethrower: a burst of its jet from a crew member's nozzle toward a point.
+  flame(id, to, gun = 'M2 Flamethrower') {
+    const a = this.crew[id];
+    const key = id + '|f|' + (this.shot && this.shot.id);
+    const last = this.fired.get(key) ?? -1;
+    if (this.u - last < 0.1 && this.u >= last) return;
+    this.fired.set(key, this.u);
+    const m = a.tm.muzzle();
+    if (!m) return;
+    const dir = to.clone().sub(m).normalize();
+    this.fx.flames.stream(m, dir, this.cfg.weapons[gun].flame);
+  }
+
+  // A titan awake (its own view animates it) for this shot, or all asleep again.
+  wakeTitan(id) {
+    const E = this.sim.crustEgg;
+    if (!E) return;
+    for (const T0 of Object.values(E.titans)) { T0.state = T0.id === id ? 'fight' : 'asleep'; T0.act = null; T0.t = 0; }
+    this.titanOn = !!id;
+  }
+
   // Zombies: made fresh for each shot (so each island gets its own kind).
   zombie(x, z, o = {}) {
-    const zz = makeZombie(this.sim, { type: o.type || (this.zs.length % 3 ? 'walker' : 'runner'), pos: { x, y: o.y ?? this.gy(x, z), z }, yaw: o.yaw ?? 0, health: 100, state: 'chase' });
+    const zz = makeZombie(this.sim, { type: o.type || (this.zs.length % 3 ? 'walker' : 'runner'), pos: { x, y: o.y ?? this.ground(x, z), z }, yaw: o.yaw ?? 0, health: 100, state: 'chase' });
     zz.trailer = true;
     this.sim.zombies.push(zz);
     this.zs.push(zz);
@@ -139,7 +170,7 @@ export class Trailer {
   moveZ(zz, x, z, o = {}) {
     const dx = x - zz.pos.x, dz = z - zz.pos.z, d = Math.hypot(dx, dz);
     zz.moveSpeed = o.speed ?? (this.dt > 0 ? Math.min(6, d / this.dt) : 0);
-    zz.pos.x = x; zz.pos.z = z; zz.pos.y = o.y ?? this.gy(x, z);
+    zz.pos.x = x; zz.pos.z = z; zz.pos.y = o.y ?? this.ground(x, z);
     if (o.yaw != null) zz.yaw = o.yaw; else if (d > 1e-4) zz.yaw = Math.atan2(dx, dz);
     zz.attack.phase = o.attack ? 'windup' : 'none';
   }
@@ -148,8 +179,8 @@ export class Trailer {
     if (zz.dead) return;
     zz.dead = true;
     const dx = zz.pos.x - from.x, dz = zz.pos.z - from.z, L = Math.hypot(dx, dz) || 1;
-    const e = { type: 'zombieKilled', id: zz.id, pos: { ...zz.pos }, dir: { x: dx / L, y: 0.3, z: dz / L }, kind: o.kind || 'explosive', force: 1, headshot: false };
-    if (o.fling !== false) e.fling = { x: dx / L, z: dz / L, dist: o.dist ?? 6 + Math.random() * 4, up: o.up ?? 2.5 + Math.random() * 2 };
+    const e = { type: 'zombieKilled', id: zz.id, pos: { ...zz.pos }, dir: { x: dx / L, y: 0.3, z: dz / L }, kind: o.kind || 'explosive', force: 1, headshot: false, vortex: o.vortex || null };
+    if (o.fling !== false && !o.vortex && o.kind !== 'fire') e.fling = { x: dx / L, z: dz / L, dist: o.dist ?? 6 + Math.random() * 4, up: o.up ?? 2.5 + Math.random() * 2 };
     this.R.onEvents([e]);
     const i = this.sim.zombies.indexOf(zz);
     if (i >= 0) this.sim.zombies.splice(i, 1);
@@ -228,7 +259,7 @@ export class Trailer {
       const kick = new THREE.Mesh(new THREE.BoxGeometry(1.34, 0.16, 0.94), chrome); kick.position.y = 0.08; g.add(kick);
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       halo.scale.set(3, 3.6, 1); halo.position.set(0, 1.4, 0.6); g.add(halo);
-      const base = this.gy(x, z);
+      const base = this.ground(x, z);
       g.position.set(x, base, z);
       this.group.add(g);
       const v = this.map.addVirtualLight({ x, y: base + 1.6, z: z + 1.3 }, col.getHex(), 12, 7, 1.6);
@@ -317,6 +348,9 @@ export class Trailer {
     }
     this.zach.update(dt * this.slow, time);
     this.updatePerks(dt);
+    hammerClock.t = this.t;
+    if (this.titanOn && this.R.titans) this.R.titans.update(dt * this.slow, time, this.cam);
+    if (this.forgeOn && this.R.forge) this.R.forge.update(dt * this.slow, time);
     // the air: this island's fog, or the shot's own
     const air = this.map.crust && this.map.crust.air;
     if (air) {
@@ -353,7 +387,12 @@ export class Trailer {
     const sh = this.times.shots[ix];
     this.shot = sh;
     // a hard cut: a clean slate
-    for (const id of CREW) { this.takeHammer(id); this.hide(id); this.crew[id].slide = 0; }
+    for (const id of CREW) { this.takeHammer(id); this.hide(id); this.crew[id].slide = 0; this.crew[id].p.dive = null; this.crew[id].p.ride = null; this.crew[id].p.loadout.slots[0].id = this.C.loadout[id]; }
+    if (this.titanOn) this.wakeTitan(null);
+    this.forgeOn = false;
+    if (this.sim.crustEgg) this.sim.crustEgg.forge.work = null;
+    for (const o of this.props || []) this.group.remove(o);
+    this.props = [];
     this.zach.root.visible = false;
     this.zachLight.level = 0;
     this.clearZombies();
@@ -368,7 +407,12 @@ export class Trailer {
     if (fn && fn.enter) fn.enter(this, sh);
   }
 
+  // something of a shot's own (a dog, a black hole, a baby): gone at the next cut
+  prop(o) { this.group.add(o); (this.props || (this.props = [])).push(o); return o; }
+
   dispose() {
+    hammerClock.t = null;
+    if (this.titanOn) this.wakeTitan(null);
     this.cullFar(0);
     this.clearZombies();
     this.fx.clear();
@@ -452,7 +496,7 @@ export const SHOTS = {
       T.zachAt(103.5, 0, { yaw: Math.PI / 2, size: 1.3, headX: -0.05 });
       T.zachLight.intensity = 26; T.zachLight.distance = 18;
       CREW.forEach((id, i) => {
-        T.pose(id, { x: lerp(114, 117.5, k) - Math.abs(i - 2) * 0.7, z: (i - 2) * 1.6, pitch: -0.25 });
+        T.pose(id, { x: lerp(114, 117.5, k) - Math.abs(i - 1.5) * 0.7, z: (i - 1.5) * 1.7, pitch: -0.25 });
         T.crew[id].yaw = -Math.PI / 2;   // walking +x, toward the camera
       });
       T.light(0.35, '#c8d8d0', [130, 8, 6]);
@@ -496,18 +540,181 @@ export const SHOTS = {
     },
   },
 
-  // Sliding under a zombie's swing, firing as you go.
-  slideUnder: {
-    enter(T) { T.zombie(12.5, -126.6, { type: 'walker' }); T.zombie(14.5, -125.2, { type: 'walker' }); T.zombie(17, -127.5, { type: 'runner' }); },
+  // Ryan sprints in and dolphin dives into the middle of them: he lands belly
+  // first and PHD Gaylor goes off under him in a purple blast.
+  diveBlast: {
+    enter(T) { T.blasted = false; for (let i = 0; i < 8; i++) T.zombie(170 + (i % 4) * 1.2, -4.6 + Math.floor(i / 4) * 2.6 + (i % 2) * 0.4, { type: 'walker', yaw: -Math.PI / 2 }); },
     frame(T, u, d, k) {
-      const x = lerp(5, 19.5, ease(k));
-      T.pose('pit', { x, z: -126.2, slide: k > 0.15 && k < 0.8, crouch: k > 0.1 && k < 0.85, pitch: 0.15 });
-      T.crew.pit.yaw = -Math.PI / 2;   // facing +x
-      T.zs.forEach((zz) => !zz.dead && T.moveZ(zz, zz.pos.x, zz.pos.z, { yaw: -Math.PI / 2, attack: true, speed: 0 }));
-      if (k > 0.2 && T.zs[2] && !T.zs[2].dead) T.fire('pit', V(T.zs[2].pos.x, 1.3, T.zs[2].pos.z));
-      if (k > 0.7 && T.zs[2]) T.kill(T.zs[2], V(x, 0, -126), { kind: 'bullet', dist: 3, up: 0.8 });
-      T.light(0.6, '#ffe8cc', [10, 10, -115]);
-      T.look(11, 0.55, -121.5, 12, 1.0, -126.5, 54);
+      const c = { x: 172, z: -3.3 }, gy = T.ground(c.x, c.z);
+      T.slow = k > 0.33 && k < 0.72 ? 0.35 : 1;
+      const run = sm(0, 0.34, k), fly = sm(0.34, 0.6, k);
+      const x = lerp(lerp(187, 177.5, run), c.x, fly), arc = Math.sin(fly * Math.PI) * 0.85;
+      const air = k > 0.34 && k < 0.6, prone = k >= 0.6 && k < 0.88;
+      T.pose('ryan', { x, z: c.z, y: T.ground(x, c.z) + arc + (prone ? 0 : 0), sprint: k < 0.34, dive: air || prone, crouch: k >= 0.88, pitch: air ? -0.2 : 0 });
+      T.crew.ryan.yaw = Math.PI / 2;   // facing -x, into them
+      T.zs.forEach((zz) => !zz.dead && T.moveZ(zz, zz.pos.x + 0.004, zz.pos.z, { yaw: -Math.PI / 2, speed: 1 }));
+      if (k >= 0.6 && !T.blasted) {
+        T.blasted = true;
+        const p = V(c.x, gy + 0.4, c.z);
+        T.fx.energyBurst(p, '#9b4dff', 6);
+        T.fx.energyBurst(p.clone().add(V(0, 0.6, 0)), '#d6a8ff', 3.5);
+        T.R.flash = Math.max(T.R.flash || 0, 0.35);
+        T.shake = 1.8;
+        for (const zz of T.zs) T.kill(zz, p, { up: 3 + Math.random() * 2.5, dist: 6 + Math.random() * 5 });
+      }
+      if (k < 0.1) T.blasted = false;
+      T.light(0.7, '#d8c0ff', [c.x + 2, gy + 7, c.z + 7]);
+      T.look(lerp(176, 172.5, k), gy + 0.75, c.z + 6.2, x - 1.5, gy + 0.9, c.z, 50);
+    },
+  },
+
+  // Brian with the M2 Flamethrower: a jet of fire into the pack coming at him;
+  // they catch, stagger on burning and drop.
+  flamer: {
+    enter(T) { for (let i = 0; i < 7; i++) { const zz = T.zombie(157 + (i % 4) * 1.3 - 2, 17 - Math.floor(i / 4) * 1.7, { type: i % 3 ? 'walker' : 'runner', yaw: 0 }); zz.burnAt = 0.18 + (i % 4) * 0.05 + Math.floor(i / 4) * 0.12; zz.dieAt = zz.burnAt + 0.32 + Math.random() * 0.12; } },
+    frame(T, u, d, k) {
+      const b = { x: 157.5, z: 24.5 };
+      T.pose('brian', { x: b.x, z: b.z, gun: 'M2 Flamethrower', pitch: -0.08 });
+      T.face('brian', 156.5, 15);
+      if (k > 0.12 && k < 0.9) T.flame('brian', V(156.5 + Math.sin(u * 3) * 1.5, 1.0, 17.5));
+      T.zs.forEach((zz) => {
+        if (zz.dead) return;
+        T.moveZ(zz, zz.pos.x, zz.pos.z + 0.012 * (zz.burn ? 0.4 : 1), { yaw: 0, speed: zz.burn ? 0.6 : 1.5 });
+        if (k > zz.burnAt) zz.burn = zz.burn || { by: 'brian' };
+        if (k > zz.dieAt) T.kill(zz, V(b.x, 0, b.z), { kind: 'fire', fling: false });
+      });
+      T.light(0.6, '#ffb070', [b.x + 3, 6, b.z + 3]);
+      T.look(b.x + lerp(2.4, 1.6, k), T.ground(b.x, b.z) + 1.55, b.z + lerp(3.2, 2.4, k), 156.2, 1.1, 17.5, 52);
+    },
+  },
+
+  // The four titans, awake: the Drowned Captain, the Warden, the Fiend, the Golem.
+  titans: {
+    enter(T) { T.titCut = -1; },
+    frame(T, u, d, k) {
+      const ids = ['ship', 'research', 'trench', 'caves'];
+      const i = Math.min(3, Math.floor(k * 4)), lk = k * 4 - i;
+      if (i !== T.titCut) { T.titCut = i; T.wakeTitan(ids[i]); T.fx.clear(); }
+      const shots = {
+        ship: [[10, 2.6, -199, 9, 9, -225], [8.5, 2.0, -203, 9, 11, -225], 50, '#a0ffd0'],
+        research: [[124.5, 1.3, -10.5, 114, 4.5, -20], [122, 1.0, -12.5, 114, 6, -20], 46, '#ffb0a0'],
+        trench: [[29, 4.6, 130.5, 40.5, 4, 118.5], [31.5, 3.6, 128, 40.5, 6, 118.5], 48, '#ffc080'],
+        caves: [[-156.5, 11.3, -28.5, -164.5, 13.5, -36.5], [-158.5, 10.9, -30.5, -164.5, 14.5, -36.5], 48, '#b0e0ff'],
+      };
+      const [a, b, fov, col] = shots[ids[i]];
+      T.path(a, b, sm(0, 1, lk), fov);
+      T.shake = Math.max(T.shake, 0.2);
+      T.light(0.6, col, [a[0], a[1] + 6, a[2]]);
+      T.far = 420;
+    },
+  },
+
+  // Ryan and Kearns ride the zipline off the radio mast, hanging by one hand,
+  // firing down into the yard as they go.
+  zipline: {
+    enter(T) { for (let i = 0; i < 9; i++) T.zombie(144 + (i % 3) * 3.2, -9.5 + Math.floor(i / 3) * 2.2, { type: i % 2 ? 'runner' : 'walker', yaw: Math.PI }); },
+    frame(T, u, d, k) {
+      const R = T.sim.rides.find((r) => r.id === 'zip_mast');
+      if (!R) return;
+      const hang = T.cfg.crust.ride.hang;
+      const s0 = lerp(16, 42, k);
+      const riders = ['ryan', 'kearns'];
+      riders.forEach((id, j) => {
+        const at = ridePoint(R, s0 - j * 6);
+        T.pose(id, { x: at.x, z: at.z, y: at.y - hang, zip: true, pitch: -0.55 });
+        const tgt = T.zs.find((zz, q) => !zz.dead && q % 2 === j) || T.zs.find((zz) => !zz.dead);
+        if (tgt) { T.face(id, tgt.pos.x, tgt.pos.z); T.fire(id, V(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z), 0.1); }
+      });
+      T.zs.forEach((zz, q) => {
+        if (zz.dead) return;
+        T.moveZ(zz, zz.pos.x, zz.pos.z - 0.01, { yaw: Math.PI, speed: 1.2 });
+        if (k > 0.2 + q * 0.075) T.kill(zz, V(zz.pos.x, zz.pos.y + 6, zz.pos.z - 2), { kind: 'bullet', dist: 2, up: 0.5 });
+      });
+      // the camera rides along beside them, a little below
+      const at = ridePoint(R, s0 - 3), dir = at.d, side = V(dir.z, 0, -dir.x).normalize();
+      const cy = at.y - hang + 0.4;
+      T.look(at.x - side.x * 6.5 - dir.x * 2, cy, at.z - side.z * 6.5 - dir.z * 2, at.x + side.x * 2, cy + 0.6, at.z + side.z * 2, 52);
+      T.light(0.6, '#d0d8ff', [at.x - side.x * 4, cy + 8, at.z - side.z * 4]);
+      T.far = 420;
+    },
+  },
+
+  // A Maisy Dog: thrown into a horde on the shore; she howls, a black hole
+  // opens over her and drags every one of them in. Then her.
+  maisy: {
+    enter(T) {
+      for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2, r = 3.2 + (i % 3) * 1.5; T.zombie(6 + Math.cos(a) * r, -126 + Math.sin(a) * r, { type: 'walker' }); }
+      T.dog = T.prop(maisyDog(0.6)); T.hole = null;
+    },
+    frame(T, u, d, k) {
+      const c = V(6, T.ground(6, -126), -126);
+      const tk = sm(0, 0.2, k);
+      const from = V(13, c.y + 1.7, -123.5);
+      T.dog.position.lerpVectors(from, c, tk); T.dog.position.y += Math.sin(tk * Math.PI) * 1.4;
+      T.dog.rotation.set(tk < 1 ? u * 9 : 0, tk < 1 ? u * 5 : 0.6, tk < 1 ? u * 6 : 0);
+      const openK = sm(0.3, 0.42, k) * (1 - sm(0.93, 1, k));
+      if (k > 0.3 && !T.hole) { T.hole = T.prop(blackHole(T.glowTex)); T.hole.position.set(c.x, c.y + 1.3, c.z); T.fx.energyBurst(T.hole.position.clone(), '#8a4dff', 2.4); }
+      if (T.hole) updateHole(T.hole, T.dt, Math.max(0.01, openK), T.fx, T.t);
+      if (k > 0.85) { const l = sm(0.85, 0.97, k); T.dog.position.y = c.y + l * 1.3; T.dog.rotation.y = l * 14; T.dog.scale.setScalar(Math.max(0.02, 1 - l)); }
+      T.zs.forEach((zz) => {
+        if (zz.dead) return;
+        if (k < 0.32) { T.moveZ(zz, zz.pos.x, zz.pos.z, { yaw: Math.atan2(c.x - zz.pos.x, c.z - zz.pos.z), speed: 0.5 }); return; }
+        const dx = c.x - zz.pos.x, dz = c.z - zz.pos.z, dd = Math.hypot(dx, dz);
+        const sp = (2.5 + 9 * sm(0.32, 0.8, k)) * T.dt * T.slow;
+        if (dd < 1.4) { T.kill(zz, c, { vortex: { x: c.x, y: c.y + 1.3, z: c.z } }); return; }
+        T.moveZ(zz, zz.pos.x + dx / dd * Math.min(dd, sp), zz.pos.z + dz / dd * Math.min(dd, sp), { yaw: Math.atan2(-dx, -dz), speed: 0 });
+      });
+      T.light(0.5, '#c8b0ff', [c.x + 6, c.y + 8, c.z + 6]);
+      T.look(c.x + lerp(8.5, 7, k), c.y + 2.4, c.z + lerp(7.5, 6.5, k), c.x, c.y + 1.1, c.z, 52);
+    },
+  },
+
+  // An LBD in the trench: they come round the corner, it wakes, pops up and goes off.
+  lbd: {
+    enter(T) {
+      for (let i = 0; i < 5; i++) T.zombie(-27.5 - i * 1.3, 169.6 + (i % 2 ? 0.5 : -0.5), { type: i % 2 ? 'runner' : 'walker', yaw: Math.PI / 2 });
+      T.baby = T.prop(lbdBaby(0.5)); T.popped = false;
+    },
+    frame(T, u, d, k) {
+      const c = V(-21, T.ground(-21, 169.6, 6), 169.6);
+      T.slow = k > 0.4 ? 0.5 : 1;
+      const pop = sm(0.38, 0.6, k);
+      T.baby.position.set(c.x, c.y + Math.sin(pop * Math.PI * 0.5) * 1.1, c.z);
+      T.baby.rotation.y = 0.4 + pop * 9;
+      T.baby.visible = k < 0.6;
+      T.zs.forEach((zz, i) => !zz.dead && T.moveZ(zz, lerp(-27.5, -22.6, sm(0, 0.45, k)) - i * 1.3, zz.pos.z, { yaw: Math.PI / 2, speed: 2.5 }));
+      if (k >= 0.6 && !T.popped) {
+        T.popped = true;
+        const p = c.clone().add(V(0, 1.1, 0));
+        T.fx.explosion(p, 5); T.shake = 1.6;
+        for (const zz of T.zs) T.kill(zz, p, { up: 3 + Math.random() * 2, dist: 5 + Math.random() * 4 });
+      }
+      if (k < 0.1) T.popped = false;
+      T.light(0.6, '#ffd0a0', [c.x + 3, c.y + 5, c.z + 3]);
+      T.look(c.x + 3.6, c.y + 0.55, c.z + 1.1, c.x - 1.5, c.y + 0.7, c.z, 54);
+    },
+  },
+
+  // Pit at his bench by the Anvil, hammering a War Hammer out of a titan's core.
+  pitForge: {
+    enter(T) { T.forgeOn = true; },
+    frame(T, u, d, k) {
+      const E = T.sim.crustEgg;
+      if (!E) return;
+      E.forge.work = { kind: 'forge', element: 'fire', t: 6 + u * 1.6, strikes: 0 };
+      const P = T.cfg.crust ? null : null; void P;
+      const pit = T.sim.mapData.forge.pit, y = pit.y;
+      // sparks off the anvil on each blow
+      const every = T.cfg.crust.forge.strikeEvery, ph = (E.forge.work.t % every) / every;
+      if (ph > 0.7 && ph < 0.78 && !T.struck) {
+        T.struck = true;
+        const at = V(pit.x + 1.1, y + 0.95, pit.z);
+        for (let i = 0; i < 30; i++) T.fx.spawnParticle(at, V((Math.random() - 0.5) * 5, Math.random() * 4, (Math.random() - 0.5) * 5), { life: 0.5, size: 0.012, color: [5, 2.6, 0.7], gravity: 9, drag: 0.8 });
+        T.shake = Math.max(T.shake, 0.25);
+      }
+      if (ph < 0.5) T.struck = false;
+      T.light(0.5, '#ffb070', [pit.x + 3, y + 3, pit.z + 3]);
+      T.look(pit.x + lerp(3.4, 2.8, k), y + 1.7, pit.z + lerp(2.8, 2.2, k), pit.x + 0.6, y + 1.1, pit.z, 46);
     },
   },
 
@@ -550,19 +757,6 @@ export const SHOTS = {
     },
   },
 
-  // The Ship Graveyard: in over the windmills and the lighthouse, down to the
-  // shore where they're running.
-  shipFly: {
-    enter(T) { for (let i = 0; i < 6; i++) T.zombie(-2 - i * 1.4, -124 - (i % 3) * 1.4); },
-    frame(T, u, d, k) {
-      T.far = 420;
-      T.path([-40, 30, -215, -20, 8, -170], [22, 3.2, -118, 6, 1.6, -126], ease(k), 56);
-      ['ryan', 'kearns', 'brian'].forEach((id, i) => run(T, id, 2 + i, -125 + i * 1.3, 15 + i, -127 + i * 1.3, k));
-      T.zs.forEach((zz, i) => T.moveZ(zz, lerp(-3 - i * 1.4, 9 - i * 1.4, k), -124 - (i % 3) * 1.4));
-      T.light(0.5, '#e0ecff', [10, 20, -100]);
-    },
-  },
-
   // Brian slides under a pack of them, firing the whole way.
   brianHero: {
     enter(T) { for (let i = 0; i < 4; i++) T.zombie(175 + i * 0.5, -2.5 + (i - 1.5) * 1.1, { type: 'walker' }); },
@@ -579,21 +773,6 @@ export const SHOTS = {
     },
   },
 
-  // The Research Base: down past the red mast to the tesla catwalks, the crew
-  // shooting down at zombies in the yard.
-  researchFly: {
-    enter(T) { for (let i = 0; i < 6; i++) T.zombie(155 + i * 1.5, 18 + (i % 2) * 2); },
-    frame(T, u, d, k) {
-      T.far = 420;
-      T.path([210, 40, -40, 184, 10, -10], [175, 9, 48, 158, 3, 26], ease(k), 56);
-      T.pose('ryan', { x: 149.2, z: 32, y: 4.2, pitch: -0.4 }); T.face('ryan', 156, 19);
-      T.pose('pit', { x: 168.8, z: 31, y: 4.2, pitch: -0.4 }); T.face('pit', 160, 19);
-      T.zs.forEach((zz, i) => T.moveZ(zz, 155 + i * 1.5, lerp(17, 22, k) + (i % 2) * 2, { speed: 1.5, yaw: 0 }));
-      if (T.zs[4]) { T.fire('ryan', V(T.zs[1].pos.x, 1.2, T.zs[1].pos.z)); T.fire('pit', V(T.zs[4].pos.x, 1.2, T.zs[4].pos.z)); }
-      T.light(0.5, '#c0c8ff', [160, 30, 50]);
-    },
-  },
-
   // Two new perk machines, flickering into life.
   perks: {
     frame(T, u, d, k) {
@@ -606,62 +785,6 @@ export const SHOTS = {
       const kk = second ? (k - 0.5) * 2 : k * 2;
       T.light(0.35, '#ffffff', [pv.x - 3, pv.base + 4, pv.z + 5]);
       T.look(pv.x + lerp(-1.8, 1.6, kk), pv.base + lerp(0.9, 1.6, kk), pv.z + lerp(3.4, 2.7, kk), pv.x, pv.base + 1.35, pv.z, 44);
-    },
-  },
-
-  // Ryan on the parapet at the edge of the forge, nothing but space beyond;
-  // he turns and dives down into the fight.
-  ryanHero: {
-    enter(T) { for (let i = 0; i < 6; i++) T.zombie(17 + (i % 3) * 1.4, -2.5 + Math.floor(i / 3) * 3, { type: 'walker', y: 4.5 }); },
-    frame(T, u, d, k) {
-      const top = { x: 31.6, z: 0.4 }, y0 = T.gy(top.x, top.z);
-      const jump = sm(0.6, 1, k);
-      const jx = lerp(top.x, 19.5, jump), jz = lerp(top.z, 0, jump);
-      const jy = lerp(y0, 4.5, jump) + Math.sin(jump * Math.PI) * 1.8;
-      T.pose('ryan', { x: jx, z: jz, y: jy, pitch: k < 0.6 ? 0.15 : -0.35, sprint: jump > 0 && jump < 1 });
-      T.crew.ryan.yaw = lerp(-Math.PI / 2, Math.PI / 2, sm(0.38, 0.58, k));   // facing out (+x), then back (-x)
-      T.zs.forEach((zz, i) => T.moveZ(zz, 17 + (i % 3) * 1.4, -2.5 + Math.floor(i / 3) * 3, { y: 4.5, speed: 0.8, yaw: Math.PI / 2 }));
-      T.light(0.6, '#ffd8b0', [40, 20, 10]);
-      if (k < 0.58) T.look(top.x - 4.2, y0 + 1.9, top.z + 2.6, top.x + 20, y0 + 1.5, top.z - 6, 50);
-      else T.look(24, 7.5, 6, jx, jy + 0.6, jz, 52);
-    },
-  },
-
-  // The Trench Front: low over the burning ground, into the trench they're
-  // fighting along.
-  trenchFly: {
-    enter(T) { for (let i = 0; i < 6; i++) T.zombie(-30 + i * 2.5, 163.5 + (i % 2) * 1.5); },
-    frame(T, u, d, k) {
-      T.far = 420;
-      T.path([50, 28, 205, 0, 0, 160], [-2, 3.8, 175.5, -16, 0.8, 170], ease(k), 56);
-      ['kearns', 'rocco'].forEach((id, i) => run(T, id, -3 - i * 1.4, 169.6, -17 - i * 1.4, 169.6, k, { y: 0 }));
-      T.zs.forEach((zz, i) => T.moveZ(zz, lerp(-30 + i * 2.5, -26 + i * 2.5, k), 163.5 + (i % 2) * 1.5));
-      T.light(0.8, '#ffb080', [-8, 12, 178]);
-    },
-  },
-
-  // Two new explosives: a grenade into a pack, then a Stew Bomb.
-  explosives: {
-    enter(T) {
-      T.boomed = [false, false];
-      for (let i = 0; i < 6; i++) T.zombie(5.5 + (i % 3) * 1.5 - 1.5, 118.5 + Math.floor(i / 3) * 1.5);
-      for (let i = 0; i < 6; i++) T.zombie(24.5 + (i % 3) * 1.5 - 1.5, 118.5 + Math.floor(i / 3) * 1.5);
-    },
-    frame(T, u, d, k) {
-      T.slow = 0.55;
-      const first = k < 0.5;
-      const c = first ? V(5.5, 2.3, 119.2) : V(24.5, 2.3, 119.2);
-      const kk = first ? k * 2 : (k - 0.5) * 2;
-      T.zs.forEach((zz) => !zz.dead && T.moveZ(zz, zz.pos.x, zz.pos.z - 0.003, { yaw: Math.PI, speed: 1 }));
-      if (kk > 0.3 && !T.boomed[first ? 0 : 1]) {
-        T.boomed[first ? 0 : 1] = true;
-        T.fx.explosion(c.clone().add(V(0, 0.3, 0)), first ? 4.5 : 5.5);
-        if (!first) T.fx.energyBurst(c, '#7fe08a', 5);
-        T.shake = 1.4;
-        for (const zz of T.zs) if (Math.hypot(zz.pos.x - c.x, zz.pos.z - c.z) < 4.5) T.kill(zz, c, { up: 3 + Math.random() * 2, dist: 5 + Math.random() * 5 });
-      }
-      T.light(0.5, '#ffc090', [c.x + 5, 8, c.z - 6]);
-      T.look(c.x + 6.5, 4.2, c.z - 7, c.x, 2.8, c.z, 50);
     },
   },
 
@@ -715,10 +838,10 @@ export const SHOTS = {
   hammers: {
     enter(T) { T.hamCut = -1; },
     frame(T, u, d, k) {
-      const els = ['fire', 'ice', 'wind', 'lightning'], who = ['ryan', 'brian', 'pit', 'rocco'];
+      const els = ['fire', 'ice', 'wind', 'lightning'], who = ['ryan', 'brian', 'kearns', 'rocco'];
       const spots = [[-25.5, 120.5], [-114.5, -6.5], [-21.5, -138.5], [160.5, -36.5]];
       const i = Math.min(3, Math.floor(k * 4)), lk = k * 4 - i;
-      const [x, z] = spots[i], y = T.gy(x, z);
+      const [x, z] = spots[i], y = T.ground(x, z);
       if (i !== T.hamCut) {
         T.hamCut = i;
         for (const id of CREW) { T.takeHammer(id); T.hide(id); }
@@ -739,51 +862,6 @@ export const SHOTS = {
       }
       T.light(0.5, ELEMENT[el], [x + 2, y + 5, z + 4]);
       T.look(x + 3.2, y + 1.6, z + 2.8, x - 0.6, y + 1.2, z - 2, 48);
-    },
-  },
-
-  // The Ice Caves: in over the frost to the cave mouth, the crew running in.
-  cavesFly: {
-    enter(T) { for (let i = 0; i < 6; i++) T.zombie(-108 + i * 1.4, -1 + (i % 3) * 1.4); },
-    frame(T, u, d, k) {
-      T.far = 420;
-      T.path([-70, 24, 30, -112, 1, 0], [-103, 2.5, 4, -116, 1.5, -1], ease(k), 56);
-      ['pit', 'ryan'].forEach((id, i) => run(T, id, -111 - i, -1 + i * 1.6, -119 - i, -1 + i * 1.6, k));
-      T.zs.forEach((zz, i) => T.moveZ(zz, lerp(-104 + i * 1.4, -112 + i * 1.4, k), -1 + (i % 3) * 1.4));
-      T.light(0.5, '#c8e0ff', [-100, 20, 20]);
-    },
-  },
-
-  // Pit backs off firing at the horde, then turns and runs; the camera runs with him.
-  pitHero: {
-    enter(T) { for (let i = 0; i < 9; i++) T.zombie(-128 - (i % 3) * 1.4, -4 + Math.floor(i / 3) * 1.8, { type: i % 2 ? 'runner' : 'walker' }); },
-    frame(T, u, d, k) {
-      const turn = sm(0.55, 0.65, k);
-      const x = lerp(-123, -118, sm(0, 0.55, k)) + lerp(0, 5, sm(0.6, 1, k));
-      T.pose('pit', { x, z: -1.5, sprint: turn > 0.5, pitch: 0.05 });
-      T.crew.pit.yaw = lerp(Math.PI / 2, -Math.PI / 2, turn);   // facing the horde (-x), then away (+x)
-      if (turn < 0.5) T.fire('pit', V(-128, 1.3, -1 + Math.sin(u * 9)), 0.07);
-      T.zs.forEach((zz, i) => T.moveZ(zz, lerp(-129, -122, k) - (i % 3) * 1.4, -4 + Math.floor(i / 3) * 1.8, { yaw: Math.PI / 2 }));
-      T.light(0.5, '#d0e4ff', [x + 4, 6, 4]);
-      if (k < 0.58) T.look(x + 3.2, 1.5, 1.6, x - 4, 1.3, -1.5, 50);
-      else T.look(x + 3 - sm(0.6, 1, k) * 0.5, 1.6, 1.4, x - 1, 1.4, -1.5, 52);
-    },
-  },
-
-  // Sliding into cover behind a sea stack, firing round it.
-  slideCover: {
-    enter(T) { for (let i = 0; i < 5; i++) T.zombie(35.5 + (i % 3) * 1.2, -146 - Math.floor(i / 3) * 1.6 + i * 0.3); },
-    frame(T, u, d, k) {
-      // a slide in behind the stack, then up on one knee firing round it
-      const sk = sm(0, 0.45, k);
-      const x = lerp(19.2, 23.4, sk), z = lerp(-136.2, -138.3, sk);
-      T.pose('rocco', { x, z, slide: k < 0.45, crouch: k >= 0.45, pitch: 0.05 });
-      T.face('rocco', 34, -146);
-      if (k > 0.35) T.fire('rocco', V(T.zs[0] && !T.zs[0].dead ? T.zs[0].pos.x : 34, 1.2, T.zs[0] && !T.zs[0].dead ? T.zs[0].pos.z : -146), 0.12);
-      T.zs.forEach((zz, i) => !zz.dead && T.moveZ(zz, lerp(35.5, 31, k) + (i % 3) * 1.2, -146 - Math.floor(i / 3) * 1.6 + i * 0.3, { yaw: Math.atan2(x - zz.pos.x, z - zz.pos.z) }));
-      T.zs.forEach((zz, i) => { if (k > 0.5 + i * 0.09 && !zz.dead) T.kill(zz, V(x, 0, z), { kind: 'bullet', dist: 2, up: 0.6 }); });
-      T.light(0.8, '#e0ecff', [x - 6, 8, z + 4]);
-      T.look(x - 3.4, 1.2, z + 2.8, x + 3, 1.0, z - 2.5, 50);
     },
   },
 
@@ -811,14 +889,14 @@ export const SHOTS = {
     frame(T, u, d, k) {
       const c = { x: 175.5, z: -2.5 };
       CREW.forEach((id, i) => {
-        const a = i / 5 * Math.PI * 2;
-        T.pose(id, { x: c.x + Math.cos(a) * 0.9, z: c.z + Math.sin(a) * 0.9, pitch: 0.05 });
+        const a = i / CREW.length * Math.PI * 2 + 0.4;
+        T.pose(id, { x: c.x + Math.cos(a) * 0.8, z: c.z + Math.sin(a) * 0.8, pitch: 0.05 });
         T.face(id, c.x + Math.cos(a) * 10, c.z + Math.sin(a) * 10);
         if (k > 0.25) T.fire(id, V(c.x + Math.cos(a) * 6, 1.3, c.z + Math.sin(a) * 6), 0.11 + i * 0.01);
       });
       T.zs.forEach((zz, i) => { const a = i / 14 * Math.PI * 2, r = lerp(9, 4.2, ease(k)); T.moveZ(zz, c.x + Math.cos(a) * r, c.z + Math.sin(a) * r, { yaw: Math.atan2(-Math.cos(a), -Math.sin(a)) }); });
       const rise = ease(sm(0.35, 0.85, k));
-      T.zachAt(c.x + 9.5, c.z, { yaw: -Math.PI / 2, size: 1.8, y: T.gy(c.x + 9.5, c.z) - 9 * (1 - rise), headX: -0.1 });
+      T.zachAt(c.x + 9.5, c.z, { yaw: -Math.PI / 2, size: 1.8, y: T.ground(c.x + 9.5, c.z) - 9 * (1 - rise), headX: -0.1 });
       T.zachLight.intensity = 30; T.zachLight.distance = 20;
       T.light(0.5, '#d0d8ff', [c.x - 10, 15, c.z + 10]);
       const a = lerp(2.3, 2.75, k);

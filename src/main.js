@@ -1037,11 +1037,13 @@ window.STEW = {
     // the trailer: start it (silent for recording), or render one frame of it at
     // time t (frame by frame, for a recorded export: call with rising t)
     trailer(opts = {}) { return startTrailer(opts); },
-    trailerFrame(t, dt = 1 / 30) {
+    trailerFrame(t, dt = 1 / 30, draw = true) {
       const T = renderer.ending;
       if (!T || mode !== 'trailer') return 'no trailer';
       T.t = t - dt;
+      renderer.noDraw = !draw;   // (stepping through to a frame: the world moves on, nothing's drawn)
       renderer.render(dt, 1, { pitch: 0, yaw: 0, dx: 0, dy: 0 }, null, t, 'ending');
+      renderer.noDraw = false;
       trailerUI.update(T, true);
       return T.shot ? T.shot.id : '';
     },

@@ -477,6 +477,7 @@ export class GameRenderer {
     if (this.camera.fov !== vFov || this.camera.aspect !== this.aspect) { this.camera.fov = vFov; this.camera.aspect = this.aspect; this.camera.updateProjectionMatrix(); }
     this.viewmodel.root.visible = false;
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
+    if (this.noDraw) return;
     this.updateBakedLive();
     this.post.render(dt, { damage: 0, lowHealth: 0, flash: this.flash || 0, tint: 0 });
   }
