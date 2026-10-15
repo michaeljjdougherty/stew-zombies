@@ -42,7 +42,7 @@ export const REAL_GUNS = {
   cz76: { file: 'low-poly_cz_75_b', rot: [0, 90, 0], hide: /^Object_(7|8|10|12|13|14)$/, rh: [0, 0.015, 0.005] },
   spectur: { file: 'sites_spectre_hc_9mm_low_poly', rot: [0, 180, 0], off: [-0.004, 0, 0], rh: [0, -0.005, 0.09], lh: [0, 0.005, -0.02], lk: 'vgrip', lr: -0.1 },
   famos: { file: 'famas', rot: [0, 180, 0], rh: [0, 0.008, 0.095], rk: -0.15, lh: [0, 0.012, 0.045] },
-  awg: { file: 'aug_a3', rot: [0, 90, 0], rh: [0, 0.005, -0.01], lh: [0, 0.025, 0.01], lk: 'vgrip', lr: -0.6 },
+  awg: { file: 'aug_a3', rot: [0, 90, 0], off: [0, -0.011, 0], rh: [0, 0.005, -0.01], lh: [0, 0.025, 0.01], lk: 'vgrip', lr: -0.6 },
   spaz: { file: 'the_franchi_spas-12', rot: [0, 0, 0], off: [0.0215, 0, 0], rh: [0, 0.012, 0.015], lh: [0, 0.037, 0] },
   hs11: { file: 'shotgun-_benelli_m90_xm1014', rot: [0, -90, 0], rh: [0, 0.04, 0.097], lh: [0, 0.056, 0.03] },
   hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(82|86|91|95)$/, off: [0.015, 0, 0], iron: { rear: /^Object_83$/, front: /^Object_89$/, post: true }, rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
@@ -56,11 +56,11 @@ export const REAL_GUNS = {
   chopper: { file: 'saw-gun', rot: [0, -90, 0] },
   // the second wave of guns (each on the built-in gun nearest its shape)
   scav: { file: 'scavenger', rot: [0, 0, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
-  fucci2: { file: 'fucci_mk2', rot: [0, -90, 0], len: 1.6, rh: [0, -0.025, 0.01] },
+  fucci2: { file: 'fucci_mk2', rot: [0, -90, 0], off: [0, 0.008, 0], len: 1.6, rh: [0, -0.025, 0.01] },
   deagle: { file: 'deagle', rot: [0, 180, 0], len: 1.12, rh: [0, 0.01, 0.005] },
-  peacekeeper: { file: 'peacekeeper', rot: [0, -90, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
+  peacekeeper: { file: 'peacekeeper', rot: [0, -90, 0], center: 'sights', off: [0, 0.008, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
   scarh: { file: 'scar_h', rot: [0, 180, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
-  m60: { file: 'm60', rot: [0, 90, 0], hide: /^polySurface(156|239|245|261|284|285|248|237)_/, rh: [0, 0, 0], lh: [0, -0.1, -0.22] },
+  m60: { file: 'm60', rot: [0, 90, 0], center: 'sights', off: [0.025, 0.033, 0], hide: /^polySurface(156|239|245|261|284|285|248|237)_/, rh: [0, 0, 0], lh: [0, -0.1, -0.22] },
 };
 export const realGunMaterials = new Set();   // the viewmodel dims these in the dark
 // First person: cut away whatever comes closer than a few cm to the eye (a
@@ -115,12 +115,34 @@ function loadRealGun(model) {
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder);
     const c = box.getCenter(new THREE.Vector3());
+    // center: 'sights' centres it left to right on its sights, not its bounding box
+    // (a belt box hanging off one side would otherwise pull it over)
+    const sx = R.center === 'sights' ? sightLineX(holder, box) : null;
+    if (sx != null) c.x = sx;
     turn.position.sub(c);
     holder.updateMatrixWorld(true);
     return { template: holder, size: box.getSize(new THREE.Vector3()) };
   })().catch((err) => { console.warn('gun model ' + R.file + ':', err.message || err); return null; });
   gunCache.set(model, job);
   return job;
+}
+// Where a gun's sights are, left to right: the middle of what's along its top
+// (the vertices in its top tenth, the median of their x).
+function sightLineX(holder, box) {
+  const top = box.max.y - (box.max.y - box.min.y) * 0.1;
+  const xs = [], v = new THREE.Vector3();
+  holder.traverse((o) => {
+    if (!o.isMesh) return;
+    const P = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(P.count / 4000));
+    for (let i = 0; i < P.count; i += step) {
+      v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld);
+      if (v.y >= top) xs.push(v.x);
+    }
+  });
+  if (xs.length < 8) return null;
+  xs.sort((a, b) => a - b);
+  return xs[xs.length >> 1];
 }
 export function preloadRealGun(model) { if (REAL_GUNS[model] && realGunsOn) loadRealGun(model); }
 
