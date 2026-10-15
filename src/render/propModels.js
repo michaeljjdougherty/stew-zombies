@@ -87,6 +87,11 @@ function perkSymbol(g, cx, cy, r, def) {
     case 'hotPotHustle':    // a lightning bolt
       g.moveTo(cx + k * 0.25, cy - k); g.lineTo(cx - k * 0.55, cy + k * 0.15); g.lineTo(cx - k * 0.02, cy + k * 0.15); g.lineTo(cx - k * 0.3, cy + k); g.lineTo(cx + k * 0.6, cy - k * 0.2); g.lineTo(cx + k * 0.05, cy - k * 0.2); g.closePath(); g.fill();
       break;
+    case 'phdGaylor':       // a burst: what a dive lands with
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, rr = i % 2 ? k * 0.45 : k; if (i) g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else g.moveTo(cx + rr, cy); }
+      g.closePath(); g.fill();
+      g.fillStyle = '#efe6cc'; g.beginPath(); g.arc(cx, cy, k * 0.28, 0, Math.PI * 2); g.fill();
+      break;
     case 'doubleLadle':     // two crossed ladles
       g.lineWidth = r * 0.16;
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx - s * k * 0.8, cy - k * 0.8); g.lineTo(cx + s * k * 0.45, cy + k * 0.45); g.stroke(); g.beginPath(); g.arc(cx + s * k * 0.55, cy + k * 0.55, k * 0.3, 0, Math.PI * 2); g.fill(); }

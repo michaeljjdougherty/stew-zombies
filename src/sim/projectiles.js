@@ -207,7 +207,9 @@ export function explode(sim, pos, typeName, ownerId) {
     damageZombie(sim, z, ex.damage * f, { playerId: ownerId, part: 'torso', kind: 'explosive', dir, point: c, force: f });
   }
   const owner = sim.playerById(ownerId);
-  if (owner && owner.alive && ex.selfDamage > 0) {
+  // (PHD Gaylor: your own blasts can't touch you)
+  const immune = owner && owner.perks.some((id) => sim.cfg.perks.list[id].noSelfBlast);
+  if (owner && owner.alive && ex.selfDamage > 0 && !immune) {
     const c = { x: owner.pos.x, y: owner.pos.y + 1.0, z: owner.pos.z };
     const dx = c.x - pos.x, dy = c.y - pos.y, dz = c.z - pos.z;
     const d = Math.hypot(dx, dy, dz);

@@ -34,13 +34,16 @@ export class PowerInteractable {
 }
 
 // ---------------------------------------------------------------------------
+// (a map with no power switch has its machines running from the start)
+const needsPower = (sim, d) => d.power && !sim.power && !!sim.world.powerSwitch;
+
 export class PerkInteractable {
   constructor(machine) {
     this.m = machine;
     this.id = 'use_' + machine.id;
     this.kind = 'perk';
     this.requireLook = true;
-    this.pos = { x: machine.center.x, y: 1.3, z: machine.center.z };
+    this.pos = { x: machine.center.x, y: (machine.center.y || 0) + 1.3, z: machine.center.z };
     this.stand = machine.front;
   }
   get range() { return 1.5; }
@@ -53,7 +56,7 @@ export class PerkInteractable {
   canUse(sim, p) { return up(p) && !p.drinking; }
   prompt(sim, p) {
     const d = this.def(sim);
-    if (d.power && !sim.power) return { text: 'The power must be on', cost: null };
+    if (needsPower(sim, d)) return { text: 'The power must be on', cost: null };
     if (this.soloSoldOut(sim)) return { text: `${d.name} is sold out`, cost: null };
     if (hasPerk(p, this.m.perk)) return { text: `You already have ${d.name}`, cost: null };
     if (p.perks.length >= sim.cfg.perks.limit) return { text: `You can only hold ${sim.cfg.perks.limit} perks`, cost: null };
@@ -62,7 +65,7 @@ export class PerkInteractable {
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     const d = this.def(sim);
-    if ((d.power && !sim.power) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= sim.cfg.perks.limit) {
+    if (needsPower(sim, d) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= sim.cfg.perks.limit) {
       sim.emit('useDenied', { playerId: p.id });
       return;
     }

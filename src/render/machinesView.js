@@ -97,7 +97,7 @@ export class MachinesView {
     const def = this.cfg.perks.list[m.perk];
     const pm = this.cfg.perkMachine || { width: 1.3, depth: 0.9, height: 2.3 };
     const g = new THREE.Group();
-    g.position.set(m.center.x, 0, m.center.z);
+    g.position.set(m.center.x, m.center.y || 0, m.center.z);
     g.rotation.y = yawOf(m.normal);
     this.group.add(g);
     const { map, glow } = perkFrontTexture(def);
@@ -119,7 +119,7 @@ export class MachinesView {
     const bottleMat = new THREE.MeshStandardMaterial({ color: def.color, emissive: new THREE.Color(def.color), emissiveIntensity: 0, transparent: true, opacity: 0.85, roughness: 0.15 });
     const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.033, 0.16, 10), bottleMat);
     bottle.position.set(0.05, 0.42, pm.depth / 2 - 0.05); g.add(bottle);
-    const lightPos = { x: m.center.x + m.normal.x * 1.2, y: 1.6, z: m.center.z + m.normal.z * 1.2 };
+    const lightPos = { x: m.center.x + m.normal.x * 1.2, y: (m.center.y || 0) + 1.6, z: m.center.z + m.normal.z * 1.2 };
     const v = this.mapView.addVirtualLight(lightPos, new THREE.Color(def.color).getHex(), 10, 6, 1.6);
     v.level = 0;
     const pv = { m, def, front, bottleMat, g, v, shake: 0, level: 0, flick: 0 };

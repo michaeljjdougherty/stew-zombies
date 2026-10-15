@@ -178,8 +178,9 @@ export function buildMap(map, cfg = CONFIG) {
     const n = w.normal;
     const cx = w.pos.x + n.x * pm.depth / 2, cz = w.pos.z + n.z * pm.depth / 2;
     const hx = n.x ? pm.depth / 2 : pm.width / 2, hz = n.z ? pm.depth / 2 : pm.width / 2;
-    const b = box(cx - hx, 0, cz - hz, cx + hx, pm.height, cz + hz, 'perkMachine', { perk: m.perk });
-    return { id: 'perk_' + m.perk + '_' + i, perk: m.perk, zone: w.zone, room: w.room, normal: n, center: { x: cx, y: 0, z: cz }, front: { x: cx + n.x * (pm.depth / 2 + 0.6), y: 1.2, z: cz + n.z * (pm.depth / 2 + 0.6) }, box: b };
+    const y = roomById.get(w.room).y || 0;   // (on a floor above the ground: Call of the Crust's buildings)
+    const b = box(cx - hx, y, cz - hz, cx + hx, y + pm.height, cz + hz, 'perkMachine', { perk: m.perk });
+    return { id: 'perk_' + m.perk + '_' + i, perk: m.perk, zone: w.zone, room: w.room, normal: n, center: { x: cx, y, z: cz }, front: { x: cx + n.x * (pm.depth / 2 + 0.6), y: y + 1.2, z: cz + n.z * (pm.depth / 2 + 0.6) }, box: b };
   });
 
   const powerSwitch = map.powerSwitch ? onWall(map.powerSwitch, 0.05) : null;

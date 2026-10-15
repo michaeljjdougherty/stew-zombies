@@ -104,6 +104,12 @@ export const CONFIG = {
     landSlowdownTime: 0.22,  // brief speed penalty after landing
     landSlowdownMult: 0.6,
 
+    // dolphin dive: sprint, then crouch. You go flat out forward, land on your
+    // belly and slide, then you're crouched
+    dive: { speed: 7.8, up: 3.4, height: 0.7, airEyeHeight: 1.0, proneEyeHeight: 0.5, proneTime: 0.55, slideDecel: 11, cooldown: 0.6 },
+    // falls hurt: landing faster than minImpact m/s (about a 3 m drop) costs perMs
+    // health per m/s over it, up to max (PHD Gaylor: nothing)
+    fallDamage: { minImpact: 11, perMs: 5.5, max: 80 },
     sprintDuration: 4.0,     // seconds of sprint from full stamina
     sprintRecoverRate: 0.8,  // stamina seconds recovered per second
     sprintMinToStart: 0.8,   // need this much stamina to start sprinting again
@@ -914,6 +920,9 @@ export const CONFIG = {
     fucci: { radius: 2.4, damage: 500, selfDamage: 22, minFrac: 0.35, shake: 0.15, energy: '#ffcf4a' },
     fucciUp: { radius: 3.0, damage: 1600, selfDamage: 22, minFrac: 0.35, shake: 0.2, energy: '#ff2fa0' },
     stewBomb: { radius: 5.5, damage: 3200, selfDamage: 50, minFrac: 0.3, shake: 1.0 },
+    // PHD Gaylor's dolphin dive (off something high: the big one)
+    phd: { radius: 4, damage: 3000, selfDamage: 0, minFrac: 0.5, shake: 0.7, energy: '#b04dff' },
+    phdHigh: { radius: 6.5, damage: 6000, selfDamage: 0, minFrac: 0.35, shake: 1.3, energy: '#c870ff' },
     // the Scavenger's bolts (and its Mad Dog version's): they hurt you too, up close
     scav: { radius: 6, damage: 6000, selfDamage: 90, minFrac: 0.35, shake: 1.4 },
     scavUp: { radius: 8.5, damage: 16000, selfDamage: 90, minFrac: 0.35, shake: 1.7 },
@@ -962,6 +971,11 @@ export const CONFIG = {
       doubleLadle: {
         name: 'Double Ladle', cost: 2000, color: '#f2b705', power: true, glyph: '2',
         desc: 'Fire 33% faster, and every bullet hits twice as hard.', fireRateMult: 1.33, damageMult: 2,
+      },
+      phdGaylor: {
+        name: 'PHD Gaylor', cost: 2000, color: '#9b4dff', power: true, glyph: 'P',
+        desc: 'Your own explosions and falls can\'t hurt you, and a dolphin dive lands with a purple blast (a big one from high up).',
+        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', highDrop: 2.5,
       },
       marathonMinestrone: {
         name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',

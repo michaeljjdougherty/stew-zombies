@@ -541,6 +541,8 @@ export class SoundDirector {
       }
       case 'playerHit': if (e.playerId === this.localId) A.play(S.playerHurt, {}, { gain: 1, reverb: 0.1 }); break;
       case 'playerJump': if (local) A.play(S.jump, {}, { gain: 0.8, reverb: 0.05 }); break;
+      case 'playerDive': if (local) { A.play(S.jump, {}, { gain: 0.9, reverb: 0.05 }); A.play(S.boxWhoosh, {}, { gain: 0.5, reverb: 0.05 }); } break;
+      case 'diveLand': if (local) { A.play(S.land, { impact: 9, surface: 'gym' }, { gain: 1.1, reverb: 0.1 }); A.play(S.reloadCloth, {}, { gain: 0.8, reverb: 0.05 }); } break;
       case 'playerLand': if (local && e.impact > 2) A.play(S.land, { impact: e.impact, surface: 'gym' }, { gain: 0.9, reverb: 0.1 }); break;
       case 'boardTorn': {
         const w = sim.windowById(e.windowId);

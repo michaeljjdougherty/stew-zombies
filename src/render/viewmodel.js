@@ -674,6 +674,8 @@ export class Viewmodel {
 
     // --- knife
     let gunDip = 0;
+    // a dolphin dive: the gun drops as you go flat
+    if (p.dive) gunDip = p.dive.phase === 'air' ? 0.45 : 0.3 * (1 - Math.min(1, p.dive.t / this.cfg.player.dive.proneTime));
     if (this.meleeT >= 0) {
       this.meleeT += dt;
       const t = this.meleeT / this.cfg.melee.duration;

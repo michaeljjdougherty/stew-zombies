@@ -114,13 +114,15 @@ export class Teammate {
     const downed = !!p.downed;
     this.crouch = approach(this.crouch, p.crouching && !downed ? 1 : 0, 10, dt);
     this.down = approach(this.down, downed ? 1 : 0, 6, dt);
+    this.dive = approach(this.dive || 0, p.dive && !downed ? 1 : 0, 12, dt);
     const sprint = p.sprinting && !downed;
     const busy = w.reloading || !!p.drinking || !!p.throwing || (p.melee && p.melee.timer > 0);
     // how high the gun is held: level when aiming, angled down to sprint or reload
     this.raise = approach(this.raise ?? 1.35, sprint ? 0.7 : busy ? 1.05 : 1.35, 8, dt);
 
-    this.root.position.set(pos.x, pos.y, pos.z);
-    this.root.rotation.set(0, yaw + Math.PI, 0);
+    this.root.position.set(pos.x, pos.y + 0.28 * this.dive, pos.z);
+    // a dolphin dive: flat out, face down, gun first
+    this.root.rotation.set(1.3 * this.dive, yaw + Math.PI, 0, 'YXZ');
 
     // breathing, blinking, the face (then the body is posed over it; no
     // gestures, their hands are full)
@@ -163,9 +165,12 @@ export class Teammate {
       k.torso.rotation.x = lerp(k.torso.rotation.x, -0.25, dn);
     }
 
+    // --- diving: legs out straight behind
+    if (this.dive > 0.001) for (const [L] of legs) { L.hip.rotation.x = lerp(L.hip.rotation.x, 0.1, this.dive); L.knee.rotation.x = lerp(L.knee.rotation.x, 0.15, this.dive); }
+
     // --- the gun: held where they're looking, lowered to sprint or reload
     const pt = Math.max(-1.1, Math.min(1.1, pitch));
-    const lean = k.torso.rotation.x + k.hips.rotation.x;   // the gun hangs off the torso: undo its lean
+    const lean = k.torso.rotation.x + k.hips.rotation.x + 1.3 * this.dive;   // the gun hangs off the torso: undo its lean (and a dive's)
     const sh = k.armR.shoulder.position, shY = k.armR.shoulderY;
     const lower = 1.35 - this.raise;                         // 0 aiming .. ~0.65 sprinting
     const H = this.holder;

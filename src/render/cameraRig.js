@@ -70,7 +70,7 @@ export class CameraRig {
     const c = this.cfg.camera, pc = this.cfg.player;
     const w = p.loadout;
     const A = aim || { ads: w.adsAmount, recoilPitch: w.recoilPitch, recoilYaw: w.recoilYaw, swayPitch: w.swayPitch || 0, swayYaw: w.swayYaw || 0 };
-    const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
+    const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.dive ? (p.dive.phase === 'air' ? pc.dive.airEyeHeight : pc.dive.proneEyeHeight) : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
     this.eyeY = lerp(this.eyeY, targetEye, 1 - Math.exp(-c.eyeSmoothing * dt));
 
     // smooth step-ups: follow pos.y with a little lag

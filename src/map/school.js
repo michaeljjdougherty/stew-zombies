@@ -437,6 +437,7 @@ export const SCHOOL = {
     { perk: 'hotPotHustle', room: 'lab', side: 'e', at: -21 },
     { perk: 'doubleLadle', room: 'band', side: 'n', at: -18 },
     { perk: 'marathonMinestrone', room: 'auditorium', side: 'w', at: -66 },
+    { perk: 'phdGaylor', room: 'auditorium', side: 'e', at: -55 },
   ],
 
   // The Mad Dog Machine: moved under the gym floor for the pep rally. It comes

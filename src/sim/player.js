@@ -9,6 +9,7 @@ import { perkMult, updateDrinking } from './perks.js';
 import { goDown } from './laststand.js';
 import { updateLaunch } from './launchers.js';
 import { updateRide, checkSlides } from './rides.js';
+import { explode } from './projectiles.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -83,9 +84,16 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (!sim.replica) updateDrinking(sim, p, dt);   // (online: the host owns perks)
   const downed = !!p.downed;
 
+  // --- dolphin dive: crouch while sprinting
+  const crouchPressed = !!cmd.crouch && !p.crouchHeld;
+  p.crouchHeld = !!cmd.crouch;
+  if (p.diveCooldown > 0) p.diveCooldown -= dt;
+  if (downed || p.ride) p.dive = null;
+  else if (crouchPressed && p.sprinting && p.grounded && !p.dive && !(p.diveCooldown > 0)) startDive(sim, p);
+
   // --- stance
-  p.crouching = downed || (cmd.crouch && p.grounded);
-  p.height = downed ? 0.8 : p.crouching ? cfg.crouchHeight : cfg.height;
+  p.crouching = downed || !!p.dive || (cmd.crouch && p.grounded);
+  p.height = downed ? 0.8 : p.dive ? cfg.dive.height : p.crouching ? cfg.crouchHeight : cfg.height;
   const sprintMax = cfg.sprintDuration * perkMult(sim, p, 'sprintMult');
 
   // --- sprint state machine
@@ -135,8 +143,17 @@ export function updatePlayer(sim, p, cmd, dt) {
   // shoved (a titan's breath, a slam): it carries you whatever you're doing
   if (p.shove && !p.ride) { wx += p.shove.x; wz += p.shove.z; }
 
-  // --- knife lunge overrides movement briefly
-  if (p.melee.lunge > 0 && p.melee.lungeDir) {
+  // --- a dive carries you (no steering in the air; on your belly you slide to a stop)
+  if (p.dive) {
+    p.dive.t += dt;
+    if (p.dive.phase === 'air') p.dive.peak = Math.max(p.dive.peak, p.pos.y);
+    else {
+      const sp = Math.hypot(p.vel.x, p.vel.z);
+      const k = sp > 1e-4 ? Math.max(0, sp - cfg.dive.slideDecel * dt) / sp : 0;
+      p.vel.x *= k; p.vel.z *= k;
+      if (p.dive.t >= cfg.dive.proneTime) { p.dive = null; p.diveCooldown = cfg.dive.cooldown; }
+    }
+  } else if (p.melee.lunge > 0 && p.melee.lungeDir) {
     p.vel.x = p.melee.lungeDir.x * sim.cfg.melee.lungeSpeed;
     p.vel.z = p.melee.lungeDir.z * sim.cfg.melee.lungeSpeed;
   } else if (p.grounded) {
@@ -164,9 +181,15 @@ export function updatePlayer(sim, p, cmd, dt) {
   else {
     const res = moveBody(p, dt, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain], cfg.gravity);
     if (res.landed) {
-      p.landSlowTimer = res.impact > 4 ? cfg.landSlowdownTime : 0;
+      p.landSlowTimer = res.impact > 4 && !p.dive ? cfg.landSlowdownTime : 0;
       p.lastLandImpact = res.impact;
       sim.emit('playerLand', { playerId: p.id, impact: res.impact });
+      if (p.dive && p.dive.phase === 'air') diveLand(sim, p);
+      // a long drop hurts (PHD Gaylor: not at all; online the host keeps your health)
+      const fd = cfg.fallDamage;
+      if (!downed && !sim.replica && res.impact > fd.minImpact && !p.perks.some((id) => sim.cfg.perks.list[id].noFall)) {
+        sim.damagePlayer(p, Math.min(fd.max, (res.impact - fd.minImpact) * fd.perMs), null);
+      }
     }
     // zombies are solid: they body-block you
     for (const z of sim.zombies) {
@@ -190,6 +213,30 @@ export function updatePlayer(sim, p, cmd, dt) {
   // online, the host does the buying, prompts and health for you
   if (sim.replica) return;
   updateUseAndHealth(sim, p, cmd, dt);
+}
+
+// Dolphin dive: thrown flat out forward and a little up.
+function startDive(sim, p) {
+  const c = sim.cfg.player.dive;
+  const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+  p.vel.x = fx * c.speed; p.vel.z = fz * c.speed; p.vel.y = c.up;
+  p.grounded = false;
+  p.sprinting = false;
+  p.dive = { phase: 'air', t: 0, peak: p.pos.y, from: p.pos.y };
+  sim.emit('playerDive', { playerId: p.id, pos: { ...p.pos } });
+}
+
+// Belly first into the ground: a slide (and with PHD Gaylor, a blast).
+function diveLand(sim, p) {
+  const drop = p.dive.from - p.pos.y;
+  p.dive.phase = 'prone'; p.dive.t = 0;
+  sim.emit('diveLand', { playerId: p.id, pos: { ...p.pos }, drop });
+  const perk = p.perks.map((id) => sim.cfg.perks.list[id]).find((d) => d.diveBlast);
+  if (!perk) return;
+  const kind = drop >= perk.highDrop ? perk.diveBlastHigh : perk.diveBlast;
+  const pos = { x: p.pos.x, y: p.pos.y + 0.3, z: p.pos.z };
+  if (sim.replica) sim.netOut.push({ k: 'boom', pos, kind });
+  else explode(sim, pos, kind, p.id);
 }
 
 // Interaction prompts and health regen. Online, the host runs only this part
