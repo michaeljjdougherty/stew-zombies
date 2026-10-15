@@ -581,11 +581,11 @@ export const SHOTS = {
         for (const zz of T.zs) T.kill(zz, p, { up: 3 + Math.random() * 2.5, dist: 6 + Math.random() * 5 });
       }
       if (k < 0.1) T.blasted = false;
-      T.light(0.7, '#d8c0ff', [20, top + 5, z + 7]);
+      T.light(1.1, '#e0d0ff', [14, top + 6, z + 6]);
       // from out over the pit, looking back up at the terraces: he comes running
       // at us along the top, off the edge and down onto them
       const ck = sm(0, 1, k);
-      T.look(lerp(8, 11, ck), lerp(top - 0.6, top - 0.4, ck), lerp(3.8, 2.8, ck), lerp(x, land, 0.35), lerp(y + 0.6, low + 0.9, sm(0.4, 0.75, k)), z, 50);
+      T.look(lerp(7, 10, ck), lerp(top + 3.5, top + 1.6, ck), lerp(1.2, 2.2, ck), lerp(x, land, 0.35), lerp(y + 0.6, low + 0.9, sm(0.4, 0.75, k)), z, 50);
     },
   },
 
@@ -686,11 +686,12 @@ export const SHOTS = {
       if (k < 0.05) T.launched = false;
       // low beside the pad, watching him go; then chasing him up from behind
       const near = V(A.x + 4.5, A.y + 1.2, A.z + 5.5), at = V(x, y + 1, z);
-      const chase = V(x + 2.2, y + 0.4, z + 6.5);
+      const chase = V(x + 1.1, y + 0.1, z + 3);
       const c = near.clone().lerp(chase, sm(0.45, 0.85, k));
-      const look = at.clone().lerp(V(B.x, B.y + 6, B.z), sm(0.7, 1, k) * 0.35);
-      T.look(c.x, c.y, c.z, look.x, look.y, look.z, lerp(48, 58, sm(0.3, 0.8, k)));
-      T.light(0.7, '#d8ecff', [A.x + 6, A.y + 10, A.z + 6]);
+      const look = at.clone().lerp(V(B.x, B.y + 6, B.z), sm(0.75, 1, k) * 0.15);
+      T.look(c.x, c.y, c.z, look.x, look.y, look.z, lerp(46, 54, sm(0.3, 0.8, k)));
+      // (the key light goes up with him: up there nothing else lights him)
+      T.light(1.2, '#e4f0ff', [x + 3, y + 3, z + 5]);
       T.far = 420;
     },
   },
