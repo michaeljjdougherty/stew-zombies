@@ -20,7 +20,8 @@ export function emptyCommand() {
     fire: false, firePressed: false,
     ads: false, adsPressed: false,   // right click (also the left gun when dual wielding)
     grenade: false, grenadePressed: false,
-    tactical: false, tacticalPressed: false,   // [Q] stew bomb
+    tactical: false, tacticalPressed: false,   // [Q] stew bomb / Maisy Dog
+    minePressed: false,                         // [X] set down an LBD
     jumpPressed: false,
     reloadPressed: false,
     meleePressed: false,
@@ -66,6 +67,8 @@ export function createPlayer(sim, id, name, spawn) {
     grenades: sim.cfg.equipment.frag.startWith,
     grenadeMax: sim.cfg.equipment.frag.startWith,
     stewBombs: 0,
+    maisyDogs: 0,             // (the box gives these or Stew Bombs, never both)
+    lbds: 0, lbdMax: 0,       // LBDs carried, and what each round tops you back up to
     throwing: null,           // grenade in hand: { phase: 'cook' | 'recover', t }
     melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
     moveSpeed: 0,             // horizontal speed, for camera bob / audio

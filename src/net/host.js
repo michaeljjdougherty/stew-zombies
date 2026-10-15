@@ -109,7 +109,7 @@ export class NetHost {
     if (st.inv === p.invRev && st.slots.length === w.slots.length && st.slots.every((s, i) => s.id === w.slots[i].id)) {
       st.slots.forEach((s, i) => { const sl = w.slots[i]; sl.clip = s.clip; sl.clipL = s.clipL; sl.reserve = s.reserve; });
       w.current = Math.min(st.cur, w.slots.length - 1);
-      p.grenades = st.g; p.stewBombs = st.sb;
+      p.grenades = st.g; p.stewBombs = st.sb; p.maisyDogs = st.md || 0; p.lbds = st.lb || 0;
     }
     p.region = sim.nav.regionAt(p.pos, p.region);
   }

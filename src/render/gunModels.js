@@ -1196,7 +1196,7 @@ function warHammerFp(el) {
       left: { pos: [0.0, 0.2, 0.0], rot: [0, 0, 0], kind: 'vgrip' },
       hip: { x: 0.24, y: -0.36, z: -0.55, rx: -0.45, ry: 0.35, rz: 0.3 },
       aim: { y: -0.3, z: -0.5 },
-      hammer: el,
+      hammer: el, hammerH: H,
     };
   };
 }
@@ -1290,7 +1290,11 @@ export function animateCamo(t) {
 export function buildGun(model, { withHands = false, rightOnly = false, camo = null } = {}) {
   const m = gunMaterials();
   const spec = (BUILDERS[model] || pistol)(m);
-  if (camo) {
+  if (camo && spec.hammerH) {
+    // a tempered War Hammer: its element runs harder, in its new color (no camo)
+    spec.hammerH.temper(camo);
+    spec.camo = camo;
+  } else if (camo) {
     const skip = new Set([m.glove, m.sleeve, m.skin]);
     spec.group.traverse((o) => {
       if (!o.isMesh) return;

@@ -65,7 +65,7 @@ function react(sim, playerId, cat) {
   }
 }
 
-const GOOD_PULLS = new Set(['Fucci Gun', 'The Chopper', 'stewBomb']);
+const GOOD_PULLS = new Set(['Fucci Gun', 'The Chopper', 'stewBomb', 'maisyDog']);
 
 // Watch the game's events (called from the PA's inbox).
 export function crewOnEvent(sim, e) {

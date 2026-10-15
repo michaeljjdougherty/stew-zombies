@@ -51,7 +51,7 @@ export function updateRange(sim, dt) {
     if (p.points < rc.startPoints / 2) p.points = rc.startPoints;
     if (!R.infiniteAmmo) continue;
     for (const slot of p.loadout.slots) slot.reserve = sim.cfg.weapons[slot.id].reserve;
-    if (!p.throwing) { p.grenades = Math.max(p.grenades, p.grenadeMax); if (p.stewBombs > 0) p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; }
+    if (!p.throwing) { p.grenades = Math.max(p.grenades, p.grenadeMax); if (p.stewBombs > 0) p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; if (p.maisyDogs > 0) p.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase; p.lbds = Math.max(p.lbds || 0, p.lbdMax || 0); }
   }
 }
 
@@ -120,4 +120,6 @@ export function rangeCheddars(sim, count = 6) {
   }
 }
 
-export function rangeStewBombs(sim, p) { p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; }
+export function rangeStewBombs(sim, p) { p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; p.maisyDogs = 0; }
+export function rangeMaisyDogs(sim, p) { p.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase; p.stewBombs = 0; }
+export function rangeLbds(sim, p) { const L = sim.cfg.equipment.lbd; p.lbds = L.perPurchase; p.lbdMax = Math.max(p.lbdMax || 0, L.perPurchase); }

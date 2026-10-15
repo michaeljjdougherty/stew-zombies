@@ -11,7 +11,7 @@ import { CRUST } from './map/crust.js';
 // zombies maps by id (the map screen's ids). The firing range is its own mode.
 const ZOMBIE_MAPS = { lastbell: SCHOOL, crust: CRUST };
 import { RANGE } from './map/range.js';
-import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs } from './sim/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs, rangeMaisyDogs, rangeLbds } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
@@ -111,6 +111,8 @@ const rangeUI = new RangeUI(CONFIG, {
   horde: () => spawnHorde(sim),
   cheddars: () => rangeCheddars(sim),
   stewBombs: () => rangeStewBombs(sim, player),
+  maisyDogs: () => rangeMaisyDogs(sim, player),
+  lbds: () => rangeLbds(sim, player),
   drop: (id) => rangeDrop(sim, player, id),
   clear: () => clearZombies(sim),
   close: () => closeRangePanel(),

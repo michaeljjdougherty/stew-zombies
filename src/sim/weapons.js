@@ -380,25 +380,26 @@ export function refillAll(sim, p) {
 // ---------------------------------------------------------------------------
 function updateGrenade(sim, p, cmd, dt) {
   const g = sim.cfg.equipment.frag;
-  const sb = sim.cfg.equipment.stewBomb;
+  const sb = sim.cfg.equipment.stewBomb, md = sim.cfg.equipment.maisyDog;
   const t = p.throwing;
   if (!t) {
     const free = p.alive && !p.downed && !p.drinking && p.melee.timer <= 0;
     const frag = cmd.grenadePressed && p.grenades > 0;
-    const stew = cmd.tacticalPressed && p.stewBombs > 0;
-    if (free && (frag || stew)) {
+    // [Q]: whichever the box gave you (Maisy Dogs or Stew Bombs)
+    const tac = cmd.tacticalPressed ? (p.maisyDogs > 0 ? 'maisy' : p.stewBombs > 0 ? 'stew' : null) : null;
+    if (free && (frag || tac)) {
       if (p.loadout.reloading) cancelReload(sim, p);
       p.sprinting = false;
       p.loadout.adsAmount = 0;
-      if (frag) p.grenades--; else p.stewBombs--;
-      p.throwing = { phase: 'cook', t: 0, kind: frag ? 'frag' : 'stew' };
+      if (frag) p.grenades--; else if (tac === 'maisy') p.maisyDogs--; else p.stewBombs--;
+      p.throwing = { phase: 'cook', t: 0, kind: frag ? 'frag' : tac };
       sim.emit('grenadePull', { playerId: p.id, kind: p.throwing.kind });
-    }
+    } else if (free && cmd.minePressed && p.lbds > 0 && p.grounded) plantLbd(sim, p);
     return;
   }
   if (t.phase === 'cook') {
     t.t += dt;
-    const stew = t.kind === 'stew';
+    const stew = t.kind === 'stew' || t.kind === 'maisy';
     if (!stew && t.t >= g.fuse) {
       // held it too long
       const eye = sim.eyePosition(p);
@@ -411,9 +412,10 @@ function updateGrenade(sim, p, cmd, dt) {
       const eye = sim.eyePosition(p);
       const d = lookDir(p.yaw, p.pitch + 0.08);
       const start = { x: eye.x + d.x * 0.4 + Math.cos(p.yaw) * 0.1, y: eye.y + d.y * 0.4, z: eye.z + d.z * 0.4 - Math.sin(p.yaw) * 0.1 };
-      const e = stew ? sb : g;
+      const e = t.kind === 'maisy' ? md : stew ? sb : g;
       const vel = { x: d.x * e.throwSpeed + p.vel.x * 0.5, y: d.y * e.throwSpeed + e.throwUp, z: d.z * e.throwSpeed + p.vel.z * 0.5 };
-      if (stew) shoot(sim, 'stewbomb', start, vel, p.id, { gravity: sb.gravity, bounce: sb.bounce, friction: sb.friction, fuse: sb.lureTime + 1.2, explode: sb.explode });
+      if (t.kind === 'maisy') shoot(sim, 'maisy', start, vel, p.id, { gravity: md.gravity, bounce: md.bounce, friction: md.friction });
+      else if (stew) shoot(sim, 'stewbomb', start, vel, p.id, { gravity: sb.gravity, bounce: sb.bounce, friction: sb.friction, fuse: sb.lureTime + 1.2, explode: sb.explode });
       else shoot(sim, 'frag', start, vel, p.id, { gravity: g.gravity, bounce: g.bounce, friction: g.friction, fuse: g.fuse - t.t, explode: g.explode });
       p.throwing = { phase: 'recover', t: g.throwLock, kind: t.kind };
       sim.emit('grenadeThrow', { playerId: p.id, cooked: t.t, kind: t.kind });
@@ -422,6 +424,23 @@ function updateGrenade(sim, p, cmd, dt) {
   }
   t.t -= dt;
   if (t.t <= 0) p.throwing = null;
+}
+
+// An LBD: set down on the floor in front of you (it drops onto whatever's there).
+function plantLbd(sim, p) {
+  const L = sim.cfg.equipment.lbd;
+  const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+  const from = { x: p.pos.x, y: p.pos.y + 0.6, z: p.pos.z };
+  const ahead = sim.raycastWorld(from, { x: fx, y: 0, z: fz }, L.plantAt + 0.3);
+  const dist = ahead ? Math.max(0.2, ahead.t - 0.35) : L.plantAt;
+  const pos = { x: p.pos.x + fx * dist, y: p.pos.y + 0.35, z: p.pos.z + fz * dist };
+  p.lbds--;
+  if (p.loadout.reloading) cancelReload(sim, p);
+  p.sprinting = false;
+  p.loadout.adsAmount = 0;
+  p.throwing = { phase: 'recover', t: L.plantLock, kind: 'lbd' };
+  shoot(sim, 'lbd', pos, { x: 0, y: -1, z: 0 }, p.id, { gravity: 16, bounce: 0, friction: 0.2, yaw: p.yaw });
+  sim.emit('lbdPlant', { playerId: p.id, pos });
 }
 
 // ---------------------------------------------------------------------------

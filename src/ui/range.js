@@ -90,6 +90,8 @@ export class RangeUI {
     $('rp-horde').addEventListener('click', () => { this.h.horde(); this.h.close(); });
     $('rp-cheddar').addEventListener('click', () => { this.h.cheddars(); this.h.close(); });
     $('rp-stew').addEventListener('click', () => { this.h.stewBombs(); this.h.close(); });
+    $('rp-maisy').addEventListener('click', () => { this.h.maisyDogs(); this.h.close(); });
+    $('rp-lbd').addEventListener('click', () => { this.h.lbds(); this.h.close(); });
     for (const [id, d] of Object.entries(this.cfg.powerups.list)) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'sm'; b.textContent = d.name; b.title = d.desc;

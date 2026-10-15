@@ -68,7 +68,7 @@ function startRound(sim, n) {
     R.killed = 0;
     R.preTimer = ch.preRoundTime;
     R.spawnTimer = 0;
-    for (const p of sim.players) { p.boardPointsThisRound = 0; if (sim.cfg.equipment.frag.refillEachRound && p.alive) p.grenades = Math.max(p.grenades, p.grenadeMax); }
+    for (const p of sim.players) { p.boardPointsThisRound = 0; if (sim.cfg.equipment.frag.refillEachRound && p.alive) p.grenades = Math.max(p.grenades, p.grenadeMax); if (p.alive) p.lbds = Math.max(p.lbds || 0, p.lbdMax || 0); }
     sim.emit('roundStart', { round: n, zombies: R.total, cheddar: true, health: cheddarHealth(sim, R.cheddarIndex) });
     sim.emit('cheddarStart', { round: n, count: R.total });
     return;
@@ -81,6 +81,7 @@ function startRound(sim, n) {
   for (const p of sim.players) {
     p.boardPointsThisRound = 0;
     if (sim.cfg.equipment.frag.refillEachRound && p.alive) p.grenades = Math.max(p.grenades, p.grenadeMax);
+    if (p.alive) p.lbds = Math.max(p.lbds || 0, p.lbdMax || 0);   // (LBDs come back every round)
   }
   sim.emit('roundStart', { round: n, zombies: R.total, health: zombieHealthForRound(n, sim.cfg.zombie) });
 }

@@ -183,7 +183,7 @@ export class ForgeView {
       if (show) {
         S.H.head.rotation.y = Math.sin(this.time * 0.8 + el.length) * 0.08;
         if (S.H.halo) S.H.halo.material.opacity = 0.65 + Math.sin(this.time * 2.2 + el.length) * 0.15;
-        if (h.tempered !== S.tempered) { S.tempered = h.tempered; S.H.glowMat.color.set(h.tempered ? this.cfg.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el] + '+'].view.camo : HAMMER_COLORS[el]).multiplyScalar(2.6); }
+        if (h.tempered !== S.tempered) { S.tempered = h.tempered; S.H.temper(h.tempered ? this.cfg.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el] + '+'].view.camo : null); }
         if (Math.random() < dt * 3) { const p = S.H.head.getWorldPosition(V()); this.effects.spawnParticle(p, V((Math.random() - 0.5) * 0.6, 0.6 + Math.random(), (Math.random() - 0.5) * 0.6), { life: 0.8, size: 0.02, color: S.H.color.toArray().map((c) => c * 3), gravity: -0.5, drag: 0.6 }); }
       }
     }

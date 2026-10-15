@@ -537,7 +537,7 @@ function research() {
     { a: 'mess', out: 'w', type: 'gap', width: 1.6, height: 2.4, t: 0.7 },
   );
   I.windows.push({ room: 'mainlab', side: 'n', t: 0.25 }, { room: 'mess', side: 's', t: 0.4 }, { room: 'mainlab', side: 'w', t: 0.5 });
-  I.wallBuys.push({ weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'MP6K', room: 'genhall', side: 'e', t: 0.5 }, { weapon: 'PM64', room: 'mess', side: 'w', t: 0.3 }, { weapon: 'AK-75u', room: 'garage', side: 'e', t: 0.5 }, { weapon: 'Peacekeeper', room: 'garage', side: 's', t: 0.2 });
+  I.wallBuys.push({ weapon: 'lbd', room: 'mess', side: 'e', t: 0.6 }, { weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'MP6K', room: 'genhall', side: 'e', t: 0.5 }, { weapon: 'PM64', room: 'mess', side: 'w', t: 0.3 }, { weapon: 'AK-75u', room: 'garage', side: 'e', t: 0.5 }, { weapon: 'Peacekeeper', room: 'garage', side: 's', t: 0.2 });
   I.boxSpots.push({ id: 'box_garage', room: 'garage', x: 165.4, z: 10.5, yaw: -Math.PI / 2 }, { id: 'box_gen', room: 'genhall', x: 157, z: -19.4, yaw: 0 });
 
   // the radio mast: spiral stairs up to two platforms

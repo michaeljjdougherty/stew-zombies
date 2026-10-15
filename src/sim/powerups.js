@@ -81,6 +81,8 @@ function apply(sim, type, p) {
         if (!q.alive) continue;
         refillAll(sim, q);
         if (q.stewBombs > 0) q.stewBombs = sim.cfg.equipment.stewBomb.perPurchase;
+        if (q.maisyDogs > 0) q.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase;
+        q.lbds = Math.max(q.lbds || 0, q.lbdMax || 0);
         if (q.downed && q.downed.saved) for (const s of q.downed.saved.slots) {
           const wd = sim.cfg.weapons[s.id]; s.clip = wd.magSize; if (wd.dual) s.clipL = wd.magSize; s.reserve = wd.reserve;
         }

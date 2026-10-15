@@ -69,7 +69,7 @@ export class WallBuyInteractable {
   prompt(sim, p) {
     const eq = sim.cfg.equipment[this.wb.weapon];
     if (eq) {
-      if (p.grenades >= eq.perPurchase) return { text: `${eq.name} are full`, cost: null };
+      if (p[eq.have] >= eq.perPurchase) return { text: `${eq.name} are full`, cost: null };
       return { text: `Press [F] to buy ${eq.name}`, cost: eq.cost };
     }
     const def = sim.cfg.weapons[this.wb.weapon];
@@ -85,10 +85,10 @@ export class WallBuyInteractable {
     if (!cmd.usePressed) return;
     const eq = sim.cfg.equipment[this.wb.weapon];
     if (eq) {
-      if (p.grenades >= eq.perPurchase) return;
+      if (p[eq.have] >= eq.perPurchase) return;
       if (pay(sim, p, eq.cost)) {
-        p.grenades = eq.perPurchase;
-        p.grenadeMax = Math.max(p.grenadeMax, eq.perPurchase);
+        p[eq.have] = eq.perPurchase;
+        p[eq.max] = Math.max(p[eq.max] || 0, eq.perPurchase);
         sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, equipment: true, id: this.wb.id });
       }
       return;
@@ -155,7 +155,7 @@ export class BoxInteractable {
   pick(sim, p) {
     const w = sim.cfg.box.weights;
     const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
-    const ok = (id) => (sim.cfg.weapons[id] && !held.has(id)) || (id === 'stewBomb' && p.stewBombs <= 0);
+    const ok = (id) => (sim.cfg.weapons[id] && !held.has(id)) || (id === 'stewBomb' && p.stewBombs <= 0) || (id === 'maisyDog' && p.maisyDogs <= 0);
     const pool = Object.entries(w).filter(([id]) => ok(id));
     const total = pool.reduce((a, [, v]) => a + v, 0);
     let r = sim.rng.next() * total;
@@ -179,8 +179,11 @@ export class BoxInteractable {
       this.weapon = this.uses >= this.moveAt && this.canMove(sim) ? 'bobble' : this.pick(sim, p);
       this.emit(sim, 'boxOpen', { playerId: p.id, spot: this.spot.id, weapon: this.weapon, spinTime: this.timer });
     } else if (this.phase === 'offering' && p.id === this.buyerId) {
+      // (the tactical slot holds one kind: Stew Bombs or Maisy Dogs)
       if (this.weapon === 'stewBomb') {
-        p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase;
+        p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; p.maisyDogs = 0;
+      } else if (this.weapon === 'maisyDog') {
+        p.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase; p.stewBombs = 0;
       } else giveWeapon(sim, p, this.weapon);
       this.emit(sim, 'boxTaken', { playerId: p.id, weapon: this.weapon });
       this.phase = 'closing';

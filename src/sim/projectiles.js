@@ -3,6 +3,7 @@
 // knife blades) and explosions.
 // =============================================================================
 import { damageZombie } from './zombies.js';
+import { updateGadget, gadgetLanded, GADGETS } from './gadgets.js';
 import { rotY } from '../core/math.js';
 
 // stick where they hit, then go off after their fuse (crossbow bolts, the
@@ -30,6 +31,7 @@ export function spawnProjectile(sim, type, pos, vel, ownerId, opts = {}) {
     life: opts.life ?? Infinity,
     hitIds: null,          // zombies a saw blade has already cut
     lure: type === 'stewbomb',
+    yaw: opts.yaw ?? 0,
     stuck: null,          // { zombieId, local:{x,y,z}, yaw } or { wall:true }
     resting: false,
     age: 0,
@@ -58,6 +60,7 @@ export function updateProjectiles(sim, dt) {
       step(sim, pr, dt);
     }
     if (pr.done) continue;
+    if (GADGETS.has(pr.type)) { updateGadget(sim, pr, dt); if (pr.done) continue; }
     pr.fuse -= dt;
     if (pr.fuse <= 0) detonate(sim, pr);
     else if (pr.type === 'blade' && pr.age > 8) { pr.done = true; sim.emit('projectileGone', { id: pr.id }); }
@@ -108,7 +111,7 @@ function step(sim, pr, dt) {
 function hitZombie(sim, pr, h, dir) {
   const z = sim.zombieById(h.zombieId);
   if (!z) return;
-  if (pr.type === 'frag' || pr.type === 'stewbomb') {
+  if (pr.type === 'frag' || pr.type === 'stewbomb' || GADGETS.has(pr.type)) {
     // bounce off the body
     pr.vel.x *= -0.25; pr.vel.z *= -0.25; pr.vel.y *= 0.3;
     return;
@@ -180,6 +183,7 @@ function hitWorld(sim, pr, h, dir) {
       pr.region = sim.nav.regionAt(pr.pos);
       sim.emit('stewBombLand', { id: pr.id, pos: { ...pr.pos } });
     }
+    if (GADGETS.has(pr.type)) gadgetLanded(sim, pr);
   }
 }
 

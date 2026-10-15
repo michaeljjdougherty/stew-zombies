@@ -147,7 +147,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'boardPointsThisRound', 'rebuilding'];
+  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding'];
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {
@@ -189,7 +189,7 @@ export function applyMirror(sim, M, localId) {
         p.loadout.reloading = s.loadout.reloading;
         p.loadout.reload = structuredCopy(s.loadout.reload);
         p.loadout.adsAmount = Math.min(p.loadout.adsAmount, s.loadout.adsAmount);
-        p.grenades = s.grenades; p.stewBombs = s.stewBombs;
+        p.grenades = s.grenades; p.stewBombs = s.stewBombs; p.maisyDogs = s.maisyDogs || 0; p.lbds = s.lbds || 0;
       }
       // the host moved you (respawn)
       if ((s.tp || 0) > (p.tp || 0)) {
@@ -274,7 +274,7 @@ export function positionFrame(M, localId) {
 // Signature of what a player carries, to spot the host changing it.
 export function inventorySig(p) {
   const w = p.loadout;
-  let s = w.current + '|' + p.grenades + '|' + p.stewBombs;
+  let s = w.current + '|' + p.grenades + '|' + p.stewBombs + '|' + (p.maisyDogs || 0) + '|' + (p.lbds || 0);
   for (const sl of w.slots) s += '|' + sl.id + ',' + sl.clip + ',' + (sl.clipL || 0) + ',' + sl.reserve + ',' + (sl.upgraded ? 1 : 0) + ',' + (sl.away ? 1 : 0);
   return s;
 }

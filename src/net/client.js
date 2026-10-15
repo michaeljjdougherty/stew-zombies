@@ -91,7 +91,7 @@ export class NetClient {
       th: p.throwing, mt: p.melee.timer, ml: p.melee.lunge, dw: p.distanceWalked,
       ads: w.adsAmount, rl: w.reloading,
       inv: p.invRev, cur: w.current, slots: w.slots.map((s) => ({ id: s.id, clip: s.clip, clipL: s.clipL || 0, reserve: s.reserve })),
-      g: p.grenades, sb: p.stewBombs,
+      g: p.grenades, sb: p.stewBombs, md: p.maisyDogs, lb: p.lbds,
     });
   }
 

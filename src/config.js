@@ -218,6 +218,7 @@ export const CONFIG = {
       weapon3: ['Digit3'],
       grenade: ['KeyG'],
       tactical: ['KeyQ'],
+      mine: ['KeyX'],
     },
   },
 
@@ -884,7 +885,7 @@ export const CONFIG = {
       Pyton: 1.2, CZ76: 0.9, 'CZ76 Dual': 0.8, Spectur: 1.1, Komando: 1.1, FAMOS: 1.1, AWG: 1, Galill: 0.9, G12: 1,
       'SPAZ-13': 1, HS11: 0.9, HK22: 0.9, RPKK: 0.9, Dragunoff: 0.9, L97A1: 0.8, 'China Pond': 0.9,
       'Kross-Bow': 0.9, 'Ballistik Knife': 0.6,
-      'Fucci Gun': 0.5, 'The Chopper': 0.45, stewBomb: 0.7,
+      'Fucci Gun': 0.5, 'The Chopper': 0.45, stewBomb: 0.7, maisyDog: 0.55,
       'Desert Eagle': 1, 'SCAR-H': 1, M60: 0.9, Scavenger: 0.4, 'Fucci Gun Mk 2': 0.45, Peacekeeper: 0.6,
     },
     // The box leaves after this many pulls (random in the range): the last pull
@@ -915,6 +916,7 @@ export const CONFIG = {
       friction: 0.6,
       throwLock: 0.45,       // can't fire this long after a throw
       explode: 'frag',
+      have: 'grenades', max: 'grenadeMax',   // (the player's count of them, and what it refills to)
     },
     // Stew Bombs (from the Mystery Box, [Q]): a pot of stew with a ladle that
     // bangs out a tune. Every zombie nearby comes to it, then it blows.
@@ -929,6 +931,43 @@ export const CONFIG = {
       bounce: 0.2,
       friction: 0.5,
       explode: 'stewBomb',
+    },
+    // The Maisy Dog (from the Mystery Box, [Q], in place of Stew Bombs): a
+    // little black sausage dog you throw. It lands, howls, and a black hole
+    // opens over it: every zombie round it is dragged in and gone. Then the
+    // hole takes the dog too.
+    maisyDog: {
+      name: 'Maisy Dogs',
+      perPurchase: 3,
+      throwSpeed: 12,
+      throwUp: 3.4,
+      gravity: 16,
+      bounce: 0.25,
+      friction: 0.5,
+      armTime: 1.1,          // s from landing to the hole opening (she howls)
+      holeTime: 6.5,         // s the hole stays open
+      pullRadius: 11,        // m: zombies inside this are dragged in
+      pullSpeed: [2.2, 8],   // m/s at the edge, and right by the hole
+      killRadius: 1.3,       // m from the hole: gone
+      maxKills: 48,          // per dog
+      holeY: 1.1,            // m: the hole hangs this high over her
+    },
+    // The LBD (wall buy, [X]): a sleeping baby you set down like a Bouncing
+    // Betty. A zombie comes close, it wakes, pops up into the air and goes off.
+    // You carry `perPurchase` and get them back every round.
+    lbd: {
+      name: 'LBDs',
+      cost: 1000,
+      perPurchase: 2,
+      have: 'lbds', max: 'lbdMax',
+      plantAt: 0.9,          // m in front of you it's set down
+      plantLock: 0.6,        // s your hands are busy setting it down
+      armTime: 1.2,          // s before it's live
+      trigger: 2.4,          // m: a zombie this close sets it off
+      popTime: 0.42,         // s from waking to the blast
+      popHeight: 1.1,        // m it jumps
+      maxPlaced: 12,         // per player: an older one goes when you set down more
+      explode: 'lbd',
     },
   },
 
@@ -947,6 +986,7 @@ export const CONFIG = {
     fucci: { radius: 2.4, damage: 500, selfDamage: 22, minFrac: 0.35, shake: 0.15, energy: '#ffcf4a' },
     fucciUp: { radius: 3.0, damage: 1600, selfDamage: 22, minFrac: 0.35, shake: 0.2, energy: '#ff2fa0' },
     stewBomb: { radius: 5.5, damage: 3200, selfDamage: 50, minFrac: 0.3, shake: 1.0 },
+    lbd: { radius: 5.2, damage: 4200, selfDamage: 0, minFrac: 0.35, shake: 0.9 },
     // PHD Gaylor's dolphin dive (off something high: the big one)
     phd: { radius: 4, damage: 3000, selfDamage: 0, minFrac: 0.5, shake: 0.7, energy: '#b04dff' },
     phdHigh: { radius: 6.5, damage: 6000, selfDamage: 0, minFrac: 0.35, shake: 1.3, energy: '#c870ff' },
@@ -1380,6 +1420,19 @@ export const CONFIG = {
         wind: { range: 16, angle: 36, near: 2.2, maxKills: 30 },
         lightning: { chains: 14, hop: 7.5, reach: 12 },
         maxKills: 12,
+      },
+      // how they look (src/render/warHammer.js): the downloaded hammer, sized so the
+      // haft's butt sits at z `butt` and the head's centre at z `headAt` (metres),
+      // with its element going off round the head. A tempered hammer's element
+      // runs `temperedPower` times harder.
+      look: {
+        model: 'assets/props/hammer.glb', butt: -0.22, headAt: 0.82,
+        temperedPower: 1.8,
+        headGlow: 0.05,        // the iron's own glow in its element's color (x temperedPower when tempered)
+        fire: { flames: 60, embers: 22, rise: 0.26, rate: 1.9, flameSize: 0.17, emberSize: 0.022, flicker: 0.35 },
+        ice: { mist: 26, flakes: 22, orbit: 0.22, sink: 0.22, rate: 0.35, mistSize: 0.2, mistGlow: 0.22, flakeSize: 0.02 },
+        wind: { motes: 40, radius: 0.2, spin: 5.5, drift: 0.5, size: 0.028, ribbons: 2, ribbonSpin: 3.2, ribbonGlow: 0.32 },
+        lightning: { arcs: 6, segs: 8, reach: 0.32, every: 0.07, width: 0.035, sparks: 18, sparkSize: 0.03 },
       },
     },
     // the finale: ring the Anvil once all four hammers are forged, and Big Evil Zach

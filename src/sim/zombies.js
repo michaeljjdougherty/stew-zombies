@@ -228,6 +228,11 @@ export function updateZombies(sim, dt) {
       if (z.frozen > 0) continue;
       sim.emit('zombieThaw', { id: z.id });
     }
+    // dragged toward a Maisy Dog's black hole: no walking, no swinging
+    if (z.pull) {
+      if ((z.pull.ttl -= dt) > 0 && z.state === 'chase') { pullZombie(sim, z, dt); continue; }
+      z.pull = null;
+    }
     if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
     if (z.state === 'rising') {
       const k = Math.min(1, z.stateTime / c.riseTime);
@@ -561,6 +566,26 @@ export function damageZombie(sim, z, amount, info) {
   }
 }
 
+// One step toward the hole (stopped by walls; it slides along them).
+function pullZombie(sim, z, dt) {
+  const P = z.pull;
+  z.moveSpeed = 0; z.attack.phase = 'none';
+  const dx = P.x - z.pos.x, dz = P.z - z.pos.z, d = Math.hypot(dx, dz);
+  if (d < 0.05) return;
+  const step = Math.min(d, P.speed * dt);
+  const from = { x: z.pos.x, y: z.pos.y + 0.6, z: z.pos.z };
+  for (const [ux, uz] of [[dx / d, dz / d], [dx / d, 0], [0, dz / d]]) {
+    const l = Math.hypot(ux, uz);
+    if (l < 0.2) continue;
+    const dir = { x: ux / l, y: 0, z: uz / l };
+    if (sim.raycastWorld(from, dir, step * l + 0.35)) continue;
+    z.pos.x += dir.x * step * l; z.pos.z += dir.z * step * l;
+    break;
+  }
+  faceToward(z, -dx, -dz, 6, dt);   // (back first into it, arms out)
+  z.region = sim.nav.regionAt(z.pos, z.region) || z.region;
+}
+
 export function killZombie(sim, z, info = {}) {
   if (z.state === 'dead') return;
   const win = sim.windowById(z.windowId);
@@ -575,7 +600,7 @@ export function killZombie(sim, z, info = {}) {
   sim.emit('zombieKilled', {
     id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind, zombieType: z.type,
     dir: info.dir, headshot: !!info.headshot, wasState, playerId: info.playerId, force: info.force || 0, crawler: !!z.crawler,
-    fling: info.fling || null, infused: !!z.infused,
+    fling: info.fling || null, infused: !!z.infused, vortex: info.vortex || null,
   });
   maybeDrop(sim, z, { ...info, wasState });
 }

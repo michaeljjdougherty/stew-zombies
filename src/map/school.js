@@ -409,6 +409,7 @@ export const SCHOOL = {
     { weapon: 'Olympus', room: 'hall', side: 'e', at: 3, y: 1.45 },
     { weapon: 'MP41', room: 'cafe', side: 'w', at: -31.4, y: 1.5 },
     { weapon: 'frag', room: 'court', side: 'w', at: 4, y: 1.4 },
+    { weapon: 'lbd', room: 'court', side: 'w', at: -2, y: 1.4 },
     { weapon: 'PM64', room: 'quad', side: 'n', at: 25, y: 1.5 },
     { weapon: 'Staykout', room: 'dock', side: 's', at: 26.5, y: 1.5 },
     { weapon: 'MP6K', room: 'lockers', side: 'n', at: -28.5, y: 1.5 },
