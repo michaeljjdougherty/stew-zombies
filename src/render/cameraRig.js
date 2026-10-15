@@ -33,6 +33,10 @@ export class CameraRig {
   onEvent(e, localId) {
     if (e.playerId !== localId) return;
     if (e.type === 'playerLand') this.dipVel -= Math.min(2.2, e.impact * 0.3);
+    // a dolphin dive: a burst of speed at takeoff, a belly-flop thud on landing
+    const dc = this.cfg.camera.dive;
+    if (e.type === 'playerDive') this.punch.fv += dc.launchFov;
+    if (e.type === 'diveLand') { this.dipVel -= dc.landDip; this.punch.pv -= dc.landNod; this.shake = Math.max(this.shake, dc.landShake); }
     if (e.type === 'playerHit') { this.shake = 1; }
     if (e.type === 'shot') {
       const def = this.cfg.weapons[e.weapon];
@@ -115,7 +119,12 @@ export class CameraRig {
     const cam = this.camera;
     this.adsNow = A.ads;
     this.stepPunch(dt);
-    const punch = this.punch.p * Math.PI / 180, punchRoll = this.punch.r * Math.PI / 180;
+    // in a dive's flight the view arcs: up as you rise, down as you come down
+    const dc = c.dive, pd = p.dive;
+    const vy = p.vel ? p.vel.y : 0, up = pc.dive.up;
+    const tiltTo = pd && pd.phase === 'air' ? (vy > 0 ? dc.launchPitch * Math.min(1, vy / up) : dc.fallPitch * Math.min(1, -vy / up)) : 0;
+    this.diveTilt = lerp(this.diveTilt || 0, tiltTo, 1 - Math.exp(-dc.tiltRate * dt));
+    const punch = (this.punch.p + this.diveTilt) * Math.PI / 180, punchRoll = this.punch.r * Math.PI / 180;
     const yaw = look.yaw + A.recoilYaw + A.swayYaw + Math.sin(this.shakeT * 1.3) * sh;
     const pitch = look.pitch + A.recoilPitch + A.swayPitch + Math.sin(this.shakeT) * sh + punch;
     // side bob is along the camera's right vector

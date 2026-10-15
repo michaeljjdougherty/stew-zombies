@@ -121,9 +121,10 @@ export const CONFIG = {
     landSlowdownTime: 0.22,  // brief speed penalty after landing
     landSlowdownMult: 0.6,
 
-    // dolphin dive: sprint, then crouch. You go flat out forward, land on your
-    // belly and slide, then you're crouched
-    dive: { speed: 7.8, up: 3.4, height: 0.7, airEyeHeight: 1.0, proneEyeHeight: 0.5, proneTime: 0.55, slideDecel: 11, cooldown: 0.6 },
+    // dolphin dive: sprint, then crouch. You launch up and out (about 0.7 m up,
+    // 4 m through the air), come down belly first with a thud, skid a short way,
+    // then you're crouched. (A low hop and a long skid read as a slide.)
+    dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6 },
     // falls hurt: landing faster than minImpact m/s (about a 3 m drop) costs perMs
     // health per m/s over it, up to max (PHD Gaylor: nothing)
     fallDamage: { minImpact: 11, perMs: 5.5, max: 80 },
@@ -174,6 +175,9 @@ export const CONFIG = {
     landDip: 0.09,           // meters the view dips on landing
     landDipSpring: 90,
     landDipDamping: 11,
+    // a dolphin dive's camera: nose up as you leave the ground, tipping down
+    // as you fall (degrees), then a hard drop and a nod down when you hit
+    dive: { launchPitch: 5, fallPitch: -10, tiltRate: 10, launchFov: 50, landDip: 6, landNod: 80, landShake: 0.35 },
 
     damageShake: 1.4,        // degrees
   },
