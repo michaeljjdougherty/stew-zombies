@@ -14,7 +14,7 @@ const BASE = 'assets/crust/';
 const sanitize = (s) => String(s || '').replace(/\s/g, '_').replace(/[[\]\.:\/]/g, '');
 
 // The meshes of a loaded model to use: all of them, or the pieces named in `pick`.
-function piecesOf(scene, pick) {
+function piecesOf(scene, pick, exact = false) {
   scene.updateMatrixWorld(true);
   const want = pick ? pick.map(sanitize) : null;
   const out = [];
@@ -22,7 +22,7 @@ function piecesOf(scene, pick) {
     if (!o.isMesh) return;
     if (want) {
       const names = [o.name, o.parent && o.parent.name].map(sanitize);
-      if (!want.some((w) => names.some((n) => n === w || n.startsWith(w)))) return;
+      if (!want.some((w) => names.some((n) => n === w || (!exact && n.startsWith(w))))) return;   // (exact: 'Object_12' isn't 'Object_120')
     }
     out.push(o);
   });
@@ -76,7 +76,9 @@ export function buildModels(out, group, map) {
   for (const G of groups.values()) {
     loadModel(BASE + G.a + '.glb').then((gltf) => {
       if (!gltf) return;
-      const meshes = piecesOf(gltf.scene, G.pick);
+      // (dropMat: leave out the pieces made of these materials, e.g. a tree's own square of grass)
+      const drop = G.list[0].dropMat ? new RegExp(G.list[0].dropMat) : null;
+      const meshes = piecesOf(gltf.scene, G.pick, !!G.list[0].exact).filter((m) => !drop || ![].concat(m.material).some((mm) => mm && drop.test(mm.name || '')));
       if (!meshes.length) { console.warn('[crust] no pieces', G.a, G.pick); return; }
       const b = boundsOf(meshes);
       const size = b.getSize(new THREE.Vector3());
@@ -106,7 +108,7 @@ export function buildModels(out, group, map) {
           }
           if (s.tag) (out.tagged || (out.tagged = {}))[s.tag] = holder;
           // a critter that runs along a path (round a room, up and down a trench)
-          if (s.path) (out.movers || (out.movers = [])).push({ holder, path: s.path, speed: s.speed || 1, d: (s.phase || 0) * 3, pingpong: !!s.pingpong, y: s.y ?? 0, turn: s.turn ?? -Math.PI / 2 });
+          if (s.path) (out.movers || (out.movers = [])).push({ holder, path: s.path, speed: s.speed || 1, d: (s.phase || 0) * 3, pingpong: !!s.pingpong, y: s.y ?? 0, turn: s.turn ?? (s.a === 'rat' ? Math.PI / 2 : -Math.PI / 2) });   // (the rat's model faces the other way: it ran backwards)
         }
         return;
       }

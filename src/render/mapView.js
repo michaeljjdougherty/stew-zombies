@@ -1285,8 +1285,9 @@ export class MapView {
             rod.position.set(x, 0.6, 0); grp.add(rod);
           }
           if (!f.lit && Math.random() < 0.15) { grp.rotation.z = 0.25; grp.position.y -= 0.2; }
-        } else if (f.kind === 'torch') {
-          // (a torch's model is drawn with the map's models: just its fire's light here)
+        } else if (f.kind === 'torch' || f.kind === 'glow') {
+          // (a torch's model is drawn with the map's models: just its fire's light here; a glow is
+          // only a light: the Trench Front's, with no posts standing in the trenches)
         } else if (f.kind === 'lamp') {
           // outdoor lamp post: the light hangs off an arm
           const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, f.y + 0.3, 8), this.mats.rustMetal);
@@ -1302,7 +1303,7 @@ export class MapView {
         this.group.add(grp);
         // every fixture gets a light; the ones not on the emergency circuit stay
         // dark until the power is on
-        const lamp = f.kind === 'lamp';
+        const lamp = f.kind === 'lamp' || f.kind === 'glow';
         const fx = { data: f, orig: f, grp, tubeMat, beam: null, on: !!f.lit, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, onAt: null, lamp };
         const tall = f.y > 6;
         if (f.kind === 'torch') {

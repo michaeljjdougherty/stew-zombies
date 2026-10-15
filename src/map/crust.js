@@ -32,6 +32,15 @@ import { CONFIG } from '../config.js';
 const T = 0.5;
 const R = (seed) => { let x = seed >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 
+// Shipping containers (assets/crust/containers.glb): each set is one container's body and its two
+// doors; sets placed together stand side by side, 3.2 m apart. Laid square to the world (yaw 0 or
+// a quarter turn) so the box you bump into is the container you see.
+const CONTAINERS = [['Object_10', 'Object_12', 'Object_14'], ['Object_16', 'Object_18', 'Object_20'], ['Object_22', 'Object_24', 'Object_26'], ['Object_34', 'Object_36', 'Object_38'], ['Object_58', 'Object_60', 'Object_62'], ['Object_64', 'Object_66', 'Object_68']];
+function containers(I, x, y, z, turned, sets) {
+  const along = 13.2 / 2, across = ((sets.length - 1) * 3.2 + 2.5) / 2;
+  I.model({ a: 'containers', pick: sets.flatMap((k) => CONTAINERS[k]), exact: true, x, y, z, yaw: turned ? Math.PI / 2 : 0 }, { collide: [x, z, turned ? across : along, turned ? along : across, 2.9] });
+}
+
 // --- the builder: one island at a time ------------------------------------------------------
 class Isle {
   constructor(id, name, element, bounds) {
@@ -196,8 +205,8 @@ function hub() {
   I.room({ id: 'depot', kind: 'tin', rect: [17, -26, 26, -19], y: RIMH, height: 4.2, name: 'Supply Depot', zone: 'depot', fixtures: [{ x: 21.5, y: RIMH + 3.9, z: -22.5, lit: true, flicker: 0.3, kind: 'hanging' }] });
   I.links.push({ a: 'depot', out: 's', t: 0.5, type: 'door', id: 'door_hub_depot', name: 'Supply Depot' });
   I.links.push({ a: 'depot', out: 'w', t: 0.5, type: 'gap', width: 2 });
-  I.wallBuys.push({ weapon: 'PM64', room: 'depot', side: 'n', t: 0.5 }, { weapon: 'Peacekeeper', room: 'depot', side: 's', t: 0.5 });
-  I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2 });
+  // (no wall guns in the depot: the Anvil's are the two in the pit; the Peacekeeper's at the Research Base)
+  I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2, start: true });   // (it starts up in the depot, not down where you spawn)
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
   I.prop('anvil', -3.3, -3.3, 3.3, 3.3, 6.5, { blank: true });
   // a ring of rune stones round it
@@ -214,9 +223,9 @@ function hub() {
   }
   I.later.push(() => {
     I.wallBuys.push({ weapon: 'M15', zone: PIT, room: PIT, ...rockFace(t, -4, -8, 0, -1, F) });
-    I.wallBuys.push({ weapon: 'MP41', zone: PIT, room: PIT, ...rockFace(t, 4, 8, 0, 1, F) });
+    I.wallBuys.push({ weapon: 'Olympus', zone: PIT, room: PIT, ...rockFace(t, 4, 8, 0, 1, F) });
   });
-  I.boxSpots.push({ id: 'box_pit', room: PIT, x: -11, z: 7.5, yaw: Math.PI * 0.75, start: true });
+  I.boxSpots.push({ id: 'box_pit', room: PIT, x: -11, z: 7.5, yaw: Math.PI * 0.75 });
   I.prop('wreck', 9, 9.5, 13, 12.5, 1.4);
   I.prop('barrel', 10.6, -11.4, 11.3, -10.7, 0.95, { fire: true });
   I.prop('crate', -12.6, -9, -11.4, -7.8, 1.1);
@@ -365,18 +374,21 @@ function ship() {
   }
   I.add(deck('plank_roofs', [-37.5, -147, -34.5, -143], G + 3.5, { zone: VIL, look: 'planks' }), { connect: 'we' });
 
-  // the lighthouse on its mesa: the lamp house up on piles, a scaffold gallery round it.
-  // Solid where it looks solid: the piles under the deck, the house walls and
-  // everything they ring (bands of the model, tools/crust/solids.mjs)
+  // the lighthouse on its mesa: the keeper's house up on iron piles, a scaffold gallery
+  // round its porch, the lantern on top. Built (src/render/crustLighthouse.js), not a
+  // downloaded model, and every solid bit of it has its box here: the piles, the house,
+  // the tower.
   const PORCH = MESA + 5.75;
-  t.paint(shape.circle(LX, LZ, 8.2), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });   // (under the house: piles and rubble)
-  I.model({
-    a: 'lighthouse', x: LX, y: MESA, z: LZ, yaw: 0.3, cutBelow: 0.45, solid: 'lighthouse',
-    bands: [
-      { y0: MESA + 0.6, y1: MESA + 5.2, from: MESA - 0.3, to: PORCH - 0.35 },
-      { y0: MESA + 7.1, y1: MESA + 9.0, from: PORCH, to: MESA + 10.5, fill: true },
-    ],
-  });
+  t.paint(shape.circle(LX, LZ, 8.2), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });   // (under the house: nobody rises among the piles)
+  {
+    const HOUSE = 8.4, piles = [];
+    for (const px of [-6.8, 0, 6.8]) for (const pz of [-6.8, 0, 6.8]) piles.push([px, pz]);
+    const tower = { base: PORCH + 3.4, gallery: PORCH + 6.2, glassTop: PORCH + 9.6 };
+    I.decor.push({ kind: 'screwpile', x: LX, z: LZ, mesa: MESA, porch: PORCH, house: HOUSE, porchW: 15.2, piles, tower });
+    for (const [px, pz] of piles) I.prop('model', LX + px - 0.3, LZ + pz - 0.3, LX + px + 0.3, LZ + pz + 0.3, PORCH - MESA, { y: MESA - 0.3 });
+    I.prop('model', LX - HOUSE / 2, LZ - HOUSE / 2, LX + HOUSE / 2, LZ + HOUSE / 2, 5.3, { y: PORCH });
+    I.prop('model', LX - 1.6, LZ - 1.6, LX + 1.6, LZ + 1.6, tower.glassTop + 1.4 - PORCH, { y: PORCH });
+  }
   for (const d of deckHole('gallery', [LX - 9.4, LZ - 9.4, LX + 9.4, LZ + 9.4], [LX - 7.6, LZ - 7.6, LX + 7.6, LZ + 7.6], PORCH, { zone: LH, rails: 'nswe', look: 'scaffold' })) I.add(d);
   // (the model's own porch fills the middle)
   I.add(deck('gallery_in', [LX - 7.6, LZ - 7.6, LX + 7.6, LZ + 7.6], PORCH, { zone: LH, look: 'hidden' }));
@@ -395,30 +407,32 @@ function ship() {
   // to the quarterdeck (it slopes aft to stern, so three steps of it); the
   // stern castle and the forecastle are solid, and so is the hull below.
   const SX = 15, SZ = -160, SY = BAS + 0.3;            // where the model sits
-  const MAIN = SY + 3.0, Q1 = 6.55, Q2 = 6.2, Q3 = 5.85;
+  const MAIN = SY + 3.0, Q1 = 6.3, Q2 = 6.05, Q3 = 5.6;   // (the model's own deck heights: tools/crust/profile.mjs galleon x=7)
   const ladders = [[12, -162.3, 16.2, -160.9], [12, -159.1, 16.2, -157.7]];
   const gangR = [18.5, -156.5, 20.5, -150];
   I.model({
     a: 'pirateship', x: SX, y: SY - 2.4, z: SZ, yaw: Math.PI / 2, look: { glow: '#3a3026' }, solid: 'galleon',
     bands: [
       // the hull, from the harbor bed up to the waist
-      { y0: 0.5, y1: 3.3, from: -1, to: MAIN - 0.25, skip: [[18.2, -157.5, 20.8, -149]] },
+      { y0: 0.5, y1: 3.3, from: -1, to: MAIN - 0.25, skip: [[18.2, -157.5, 20.8, -149]], fill: true },   // (filled: no getting in under the decks)
       // round the waist: bulwarks, the masts, the hatch grating, the quarterdeck's front
       { y0: MAIN + 0.35, y1: MAIN + 1.4, from: MAIN - 0.25, to: MAIN + 2.4, rect: [13, -167, 21.4, -153], skip: [...ladders, [18.2, -157.6, 20.8, -155]] },
       // on the quarterdeck: its rails, the mizzen
-      { y0: Q1 + 0.35, y1: Q1 + 1.3, from: Q1, to: Q1 + 2.2, rect: [2.5, -167, 5.5, -153] },
-      { y0: Q2 + 0.35, y1: Q2 + 1.3, from: Q2, to: Q2 + 2.2, rect: [5.5, -167, 8.5, -153] },
-      { y0: Q3 + 0.35, y1: Q3 + 1.3, from: Q3, to: Q3 + 2.2, rect: [8.5, -167, 12, -153] },
-      // the stern castle and the forecastle, solid
-      { y0: 3.9, y1: 10, from: 3, to: 10, rect: [-8, -167, 2.5, -153] },
-      { y0: 3.9, y1: 7.5, from: 3, to: 7.2, rect: [21.4, -167, 38, -153] },
+      // (from 0.6 up: the next step of the quarterdeck is up to 0.45 higher, and mustn't count as a rail)
+      { y0: Q1 + 0.6, y1: Q1 + 1.3, from: Q1, to: Q1 + 2.2, rect: [2.5, -167, 5.5, -153] },
+      { y0: Q2 + 0.6, y1: Q2 + 1.3, from: Q2, to: Q2 + 2.2, rect: [5.5, -167, 8.5, -153] },
+      { y0: Q3 + 0.6, y1: Q3 + 1.3, from: Q3, to: Q3 + 2.2, rect: [8.5, -167, 12, -153] },
+      // the stern castle and the forecastle, solid right down to the ground (no running in under their overhang)
+      { y0: 3.9, y1: 10, from: -1, to: 10, rect: [-8, -167, 2.5, -153], fill: true },
+      { y0: 3.9, y1: 7.5, from: -1, to: 7.2, rect: [21.4, -167, 38, -153], fill: true },
     ],
   });
   for (const d of deckCut('waist', [13.8, -163.4, 21, -156.6], ladders.map((r) => [13.8, r[1], r[2], r[3]]), MAIN, { zone: SHIPZ, look: 'hidden' })) I.add(d, { connect: 'nswe' });
-  I.add(deck('quarter_1', [2.5, -162.7, 5.5, -157.3], Q1, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
-  I.add(deck('quarter_2', [5.5, -162.7, 8.5, -157.3], Q2, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
-  I.add(deck('quarter_3', [8.5, -162.7, 12, -157.3], Q3, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
-  I.joins.push({ a: 'quarter_3', b: 'quarter_2', x: 8.5, z: SZ, axis: 'x', width: 5.4, dirAB: -1 }, { a: 'quarter_2', b: 'quarter_1', x: 5.5, z: SZ, axis: 'x', width: 5.4, dirAB: -1 });
+  // (the full width of the model's quarterdeck, rail to rail: narrower, you fell off its edges into the hull)
+  I.add(deck('quarter_1', [2.5, -164.3, 5.5, -156.2], Q1, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.add(deck('quarter_2', [5.5, -164.3, 8.5, -156.2], Q2, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.add(deck('quarter_3', [8.5, -164.3, 12, -156.2], Q3, { zone: SHIPZ, look: 'hidden' }), { connect: 'ns' });
+  I.joins.push({ a: 'quarter_3', b: 'quarter_2', x: 8.5, z: SZ, axis: 'x', width: 7.6, dirAB: -1 }, { a: 'quarter_2', b: 'quarter_1', x: 5.5, z: SZ, axis: 'x', width: 7.6, dirAB: -1 });
   ladders.forEach((r, i) => {
     const f = I.add(flight('qd_stairs_' + i, r, MAIN, Q3, 'w', { zone: SHIPZ, look: 'planks' }));
     I.portalSpecs.push({ flight: f, belowAt: [16.6, (r[1] + r[3]) / 2, MAIN], aboveId: 'quarter_3' });
@@ -442,14 +456,12 @@ function ship() {
   I.decor.push({ kind: 'capsized', rect: [37, -179, 48, -147], keelY: KY, hole: [40.5, -165, 44.5, -161] });
 
   // spilled cargo, rocks, wind-bent trees
-  for (const [x, z, yaw, rows] of [[-12, -176, 0.25, [0, 1]], [32, -130, -0.4, [2]], [-4, -197, 1.2, [3, 4]], [28, -186, 0.9, [5]]]) {
-    I.model({ a: 'containers', pick: rows.map((r) => ['Object_0', 'Object_12', 'Object_18', 'Object_21', 'Object_24', 'Object_38'][r]), x, y: BAS, z, yaw }, { collide: [x, z, 3.4, 3.4, 2.9] });
-  }
+  for (const [x, z, turned, sets] of [[-12, -176, false, [0, 1]], [32, -130, false, [2]], [-4, -197, true, [4, 5]], [28, -186, true, [3]]]) containers(I, x, BAS, z, turned, sets);
   // (no container at the foot of the pier: its parts only ever drew as one dark panel, inside an
   // invisible 8 x 12 m wall with a hole in the ground under it)
   const rr = R(17);
   for (const [x, z] of [[-48, -142], [-26, -128], [-50, -186], [34, -120], [50, -150], [-14, -200], [24, -198], [-46, -126]]) {
-    I.model({ a: 'maple', x, y: G - 0.2, z, yaw: rr() * 6, fit: { h: 7 + rr() * 3 }, rz: 0.12, look: { tint: '#9a8a6a' } });
+    I.model({ a: 'maple', x, y: G - 0.2, z, yaw: rr() * 6, fit: { h: 7 + rr() * 3 }, rz: 0.12, look: { tint: '#9a8a6a' }, dropMat: '^(grass|Groundcover)' });
   }
   for (const [x, z, k] of [[-30, -200, 'Big_2'], [5, -205, 'Big_3'], [50, -134, 'Mid_2'], [-54, -158, 'BIG_1'], [-6, -112, 'Mid_3'], [40, -200, 'Big_5']]) I.model({ a: 'stones', pick: [k], x, y: G - 0.3, z, yaw: rr() * 6, scale: 1.3 });
   I.prop('rack', -27, -138, -21, -137.4, 1.9); I.prop('rack', -27, -146, -21, -145.4, 1.9);
@@ -525,7 +537,7 @@ function research() {
     { a: 'mess', out: 'w', type: 'gap', width: 1.6, height: 2.4, t: 0.7 },
   );
   I.windows.push({ room: 'mainlab', side: 'n', t: 0.25 }, { room: 'mess', side: 's', t: 0.4 }, { room: 'mainlab', side: 'w', t: 0.5 });
-  I.wallBuys.push({ weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'MP6K', room: 'genhall', side: 'e', t: 0.5 }, { weapon: 'PM64', room: 'mess', side: 'w', t: 0.3 }, { weapon: 'AK-75u', room: 'garage', side: 'e', t: 0.5 });
+  I.wallBuys.push({ weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'MP6K', room: 'genhall', side: 'e', t: 0.5 }, { weapon: 'PM64', room: 'mess', side: 'w', t: 0.3 }, { weapon: 'AK-75u', room: 'garage', side: 'e', t: 0.5 }, { weapon: 'Peacekeeper', room: 'garage', side: 's', t: 0.2 });
   I.boxSpots.push({ id: 'box_garage', room: 'garage', x: 165.4, z: 10.5, yaw: -Math.PI / 2 }, { id: 'box_gen', room: 'genhall', x: 157, z: -19.4, yaw: 0 });
 
   // the radio mast: spiral stairs up to two platforms
@@ -566,9 +578,7 @@ function research() {
   for (const [x, z] of coils) I.model({ a: 'tesla', x, y: G, z, yaw: x * 0.3, fit: { h: 8.5 }, look: { glow: '#3a3248' } }, { collide: [x, z, 1.6, 1.6, 8] });
   I.decor.push({ kind: 'storm', coils: coils.map(([x, z]) => [x, G + 8.3, z]), mast: [184, 34, -28] });
   // supply containers stacked round the yards
-  for (const [x, z, yaw, rows] of [[176, -42, 0, [0, 1, 2]], [126, 30, 1.57, [3]], [194, -2, 1.57, [4]], [136, -38, 0.1, [5]]]) {
-    I.model({ a: 'containers', pick: rows.map((r) => ['Object_0', 'Object_12', 'Object_18', 'Object_21', 'Object_24', 'Object_38'][r]), x, y: G, z, yaw }, { collide: [x, z, 3.4, 3.4, 2.9] });
-  }
+  for (const [x, z, turned, sets] of [[176, -42, false, [0, 1, 2]], [126, 30, true, [3]], [194, -2, true, [4]], [136, -38, false, [5]]]) containers(I, x, G, z, turned, sets);
   for (const [x, z] of [[124, 18], [168, -46], [146, 44], [198, 10]]) I.model({ a: 'barrel', x, y: G, z, yaw: x, fit: { h: 1.1 } }, { collide: [x, z, 0.5, 0.5, 1.1] });
   I.prop('shrine', 175, 39, 178, 42, 3.6, { element: 'lightning' });
 
@@ -716,7 +726,7 @@ function trench() {
   I.prop('shrine', 9, 135, 12, 138, 3.6, { element: 'fire' });
   I.craters = [[-18, 143, 3], [-30, 120, 2.4], [-8, 162, 2], [36, 158, 2.6], [18, 118, 2.2], [-40, 165, 1.8], [44, 140, 2.4]].map(([x, z, r]) => ({ x, z, r, y: G }));
   I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 120, { flicker: 0.15 }); I.lamp(YARD, -11, 137, { flicker: 0.3 }); I.lamp(YARD, 11, 155, { flicker: 0.2 });
-  for (const [x, z, f] of [[-30, 129, 0.3], [10, 129, 0.2], [-24, 160, 0.3], [24, 145, 0.2], [-32, 173, 0.4], [0, 173, 0.2], [32, 173, 0.3], [-12, 167, 0.25], [16, 167, 0.3]]) I.lamp(TR, x, z, { h: 2.1, flicker: f });
+  for (const [x, z, f] of [[-30, 129, 0.3], [10, 129, 0.2], [-24, 160, 0.3], [24, 145, 0.2], [-32, 173, 0.4], [0, 173, 0.2], [32, 173, 0.3], [-12, 167, 0.25], [16, 167, 0.3]]) I.lamp(TR, x, z, { h: 2.1, flicker: f, kind: 'glow' });   // (no posts: you walked through them)
   // the molten crater out in no-man's-land (something sleeps in it), a lava pool,
   // planks and log revetments round the trenches, rats running along them
   I.model({ a: 'lavafield', x: 40, y: G - 0.35, z: 118, yaw: 0.6, fit: { w: 10 } });
@@ -934,9 +944,10 @@ function caves() {
   // (only falling ice cracks it: the big icicle clusters under the cavern's and the lake's roofs)
   I.titan = { id: 'caves', home: { x: -164.5, y: SUMH, z: -36.5, yaw: -2.4 }, wake: { x: -164.5, y: SUMH, z: -36.5, r: 4.2 },
     clusters: [[-157, 1, 11.2], [-151, -4, 11.2], [-145, 1, 11.2], [-151, 5, 11.2], [-185, 5, 9.2], [-179, 2, 9.2]].map(([x, z, y]) => ({ x, y, z })) };
-  I.model({ a: 'icewall', pick: ['Object_0', 'Object_4', 'Object_7'], x: -112, y: 0.4, z: -21, yaw: 1.4, scale: 0.9 });
-  I.model({ a: 'icewall', pick: ['Object_2', 'Object_5', 'Object_9'], x: -113, y: 0.4, z: 21, yaw: -1.5, scale: 0.9 });
-  for (const [x, z, yaw] of [[-150, 3, 0.3], [-155, 4.5, 2.1], [-178, 8, 1.1]]) I.model({ a: 'iceformations', pick: ['Object_3'], x, y: F - 0.3, z, yaw, scale: 0.7 }, { collide: [x, z, 1.3, 1.3, 1.2] });
+  // (the whole scan: one of its layers on its own came out in shreds)
+  I.model({ a: 'icewall', x: -112, y: 0.4, z: -21, yaw: 1.4, scale: 0.9 });
+  I.model({ a: 'icewall', x: -113, y: 0.4, z: 21, yaw: -1.5, scale: 0.9 });
+  for (const [x, z, yaw] of [[-150, 3, 0.3], [-155, 4.5, 2.1], [-178, 8, 1.1]]) I.model({ a: 'iceformations', x, y: F - 0.3, z, yaw, scale: 0.7 }, { collide: [x, z, 1.9, 1.9, 1.2] });
   I.later.push(() => {
     const r = R(23);
     for (let iz = 0; iz < t.nz; iz += 2) for (let ix = 0; ix < t.nx; ix += 2) {
@@ -946,7 +957,7 @@ function caves() {
     }
   });
   const rt = R(5);
-  for (const [x, z] of [[-110, -14], [-117, 12], [-108, 8], [-180, -24], [-160, -26], [-186, -36], [-168, 46], [-176, 38]]) {
+  for (const [x, z] of [[-110, -14], [-117, 12], [-180, -24], [-160, -26], [-186, -36], [-168, 46], [-176, 38]]) {
     I.model({ a: 'trees', pick: [rt() > 0.4 ? 'snowtree' : 'snowbush'], x, y: t.heightAt(x, z) - 0.1, z, yaw: rt() * 6, fit: { h: 4 + rt() * 4 } });
   }
   for (const [x, z] of [[-178, -38], [-163, -38], [-178, -27], [-163, -27]]) I.prop('standing', x - 0.7, z - 0.7, x + 0.7, z + 0.7, 4.2);
@@ -1231,7 +1242,8 @@ export const CRUST = {
   openField: true,     // no zones to open: zombies come for you wherever you can be reached
   space: true,         // the islands float in space: step off an edge and you're gone
   islands: ISLANDS,
-  brightness: CONFIG.crust.brightness,   // (exposure x: src/render/renderer.js)
+  brightness: CONFIG.crust.brightness,
+  boxBeam: CONFIG.crust.boxBeam,       // the Mystery Box's beam: seen in the sky from anywhere   // (exposure x: src/render/renderer.js)
   pa: false,           // nobody on the speakers yet (The Shntitz comes later)
   fog: { color: '#1c2534', density: 0.006 },
   farPlane: 320,

@@ -8,6 +8,8 @@
 // the toppled ice pillars, the frozen waterfall, the observatory's dome).
 // =============================================================================
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { buildLighthouse } from './crustLighthouse.js';
 import { BoxBatch } from './geometry.js';
 import { K } from '../map/terrain.js';
 import * as T from './textures.js';
@@ -584,6 +586,7 @@ export function buildDecor(out, group, map, mats, mv) {
   for (const d of map.decor) {
     switch (d.kind) {
       case 'beacon': out.beams.push(beacon(group, d, mats, mv)); break;
+      case 'screwpile': buildLighthouse(group, d, mats); break;
       case 'storm': stormGlows(out, group, d); break;
       case 'wire': wireLine(out, group, d); break;
       case 'capsized': capsized(group, d, mats); break;
@@ -683,8 +686,22 @@ function mast(out, group, d) {
   const corner = (k, y) => { const s = base + (topW - base) * (y / h); return [(k & 1 ? 1 : -1) * s, y, (k & 2 ? 1 : -1) * s]; };
   for (let k = 0; k < 4; k++) lines.push(...corner(k, 0), ...corner(k, h));
   for (let y = 0; y < h; y += 2.5) for (const [k1, k2] of [[0, 1], [1, 3], [3, 2], [2, 0]]) { lines.push(...corner(k1, y), ...corner(k2, y + 2.5)); lines.push(...corner(k1, y + 2.5), ...corner(k2, y + 2.5)); }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-  g.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#8a2a22' })));
+  // (real steel: the legs thick, the bracing thinner, not one-pixel lines)
+  const geos = [];
+  const up = new THREE.Vector3(0, 1, 0), A = new THREE.Vector3(), B = new THREE.Vector3();
+  for (let i = 0; i < lines.length; i += 6) {
+    A.set(lines[i], lines[i + 1], lines[i + 2]); B.set(lines[i + 3], lines[i + 4], lines[i + 5]);
+    const len = A.distanceTo(B);
+    if (len < 0.01) continue;
+    const leg = i < 4 * 6;
+    const r = leg ? 0.16 * (1 - (A.y + B.y) / (4 * h)) + 0.07 : 0.06;
+    const c = new THREE.CylinderGeometry(r, r, len, 6, 1, true);
+    c.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, B.clone().sub(A).normalize()));
+    c.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2);
+    geos.push(c.toNonIndexed());
+  }
+  const steel = new THREE.MeshStandardMaterial({ color: '#9a2e24', roughness: 0.6, metalness: 0.5, emissive: new THREE.Color('#2a0806'), side: THREE.DoubleSide });
+  g.add(new THREE.Mesh(mergeGeometries(geos), steel));
   const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.softDotTexture('rgba(255,80,60,1)', 'rgba(255,20,10,0)'), color: new THREE.Color(3, 0.4, 0.3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   lamp.scale.setScalar(2.4); lamp.position.y = h + 0.5; g.add(lamp);
   if (out.stackHeads) out.stackHeads.push({ lamp, phase: 0.5 });

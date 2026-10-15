@@ -1237,6 +1237,7 @@ export const CONFIG = {
     thunderEvery: [7, 16],   // s between distant thunderclaps
     artilleryEvery: [3, 9],  // s between far-off shells landing
     brightness: 1.35,        // exposure x on this map (it read too dark)
+    boxBeam: { height: 220, width: 3.2, opacity: 0.5 },   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
     // the guns over the Trench Front's open ground
     shelling: {

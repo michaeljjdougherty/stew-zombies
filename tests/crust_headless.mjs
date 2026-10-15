@@ -164,7 +164,7 @@ chase('hub: down from the rim into the pit (jumps)', { x: 26, z: 4, y: 9 }, { x:
 chase('hub: down from the rim into the pit (a walker goes round by the ramps)', { x: 26, z: 4, y: 9 }, { x: -6, z: 10, y: 0 }, 'walker');
 chase('hub: out along the catwalk', { x: 12, z: 0 }, { x: 0, z: 9, y: 4.5 });
 chase('ship: up the mesa road and the scaffold stairs to the lighthouse gallery', { x: -20, z: -140, y: 0.8 }, { x: -44.5, z: -188, y: 15.15 });
-chase('ship: up the gangway and the stairs to the galleon\'s quarterdeck', { x: -6, z: -118, y: 0.8 }, { x: 4, z: -160, y: 6.55 });
+chase('ship: up the gangway and the stairs to the galleon\'s quarterdeck', { x: -6, z: -118, y: 0.8 }, { x: 4, z: -160, y: 6.3 });
 chase('ship: onto the capsized hull up the snow drift', { x: 20, z: -130, y: 0.8 }, { x: 42.5, z: -170, y: 6.3 });
 chase('ship: down through the hole into the capsized hull', { x: 42.5, z: -150, y: 6.3 }, { x: 42.5, z: -170, y: 0.8 });
 chase('ship: onto the shed roofs up the pack ice', { x: -20, z: -125, y: 0.8 }, { x: -36, z: -152, y: 4.3 });
@@ -181,7 +181,7 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
 // --- you stand on things at the right height
 {
   const { me, put, step } = game();
-  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -44.5, -188, 15.15], ['the galleon\'s main deck', 20, -158, 3.7], ['the galleon\'s quarterdeck', 4, -160, 6.55], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0]];
+  const spots = [['the rim', 0, -26, 9], ['the west terrace', -19, 0, 4.5], ['the lighthouse gallery', -44.5, -188, 15.15], ['the galleon\'s main deck', 20, -158, 3.7], ['the galleon\'s quarterdeck', 4, -160, 6.3], ['the mast\'s top platform', 184, -32.5, 17], ['the fort roof', -5, 145, 9], ['the Wind Summit', -172, -28, 10], ['a trench', 14, 174.5, 0]];
   for (const [name, x, z, y] of spots) { put(x, z, y + 0.4); step({}, 60); check(Math.abs(me.pos.y - y) < 0.15, `standing on ${name} (y ${me.pos.y.toFixed(2)})`); }
 }
 
@@ -206,9 +206,10 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   put(8, -150, 0.4); walk(8, -170, 4);
   check(me.pos.z > -156, `you can't walk into the galleon's hull from the harbor (${me.pos.z.toFixed(1)})`);
   put(-44.5, -188, 15.15); walk(-36, -188, 6); step({}, 30);
-  check(Math.abs(me.pos.y - 15.15) < 0.3 && Math.hypot(me.pos.x + 36, me.pos.z + 188) > 5.5, `the lighthouse's walls stop you on the gallery (${Math.hypot(me.pos.x + 36, me.pos.z + 188).toFixed(1)} m out)`);
-  put(-25, -186, 9.4); walk(-36, -186, 6);
-  check(Math.hypot(me.pos.x + 36, me.pos.z + 186) > 6, `nor can you walk in under the house through its piles (${Math.hypot(me.pos.x + 36, me.pos.z + 186).toFixed(1)} m out)`);
+  check(Math.abs(me.pos.y - 15.15) < 0.3 && Math.hypot(me.pos.x + 36, me.pos.z + 188) > 4.3, `the lighthouse's walls stop you on the gallery (${Math.hypot(me.pos.x + 36, me.pos.z + 188).toFixed(1)} m out)`);
+  // under the porch: the iron piles are solid (walk straight at one)
+  put(-25, -188, 9.4); walk(-36, -188, 6);
+  check(Math.abs(me.pos.x - (-36 + 6.8)) > 0.55 && me.pos.x > -36 + 6.8, `nor can you walk through the lighthouse's piles (stopped ${(me.pos.x + 36 - 6.8).toFixed(2)} m from one)`);
 }
 
 // --- the zipline: grab it at the lighthouse gallery, shoot on the way down, land on the galleon's quarterdeck
@@ -225,7 +226,7 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   check(me.loadout.slots[me.loadout.current].clip < clip0, '  and shoot while you ride');
   for (let i = 0; i < 60 * 8 && me.ride; i++) step({}, 1);
   step({}, 60);
-  check(!me.ride && Math.abs(me.pos.y - 6.55) < 0.2 && Math.hypot(me.pos.x - 4, me.pos.z + 160) < 3, `  off at the far end, on the galleon's quarterdeck (y ${me.pos.y.toFixed(2)})`);
+  check(!me.ride && Math.abs(me.pos.y - 6.3) < 0.2 && Math.hypot(me.pos.x - 4, me.pos.z + 160) < 3, `  off at the far end, on the galleon's quarterdeck (y ${me.pos.y.toFixed(2)})`);
   // let go half way: jump
   put(R.pts[0][0] - 0.6, R.pts[0][2], 15.15);
   step({ use: true, usePressed: true, yaw: me.yaw });
@@ -250,9 +251,9 @@ check(!CRUST.rides.some((r) => r.id === 'slide_hub'), 'no ice slide in the hub')
   check(me.loadout.slots.some((s) => s.id === 'M15'), 'bought the M15 off the pit wall');
   check(sim.world.wallBuys.length >= 20, `${sim.world.wallBuys.length} guns on the walls round the map`);
   const box = sim.box;
-  me.pos.x = box.stand.x; me.pos.z = box.stand.z; face(box.pos);
+  me.pos.x = box.stand.x; me.pos.z = box.stand.z; me.pos.y = (box.spot.y || 0) + 0.05; face(box.pos);
   step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
-  check(box.phase === 'spinning', 'the Mystery Box spins in the pit (' + box.phase + ')');
+  check(box.phase === 'spinning' && box.spot.id !== 'box_pit', `the Mystery Box spins, up in ${box.spot.id} (not down in the pit where you spawn) (${box.phase})`);
   check(sim.world.boxSpots.length >= 9, `${sim.world.boxSpots.length} places the box can be`);
   check(sim.windows.length >= 6 && sim.windows.every((w) => w.boards === sim.cfg.windows.boards), `${sim.windows.length} boarded windows`);
 }
