@@ -763,10 +763,13 @@ export class Viewmodel {
     // --- a War Hammer's swing: up, then down hard across you, then back
     if (this.hammerT >= 0) {
       this.hammerT += dt;
-      const s = keyPath(this.hammerT, [[0, 0], [0.11, 1], [0.22, -1], [0.38, -1], [0.75, 0]]);
-      if (s > 0) { o.rx += s * 0.55; o.y += s * 0.07; o.z += s * 0.05; o.rz -= s * 0.15; }
+      // (heavy: hauled up and back over the wind-up, a hang at the top, slammed
+      // down as it lands in the sim, held there a moment, then dragged back up)
+      const W = this.cfg.crust.hammers.swing.windup, end = 60 / ((def && def.rpm) || 40) - 0.1;
+      const s = keyPath(this.hammerT, [[0, 0], [W * 0.8, 1], [W, 1.06], [W + 0.08, -1], [W + 0.38, -0.92], [end, 0]]);
+      if (s > 0) { o.rx += s * 0.75; o.y += s * 0.1; o.z += s * 0.09; o.rz -= s * 0.2; o.x += s * 0.03; }
       else { o.rx += s * 1.45; o.y += s * 0.2; o.x += s * 0.12; o.z += s * 0.08; o.rz -= s * 0.45; }
-      if (this.hammerT >= 0.75) this.hammerT = -1;
+      if (this.hammerT >= end) this.hammerT = -1;
     }
 
     // --- place the gun(s)

@@ -411,7 +411,9 @@ export class Effects {
   }
 
   // A lightning bolt from the sky to `pos` (Cheddar strikes).
-  lightning(pos) {
+  // (o.y: the ground it strikes, when it isn't at 0; o.light: how hard it lights things up)
+  lightning(pos, o = {}) {
+    const y0 = o.y ?? 0;
     if (!this.bolts) {
       this.bolts = [];
       for (let i = 0; i < 4; i++) {
@@ -435,7 +437,7 @@ export class Effects {
       let x = pos.x + (Math.random() - 0.5) * 3, z = pos.z + (Math.random() - 0.5) * 3;
       for (let i = 0; i < 24; i++) {
         const t = i / 23;
-        const y = 18 * (1 - t);
+        const y = y0 + 18 * (1 - t);
         if (i === 23) { x = pos.x; z = pos.z; } else { x += (Math.random() - 0.5) * 0.9 + (pos.x - x) * 0.12; z += (Math.random() - 0.5) * 0.9 + (pos.z - z) * 0.12; }
         arr[i * 3] = x + (k ? (Math.random() - 0.5) * 0.15 : 0); arr[i * 3 + 1] = y; arr[i * 3 + 2] = z + (k ? (Math.random() - 0.5) * 0.15 : 0);
       }
@@ -444,14 +446,14 @@ export class Effects {
     });
     b.life = 0.22;
     b.mat.opacity = 1;
-    this.boltLight.position.set(pos.x, 2, pos.z);
+    this.boltLight.position.set(pos.x, y0 + 2, pos.z);
     this.boltLight.color.set(0xfff0c0);
-    this.boltLight.intensity = 400;
+    this.boltLight.intensity = o.light ?? 400;
     this.boltT = 0.25;
-    const p = new THREE.Vector3(pos.x, 0.1, pos.z);
+    const p = new THREE.Vector3(pos.x, y0 + 0.1, pos.z);
     for (let i = 0; i < 30; i++) this.spawnParticle(p, new THREE.Vector3((Math.random() - 0.5) * 8, 1 + Math.random() * 5, (Math.random() - 0.5) * 8), { life: 0.4 + Math.random() * 0.4, size: 0.015, color: [4, 3.4, 1.6], gravity: 10, drag: 1 });
     for (let i = 0; i < 4; i++) this.puff(p.clone().add(new THREE.Vector3((Math.random() - 0.5), 0.2, (Math.random() - 0.5))), { color: 0x5a5040, size: 0.6, grow: 2.5, life: 1.3, alpha: 0.5 });
-    this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(pos.x, 0.005, pos.z), UP, 1.6);
+    this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(pos.x, y0 + 0.005, pos.z), UP, 1.6);
   }
 
   // Fucci Gun hit: a flash of colored plasma, rings of sparks, a scorch.

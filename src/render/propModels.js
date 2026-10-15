@@ -144,10 +144,16 @@ export function perkMachineModel(key, def) {
     for (const ctx of [g, e]) {
       const [x0, y0, x1, y1] = JUG.front.map((v) => v * S);
       ctx.fillStyle = ctx === g ? cream : '#000'; ctx.fillRect(x0 + S, y0 + S, x1 - x0 - 2 * S, y1 - y0 - 2 * S);
+      // (the model's sign is mapped upside down: write it upside down so it reads right way up)
+      ctx.save(); ctx.translate(0, y0 + y1); ctx.scale(1, -1);
       fitText(ctx, words, x0 + 2 * S, y0 + 2 * S, x1 - x0 - 4 * S, y1 - y0 - 4 * S, ctx === g ? ink : def.color);
+      ctx.restore();
       const [sx0, sy0, sx1, sy1] = JUG.side.map((v) => v * S);
       ctx.fillStyle = ctx === g ? cream : '#000'; ctx.fillRect(sx0 + S, sy0 + S, sx1 - sx0 - 2 * S, sy1 - sy0 - 2 * S);
+      // (the side's upside down too)
+      ctx.save(); ctx.translate(0, sy0 + sy1); ctx.scale(1, -1);
       fitText(ctx, words, sx0 + 2 * S, sy0 + 2 * S, sx1 - sx0 - 4 * S, sy1 - sy0 - 4 * S, ctx === g ? ink : def.color);
+      ctx.restore();
       const [lx0, ly0, lx1, ly1] = JUG.logo.map((v) => v * S);
       if (ctx === g) perkSymbol(ctx, (lx0 + lx1) / 2, (ly0 + ly1) / 2, (lx1 - lx0) / 2, d);
       else { ctx.fillStyle = def.color; ctx.beginPath(); ctx.arc((lx0 + lx1) / 2, (ly0 + ly1) / 2, (lx1 - lx0) / 2, 0, 7); ctx.fill(); }

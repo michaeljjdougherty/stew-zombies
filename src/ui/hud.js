@@ -25,7 +25,7 @@ export class HUD {
     this.el = {
       points: $('points'), popups: $('popups'), wname: $('wname'), clip: $('clip'), reserve: $('reserve'),
       ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'),
-      promptsub: $('promptsub'), powerups: $('powerups'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
+      promptsub: $('promptsub'), powerups: $('powerups'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), swing: $('swingbar'), swingFill: $('swingbar') && $('swingbar').firstElementChild, hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
     };
     this.shownPoints = null;
     this.hitT = 0;
@@ -587,6 +587,17 @@ export class HUD {
       const h = window.innerHeight;
       const gap = Math.tan(spread) / Math.tan((camera.fov * Math.PI / 180) / 2) * (h / 2);
       this.el.cross.style.setProperty('--gap', `${Math.max(4, Math.min(80, gap)).toFixed(1)}px`);
+    }
+
+    // a War Hammer: a bar under the crosshair filling back up till you can swing again
+    if (this.el.swing) {
+      const cd = def.hammer && p.alive ? Math.max(0, w.fireCooldown || 0) : 0, gap = w.fireGap || 1;
+      this.swingShow = cd > 0 ? 0.35 : Math.max(0, (this.swingShow || 0) - dt);   // (stays a moment, full, once it's back)
+      this.set('swingHidden', this.el.swing, !(def.hammer && this.swingShow > 0), 'hidden');
+      if (this.swingShow > 0) {
+        this.el.swingFill.style.width = `${Math.round((1 - Math.min(1, cd / gap)) * 100)}%`;
+        this.set('swingReady', this.el.swing, cd > 0 ? '' : 'ready', 'className');
+      }
     }
 
     // hitmarker

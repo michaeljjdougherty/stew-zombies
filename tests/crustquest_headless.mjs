@@ -44,7 +44,9 @@ function game(seed = 3, character = 'kearns') {
 }
 const E = (g) => g.sim.crustEgg;
 const addZ = (g, x, z, hp = 3000) => { const zz = makeZombie(g.sim, { pos: { x, y: F.y, z }, health: hp, state: 'chase' }); zz.speed = 0; g.sim.zombies.push(zz); return zz; };
-const swing = (g) => { g.step({ fire: true, firePressed: true }); g.step({}, 70); };
+// (a swing winds up, lands, and the hammer comes back round: one whole swing)
+const SWING = Math.ceil(60 * 60 / CONFIG.weapons['Fire Hammer'].rpm) + 2;
+const swing = (g) => { g.step({ fire: true, firePressed: true }); g.step({}, SWING); };
 const forgeAll = (g) => {
   for (const id of ['ship', 'research', 'caves', 'trench']) {
     dropCore(g.sim, id, { x: 4, y: F.y, z: 7 });
@@ -266,7 +268,7 @@ const forgeAll = (g) => {
       const a = Math.atan2(g.me.pos.x - Z.pos.x, g.me.pos.z - Z.pos.z);
       g.me.pos.x = Z.pos.x + Math.sin(a) * 3.2; g.me.pos.z = Z.pos.z + Math.cos(a) * 3.2; g.me.pos.y = Z.pos.y + 0.05;
       g.me.yaw = Math.atan2(-(Z.pos.x - g.me.pos.x), -(Z.pos.z - g.me.pos.z));
-      g.step({ fire: true, firePressed: true }); g.step({}, 58);
+      g.step({ fire: true, firePressed: true }); g.step({}, SWING);
     }
   };
   const n0 = g.log.length;

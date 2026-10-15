@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { surface } from './crustSurfaces.js';
+import { CONFIG } from '../config.js';
 
 const R = (s) => { let x = s >>> 0 || 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; };
 
@@ -87,48 +88,43 @@ export function themeMaterials(base) {
 }
 
 
-// The sky out in space: stars all round, a nebula band, no horizon.
+// The sky out in space: a calm one. A soft nebula band and not too many stars,
+// small and sharp (a big, busy star field upscaled over the whole dome was too
+// much to look at). Numbers: CONFIG.crust.sky.
 export function spaceTexture() {
-  const W = 2048, H = 1024, [c, g] = T.makeCanvas(W, H), r = R(7331);
+  const S = CONFIG.crust.sky;
+  const [W, H] = S.size, [c, g] = T.makeCanvas(W, H), r = R(7331), k = W / 2048;
   g.fillStyle = '#020309'; g.fillRect(0, 0, W, H);
   const band = (x) => H * 0.5 + Math.sin(x / W * Math.PI * 2 + 0.6) * H * 0.22;
+  // the nebula: soft glows along a band, and a few big washes of colour
   g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 2200; i++) {
-    const x = r() * W, y = band(x) + (r() - 0.5) * (60 + r() * 220), rad = 10 + r() * 70;
+    const x = r() * W, y = band(x) + (r() - 0.5) * (60 + r() * 220) * k, rad = (10 + r() * 70) * k;
     const col = r() < 0.4 ? [120, 70, 255] : r() < 0.5 ? [255, 90, 160] : r() < 0.5 ? [60, 190, 255] : [255, 200, 140];
     const gr = g.createRadialGradient(x, y, 0, x, y, rad);
-    gr.addColorStop(0, `rgba(${col},${0.04 + r() * 0.05})`); gr.addColorStop(1, `rgba(${col},0)`);
+    gr.addColorStop(0, `rgba(${col},${(0.04 + r() * 0.05) * S.nebula})`); gr.addColorStop(1, `rgba(${col},0)`);
     g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
   }
   for (const [x, y, rad, col] of [[300, 300, 360, '150,60,220'], [1300, 420, 420, '40,150,220'], [1750, 620, 300, '230,70,140'], [820, 700, 280, '60,200,190'], [560, 160, 240, '255,140,60']]) {
-    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
-    gr.addColorStop(0, `rgba(${col},0.2)`); gr.addColorStop(1, `rgba(${col},0)`);
-    g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    const gr = g.createRadialGradient(x * k, y * k, 0, x * k, y * k, rad * k);
+    gr.addColorStop(0, `rgba(${col},${0.2 * S.nebula})`); gr.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = gr; g.fillRect((x - rad) * k, (y - rad) * k, rad * 2 * k, rad * 2 * k);
   }
   g.globalCompositeOperation = 'source-over';
-  for (let i = 0; i < 14000; i++) {
-    const x = r() * W, y = r() < 0.35 ? band(x) + (r() - 0.5) * 200 : r() * H;
-    const b = r(), s = b > 0.995 ? 2.4 : b > 0.96 ? 1.5 : 0.9;
+  // the stars: mostly faint pinpricks, a few brighter ones; a little thicker along the band
+  for (let i = 0; i < S.stars; i++) {
+    const x = r() * W, y = r() < 0.3 ? band(x) + (r() - 0.5) * 200 * k : r() * H;
     const tint = r() < 0.15 ? '200,220,255' : r() < 0.1 ? '255,220,190' : '255,255,255';
-    g.fillStyle = `rgba(${tint},${0.3 + r() * 0.7})`;
-    g.fillRect(x, y, s, s);
-    if (b > 0.997) { g.fillStyle = `rgba(${tint},0.25)`; g.fillRect(x - 3, y + s / 2, 6 + s, 0.8); g.fillRect(x + s / 2, y - 3, 0.8, 6 + s); }
+    g.fillStyle = `rgba(${tint},${S.faint[0] + r() * (S.faint[1] - S.faint[0])})`;
+    g.fillRect(Math.round(x), Math.round(y), 1, 1);
   }
-  const tex = T.toTexture(c, { repeat: false });
-  // the photographed star field underneath it all, once it's loaded
-  const img = new Image();
-  img.onload = () => {
-    const [c2, g2] = T.makeCanvas(W, H);
-    g2.drawImage(img, 0, 0, W, H);
-    g2.globalCompositeOperation = 'lighter';
-    g2.globalAlpha = 0.85;
-    g2.drawImage(c, 0, 0);
-    g.globalCompositeOperation = 'source-over';
-    g.drawImage(c2, 0, 0);
-    tex.needsUpdate = true;
-  };
-  img.src = 'assets/crust/stars.webp';
-  return tex;
+  for (let i = 0; i < S.bright; i++) {
+    const x = r() * W, y = r() * H, tint = r() < 0.2 ? '200,220,255' : r() < 0.15 ? '255,220,190' : '255,255,255';
+    const gr = g.createRadialGradient(x, y, 0, x, y, 2.2);
+    gr.addColorStop(0, `rgba(${tint},${0.75 + r() * 0.25})`); gr.addColorStop(1, `rgba(${tint},0)`);
+    g.fillStyle = gr; g.fillRect(x - 3, y - 3, 6, 6);
+  }
+  return T.toTexture(c, { repeat: false });
 }
 
 // The particles for each island's air: how they look and move.

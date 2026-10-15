@@ -39,6 +39,8 @@ export class CameraRig {
     if (e.type === 'playerDive') this.punch.fv += dc.launchFov;
     if (e.type === 'diveLand') { this.dipVel -= dc.landDip; this.punch.pv -= dc.landNod; this.shake = Math.max(this.shake, dc.landShake); }
     if (e.type === 'playerHit') { this.shake = 1; }
+    // a War Hammer coming down: the weight of it goes through you
+    if (e.type === 'hammerSlam') { const S = this.cfg.crust.hammers.swing; this.punch.pv -= S.nod; this.dipVel -= S.dip; this.shake = Math.max(this.shake, S.shake); }
     if (e.type === 'shot') {
       const def = this.cfg.weapons[e.weapon];
       if (!def) return;

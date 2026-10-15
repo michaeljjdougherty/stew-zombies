@@ -16,6 +16,16 @@ function dead(sim, pad) {
   return isl === 'hub' && !P.on.hub;
 }
 
+// a titan's awake on this pad's island: its launcher's locked down till it's
+// beaten (no flying off mid-fight). Returns the titan, or null.
+function lockedBy(sim, pad) {
+  const E = sim.crustEgg;
+  if (!E || !E.active || !sim.cfg.crust.launch.lockInFight) return null;
+  const T = E.titans[E.active];
+  if (!T || (T.state !== 'waking' && T.state !== 'fight')) return null;
+  return islandAt(sim, pad) === T.id ? T : null;
+}
+
 export class LaunchInteractable {
   constructor(pad, target) {
     this.pad = pad;
@@ -34,13 +44,15 @@ export class LaunchInteractable {
       const r = sim.mapData.relays.find((q) => q.pad === this.pad.id), st = r && sim.crustEgg.power.relays[r.id].state;
       return { text: 'The launcher\'s dead', cost: null, sub: st === 'blown' ? 'Its relay\'s burnt out · pull it from the box beside the pad, take it to Pit' : 'Pit has to fix the relays' };
     }
+    const T = lockedBy(sim, this.pad);
+    if (T) return { text: 'The launcher\'s locked down', cost: null, sub: `${T.name} is awake · no way off till it's down` };
     const wait = (p.launchReady || 0) - sim.time;
     if (wait > 0) return { text: `The launcher's recharging · ${Math.ceil(wait)}s`, cost: null };
     return { text: `Press [F] to launch to ${this.pad.label}`, cost: this.cost(sim) || null };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
-    if (dead(sim, this.pad) || sim.time < (p.launchReady || 0)) { sim.emit('useDenied', { playerId: p.id }); return; }
+    if (dead(sim, this.pad) || lockedBy(sim, this.pad) || sim.time < (p.launchReady || 0)) { sim.emit('useDenied', { playerId: p.id }); return; }
     const c = this.cost(sim);
     if (c) {
       if (p.points < c) { sim.emit('cantAfford', { playerId: p.id, cost: c }); return; }

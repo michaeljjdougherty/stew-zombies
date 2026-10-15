@@ -308,7 +308,7 @@ function elementFx(el, H, dims) {
         rb.visible = rb.userData.k < F.ribbons + (st.power > 1 ? 1 : 0);
         rb.rotation.x = t * F.ribbonSpin * st.power * (rb.userData.k % 2 ? -1 : 1) + rb.userData.k;
       }
-      ribbonMat.opacity = F.ribbonGlow * (0.75 + 0.25 * Math.sin(t * 6));
+      ribbonMat.opacity = F.ribbonGlow * (H.dim ?? 1) * (0.75 + 0.25 * Math.sin(t * 6));
     });
   } else if (el === 'lightning') {
     // arcs: jagged polylines drawn as glowing ribbons turned to face the camera
@@ -352,7 +352,7 @@ function elementFx(el, H, dims) {
           }
           lines.push(L);
         }
-        arcMat.opacity = 0.65 + 0.35 * Math.random();
+        arcMat.opacity = (0.65 + 0.35 * Math.random()) * (H.dim ?? 1);
         H.glowMat.color.copy(st.base).multiplyScalar(0.7 + Math.random() * 0.9);
       }
       // the ribbons face the camera every frame
@@ -482,20 +482,21 @@ function skin(el, H, on) {
     if (K.color) m.color.set(K.color);
     if (K.rough != null) m.roughness = K.rough;
     if (K.metal != null) m.metalness = K.metal;
-    m.emissive.set(K.glow); m.emissiveIntensity = K.power;
+    const d = H.dim ?? 1;
+    m.emissive.set(K.glow); m.emissiveIntensity = K.power * d;
     if (el === 'fire') {
       m.emissiveMap = skinTexture('cracks');
       const [f1, a1, f2, a2] = K.flicker;
-      H.skinTick = (t) => { m.emissiveIntensity = K.power + Math.sin(t * f1) * a1 + Math.sin(t * f2) * a2; };
+      H.skinTick = (t) => { m.emissiveIntensity = (K.power + Math.sin(t * f1) * a1 + Math.sin(t * f2) * a2) * d; };
     } else if (el === 'lightning') {
       m.emissiveMap = skinTexture('veins');
-      H.skinTick = (t) => { m.emissiveIntensity = Math.random() < K.flashOdds ? K.flash : K.power + Math.sin(t * 30) * 0.2; };
+      H.skinTick = (t) => { m.emissiveIntensity = (Math.random() < K.flashOdds ? K.flash : K.power + Math.sin(t * 30) * 0.2) * d; };
     } else if (el === 'wind') {
       const tx = skinTexture('wind'); m.emissiveMap = tx;
       H.skinTick = (t) => { tx.offset.x = -t * K.stream; };
     } else if (el === 'ice') {
       // a shell of clear ice round the head
-      const ice = new THREE.MeshStandardMaterial({ color: '#cfefff', roughness: 0.05, metalness: 0.1, transparent: true, opacity: K.shellOpacity, emissive: new THREE.Color('#7fd8ff'), emissiveIntensity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+      const ice = new THREE.MeshStandardMaterial({ color: '#cfefff', roughness: 0.05, metalness: 0.1, transparent: true, opacity: K.shellOpacity, emissive: new THREE.Color('#7fd8ff'), emissiveIntensity: 0.25 * d, depthWrite: false, side: THREE.DoubleSide });
       const o = H.headMesh;
       o.geometry.computeBoundingBox();
       const c = o.geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -516,7 +517,9 @@ function applyHeat(H) {
 
 export const temperedColor = (el) => CONFIG.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el]].upgrade.color;
 
-export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, tempered = null } = {}) {
+// dim (0..1): everything it gives off turned down (in your own hands, right in
+// front of your eyes, full strength washes the screen out)
+export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, tempered = null, dim = 1 } = {}) {
   const M = mats();
   const col = new THREE.Color(color || HAMMER_COLORS[el] || '#ffffff');
   const glowMat = new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(glow), toneMapped: false });
@@ -562,13 +565,13 @@ export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, temp
   }
   let haloSprite = null;
   if (halo) {
-    haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: M.dot, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+    haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: M.dot, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 * dim }));
     haloSprite.scale.setScalar(0.7); head.add(haloSprite);
   }
   const grip = new THREE.Object3D(); grip.position.z = 0.3; g.add(grip);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
 
-  const H = { el, group: g, head, grip, core, glowMat, halo: haloSprite, color: col, glowBoost: glow, fx: null, tempered: null, heat: 0 };
+  const H = { el, group: g, head, grip, core, glowMat, halo: haloSprite, color: col, glowBoost: glow, fx: null, tempered: null, heat: 0, dim };
   // Forged, it's plain iron; tempered, its element comes out (the iron's own
   // look, the details worked into it, and the element going off round it).
   let fx = null, dims = new THREE.Vector3(0.34, 0.17, 0.17), skinOn = null;
@@ -580,7 +583,10 @@ export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, temp
     deco.visible = on; pommelGlow.visible = on;
     for (const b of bands) b.visible = on && !H.headMesh;
     if (haloSprite) haloSprite.visible = on;
-    if (on && !fx) { fx = elementFx(el, H, dims); head.add(fx.group); H.fx = fx; }
+    if (on && !fx) {
+      fx = elementFx(el, H, dims); head.add(fx.group); H.fx = fx;
+      if (dim < 1) fx.group.traverse((o) => { if (o.material && o.material.transparent) o.material.opacity *= dim; });
+    }
     if (fx) { fx.group.visible = on; if (on) fx.setPower(H.tempered ? LOOK().temperedPower : 1, H.tempered || HAMMER_COLORS[el]); }
     if (H.headMat && skinOn !== on) { skinOn = on; skin(el, H, on); }
     applyHeat(H);

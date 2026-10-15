@@ -148,6 +148,7 @@ export function updatePlayer(sim, p, cmd, dt) {
     else if (Math.abs(mx) > Math.abs(my)) speed *= cfg.strafeMult;
     speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;
   }
+  if (def.hammer && w.heavyT > 0) speed *= sim.cfg.crust.hammers.swing.slowMult;   // (mid-swing with a War Hammer)
   if (p.prone) speed = p.prone.up != null ? 0 : cfg.walkSpeed * PR.speedMult;
   else if (p.crouching) speed *= cfg.crouchSpeedMult;
   speed *= perkMult(sim, p, 'speedMult');

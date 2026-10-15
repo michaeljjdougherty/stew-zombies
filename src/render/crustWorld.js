@@ -1093,15 +1093,6 @@ function buildProps(out, root, world, r, mats, mv0) {
         add(new THREE.CylinderGeometry(0.3, 0.3, 3, 10), mats.iron, cx, h + 1.2, cz);
         break;
       }
-      case 'heliwreck': {
-        const g = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.CapsuleGeometry(1.1, 3.2, 6, 12).rotateZ(Math.PI / 2), mats.olive); body.position.set(0, 1.2, 0); body.rotation.x = 0.25; g.add(body);
-        const boom = new THREE.Mesh(B(4.2, 0.4, 0.4), mats.olive); boom.position.set(-3.6, 1.6, 0.5); boom.rotation.z = 0.12; boom.rotation.y = 0.3; g.add(boom);
-        for (let k = 0; k < 3; k++) { const bl = new THREE.Mesh(B(4.5, 0.05, 0.25), mats.iron); bl.position.set(0.5, 2.6 - k * 0.2, 0); bl.rotation.set((r() - 0.5) * 0.6, k * 2.1, (r() - 0.5) * 0.5); g.add(bl); }
-        const sn = new THREE.Mesh(B(3, 0.1, 1.6), mats.snowCap); sn.position.set(0.3, 2.35, 0); g.add(sn);
-        g.position.set(cx, 0, cz); g.rotation.y = alongX ? 0 : Math.PI / 2; group.add(g);
-        break;
-      }
       case 'radiotower': {
         const g = new THREE.Group();
         const lines = [];

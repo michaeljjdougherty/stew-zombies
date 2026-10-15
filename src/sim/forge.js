@@ -29,6 +29,7 @@ import { HAMMER_ELEMENTS, HAMMER_IDS } from './hammers.js';
 import { startFinale } from './zachBoss.js';
 import { giveRelays, relaysCarriedBy, relaysFixed, hubPowered } from './crustPower.js';
 import { paSay } from './pa.js';
+import { RNG } from '../core/rng.js';
 
 // which titan guards which element
 export const CORE_ELEMENT = { ship: 'wind', research: 'lightning', caves: 'ice', trench: 'fire' };
@@ -45,9 +46,14 @@ export function createForge(sim) {
   // the War Hammer's parts, where they lie
   const parts = {};
   const P = sim.cfg.crust.hammerParts.parts;
+  // (each hidden at one of its island's spots, picked fresh every game; online the
+  // host's pick is the one everyone gets)
+  const rng = new RNG(((sim.seed || 1) * 7919 + 1013) >>> 0);
   for (const h of sim.mapData.hammerParts || []) {
     const d = P[h.island];
-    if (d) parts[d.id] = { state: 'lying', x: h.x, y: h.y, z: h.z, home: { x: h.x, y: h.y, z: h.z }, by: null, island: h.island };
+    if (!d) continue;
+    const at = rng.pick(h.spots);
+    parts[d.id] = { state: 'lying', x: at.x, y: at.y, z: at.z, home: { x: at.x, y: at.y, z: at.z }, by: null, island: h.island };
   }
   return { queue: [], work: null, hammers, lines: [], talkUntil: 0, nudgeAt: 0, intro: false, said: {}, rung: false, parts, stand: { taken: {} } };
 }

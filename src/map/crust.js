@@ -477,7 +477,9 @@ function ship() {
   I.prop('barrel', -20.35, -128.35, -19.65, -127.65, 0.95, { fire: true });
   I.prop('crate', 5, -124, 6.2, -122.8, 1.1); I.prop('crate', 6.4, -124, 7.6, -122.8, 0.8);
   I.prop('shrine', -24, -164, -21, -161, 3.6, { element: 'wind' });
-  I.hammerPart = { x: -22.5, z: -159 };   // (the War Hammer's haft, at the shrine's foot: src/sim/forge.js)
+  // the War Hammer's haft: hidden at one of these each game (src/sim/forge.js): the
+  // shrine's foot, behind the shore containers, down on the harbor, by the village fence
+  I.hammerParts = [[-22.5, -159], [-14, -179], [31, -153], [-47, -135]];
   I.prop('barrel', 33.65, -186.35, 34.35, -185.65, 0.95, { fire: true });
   I.lamp(PIER, 6, -118); I.lamp(VIL, -26, -140, { flicker: 0.15 }); I.lamp(PT, -30, -180, { flicker: 0.1 });
   I.lamp(WRK, 34, -140, { flicker: 0.3 }); I.lamp(HAR, -4, -168, { flicker: 0.2 });
@@ -593,10 +595,10 @@ function research() {
   for (const [x, z, turned, sets] of [[176, -42, false, [0, 1, 2]], [126, 30, true, [3]], [194, -2, true, [4]], [136, -38, false, [5]]]) containers(I, x, G, z, turned, sets);
   for (const [x, z] of [[124, 18], [168, -46], [146, 44], [198, 10]]) I.model({ a: 'barrel', x, y: G, z, yaw: x, fit: { h: 1.1 } }, { collide: [x, z, 0.5, 0.5, 1.1] });
   I.prop('shrine', 175, 39, 178, 42, 3.6, { element: 'lightning' });
-  I.hammerPart = { x: 176.5, z: 37 };      // (its grip)
+  // its grip: by the shrine, the radio yard, in the mess hall, in the generator hall
+  I.hammerParts = [[176.5, 37], [170, -37], [134, 12], [160, -17]];
 
   // round about
-  I.prop('heliwreck', 114, -34, 121, -26, 2.6);
   I.prop('fueltank', 182, 34, 188, 40, 4); I.prop('fueltank', 190, 27, 195, 32, 3.4);
   I.prop('generator', 150, -27, 155, -24, 2.6); I.prop('generator', 158, -27, 163, -24, 2.6);
   I.prop('dish', 192, -14, 197, -9, 5);
@@ -740,7 +742,8 @@ function trench() {
   I.prop('barrel', -11.35, 154.65, -10.65, 155.35, 0.95, { fire: true });
   I.prop('crate', 10, 118, 11.2, 119.2, 1.1); I.prop('crate', 11.4, 118, 12.6, 119.2, 0.8);
   I.prop('shrine', 9, 135, 12, 138, 3.6, { element: 'fire' });
-  I.hammerPart = { x: 10.5, z: 133.5 };    // (its head)
+  // its head: out in no-man's-land, down in the far trenches, the west trench, the landing zone
+  I.hammerParts = [[10.5, 133.5], [16, 174], [-30, 147], [-6, 118]];
   I.craters = [[-18, 143, 3], [-30, 120, 2.4], [-8, 162, 2], [36, 158, 2.6], [18, 118, 2.2], [-40, 165, 1.8], [44, 140, 2.4]].map(([x, z, r]) => ({ x, z, r, y: G }));
   I.lamp(LZ, -12, 116); I.lamp(LZ, 12, 120, { flicker: 0.15 }); I.lamp(YARD, -11, 137, { flicker: 0.3 }); I.lamp(YARD, 11, 155, { flicker: 0.2 });
   for (const [x, z, f] of [[-30, 129, 0.3], [10, 129, 0.2], [-24, 160, 0.3], [24, 145, 0.2], [-32, 173, 0.4], [0, 173, 0.2], [32, 173, 0.3], [-12, 167, 0.25], [16, 167, 0.3]]) I.lamp(TR, x, z, { h: 2.1, flicker: f, kind: 'glow' });   // (no posts: you walked through them)
@@ -956,7 +959,8 @@ function caves() {
   // crystals, the standing stones on the summit, the mine's carts
   for (const [x, z, h] of [[-160, -12, 3.2], [-146, -12, 4.2], [-158, 11, 2.6], [-145, 12, 3.6], [-152, -2, 5.2], [-186, 10, 2.4], [-130, 2, 2.2], [-176, -2, 3]]) I.prop('crystal', x - 1, z - 1, x + 1, z + 1, h);
   I.prop('shrine', -172, -35, -169, -32, 3.6, { element: 'ice' });
-  I.hammerPart = { x: -170.5, z: -30 };    // (its pommel)
+  // its pommel: up on the summit, down the mine, at the mine works, by the frozen lake
+  I.hammerParts = [[-170.5, -30], [-146, 33], [-166, 40], [-182, 4]];
   // the ice: a glacier over the summit, a golem guarding the shrine, ice walls at
   // the mouth, formations in the cavern, icicles off every ceiling, snowy trees
   I.model({ a: 'glacier', x: -176, y: SUMH - 1.5, z: -46, yaw: 0.4, scale: 1.1 });
@@ -1227,7 +1231,7 @@ for (const I of ISLES) {
     const y = p.y ?? t.heightAt((p.x0 + p.x1) / 2, (p.z0 + p.z1) / 2);
     out.props.push({ kind: p.kind, box: box6(p.x0, p.z0, p.x1, p.z1, y, y + p.h), ...(p.fire ? { fire: true } : {}), ...(p.element ? { element: p.element } : {}), ...(p.blank ? { blank: true } : {}) });
   }
-  if (I.hammerPart && I.titan) out.hammerParts.push({ island: I.titan.id, x: I.hammerPart.x, z: I.hammerPart.z, y: t.heightAt(I.hammerPart.x, I.hammerPart.z) });
+  if (I.hammerParts && I.titan) out.hammerParts.push({ island: I.titan.id, spots: I.hammerParts.map(([x, z]) => ({ x, z, y: t.heightAt(x, z) })) });
   for (const pad of I.pads) {
     const y = t.heightAt(pad.x, pad.z);
     out.launchers.push({ ...pad, y, room: t.regionAt(pad.x, pad.z).zone });
@@ -1308,7 +1312,7 @@ export const CRUST = {
   groundSpawns: out.groundSpawns,
   props: out.props,
   launchers: out.launchers,
-  hammerParts: out.hammerParts,      // where the War Hammer's four parts lie (one an island)
+  hammerParts: out.hammerParts,      // where the War Hammer's four parts can lie (one an island, at one of its spots)
   boxSpots: out.boxSpots,
   mud: out.mud,
   craters: out.craters,

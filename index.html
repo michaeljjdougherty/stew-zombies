@@ -168,6 +168,11 @@
 
   #crosshair { position: absolute; left: 50%; top: 50%; --gap: 10px; transition: opacity .12s; }
   #crosshair.hidden { opacity: 0; }
+  /* a War Hammer coming back round for the next swing */
+  #swingbar { position: absolute; left: 50%; top: calc(50% + 30px); width: 48px; height: 4px; margin-left: -24px; background: rgba(0,0,0,.5); border-radius: 2px; box-shadow: 0 0 2px #000; overflow: hidden; pointer-events: none; }
+  #swingbar b { display: block; height: 100%; width: 0; background: rgba(230, 222, 205, .9); }
+  #swingbar.ready b { background: #f2c060; }
+  body.trailer-on #swingbar { display: none !important; }
   #crosshair i { position: absolute; background: rgba(230, 222, 205, .85); box-shadow: 0 0 2px #000; }
   #crosshair .t, #crosshair .b { width: 2px; height: 9px; left: -1px; }
   #crosshair .l, #crosshair .r { height: 2px; width: 9px; top: -1px; }
@@ -712,6 +717,7 @@
     </div>
   </div>
   <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+  <div id="swingbar" hidden><b></b></div>
   <div id="hitmarker"></div>
   <div id="spectate" hidden><div class="lbl">Spectating</div><div class="who"></div><div class="how"></div></div>
   <div id="hint"></div>

@@ -78,6 +78,8 @@ export function updateWeapons(sim, p, cmd, dt) {
   if (w.fireCooldown > 0) w.fireCooldown -= dt;
   if (w.fireCooldownL > 0) w.fireCooldownL -= dt;
   if (w.drawTimer > 0) w.drawTimer -= dt;
+  if (w.heavyT > 0) w.heavyT -= dt;
+  updateHammerSwing(sim, p, slot, def, dt);
 
   // --- weapon switching
   let want = -1;
@@ -169,11 +171,27 @@ export function updateWeapons(sim, p, cmd, dt) {
   if (dry && slot.reserve > 0 && !w.reloading && !blocked && w.fireCooldown <= 0) tryReload(sim, p);
 }
 
+// A War Hammer's swing: wound up over your shoulder, then down where you're
+// looking now. Put it away (or go down) mid-swing and it never lands.
+function updateHammerSwing(sim, p, slot, def, dt) {
+  const w = p.loadout, sw = w.hammerSwing;
+  if (!sw) return;
+  sw.t += dt;
+  if (slot.id !== sw.weapon || !def.hammer || p.downed || !p.alive) { w.hammerSwing = null; return; }
+  if (sw.t < sim.cfg.crust.hammers.swing.windup) return;
+  w.hammerSwing = null;
+  const eye = sim.eyePosition(p);
+  const dir = lookDir(p.yaw + w.recoilYaw + w.swayYaw, p.pitch + w.recoilPitch + w.swayPitch);
+  // (online: the host works out what it smashes)
+  if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id });
+  else hammerSlam(sim, p, eye, dir, def, slot.id);
+}
+
 // ---------------------------------------------------------------------------
 function fire(sim, p, slot, def, side) {
   const w = p.loadout;
   if (side === 'L') { slot.clipL--; w.fireCooldownL = shotGap(sim, p, def); }
-  else { if (!def.infinite) slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = shotGap(sim, p, def); }
+  else { if (!def.infinite) slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = w.fireGap = shotGap(sim, p, def); }
   const dmgMult = perkMult(sim, p, 'damageMult');
   w.shotsFired++;
 
@@ -184,9 +202,11 @@ function fire(sim, p, slot, def, side) {
 
   const impacts = [];
   if (def.hammer) {
-    // a War Hammer: smash what's in front of you, then its element (the host works it out)
-    if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id });
-    else hammerSlam(sim, p, eye, dir, def, slot.id);
+    // a War Hammer: up over your shoulder first; it comes down (and smashes)
+    // once it's wound up (updateHammerSwing), and you're slowed while you swing
+    const S = sim.cfg.crust.hammers.swing;
+    w.hammerSwing = { t: 0, weapon: slot.id };
+    w.heavyT = S.slowFor;
   } else if (def.flame) {
     // the flamethrower: a burst of the jet (the host works out what catches)
     if (sim.replica) netAct(sim, { k: 'flame', origin: eye, dir, weapon: slot.id });

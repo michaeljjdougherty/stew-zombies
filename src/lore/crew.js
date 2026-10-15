@@ -78,7 +78,7 @@ export const PIT_FORGE = {
   intro: [
     "Okay. Power's out, man. Every launcher up on the rim blew a relay.",
     "Pull all four and bring 'em down to me. I can fix 'em. Probably.",
-    "Then the War Hammer. It's in four pieces, one at every island's shrine. Put 'em on the stand.",
+    "Then the War Hammer. It's in four pieces, one hidden somewhere on every island. Find 'em, put 'em on the stand.",
     "Then the titans. Each one's sitting on a core. Cores make the hammers... spicy.",
   ],
   partPicked: {

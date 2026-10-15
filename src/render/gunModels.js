@@ -1185,7 +1185,7 @@ function warHammerFp(el) {
   return (m) => {
     const FP = CONFIG.crust.hammers.fp, FP_HAMMER = FP.scale;
     const g = new THREE.Group();
-    const H = buildWarHammer(el, { halo: true });
+    const H = buildWarHammer(el, { halo: true, glow: FP.glow, dim: FP.dim });
     H.group.rotation.x = -Math.PI / 2;    // (its haft runs along +Z: stand it up the grip axis)
     H.group.scale.setScalar(FP_HAMMER);
     g.add(H.group);

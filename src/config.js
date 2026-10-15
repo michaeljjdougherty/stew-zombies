@@ -76,8 +76,8 @@ function gun(cls, stats) {
 function warHammer(element, stats) {
   return gun('launcher', {
     hammer: element, wonder: true, noAds: true, infinite: true,
-    fireMode: 'semi', rpm: 66, damage: 0, magSize: 1, reserve: 0,
-    reloadStyle: 'mag', reloadTime: 1, drawTime: 0.55, moveSpeedMult: 0.95,
+    fireMode: 'semi', rpm: 40, damage: 0, magSize: 1, reserve: 0,   // (rpm 40: a swing every 1.5 s, wind-up and all)
+    reloadStyle: 'mag', reloadTime: 1, drawTime: 0.8, moveSpeedMult: 0.82,
     spread: { hipBase: 0, hipMax: 0, perShot: 0, ads: 0, adsPerShot: 0 },
     recoil: { pitch: 0, yaw: 0, recovery: 6, adsMult: 1, viewKick: 0 },
     sound: { kind: 'hammer', element, body: 0, thump: 0, crack: 0, tail: 0, pitch: 1 },
@@ -1570,9 +1570,14 @@ export const CONFIG = {
       detail: 0.7, boyScale: 0.92,  // the three inside
       light: 9, lightRange: 10, lightColor: '#b0ffc0',
     },
-    // The War Hammer's four parts (src/sim/forge.js): one lying at each island's
-    // shrine; carry them back to the stand on the Anvil's dais. With all four on
+    // The War Hammer's four parts (src/sim/forge.js): one hidden on each island, at
+    // one of its four spots (src/map/crust.js, picked each game), lying in the dirt
+    // with nothing pointing it out; carry them back to the stand on the Anvil's dais. With all four on
     // it, everyone can take a War Hammer from it (one each).
+    // the sky out in space (src/render/crustThemes.js spaceTexture): a calm one.
+    // size: the texture (px, over the whole dome); stars: faint pinpricks (their
+    // brightness from, to); bright: the few brighter ones; nebula: how strong its colour
+    sky: { size: [4096, 2048], stars: 2600, faint: [0.25, 0.7], bright: 45, nebula: 0.75 },
     hammerParts: {
       parts: {
         trench: { id: 'head', name: 'Hammer Head' },
@@ -1630,6 +1635,11 @@ export const CONFIG = {
       angle: 70,             // degrees either side of where you look
       maxKills: 8,           // zombies one swing kills outright
       landAt: 2.2,           // m ahead of you the head comes down (where the element goes off)
+      // heavy: a swing winds up over your shoulder first (windup s, then it lands),
+      // and you're slowed to slowMult for slowFor s from the click; the next swing's
+      // the weapon's rpm (40: every 1.5 s). Where it lands the view nods down (nod,
+      // like a dive's landNod), dips (dip) and shakes; the HUD shows it coming back round.
+      swing: { windup: 0.34, slowFor: 0.85, slowMult: 0.5, nod: 95, dip: 4, shake: 0.45 },
       titanDamage: 0,        // (the titans each have their own way down)
       tempered: {
         maxKills: 12,
@@ -1650,7 +1660,9 @@ export const CONFIG = {
       // with its element going off round the head. A tempered hammer's element
       // runs `temperedPower` times harder.
       // in your hands, first person: its size (x the real thing) and where it sits
-      fp: { scale: 0.52, hip: { x: 0.4, y: -0.55, z: -0.62, rx: -0.4, ry: 0.3, rz: 0.32 }, aim: { y: -0.46, z: -0.6 } },
+      // glow and dim: turned down that close to your eyes (glow: its glowing bits,
+      // dim x its halo, element and skin's own light)
+      fp: { scale: 0.52, hip: { x: 0.4, y: -0.55, z: -0.62, rx: -0.4, ry: 0.3, rz: 0.32 }, aim: { y: -0.46, z: -0.6 }, glow: 1.15, dim: 0.32 },
       // their recorded sounds, one file cut up: [start s, length s]
       sound: {
         url: 'assets/sfx/gear/g_hammers.mp3',
@@ -1663,10 +1675,13 @@ export const CONFIG = {
         skin: {
           fire: { darken: 0.4, rough: 0.85, glow: '#ff5a10', power: 1.6, flicker: [7, 0.35, 17, 0.2] },        // charred, molten cracks
           lightning: { darken: 0.35, metal: 0.9, rough: 0.35, glow: '#b583ff', power: 1.1, flash: 3.2, flashOdds: 0.12 },  // black, violet veins
-          wind: { color: '#a9b8b0', metal: 0.6, rough: 0.55, glow: '#d8fff0', power: 0.7, stream: 0.35 },      // weathered, wind-lines streaming
-          ice: { color: '#bcd8ea', metal: 0.3, rough: 0.25, glow: '#2a6a90', power: 0.35, shell: [1.09, 1.12, 1.12], shellOpacity: 0.3 },  // frosted, in clear ice
+          wind: { color: '#7d8a84', metal: 0.6, rough: 0.55, glow: '#d8fff0', power: 0.7, stream: 0.35 },      // weathered, wind-lines streaming
+          ice: { color: '#8eacc2', metal: 0.3, rough: 0.25, glow: '#2a6a90', power: 0.35, shell: [1.09, 1.12, 1.12], shellOpacity: 0.3 },  // frosted, in clear ice
         },
         heatGlow: 2.2,         // red-hot from the forge
+        // a swing landing (src/render/forgeView.js slamElement): its burst of light x burst,
+        // the lightning's screen flash (it whited the screen out) and its bolt's light
+        slam: { burst: 0.6, flash: 0.14, boltLight: 140 },
         // what each tempered hammer leaves behind (src/render/hammerFxView.js)
         linger: {
           fadeIn: 0.35, fadeOut: 1.0,
@@ -1727,6 +1742,7 @@ export const CONFIG = {
       range: 2.2,            // how close to the pad's middle you stand to use it
       cooldown: 30,          // s after landing before you can launch again (no bouncing back and forth)
       exploreCooldown: 1,    // (in Explore: next to none)
+      lockInFight: true,     // a titan awake: its island's launcher is locked down till it's beaten
     },
     strandedTime: 5,         // s a zombie with no way to reach anyone waits before it's recycled near the players
   },
