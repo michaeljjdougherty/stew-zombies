@@ -115,7 +115,8 @@ export class Teammate {
     const downed = !!p.downed;
     this.crouch = approach(this.crouch, p.crouching && !downed ? 1 : 0, 10, dt);
     this.down = approach(this.down, downed ? 1 : 0, 6, dt);
-    this.dive = approach(this.dive || 0, downed ? 0 : p.dive ? 1 : proneLevel(p, this.cfg), 12, dt);
+    // (flung off a launcher: flying, arms forward, like a dive held up in the air)
+    this.dive = approach(this.dive || 0, downed ? 0 : p.dive ? 1 : p.launch ? this.cfg.crust.launch.flyLean : proneLevel(p, this.cfg), 12, dt);
     const sprint = p.sprinting && !downed;
     const busy = w.reloading || !!p.drinking || !!p.throwing || (p.melee && p.melee.timer > 0);
     // how high the gun is held: level when aiming, angled down to sprint or reload

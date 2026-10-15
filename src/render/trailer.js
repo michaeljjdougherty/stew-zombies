@@ -109,6 +109,7 @@ export class Trailer {
     if (o.x != null) a.pos.set(o.x, o.y ?? this.ground(o.x, o.z), o.z);
     a.p.dive = o.dive ? { phase: 'air' } : null;
     a.p.ride = o.zip ? { zip: true } : null;
+    a.p.launch = o.launch ? { t: 0 } : null;
     if (o.yaw != null) a.yaw = o.yaw;
     a.pitch = o.pitch ?? 0;
     a.p.sprinting = !!o.sprint;
@@ -581,9 +582,10 @@ export const SHOTS = {
       }
       if (k < 0.1) T.blasted = false;
       T.light(0.7, '#d8c0ff', [20, top + 5, z + 7]);
-      // beside him: high up with him on the top, down with him to the terrace
-      const ck = sm(0.22, 0.7, k);
-      T.look(lerp(22.5, 14.8, ck), lerp(top + 2.2, low + 1.6, ck), lerp(8, 6.6, ck), x - 1, lerp(y + 0.9, low + 0.7, sm(0.55, 0.8, k)), z, 52);
+      // from out over the pit, looking back up at the terraces: he comes running
+      // at us along the top, off the edge and down onto them
+      const ck = sm(0, 1, k);
+      T.look(lerp(8, 11, ck), lerp(top - 0.6, top - 0.4, ck), lerp(3.8, 2.8, ck), lerp(x, land, 0.35), lerp(y + 0.6, low + 0.9, sm(0.4, 0.75, k)), z, 50);
     },
   },
 
@@ -636,7 +638,7 @@ export const SHOTS = {
       const R = T.sim.rides.find((r) => r.id === 'zip_mast');
       if (!R) return;
       const hang = T.cfg.crust.ride.hang;
-      const s0 = lerp(16, 42, k);
+      const s0 = lerp(19, 38, k);
       const riders = ['ryan', 'kearns'];
       riders.forEach((id, j) => {
         const at = ridePoint(R, s0 - j * 6);
@@ -654,6 +656,41 @@ export const SHOTS = {
       const cy = at.y - hang + 0.4;
       T.look(at.x - side.x * 6.5 - dir.x * 2, cy, at.z - side.z * 6.5 - dir.z * 2, at.x + side.x * 2, cy + 0.6, at.z + side.z * 2, 52);
       T.light(0.6, '#d0d8ff', [at.x - side.x * 4, cy + 8, at.z - side.z * 4]);
+      T.far = 420;
+    },
+  },
+
+  // Rocco steps onto the Anvil's north launcher and it flings him up and out
+  // over the void toward the Ship Graveyard; the camera chases him up.
+  launchPad: {
+    enter(T) { T.launched = false; },
+    frame(T, u, d, k) {
+      const pads = T.sim.mapData.launchers || [];
+      const A = pads.find((q) => q.id === 'pad_hub_n'), B = pads.find((q) => q.id === 'pad_ship');
+      if (!A || !B) return;
+      const L = T.cfg.crust.launch;
+      // (the first part of the flight, sped up a little: off the pad and up into the sky)
+      const go = 0.16, uu = Math.max(0, (k - go) / (1 - go)) * 0.5;
+      const e = 1 - Math.pow(1 - uu, 1.6);
+      const x = lerp(A.x, B.x, e), z = lerp(A.z, B.z, e);
+      const y = A.y + (B.y - A.y) * uu + L.apex * 4 * uu * (1 - uu);
+      T.pose('rocco', { x, z, y, launch: k > go, crouch: k > go - 0.06 && k <= go, pitch: 0 });
+      T.face('rocco', B.x, B.z);
+      if (k > go && !T.launched) {
+        T.launched = true;
+        const p = V(A.x, A.y + 0.2, A.z);
+        T.fx.energyBurst(p, '#7fd8ff', 3.2);
+        for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; T.fx.puff(p.clone().add(V(Math.cos(a) * 0.8, 0, Math.sin(a) * 0.8)), { color: 0xc8d8e8, size: 0.6, grow: 2.6, life: 1.1, alpha: 0.5, vel: V(Math.cos(a) * 5, 0.8, Math.sin(a) * 5), shade: false }); }
+        T.shake = 1;
+      }
+      if (k < 0.05) T.launched = false;
+      // low beside the pad, watching him go; then chasing him up from behind
+      const near = V(A.x + 4.5, A.y + 1.2, A.z + 5.5), at = V(x, y + 1, z);
+      const chase = V(x + 2.2, y + 0.4, z + 6.5);
+      const c = near.clone().lerp(chase, sm(0.45, 0.85, k));
+      const look = at.clone().lerp(V(B.x, B.y + 6, B.z), sm(0.7, 1, k) * 0.35);
+      T.look(c.x, c.y, c.z, look.x, look.y, look.z, lerp(48, 58, sm(0.3, 0.8, k)));
+      T.light(0.7, '#d8ecff', [A.x + 6, A.y + 10, A.z + 6]);
       T.far = 420;
     },
   },

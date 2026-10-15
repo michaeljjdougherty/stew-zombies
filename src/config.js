@@ -1248,6 +1248,7 @@ export const CONFIG = {
       { id: 'flamer', beat: 13 },
       { id: 'titans', beat: 16 },
       { id: 'zipline', beat: 20 },
+      { id: 'launchPad', beat: 22 },
       { id: 'perks', beat: 24 },
       { id: 'zachRoar', beat: 26 },
       { id: 'maisy', beat: 28 },
@@ -1272,7 +1273,6 @@ export const CONFIG = {
       { text: '7 NEW GUNS', style: 'overlay', beat: 10, beats: 3 },
       { text: 'M2 FLAMETHROWER', style: 'overlay', beat: 13, beats: 3 },
       { text: '4 TITANS', style: 'overlay', beat: 16, beats: 4 },
-      { text: 'ZIPLINES', style: 'overlay', beat: 20, beats: 4 },
       { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 24, beats: 2 },
       { text: '2 NEW EXPLOSIVES', sub: 'MAISY DOG · LBD', style: 'overlay', beat: 28, beats: 5 },
       { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 35, beats: 4 },
@@ -1486,7 +1486,7 @@ export const CONFIG = {
       // with its element going off round the head. A tempered hammer's element
       // runs `temperedPower` times harder.
       // in your hands, first person: its size (x the real thing) and where it sits
-      fp: { scale: 0.56, hip: { x: 0.34, y: -0.5, z: -0.6, rx: -0.4, ry: 0.3, rz: 0.32 }, aim: { y: -0.44, z: -0.58 } },
+      fp: { scale: 0.52, hip: { x: 0.4, y: -0.55, z: -0.62, rx: -0.4, ry: 0.3, rz: 0.32 }, aim: { y: -0.46, z: -0.6 } },
       // their recorded sounds, one file cut up: [start s, length s]
       sound: {
         url: 'assets/sfx/gear/g_hammers.mp3',
@@ -1559,6 +1559,7 @@ export const CONFIG = {
       cost: 0,               // points per launch (free while the map's being built)
       time: 3.4,             // s in the air
       apex: 34,              // m above the higher pad at the top of the arc
+      flyLean: 0.8,          // how far over someone flying leans (1: flat out, as in a dive)
       range: 2.2,            // how close to the pad's middle you stand to use it
       cooldown: 1.0,         // s after landing before you can launch again
     },
