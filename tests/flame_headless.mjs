@@ -45,5 +45,10 @@ step({ fire: true }, 30);
 check(log.filter((e) => e.type === 'shot').length === shots, '...and won\'t fire while it\'s too hot');
 step({}, 60 * 3);
 check(slot.overheat === 0, 'cooled off, ready again');
+// the shooting range's list of guns can describe every weapon (one that can't stops the game loading)
+const { weaponStatLine } = await import('../src/ui/range.js');
+let bad = [];
+for (const [id, d] of Object.entries(CONFIG.weapons)) { try { weaponStatLine(d, CONFIG); } catch (e) { bad.push(id); } }
+check(!bad.length, `every weapon has a line in the range's list${bad.length ? ' (not: ' + bad.join(', ') + ')' : ''}`);
 console.log(fails ? `\n${fails} flamethrower check(s) FAILED` : '\nall flamethrower checks passed');
 process.exit(fails ? 1 : 0);

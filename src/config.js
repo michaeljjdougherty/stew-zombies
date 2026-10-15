@@ -830,7 +830,7 @@ export const CONFIG = {
     // (src/sim/flame.js); the flame itself barely hurts.
     'M2 Flamethrower': gun('lmg', {
       name: 'M2 Flamethrower', boxOnly: true, infinite: true, noAds: true, wonder: true,
-      fireMode: 'auto', rpm: 600, damage: 0, magSize: 1, reserve: 0, penetration: 1, drawTime: 0.9, moveSpeedMult: 0.9,
+      fireMode: 'auto', rpm: 600, damage: 0, magSize: 1, reserve: 0, penetration: 1, reloadStyle: 'mag', reloadTime: 1, drawTime: 0.9, moveSpeedMult: 0.9,
       spread: { hipBase: 0, hipMax: 0, perShot: 0, recovery: 9, ads: 0, adsPerShot: 0, moving: 0, air: 0, crouchMult: 1 },
       recoil: { pitch: 0.05, yaw: 0.05, recovery: 9, adsMult: 1, viewKick: 0.1 },
       flame: {

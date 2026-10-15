@@ -26,6 +26,8 @@ export function reloadSeconds(def) {
 
 export function weaponStatLine(def, cfg) {
   const parts = [];
+  // the flamethrower: no ammo; what it reaches and how fast it burns them down
+  if (def.flame) return `${def.flame.range} m of fire · burns anything down in ${def.flame.burnKill} s · overheats`;
   if (def.projectile) {
     const ex = def.projectile.explode ? cfg.explosions[def.projectile.explode] : null;
     if (def.projectile.impactDamage) parts.push(`${def.projectile.impactDamage} hit`);
@@ -35,7 +37,7 @@ export function weaponStatLine(def, cfg) {
   }
   parts.push(`${def.rpm} rpm`);
   parts.push(`${def.magSize}${def.dual ? ' ×2' : ''} mag`);
-  parts.push(`${reloadSeconds(def).toFixed(1)} s reload`);
+  if (reloadSeconds(def) != null) parts.push(`${reloadSeconds(def).toFixed(1)} s reload`);
   return parts.join(' · ');
 }
 
