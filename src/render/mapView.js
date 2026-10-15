@@ -937,6 +937,7 @@ export class MapView {
   buildDirt() {
     const M = this.mats;
     for (const gs of this.world.groundSpawns || []) {
+      if (gs.bare) continue;   // (Call of the Crust's Anvil: no patch on the paving)
       const geo = new THREE.CircleGeometry(1.4, 18).rotateX(-Math.PI / 2);
       const pos = geo.attributes.position;
       for (let i = 1; i < pos.count; i++) { const k = 0.75 + Math.random() * 0.4; pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }

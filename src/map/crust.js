@@ -166,8 +166,7 @@ function hub() {
   // the pit floor
   t.paint(shape.circle(0, 0, 15.5, 1.5), { h: F, zone: PIT, mat: 'cobble' });
   t.paint(shape.circle(0, 0, 8.6, 0.6), { h: F + 0.3, zone: PIT, mat: 'flagstone', spawn: false });
-  // a channel of molten iron round the dais (four bridges over it)
-  for (const a0 of [12, 102, 192, 282]) t.paint(shape.arc(0, 0, 9.0, 10.1, a0, a0 + 66), { kind: K.ROCK, mat: 'lava', h: F - 0.45 });
+  // (no channel round the dais: it only ever showed as blocky holes you couldn't cross)
   // two terraces half way up, west and east: their outer edge is the rim's
   // cliff (jump down from the rim), their inner edge a drop to the floor
   t.paint(shape.arc(0, 0, 15.5, 22.6, 140, 220, 1.2), { h: TER, zone: TW, only: (k) => k === K.ROCK });
@@ -289,6 +288,7 @@ function hub() {
   });
   I.model({ a: 'well', x: -11.5, y: F, z: -2, yaw: 0.4, fit: { h: 2.8 } }, { collide: [-11.5, -2, 1.5, 1.5, 2.2] });
   I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5], [-9, 1, -5, 5]];
+  I.bareRise = true;
   // Pit's forge on the dais (src/sim/forge.js): his bench, him behind it facing the Anvil,
   // the Anvil's four sockets (N wind, E lightning, S fire, W ice: src/render/crustWorld.js
   // buildAnvil) and where Big Evil Zach comes down (src/sim/zachBoss.js)
@@ -1175,6 +1175,8 @@ for (const I of ISLES) {
   // zombies claw up out of the snow and ice (not under a launcher, not in a prop)
   const avoid = [...I.pads.map((p) => [p.x - 3.5, p.z - 3.5, p.x + 3.5, p.z + 3.5]), ...(I.spawnAvoid || []), ...I.props.map((p) => [p.x0 - 1.2, p.z0 - 1.2, p.x1 + 1.2, p.z1 + 1.2])];
   const spawns = t.spawns('rise_' + pre, 9, avoid);
+  // (the Anvil's paved: they come up through the stones, no snowy patches to mark the spots)
+  if (I.bareRise) for (const s of spawns) s.bare = true;
   // each zone is a room of its own (no walls): what the game calls where you are
   const zoneRooms = [];
   for (const [id, z] of I.zones) {
