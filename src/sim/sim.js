@@ -33,6 +33,7 @@ import { LaunchInteractable } from './launchers.js';
 import { updateVoid } from './void.js';
 import { createShelling, updateShelling, CeasefireInteractable } from './shelling.js';
 import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets } from './crustEgg.js';
+import { finaleOn } from './zachBoss.js';
 import { setFloor } from './physics.js';
 
 export class GameSim {
@@ -109,6 +110,13 @@ export class GameSim {
   addPlayer(id, name, { character = 'kearns' } = {}) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
+    // (Call of the Crust: Pit's at his forge, not out fighting; whoever picked him plays someone free)
+    if ((this.mapData.notPlayable || []).includes(character)) {
+      const taken = new Set(this.players.map((q) => q.character));
+      const was = character;
+      character = ['kearns', 'ryan', 'rocco', 'brian'].find((c) => !taken.has(c)) || 'kearns';
+      this.emit('characterSwapped', { playerId: id, from: was, to: character });
+    }
     p.character = character;   // who they're playing: what they say, what Erik calls them
     if (this.mode === 'explore') p.points = this.cfg.explore.points;
     p.region = this.nav.regionAt(p.pos);
@@ -349,7 +357,7 @@ export class GameSim {
     if (this.mode === 'range') updateRange(this, dt);
     // (no rounds during Erik's showdown or after it: that fight is its own thing)
     else if (this.quest && this.quest.boss) { /* the quest spawns its own */ }
-    else if (this.crustEgg && this.crustEgg.active) { /* a titan's awake: it brings its own */ }
+    else if (this.crustEgg && (this.crustEgg.active || finaleOn(this.crustEgg))) { /* a titan's awake (or Big Evil Zach's here): it brings its own */ }
     else if (this.mode !== 'explore' || this.explore.zombies) updateRounds(this, dt);
 
     if (this.players.length && !anyoneStanding(this)) {

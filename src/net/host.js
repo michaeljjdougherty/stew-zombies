@@ -8,6 +8,7 @@
 import { emptyCommand } from '../sim/player.js';
 import { damageZombie } from '../sim/zombies.js';
 import { windBlast } from '../sim/wind.js';
+import { hammerSlam } from '../sim/hammers.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
 import { crustEggShot, knifeTitan } from '../sim/crustEgg.js';
@@ -128,6 +129,7 @@ export class NetHost {
       case 'quest': if (isValve(a.id)) cauldronShot(sim, a.id, p); break;
       case 'titan': crustEggShot(sim, String(a.id), p); break;
       case 'titanKnife': knifeTitan(sim, p); break;
+      case 'hammer': { const def = sim.cfg.weapons[a.weapon]; if (def && def.hammer && p.loadout.slots.some((sl) => sl.id === a.weapon)) hammerSlam(sim, p, a.origin, a.dir, def, a.weapon); break; }
     }
   }
 }

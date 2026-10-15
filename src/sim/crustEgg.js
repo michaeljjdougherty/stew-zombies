@@ -28,6 +28,8 @@ import { moveBody, groundHeight } from './physics.js';
 import { explode } from './projectiles.js';
 import { spawnPowerup } from './powerups.js';
 import { angleWrap, lookDir } from '../core/math.js';
+import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
+import { updateZach, zachTargets, zachObjective, finaleOn } from './zachBoss.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // radius: what it moves as (a zombie's size, so it fits the paths you do; it's
@@ -64,6 +66,8 @@ export function createCrustEgg(sim) {
       E.shipLand = m.groundSpawns.filter((g) => g.x > x0 && g.x < x1 && g.z > z0 && g.z < z1 && Math.hypot(g.x - s.home.x, g.z - s.home.z) < sim.cfg.crust.egg.ship.landReach).map((g) => ({ x: g.x, y: g.y, z: g.z }));
     }
   }
+  E.forge = createForge(sim);       // Pit's forge: the cores become the War Hammers (forge.js)
+  E.finale = { state: 'off' };      // Big Evil Zach (zachBoss.js)
   return E;
 }
 
@@ -75,6 +79,7 @@ export function crustEggInteractables(sim) {
   for (const s of sim.mapData.titans) if (s.wake) out.push(new WakeInteractable(s));
   E.coils.forEach((c, i) => out.push(new CoilInteractable(i)));
   E.guns.forEach((g, i) => out.push(new FieldGunInteractable(i)));
+  out.push(...forgeInteractables(sim));
   return out;
 }
 
@@ -114,7 +119,7 @@ function blastPlayers(sim, pos, r, dmg, edge = 0.4, push = 0) {
 // --- waking --------------------------------------------------------------------
 export function wakeTitan(sim, id, p = null) {
   const E = sim.crustEgg, T = E && E.titans[id];
-  if (!T || T.state !== 'asleep' || E.active) return false;
+  if (!T || T.state !== 'asleep' || E.active || finaleOn(E)) return false;
   const c = sim.cfg.crust.egg;
   E.active = id;
   T.state = 'waking'; T.t = 0; T.act = null; T.done = 0; T.stuckT = 0; T.away = 0;
@@ -183,10 +188,11 @@ export function updateCrustEgg(sim, dt) {
       if (T.t >= c.dyingTime) {
         T.state = 'dead';
         E.active = null;
-        E.cores[T.id] = true;
         const drop = T.id === 'ship' ? sim.mapData.titans.find((s) => s.id === 'ship').wake : T.pos;
         spawnPowerup(sim, 'fullPantry', { x: drop.x, y: (drop.y || 0) + 0.2, z: drop.z });
-        sim.emit('titanCore', { id: T.id, name: T.name, count: Object.keys(E.cores).length });
+        // its War Hammer core drops beside it: take it to Pit (forge.js)
+        const gy = groundHeight(drop.x + 1.6, drop.z, 0.3, (drop.y || 0) + 3, [sim.world.solids, sim.world.terrain]);
+        dropCore(sim, T.id, { x: drop.x + 1.6, y: Number.isFinite(gy) && gy > (drop.y || 0) - 4 ? gy : (drop.y || 0), z: drop.z });
       }
       continue;
     }
@@ -201,6 +207,8 @@ export function updateCrustEgg(sim, dt) {
     if (T.state === 'fight' && T.done >= T.of) beaten(sim, T);
   }
   updateHazards(sim, dt);
+  updateForge(sim, dt);
+  updateZach(sim, dt);
 }
 
 // Walk toward a goal (along the nav, or straight at it), steering like a zombie.
@@ -697,6 +705,7 @@ function updateHazards(sim, dt) {
 // ---------------------------------------------------------------------------
 export function crustEggTargets(sim) {
   const E = sim.crustEgg;
+  if (E && finaleOn(E)) return zachTargets(sim);
   if (!E || !E.active) return [];
   const out = [];
   const T = E.titans[E.active];
@@ -715,11 +724,14 @@ export function crustEggTargets(sim) {
 
 export function crustEggShot(sim, id, p) {
   if (id.startsWith('cluster')) shootCluster(sim, id, p);
+  else if (id === 'zach') sim.emit('zachSpark', { playerId: p.id });
 }
 
 // The HUD's line: what to do now.
-export function crustEggObjective(sim) {
+export function crustEggObjective(sim, pid = null) {
   const E = sim.crustEgg;
+  if (E && finaleOn(E)) return zachObjective(sim);
+  if (E && !E.active) return forgeObjective(sim, pid);
   if (!E || !E.active) return null;
   const T = E.titans[E.active];
   if (T.state === 'dying') return `${T.name} is falling`;

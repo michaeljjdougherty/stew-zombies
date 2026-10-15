@@ -288,7 +288,23 @@ function hub() {
     }
   });
   I.model({ a: 'well', x: -11.5, y: F, z: -2, yaw: 0.4, fit: { h: 2.8 } }, { collide: [-11.5, -2, 1.5, 1.5, 2.2] });
-  I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5]];
+  I.spawnAvoid = [[-6.5, -6.5, 6.5, 6.5], [-9, 1, -5, 5]];
+  // Pit's forge on the dais (src/sim/forge.js): his bench, him behind it facing the Anvil,
+  // the Anvil's four sockets (N wind, E lightning, S fire, W ice: src/render/crustWorld.js
+  // buildAnvil) and where Big Evil Zach comes down (src/sim/zachBoss.js)
+  {
+    const sk = 6.6 * 0.33, SY = F + 0.3 + 2.2 + 0.55;
+    I.forge = {
+      y: F + 0.3,
+      bench: [-7.0, 1.6, -5.6, 4.2],
+      pit: { x: -7.85, y: F + 0.3, z: 2.9, yaw: -Math.PI / 2 },
+      anvil: { x: 0, z: 0, w: 6.6, r: 4.6 },
+      sockets: { wind: { x: 0, y: SY, z: -sk }, lightning: { x: sk, y: SY, z: 0 }, fire: { x: 0, y: SY, z: sk }, ice: { x: -sk, y: SY, z: 0 } },
+      zach: { x: 0, y: F, z: -12.5 },
+    };
+    I.prop('model', -7.0, 1.6, -5.6, 4.2, 0.95);      // (the bench: drawn by src/render/forgeView.js)
+    I.prop('model', -8.15, 2.6, -7.55, 3.2, 1.8);     // (Pit)
+  }
   I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
   // (you start on the dais, right up at the Anvil)
   I.playerSpawns = [{ x: -3.6, z: 6.6, yaw: 0 }, { x: -1.2, z: 6.9, yaw: 0 }, { x: 1.2, z: 6.9, yaw: 0 }, { x: 3.6, z: 6.6, yaw: 0 }];
@@ -1220,6 +1236,8 @@ export const CRUST = {
   lampScale: 0.55,     // (the lamps are bright on all this snow)
   ambient: 0.8,        // the night sky's light on everything
   playerSpawns: HUB.playerSpawns.map((p) => ({ ...p, y: HUB.t.heightAt(p.x, p.z) })),
+  forge: HUB.forge,              // Pit's forge at the Anvil, and where Big Evil Zach comes down
+  notPlayable: ['pit'],          // (he's at his forge: src/sim/sim.js addPlayer)
   rooms: out.rooms,
   navRegions: out.navRegions,
   portals: out.portals,

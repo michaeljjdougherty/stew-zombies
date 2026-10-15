@@ -10,6 +10,7 @@ import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
 import { windBlast } from './wind.js';
+import { hammerSlam } from './hammers.js';
 import { perkMult, weaponLimit } from './perks.js';
 
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
@@ -91,7 +92,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   }
 
   // --- aim down sights (dual wield uses right click as the left trigger instead)
-  const canAds = !def.dual && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing && !p.drinking && !slot.away;
+  const canAds = !def.dual && !def.noAds && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing && !p.drinking && !slot.away;
   const adsTarget = cmd.ads && canAds ? 1 : 0;
   const adsStep = dt / Math.max(0.01, def.adsTime);
   // (hold still once there: the old form stepped back down from 1 every other
@@ -167,7 +168,7 @@ export function updateWeapons(sim, p, cmd, dt) {
 function fire(sim, p, slot, def, side) {
   const w = p.loadout;
   if (side === 'L') { slot.clipL--; w.fireCooldownL = shotGap(sim, p, def); }
-  else { slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = shotGap(sim, p, def); }
+  else { if (!def.infinite) slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = shotGap(sim, p, def); }
   const dmgMult = perkMult(sim, p, 'damageMult');
   w.shotsFired++;
 
@@ -177,7 +178,11 @@ function fire(sim, p, slot, def, side) {
   const spread = currentSpread(sim, p, def);
 
   const impacts = [];
-  if (def.wind) {
+  if (def.hammer) {
+    // a War Hammer: smash what's in front of you, then its element (the host works it out)
+    if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id });
+    else hammerSlam(sim, p, eye, dir, def, slot.id);
+  } else if (def.wind) {
     // The Chopper: a wall of wind (the host works out who it throws)
     if (sim.replica) netAct(sim, { k: 'wind', origin: eye, dir, weapon: slot.id });
     else windBlast(sim, p, eye, dir, def, slot.id);
@@ -252,7 +257,7 @@ export function tryReload(sim, p) {
   const w = p.loadout;
   const slot = w.slots[w.current];
   const def = sim.cfg.weapons[slot.id];
-  if (w.reloading || magFull(slot, def) || slot.reserve <= 0 || p.melee.timer > 0 || !p.alive || p.throwing || p.drinking || slot.away) return false;
+  if (def.infinite || w.reloading || magFull(slot, def) || slot.reserve <= 0 || p.melee.timer > 0 || !p.alive || p.throwing || p.drinking || slot.away) return false;
   const empty = slot.clip === 0 && (!def.dual || slot.clipL === 0);
   const style = def.reloadStyle;
   const k = reloadMult(sim, p);

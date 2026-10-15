@@ -9,7 +9,7 @@ import { rangeGive } from '../src/sim/range.js';
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
 const dt = 1 / 60;
-const ids = Object.keys(CONFIG.weapons).filter((k) => !CONFIG.weapons[k].dual);
+const ids = Object.keys(CONFIG.weapons).filter((k) => !CONFIG.weapons[k].dual && !CONFIG.weapons[k].noAds);   // (the War Hammers have no sights)
 let bad = [];
 for (const id of ids) {
   const sim = new GameSim({ map: RANGE, seed: 3, mode: 'range' });

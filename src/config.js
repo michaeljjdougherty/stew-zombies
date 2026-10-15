@@ -69,6 +69,23 @@ function gun(cls, stats) {
   return merge(merge(CLASS_DEFAULTS[cls], { class: cls }), stats);
 }
 
+// A War Hammer (Call of the Crust): Pit forges one from each titan's core. Never in
+// the box or on a wall: you take it from its socket on the Anvil. Every swing
+// smashes what's in front of you and its element goes off where it lands
+// (src/sim/hammers.js); no ammo, no sights.
+function warHammer(element, stats) {
+  return gun('launcher', {
+    hammer: element, wonder: true, noAds: true, infinite: true,
+    fireMode: 'semi', rpm: 66, damage: 0, magSize: 1, reserve: 0,
+    reloadStyle: 'mag', reloadTime: 1, drawTime: 0.55, moveSpeedMult: 0.95,
+    spread: { hipBase: 0, hipMax: 0, perShot: 0, ads: 0, adsPerShot: 0 },
+    recoil: { pitch: 0, yaw: 0, recovery: 6, adsMult: 1, viewKick: 0 },
+    sound: { kind: 'hammer', element, body: 0, thump: 0, crack: 0, tail: 0, pitch: 1 },
+    view: { model: 'warhammer_' + element, flash: 0 },
+    ...stats,
+  });
+}
+
 export const CONFIG = {
   // ---------------------------------------------------------------------------
   // Simulation
@@ -803,6 +820,11 @@ export const CONFIG = {
       view: { model: 'chopper', flash: 0 },
       upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 4, wind: { range: 14, angle: 27, near: 2.0, maxKills: 36 } },
     }),
+    // The four War Hammers (Pit tempers each into its "+" for a price)
+    'Wind Hammer': warHammer('wind', { name: 'Wind Hammer', upgrade: { name: 'Tempest Hammer', color: '#bfffe0' } }),
+    'Lightning Hammer': warHammer('lightning', { name: 'Lightning Hammer', upgrade: { name: 'Thunder Hammer', color: '#c79bff' } }),
+    'Ice Hammer': warHammer('ice', { name: 'Ice Hammer', upgrade: { name: 'Glacier Hammer', color: '#9feaff' } }),
+    'Fire Hammer': warHammer('fire', { name: 'Fire Hammer', upgrade: { name: 'Inferno Hammer', color: '#ffb02a' } }),
   },
 
   startingWeapon: 'M1912',
@@ -924,6 +946,9 @@ export const CONFIG = {
     // PHD Gaylor's dolphin dive (off something high: the big one)
     phd: { radius: 4, damage: 3000, selfDamage: 0, minFrac: 0.5, shake: 0.7, energy: '#b04dff' },
     phdHigh: { radius: 6.5, damage: 6000, selfDamage: 0, minFrac: 0.35, shake: 1.3, energy: '#c870ff' },
+    // the Fire Hammer's burst (and Pit's tempered one)
+    hammerFire: { radius: 4.5, damage: 1e5, selfDamage: 0, minFrac: 1, shake: 0.9, energy: '#ff6a1a' },
+    hammerFireUp: { radius: 6.5, damage: 1e5, selfDamage: 0, minFrac: 1, shake: 1.2, energy: '#ffb02a' },
     // the Scavenger's bolts (and its Mad Dog version's): they hurt you too, up close
     scav: { radius: 6, damage: 6000, selfDamage: 90, minFrac: 0.35, shake: 1.4 },
     scavUp: { radius: 8.5, damage: 16000, selfDamage: 90, minFrac: 0.35, shake: 1.7 },
@@ -1316,6 +1341,64 @@ export const CONFIG = {
         burrowTime: 2.6,        // s under the rock when it moves on
         groundY: 2.3,           // the battlefield's height (a shot at the sky comes down here)
       },
+    },
+    // Pit's forge at the Anvil (src/sim/forge.js): the titans' cores become the War Hammers
+    forge: {
+      pickupRange: 1.8,      // m: walk over a dropped core to pick it up
+      benchRange: 2.6,       // m from Pit's bench to hand him things
+      socketRange: 2.1,      // m from a socket on the Anvil to take or put back its hammer
+      forgeTime: 22,         // s Pit takes over each War Hammer
+      strikeEvery: 0.85,     // s between his hammer blows while he works (the sparks)
+      temperCost: 5000,      // points for Pit to temper a War Hammer (its elemental upgrade)
+      temperTime: 9,         // s he takes over that
+      introDelay: 4,         // s into the game before he says hello
+      idleEvery: 45,         // s at least between his "bring me a core" nudges
+      nearPit: 30,           // m: further than this from him and you hear him on the walkie
+      lineGap: 0.5,          // s between one of his lines and the next
+    },
+    // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of you,
+    // then the element goes off where it lands
+    hammers: {
+      reach: 3.4,            // m in front of you a swing smashes
+      angle: 70,             // degrees either side of where you look
+      maxKills: 8,           // zombies one swing kills outright
+      landAt: 2.2,           // m ahead of you the head comes down (where the element goes off)
+      titanDamage: 0,        // (the titans each have their own way down)
+      fire: { blast: 'hammerFire' },                                  // a burst of flame
+      ice: { radius: 7, freeze: 6, maxFrozen: 24 },                  // everything round you frozen solid (a frozen one shatters at the next hit)
+      wind: { range: 12, angle: 30, near: 1.8, maxKills: 18 },       // a gale down the line you swung along
+      lightning: { chains: 8, hop: 6, reach: 9 },                     // a bolt jumping zombie to zombie
+      // tempered by Pit (each hammer's "+"): more of everything
+      tempered: {
+        fire: { blast: 'hammerFireUp' },
+        ice: { radius: 10, freeze: 9, maxFrozen: 40 },
+        wind: { range: 16, angle: 36, near: 2.2, maxKills: 30 },
+        lightning: { chains: 14, hop: 7.5, reach: 12 },
+        maxKills: 12,
+      },
+    },
+    // the finale: ring the Anvil once all four hammers are forged, and Big Evil Zach
+    // comes down into the pit (src/sim/zachBoss.js)
+    finale: {
+      order: ['wind', 'lightning', 'ice', 'fire'],   // the element he's open to, phase by phase
+      hits: 3,               // right-hammer hits to break each phase (+1 for every player past two)
+      descendTime: 5.5,      // s from the Anvil ringing to him landing
+      kneelTime: 4.5,        // s on his knees after a phase breaks
+      scale: [4.2, 3.6, 3.0, 2.6],   // how big he is in each phase (x a person: the Schnitz loosening its grip)
+      radius: 1.6,           // m: what he moves as
+      bulk: 2.6,             // m: how far he shoves you out of the way
+      hitReach: 3.0,         // m past his edge a hammer swing still lands
+      speed: [2.2, 2.6, 3.0, 3.4],   // m/s, phase by phase (he gets angrier)
+      pitRadius: 13.5,       // m: he stays in the pit
+      anvilRadius: 5.2,      // m: and off the Anvil
+      every: [2.4, 4.0],     // s between attacks
+      stomp: { warn: 1.1, radius: 7, damage: 55, push: 9 },
+      swipe: { warn: 0.8, range: 7.5, angle: 70, damage: 45, push: 11 },
+      summon: { count: 5, every: 3, warn: 1.2 },   // his dead, up out of the pit floor (every third attack)
+      healthMult: 1.6,       // the summoned dead: x a normal zombie's health this round
+      bulletSparks: true,    // (bullets spark off The Schnitz's shield)
+      freedTime: 13,         // s from the last phase breaking to the end
+      hitPoints: 250,        // to whoever lands a right-hammer hit
     },
     // ziplines and ice slides
     ride: {

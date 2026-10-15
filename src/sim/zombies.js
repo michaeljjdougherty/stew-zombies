@@ -100,6 +100,7 @@ export function makeZombie(sim, { type = 'walker', pos, yaw = 0, health, state =
     limbs: { armL: true, armR: true, head: true },
     limbDamage: { armL: 0, armR: 0 },
     stun: 0,
+    frozen: 0,             // s left frozen solid (the Ice Hammer); the next hit shatters it
     tearTimer: 0,
     climbT: 0,
     targetId: null,
@@ -221,6 +222,12 @@ export function updateZombies(sim, dt) {
       continue;
     }
     if (z.stun > 0) z.stun -= dt;
+    if (z.frozen > 0) {
+      z.frozen = Math.max(0, z.frozen - dt);
+      z.moveSpeed = 0; z.attack.phase = 'none';
+      if (z.frozen > 0) continue;
+      sim.emit('zombieThaw', { id: z.id });
+    }
     if (z.state === 'dummy') { updateDummy(sim, z, dt); continue; }
     if (z.state === 'rising') {
       const k = Math.min(1, z.stateTime / c.riseTime);
@@ -495,6 +502,8 @@ export function damageZombie(sim, z, amount, info) {
   const player = sim.playerById(info.playerId);
   if (player && player.boosts && player.boosts.power) amount *= player.boosts.power;   // half-court ritual
   if (player && powerupActive(sim, 'oneBite') && z.state !== 'dummy') amount = Math.max(amount, z.health);
+  // frozen solid: the next hit shatters it
+  if (z.frozen > 0 && amount > 0) { amount = Math.max(amount, z.health); info = { ...info, shatter: true }; sim.emit('zombieShatter', { id: z.id, pos: { ...z.pos } }); }
   z.health -= amount;
   z.stun = c.hitStun;
   sim.emit('zombieHit', { id: z.id, playerId: info.playerId, part: info.part, kind: info.kind, point: info.point, dir: info.dir, damage: amount });

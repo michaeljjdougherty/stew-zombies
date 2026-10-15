@@ -41,6 +41,83 @@ export const CREW = {
     voice: { f0: 104, grit: 0.4, rate: 0.9 },
     bio: 'Brian Luke. Came through a portal. Does not panic. Does not miss.',
   },
+  zach: {
+    name: 'Zach',
+    nick: ['Zach', 'Big Zach'],
+    voice: { f0: 120, grit: 0.2, rate: 1.05 },
+    bio: 'Cheerful and friendly. The Schnitz had him for a while. Still genuinely happy to be there.',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Call of the Crust: Pit at his forge by the Anvil (src/sim/forge.js). He got
+// there first (he left for a while, remember) and learned to smith. He forges
+// the four War Hammers from the titans' cores, tempers them for a price, and
+// talks you through it. Keyed by element where it matters.
+// ---------------------------------------------------------------------------
+export const PIT_FORGE = {
+  intro: [
+    "Yo. Yo yo yo. You made it, man.",
+    "Welcome to the Anvil. I've been here a while. Like... a while.",
+    "The Schnitz took Zach, man. Made him huge. Made him... not Zach.",
+    "Those big things out on the islands? Titans. Each one's sitting on a War Hammer core.",
+    "Bring me the cores. I'll forge the hammers. I'm real good at hammers now.",
+  ],
+  coreDropped: {
+    ship: "Felt that from here, man. The Captain's down. Bring me that core.",
+    research: "The Warden's down? Nice. Bring the core back, man. Don't drop it.",
+    caves: "The Golem's in pieces. Get the core before it melts. Does it melt? Just hurry.",
+    trench: "The Fiend's out, man. That core's gonna be hot. Bring it anyway.",
+  },
+  given: {
+    wind: "The Captain's core. Smells like the ocean, man. Wind Hammer, coming up.",
+    lightning: "Ow. It bit me. It bit me, man. Lightning Hammer it is.",
+    ice: "Cold. Real cold. Gimme a minute. Ice Hammer.",
+    fire: "Hot hot hot. Okay. Fire Hammer. Stand back, man.",
+  },
+  queued: "Put it on the pile, man. One hammer at a time.",
+  forged: {
+    wind: "Wind Hammer. Done. It's on the Anvil, take it.",
+    lightning: "Lightning Hammer's done. Don't lick it. I licked it.",
+    ice: "Ice Hammer. Done. Cold to the touch. Cool to the touch. Both.",
+    fire: "Fire Hammer's done, man. Hot. Bars hot.",
+  },
+  allForged: [
+    "That's four, man. Four War Hammers. The Anvil's full.",
+    "Ring the Anvil and he'll come. Zach, I mean. Big Zach.",
+    "Hit him with the right hammer. He glows the colour he can't take.",
+  ],
+  nudge: [
+    "Need a core, man. Titans got 'em.",
+    "Hammer time? Not yet. No cores.",
+    "(whinnies) ...sorry. Bring me a core.",
+    "The launchers are up on the rim, man. Go get a titan.",
+  ],
+  temperStart: "Ohhh, you want it spicy. Gimme a sec, man.",
+  tempered: {
+    wind: "Tempest Hammer. Careful, it's breezy.",
+    lightning: "Thunder Hammer. It hums now. I like the hum.",
+    ice: "Glacier Hammer. Colder than my ex.",
+    fire: "Inferno Hammer. Hot. Hotter than before. Okay, that's enough.",
+  },
+  ring: "Here he comes, man. Here he comes.",
+  freed: "Zach! Zach, buddy. Welcome back, man.",
+};
+
+// The Schnitz, wearing Zach, in the finale (src/sim/zachBoss.js); and Zach once it lets go.
+export const ZACH_FINALE = {
+  descend: "You want him back? Come and take him.",
+  phase: [
+    "Hammers. Little hammers.",
+    "That one stung.",
+    "You're starting to annoy me.",
+  ],
+  freed: "Keep him, then. I'll find another. This season isn't over.",
+  zach: [
+    "...Guys? Why's everybody holding hammers?",
+    "Is that Pit? Pit has a forge? Since when does Pit have a forge?",
+    "I'm so happy to be here. Where's here?",
+  ],
 };
 
 // The four on the walkie-talkies (whoever you're not playing).

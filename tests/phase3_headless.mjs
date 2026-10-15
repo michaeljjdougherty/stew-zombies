@@ -44,7 +44,8 @@ function aimAt(me, sim, z, y = 1.25) {
 }
 
 // --- every weapon: empty a magazine, reload, verify ammo bookkeeping
-const ids = Object.keys((await import('../src/config.js')).CONFIG.weapons).filter((id) => !id.endsWith('+'));
+const WEAPONS = (await import('../src/config.js')).CONFIG.weapons;
+const ids = Object.keys(WEAPONS).filter((id) => !id.endsWith('+') && !WEAPONS[id].hammer);   // (the War Hammers: tests/crustquest_headless.mjs)
 for (const id of ids) {
   const { sim, me } = setup();
   me.pos.x = 0; me.pos.z = 4;
