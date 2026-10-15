@@ -5,6 +5,11 @@
 import { damageZombie } from './zombies.js';
 import { rotY } from '../core/math.js';
 
+// stick where they hit, then go off after their fuse (crossbow bolts, the
+// Scavenger's explosive bolts); the ballistic knife's blades stick and stay
+const STICKY = new Set(['bolt', 'scav', 'blade']);
+const FUSED = new Set(['bolt', 'scav']);
+
 // opts: gravity, bounce, friction, fuse, explode (explosion type), impactDamage, headMult, weapon
 export function spawnProjectile(sim, type, pos, vel, ownerId, opts = {}) {
   const pr = {
@@ -15,8 +20,8 @@ export function spawnProjectile(sim, type, pos, vel, ownerId, opts = {}) {
     bounce: opts.bounce ?? 0,
     friction: opts.friction ?? 0.6,
     // bolts start their fuse when they stick; everything else when thrown/fired
-    fuse: type === 'bolt' ? Infinity : (opts.fuse ?? Infinity),
-    stickFuse: type === 'bolt' ? (opts.fuse ?? 1) : Infinity,
+    fuse: FUSED.has(type) ? Infinity : (opts.fuse ?? Infinity),
+    stickFuse: FUSED.has(type) ? (opts.fuse ?? 1) : Infinity,
     explode: opts.explode || null,
     impactDamage: opts.impactDamage || 0,
     headMult: opts.headMult || 1,
@@ -115,7 +120,12 @@ function hitZombie(sim, pr, h, dir) {
   if (pr.type === 'launcher' || pr.type === 'fucci') {
     pr.pos = { ...h.point };
     detonate(sim, pr);
-  } else if (pr.type === 'bolt' || pr.type === 'blade') {
+  } else if (pr.type === 'beam') {
+    // (an energy beam: spent on the first thing it hits)
+    pr.pos = { ...h.point };
+    pr.done = true;
+    sim.emit('projectileGone', { id: pr.id, pos: { ...h.point }, hit: true });
+  } else if (STICKY.has(pr.type)) {
     pr.pos = { ...h.point };
     const z2 = sim.zombieById(h.zombieId);
     if (z2) {
@@ -129,6 +139,7 @@ function hitZombie(sim, pr, h, dir) {
 function hitWorld(sim, pr, h, dir) {
   const n = h.normal;
   if (pr.type === 'launcher' || pr.type === 'fucci') { pr.pos = { x: h.point.x + n.x * 0.05, y: h.point.y + n.y * 0.05, z: h.point.z + n.z * 0.05 }; detonate(sim, pr); return; }
+  if (pr.type === 'beam') { pr.pos = { ...h.point }; pr.done = true; sim.emit('projectileGone', { id: pr.id, pos: { ...h.point }, hit: true, normal: { ...n } }); return; }
   if (pr.type === 'saw') {
     pr.pos = { x: h.point.x + n.x * 0.06, y: h.point.y + n.y * 0.06, z: h.point.z + n.z * 0.06 };
     if (pr.ricochets <= 0 || n.y > 0.7) {
@@ -145,7 +156,7 @@ function hitWorld(sim, pr, h, dir) {
     sim.emit('sawRicochet', { id: pr.id, pos: { ...pr.pos } });
     return;
   }
-  if (pr.type === 'bolt' || pr.type === 'blade') {
+  if (STICKY.has(pr.type)) {
     pr.pos = { x: h.point.x - dir.x * 0.05, y: h.point.y - dir.y * 0.05, z: h.point.z - dir.z * 0.05 };
     pr.stuck = { wall: true };
     pr.fuse = pr.stickFuse;

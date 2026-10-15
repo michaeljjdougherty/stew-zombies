@@ -79,6 +79,30 @@ export class ZombieViews {
   }
 
 
+  // The thermal scope: every zombie's materials glow hot and ignore the fog
+  // (shared materials are changed once and put back when the scope comes down).
+  setThermal(on) {
+    if (!on && !this.thermal) return;
+    if (!this.thermal) this.thermal = new Map();
+    if (on) {
+      for (const v of this.views.values()) {
+        const root = v.root || v.group;
+        if (!root) continue;
+        root.traverse((o) => {
+          if (!o.isMesh) return;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            if (!m || this.thermal.has(m) || !m.emissive) continue;
+            this.thermal.set(m, { e: m.emissive.clone(), i: m.emissiveIntensity, map: m.emissiveMap, fog: m.fog });
+            m.emissive.setRGB(1.6, 0.55, 0.12); m.emissiveIntensity = 1.4; m.emissiveMap = null; m.fog = false; m.needsUpdate = true;
+          }
+        });
+      }
+      return;
+    }
+    for (const [m, o] of this.thermal) { m.emissive.copy(o.e); m.emissiveIntensity = o.i; m.emissiveMap = o.map; m.fog = o.fog; m.needsUpdate = true; }
+    this.thermal = null;
+  }
+
   // Which Call of the Crust island a spot is on (for the island's own dead).
   islandAt(p) {
     const isl = this.islands;

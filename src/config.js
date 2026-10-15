@@ -558,6 +558,18 @@ export const CONFIG = {
       view: { model: 'm17', flash: 1.0 },
       upgrade: { name: 'Triple Threat', color: '#1abc9c' },
     }),
+    // Peacekeeper: between a submachine gun and a rifle. Fast, hits well, barely kicks.
+    Peacekeeper: gun('smg', {
+      name: 'Peacekeeper', cost: 1500, ammoCost: 750,
+      rpm: 760, damage: 74, headMult: 2.8, range: 70, falloffStart: 22, falloffMinMult: 0.7, penetration: 2,
+      magSize: 24, reserve: 240, reloadTime: 1.9, reloadEmptyTime: 2.35,
+      drawTime: 0.4, adsTime: 0.15, adsFovMult: 0.82,
+      spread: { hipBase: 2.0, hipMax: 5.5, perShot: 0.3, ads: 0.2, adsPerShot: 0.07 },
+      recoil: { pitch: 0.6, yaw: 0.28, recovery: 12, adsMult: 0.55, viewKick: 0.5 },
+      sound: { kind: 'smg', body: 2850, thump: 135, crack: 0.9, tail: 0.5, pitch: 1.12, mech: true },
+      view: { model: 'peacekeeper', flash: 0.9 },
+      upgrade: { name: 'Ceasefire', color: '#5ad7ff', magSize: 48, damageMult: 2.4 },
+    }),
 
     // ---- mystery box ----------------------------------------------------------
     CZ76: gun('pistol', {
@@ -658,14 +670,48 @@ export const CONFIG = {
       view: { model: 'dragunoff', flash: 1.5 },
       upgrade: { name: 'Cold Verdict', color: '#74b9ff', damageMult: 2.5, penetration: 6 },
     }),
+    // (the id stays L97A1, so old saves and stats still find it)
     L97A1: gun('sniper', {
-      name: 'L97A1', boxOnly: true,
+      name: 'L96A1', boxOnly: true,
       action: 'bolt', rpm: 52, damage: 1100, headMult: 2, magSize: 5, reserve: 50, penetration: 5,
-      reloadTime: 3.0, reloadEmptyTime: 3.6, adsFovMult: 0.28,
+      reloadTime: 3.0, reloadEmptyTime: 3.6, adsFovMult: 0.28, scope: { sway: 0.3 },
       recoil: { pitch: 6.5, viewKick: 2.6 },
       sound: { kind: 'sniper', body: 1600, thump: 80, crack: 1.5, tail: 1.5, pitch: 0.82 },
       view: { model: 'l97', flash: 1.6 },
-      upgrade: { name: 'Final Exam', color: '#ff1744', damageMult: 3, magSize: 8, penetration: 8 },
+      upgrade: { name: 'Final Exam', color: '#ff1744', damageMult: 3, magSize: 8, penetration: 9, explosiveRounds: 'sniperUp', note: 'Rounds that punch through a whole line and go off where they stop.' },
+    }),
+    // Desert Eagle: a hand cannon. Huge hits, huge kick, a 7-round magazine.
+    'Desert Eagle': gun('pistol', {
+      name: 'Desert Eagle', boxOnly: true,
+      rpm: 200, damage: 240, headMult: 3.5, range: 80, falloffStart: 25, falloffMinMult: 0.75, penetration: 2,
+      magSize: 7, reserve: 63, reloadTime: 1.75, reloadEmptyTime: 2.1, drawTime: 0.55, adsTime: 0.2,
+      spread: { hipBase: 2.4, hipMax: 6.5, perShot: 2.6, recovery: 5.5, ads: 0.2, adsPerShot: 0.5 },
+      recoil: { pitch: 6.2, yaw: 1.3, recovery: 5.5, adsMult: 0.85, viewKick: 2.8 },
+      sound: { kind: 'pistol', body: 1500, thump: 85, crack: 1.4, tail: 1.1, pitch: 0.78 },
+      view: { model: 'deagle', flash: 1.7 },
+      upgrade: { name: 'Sandstorm', color: '#ffc21a', magSize: 10, damageMult: 2.2, explosiveRounds: 'eagleUp', note: 'Every shot blows up where it lands.' },
+    }),
+    // SCAR-H: slow for a rifle, but every round hits hard.
+    'SCAR-H': gun('ar', {
+      name: 'SCAR-H', boxOnly: true,
+      rpm: 540, damage: 150, headMult: 3, range: 95, falloffStart: 35, magSize: 20, reserve: 240, penetration: 2,
+      reloadTime: 2.5, reloadEmptyTime: 3.0,
+      spread: { hipBase: 2.8, perShot: 0.5, ads: 0.2, adsPerShot: 0.12 },
+      recoil: { pitch: 1.6, yaw: 0.6, recovery: 9.5, adsMult: 0.6, viewKick: 1.05 },
+      sound: { kind: 'ar', body: 2000, thump: 105, crack: 1.25, tail: 0.85, pitch: 0.86, mech: true },
+      view: { model: 'scarh', flash: 1.3 },
+      upgrade: { name: 'Scar Tissue', color: '#ff4d6d', magSize: 40, damageMult: 2.4 },
+    }),
+    // M60: a belt of 100, heavy and slow, and it weighs you down.
+    M60: gun('lmg', {
+      name: 'M60', boxOnly: true,
+      rpm: 540, damage: 140, headMult: 2.6, magSize: 100, reserve: 400, penetration: 3,
+      reloadTime: 7.4, reloadEmptyTime: 7.9, drawTime: 1.0, adsTime: 0.46, adsMoveMult: 0.42, moveSpeedMult: 0.82,
+      spread: { hipBase: 3.8, hipMax: 9, perShot: 0.5 },
+      recoil: { pitch: 2.1, yaw: 1.25, recovery: 7, adsMult: 0.7, viewKick: 1.4 },
+      sound: { kind: 'lmg', body: 1700, thump: 95, crack: 1.25, tail: 1.0, pitch: 0.8, mech: true },
+      view: { model: 'm60', flash: 1.6 },
+      upgrade: { name: 'Death Machine', color: '#ff9f1a', magSize: 200, reloadTime: 4.4, reloadEmptyTime: 4.8 },
     }),
     'China Pond': gun('launcher', {
       name: 'China Pond', boxOnly: true,
@@ -709,6 +755,33 @@ export const CONFIG = {
       sound: { kind: 'fucci', body: 0, thump: 0, crack: 0, tail: 0.4, pitch: 1 },
       view: { model: 'fucci', flash: 0.9, flashColor: '#ffcf4a' },
       upgrade: { name: 'Fucci Haute Couture', color: '#ff2fa0', magSize: 40, impactMult: 2, explodeUp: true },
+    }),
+    // The Scavenger: a bolt-action rifle firing explosive bolts. Each one sticks
+    // in whatever it hits, glows, and goes off a second later: a huge blast that
+    // clears a crowd (stand clear yourself).
+    Scavenger: gun('sniper', {
+      name: 'Scavenger', boxOnly: true, wonder: true,
+      action: 'bolt', rpm: 38, damage: 0, magSize: 2, reserve: 12,
+      reloadTime: 3.2, reloadEmptyTime: 3.7, drawTime: 0.8, adsFovMult: 0.32, scope: { sway: 0.3 },
+      projectile: { type: 'scav', speed: 85, gravity: 1.5, impactDamage: 600, fuse: 1.1, explode: 'scav' },
+      spread: { hipBase: 4, ads: 0, adsPerShot: 0 },
+      recoil: { pitch: 6, yaw: 1.2, recovery: 5, adsMult: 0.85, viewKick: 2.6 },
+      sound: { kind: 'sniper', body: 1400, thump: 70, crack: 1.0, tail: 1.4, pitch: 0.7 },
+      view: { model: 'scav', flash: 1.4, flashColor: '#9dff6a' },
+      upgrade: { name: 'Carrion Crown', color: '#ff5e00', magSize: 3, reserve: 24, impactMult: 2, explodeUp: true, thermal: true, note: 'Bigger blasts, and a thermal scope: the dead glow through fog and dark.' },
+    }),
+    // The Fucci Gun Mk 2: the sequel. A fast 3-round burst of energy beams,
+    // dead straight, that drop zombies in one hit for the early rounds.
+    'Fucci Gun Mk 2': gun('pistol', {
+      name: 'Fucci Gun Mk 2', boxOnly: true, wonder: true,
+      fireMode: 'burst', burstCount: 3, burstDelay: 0.32, rpm: 1000, damage: 0, magSize: 21, reserve: 210,
+      reloadTime: 1.45, reloadEmptyTime: 1.65, drawTime: 0.5,
+      projectile: { type: 'beam', speed: 110, gravity: 0, impactDamage: 1050, headMult: 1.5, life: 1.2 },
+      spread: { hipBase: 1.2, hipMax: 3, perShot: 0.25, ads: 0.1, adsPerShot: 0.05 },
+      recoil: { pitch: 0.9, yaw: 0.25, recovery: 10, adsMult: 0.6, viewKick: 0.6 },
+      sound: { kind: 'beam', body: 0, thump: 0, crack: 0, tail: 0.3, pitch: 1.5 },
+      view: { model: 'fucci2', flash: 0.8, flashColor: '#7ae8ff' },
+      upgrade: { name: 'Fucci Runway Edition', color: '#00ffc8', burstCount: 5, magSize: 40, impactMult: 2.2 },
     }),
     // The Chopper: a wonder weapon. Each shot is a wall of wind that kills
     // and throws every zombie in a wide cone in front of you.
@@ -779,6 +852,7 @@ export const CONFIG = {
       'SPAZ-13': 1, HS11: 0.9, HK22: 0.9, RPKK: 0.9, Dragunoff: 0.9, L97A1: 0.8, 'China Pond': 0.9,
       'Kross-Bow': 0.9, 'Ballistik Knife': 0.6,
       'Fucci Gun': 0.5, 'The Chopper': 0.45, stewBomb: 0.7,
+      'Desert Eagle': 1, 'SCAR-H': 1, M60: 0.9, Scavenger: 0.4, 'Fucci Gun Mk 2': 0.45, Peacekeeper: 0.6,
     },
     // The box leaves after this many pulls (random in the range): the last pull
     // is Erik's bobblehead, you get your points back, and it flies off to
@@ -840,6 +914,11 @@ export const CONFIG = {
     fucci: { radius: 2.4, damage: 500, selfDamage: 22, minFrac: 0.35, shake: 0.15, energy: '#ffcf4a' },
     fucciUp: { radius: 3.0, damage: 1600, selfDamage: 22, minFrac: 0.35, shake: 0.2, energy: '#ff2fa0' },
     stewBomb: { radius: 5.5, damage: 3200, selfDamage: 50, minFrac: 0.3, shake: 1.0 },
+    // the Scavenger's bolts (and its Mad Dog version's): they hurt you too, up close
+    scav: { radius: 6, damage: 6000, selfDamage: 90, minFrac: 0.35, shake: 1.4 },
+    scavUp: { radius: 8.5, damage: 16000, selfDamage: 90, minFrac: 0.35, shake: 1.7 },
+    eagleUp: { radius: 2.4, damage: 900, selfDamage: 15, minFrac: 0.35, shake: 0.25, small: true },
+    sniperUp: { radius: 3, damage: 2400, selfDamage: 20, minFrac: 0.35, shake: 0.35, small: true },
   },
 
   // ---------------------------------------------------------------------------

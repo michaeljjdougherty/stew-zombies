@@ -39,7 +39,7 @@ function recordedShot(A, out, t, p) {
 
 // Mad Dog (Pack-a-Punch) guns, the classic way: the gun's own shot, higher
 // pitched and brighter, with a short electric sizzle on top.
-const PACK_SKIP = ['fucci', 'wind', 'saw'];   // these have their own upgraded sounds
+const PACK_SKIP = ['fucci', 'beam', 'wind', 'saw'];   // these have their own upgraded sounds
 function packSizzle(A, out, t, p) {
   const big = p.kind === 'shotgun' || p.kind === 'sniper' || p.kind === 'revolver';
   // a bright electric crackle
@@ -70,6 +70,7 @@ export function gunshot(A, out, t, p = {}) {
   if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);
   if (p.kind === 'blade') return bladeFire(A, out, t, p);
   if (p.kind === 'fucci') return fucciFire(A, out, t, p);
+  if (p.kind === 'beam') return beamFire(A, out, t, p);
   if (p.kind === 'saw') return sawFire(A, out, t, p);
   if (p.kind === 'wind') return windFire(A, out, t, p);
   const pitch = (p.pitch || 1) * R(0.96, 1.04);
@@ -1262,6 +1263,30 @@ export function cheddarSting(A, out, t) {
 }
 
 // --- Phase 7: wonder weapons, Stew Bombs, the box moving ----------------------
+
+// The Fucci Gun Mk 2: a short, hard energy crack (each shot of the burst),
+// a falling zip under it and a glassy ring after. Upgraded: higher and fuller.
+function beamFire(A, out, t, p = {}) {
+  const up = p.upgraded ? 1.25 : 1;
+  const o = A.osc('sawtooth', 2600 * up, t, 0.14);
+  o.frequency.exponentialRampToValueAtTime(380 * up, t + 0.11);
+  const bp = A.filter('bandpass', 1800 * up, 1.2);
+  const g = A.gain(0); A.env(g, t, 0.001, 0.12, 0.32);
+  o.connect(bp); bp.connect(g); g.connect(out);
+  const s = A.osc('sine', 5200 * up, t, 0.35);
+  s.frequency.exponentialRampToValueAtTime(4100 * up, t + 0.3);
+  const sg = A.gain(0); A.env(sg, t, 0.003, 0.3, 0.07);
+  s.connect(sg); sg.connect(out);
+  const n = A.noiseSource('white', t, 0.06);
+  const hp = A.filter('highpass', 3500, 0.8);
+  const ng = A.gain(0); A.env(ng, t, 0.001, 0.04, 0.3);
+  n.connect(hp); hp.connect(ng); ng.connect(out);
+  const k = A.osc('sine', 160, t, 0.12);
+  k.frequency.exponentialRampToValueAtTime(55, t + 0.1);
+  const kg = A.gain(0); A.env(kg, t, 0.001, 0.1, 0.4);
+  k.connect(kg); kg.connect(out);
+  return 0.4;
+}
 
 function fucciFire(A, out, t, p = {}) {
   const up = p.upgraded ? 1.35 : 1;

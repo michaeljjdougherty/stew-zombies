@@ -93,6 +93,24 @@ export const GUN_VOICES = {
   RPKK: { s: 'ak', gain: 0.75, rate: 0.93, sub: 0.8, reverb: 0.5 },
   Dragunoff: { s: 'n_svd', gain: 0.82, rate: 1.0, sub: 1 },
   L97A1: { s: 'n_sniper', gain: 0.86, rate: 0.95, sub: 1.1 },
+  // the second wave
+  'Desert Eagle': { s: 'n_revolver', gain: 0.98, rate: 0.8, sub: 1.5, reverb: 0.55 },
+  'SCAR-H': { s: 'blackout', gain: 0.76, rate: 0.9, sub: 0.8, reverb: 0.5 },
+  M60: { s: 'r3006', gain: 0.78, rate: 0.97, sub: 1.0, reverb: 0.55 },
+  Peacekeeper: { s: 'ar15', gain: 0.62, rate: 1.16, sub: 0.35, reverb: 0.45 },
+  Scavenger: { s: 'tikka', gain: 0.82, rate: 0.74, sub: 1.3, reverb: 0.4 },
+};
+
+// Each gun's own reloads and handling: its mechanics played faster or slower
+// (rate), louder (gain), and what you hear as it comes up (draw: a mechanics part).
+export const MECH_TUNE = {
+  'Desert Eagle': { rate: 0.84, gain: 1.15, draw: 'bolt' },
+  'SCAR-H': { rate: 0.9, gain: 1.05, draw: 'bolt' },
+  M60: { rate: 0.78, gain: 1.2, draw: 'bolt' },
+  Peacekeeper: { rate: 1.14, gain: 0.95, draw: 'bolt' },
+  Scavenger: { rate: 0.82, gain: 1.1, draw: 'bolt' },
+  'Fucci Gun Mk 2': { rate: 1.45, gain: 0.8, draw: 'bolt' },
+  L97A1: { rate: 0.94, gain: 1.05, draw: 'bolt' },
 };
 
 

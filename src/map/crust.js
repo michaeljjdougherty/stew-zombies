@@ -197,7 +197,7 @@ function hub() {
   I.room({ id: 'depot', kind: 'tin', rect: [17, -26, 26, -19], y: RIMH, height: 4.2, name: 'Supply Depot', zone: 'depot', fixtures: [{ x: 21.5, y: RIMH + 3.9, z: -22.5, lit: true, flicker: 0.3, kind: 'hanging' }] });
   I.links.push({ a: 'depot', out: 's', t: 0.5, type: 'door', id: 'door_hub_depot', name: 'Supply Depot' });
   I.links.push({ a: 'depot', out: 'w', t: 0.5, type: 'gap', width: 2 });
-  I.wallBuys.push({ weapon: 'PM64', room: 'depot', side: 'n', t: 0.5 });
+  I.wallBuys.push({ weapon: 'PM64', room: 'depot', side: 'n', t: 0.5 }, { weapon: 'Peacekeeper', room: 'depot', side: 's', t: 0.5 });
   I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2 });
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
   I.prop('anvil', -3.3, -3.3, 3.3, 3.3, 6.5, { blank: true });

@@ -4,6 +4,8 @@
 #   python3 convert_gun.py <in.glb> <out.glb> [maxTris=60000] [prune]
 # prune: drop loose pieces (spare rounds, a display stand...) that sit outside
 # the biggest connected piece's bounding box.
+# cut:x>0.1 (any axis, > or <): drop triangles wholly past that plane (a spare
+# magazine baked into the same mesh as the gun).
 import sys, os, io, json, struct, numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
@@ -68,6 +70,20 @@ if len(sys.argv) > 4 and sys.argv[4].startswith('crop='):
             if 'max' + k in cr: p['I'] = p['I'][(p['P'][p['I']][:, :, ax] <= cr['max' + k]).all(1)]
             if 'min' + k in cr: p['I'] = p['I'][(p['P'][p['I']][:, :, ax] >= cr['min' + k]).all(1)]
     prims = [p for p in prims if len(p['I'])]
+for arg in sys.argv[4:]:
+    if not arg.startswith('cut:'): continue
+    ax, op, val = 'xyz'.index(arg[4]), arg[5], float(arg[6:])
+    for p in prims:
+        V = p['P'][p['I']][:, :, ax]
+        gone = (V > val).all(1) if op == '>' else (V < val).all(1)
+        p['I'] = p['I'][~gone]
+        # (and the vertices only they used, so the bounds shrink too)
+        used = np.unique(p['I']); remap = -np.ones(len(p['P']), np.int64); remap[used] = np.arange(len(used))
+        p['P'] = p['P'][used]; p['I'] = remap[p['I']]
+        if p['N'] is not None: p['N'] = p['N'][used]
+        p['U'] = {k: v[used] for k, v in p['U'].items()}
+        if p['C'] is not None: p['C'] = np.asarray(p['C'])[used]
+        print(f'  cut {gone.sum()} tris past {arg[4:]}')
 if len(sys.argv) > 4 and sys.argv[4] == 'prune':
     pieces = []
     for pi, p in enumerate(prims):

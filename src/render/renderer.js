@@ -552,7 +552,12 @@ export class GameRenderer {
     if (air) { this.fogBase.copy(air.fog); this.fogDensity = air.density; }
     this.scene.fog.color.copy(this.fogBase).lerp(this.hazeColor, this.haze * 0.8);
     this.scene.background = this.scene.fog.color;
-    this.scene.fog.density = (this.fogDensity ?? this.cfg.graphics.fogDensity) * (1 + this.haze * 0.9);
+    // a thermal scope (the Carrion Crown): the dead burn bright through the fog and the dark
+    const held = p && p.alive && this.cfg.weapons[p.loadout.slots[p.loadout.current].id];
+    const thermal = !!(held && held.thermal && this.viewmodel.scoped);
+    this.zombies.setThermal(thermal);
+    this.thermal = thermal;
+    this.scene.fog.density = (this.fogDensity ?? this.cfg.graphics.fogDensity) * (1 + this.haze * 0.9) * (thermal ? 0.25 : 1);
     if (sim.rounds.cheddar && Math.random() < dt * 0.25) this.flash = Math.max(this.flash || 0, 0.18 + Math.random() * 0.2);
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
     this.effects.update(dt);

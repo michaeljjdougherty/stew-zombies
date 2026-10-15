@@ -185,6 +185,9 @@
   #ammo .bar { margin: 0 5px; font-size: 22px; color: var(--muted); }
   #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 min(36vh, 36vw), #000 calc(min(36vh, 36vw) + 2px)); }
   #scope[hidden] { display: none; }
+  /* the thermal scope: a cold blue wash inside the glass */
+  #scope.thermal { background: radial-gradient(circle at 50% 50%, rgba(10,30,70,.45) 0 min(36vh, 36vw), #000 calc(min(36vh, 36vw) + 2px)); }
+  #scope.thermal .dot { background: #ffe14a; box-shadow: 0 0 6px #ffb020; }
   #scope::before, #scope::after { content: ""; position: absolute; background: rgba(0,0,0,.85); }
   #scope::before { left: 50%; top: 14vh; bottom: 14vh; width: 2px; margin-left: -1px; }
   #scope::after { top: 50%; left: calc(50% - 36vh); right: calc(50% - 36vh); height: 2px; margin-top: -1px; }

@@ -497,6 +497,7 @@ export class HUD {
     this.set('grenades', this.el.grenades, '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
+    this.set('scopeThermal', this.el.scope, scoped && def.thermal ? 'thermal' : '', 'className');
     this.set('reserve', this.el.reserve, String(slot.reserve));
     const low = slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
     this.set('lowclass', this.el.ammo, low ? 'low' : '', 'className');

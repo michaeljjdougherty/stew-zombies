@@ -19,9 +19,9 @@ const ease = (t) => t * t * (3 - 2 * t);
 const seg = (p, a, b) => ease(clamp01((p - a) / (b - a)));
 const bump = (p, a, b) => Math.sin(clamp01((p - a) / (b - a)) * Math.PI);
 // Rifle reloads, one flavour per gun (Call of Duty style). Others fall back to 'std'.
-const RIFLE_RELOADS = { Komando: 'flick', 'AK-75u': 'flip', Galill: 'flip', M17: 'tap', FAMOS: 'bullpup', AWG: 'toss', G12: 'twirl', M15: 'rack' };
+const RIFLE_RELOADS = { Komando: 'flick', 'AK-75u': 'flip', Galill: 'flip', M17: 'tap', FAMOS: 'bullpup', AWG: 'toss', G12: 'twirl', M15: 'rack', 'SCAR-H': 'rack' };
 // Pistol and SMG reloads, one flavour per gun. Others keep the plain reload.
-const SMALL_RELOADS = { M1912: 'slap', CZ76: 'tac', 'CZ76 Dual': 'cross', MP41: 'stick', MP6K: 'wipe', MPK: 'spin', PM64: 'twist', Spectur: 'tuck' };
+const SMALL_RELOADS = { M1912: 'slap', CZ76: 'tac', 'CZ76 Dual': 'cross', MP41: 'stick', MP6K: 'wipe', MPK: 'spin', PM64: 'twist', Spectur: 'tuck', 'Desert Eagle': 'tac', 'Fucci Gun Mk 2': 'spin', Peacekeeper: 'twist' };
 // Piecewise path through keyframes [[t, value], ...]; each leg eases. value is a number or [x, y, z].
 const keyPath = (p, keys) => {
   if (p <= keys[0][0]) return keys[0][1];

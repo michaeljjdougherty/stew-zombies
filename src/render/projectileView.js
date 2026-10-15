@@ -38,6 +38,30 @@ export class ProjectileViews {
       for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(0.1 + i * 0.03, 0.012, 6, 20), ringMat, 0, 0, 0.12 + i * 0.13);
       glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: col, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
       glow.scale.setScalar(0.6); g.add(glow);
+    } else if (e.ptype === 'scav') {
+      // the Scavenger's bolt: a fat brass dart with a glowing charge in its nose
+      const up = this.cfg && e.weapon && this.cfg.weapons[e.weapon] && this.cfg.weapons[e.weapon].upgraded;
+      const col = up ? new THREE.Color(4, 1.1, 0.2) : new THREE.Color(1.2, 3.2, 1.0);
+      const shaft = add(new THREE.CylinderGeometry(0.012, 0.012, 0.34, 8), m.darkMetal);
+      shaft.rotation.x = Math.PI / 2;
+      const charge = add(new THREE.CylinderGeometry(0.028, 0.028, 0.09, 10), new THREE.MeshBasicMaterial({ color: col }), 0, 0, -0.14);
+      charge.rotation.x = Math.PI / 2;
+      const head = add(new THREE.CylinderGeometry(0.0, 0.026, 0.07, 8), m.metal, 0, 0, -0.22);
+      head.rotation.x = -Math.PI / 2;
+      for (const r of [0, Math.PI / 2]) add(new THREE.BoxGeometry(0.05, 0.003, 0.07), m.darkMetal, 0, 0, 0.15).rotation.z = r;
+      beep = charge;
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: col, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      glow.scale.setScalar(0.7); glow.position.z = -0.14; g.add(glow);
+    } else if (e.ptype === 'beam') {
+      // the Fucci Gun Mk 2: a streak of light
+      const up = this.cfg && e.weapon && this.cfg.weapons[e.weapon] && this.cfg.weapons[e.weapon].upgraded;
+      const col = up ? new THREE.Color(0.4, 3.6, 3.0) : new THREE.Color(1.0, 3.0, 4.0);
+      const core = add(new THREE.CylinderGeometry(0.012, 0.012, 1.4, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 5, 5) }), 0, 0, 0.7);
+      core.rotation.x = Math.PI / 2;
+      const outer = add(new THREE.CylinderGeometry(0.035, 0.02, 1.6, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 0, 0.8);
+      outer.rotation.x = Math.PI / 2;
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: col, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      glow.scale.setScalar(0.5); g.add(glow);
     } else if (e.ptype === 'saw') {
       spin = new THREE.Group(); g.add(spin);
       const steel = new THREE.MeshStandardMaterial({ color: '#d0d0ca', metalness: 0.35, roughness: 0.35, emissive: new THREE.Color(0.12, 0.12, 0.12) });
@@ -108,6 +132,12 @@ export class ProjectileViews {
       }
     } else if (e.type === 'projectileGone') {
       const v = this.views.get(e.id);
+      // a beam that hit something: a flash and sparks where it landed
+      if (v && v.type === 'beam' && e.pos) {
+        const at = new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z);
+        for (let i = 0; i < 10; i++) this.effects.spawnParticle(at, new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 4, (Math.random() - 0.5) * 5), { life: 0.3, size: 0.012, color: [1.5, 3.5, 4.5], gravity: 6, drag: 1 });
+        this.effects.puff(at, { color: 0x9fe8ff, size: 0.25, grow: 2.5, life: 0.35, alpha: 0.5, shade: false });
+      }
       if (v) { this.scene.remove(v.g); this.views.delete(e.id); }
       this.prev.delete(e.id);
     }
@@ -158,6 +188,7 @@ export class ProjectileViews {
           while (v.trailT > 0.02) { v.trailT -= 0.02; this.effects.puff(v.g.position.clone(), { color: 0x8a8478, size: 0.12, grow: 3, life: 0.9, alpha: 0.4, vel: new THREE.Vector3(0, 0.3, 0) }); }
         }
       }
+      if (v.type === 'scav' && v.glow) v.glow.scale.setScalar((v.stuck ? 1.4 : 0.7) * (1 + Math.sin(this.time * (v.stuck ? 30 : 12)) * 0.25));
       // crossbow bolt: beeps faster as it is about to go
       if (v.beep) {
         if (v.stuck && isFinite(pr.fuse)) {

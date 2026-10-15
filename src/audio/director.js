@@ -5,7 +5,7 @@
 import * as S from './sfx.js';
 import { StewSong, FireSaleMusic } from './music.js';
 import { powerupActive } from '../sim/powerups.js';
-import { GUN_VOICES, mechSetFor } from './gunSamples.js';
+import { GUN_VOICES, MECH_TUNE, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
 import { CREW } from '../lore/crew.js';
 import { voiceKey } from '../lore/voice.js';
@@ -44,7 +44,8 @@ export class SoundDirector {
     const A = this.A;
     const def = this.cfg.weapons[weaponId];
     const key = def ? mechSetFor(weaponId, def)[part] : null;
-    if (key && A.hasSample(Array.isArray(key) ? key[0] : key)) A.play(S.sample, { key, gain }, { delay, reverb: 0.06, gain: 1 });
+    const tune = MECH_TUNE[baseWeaponId(weaponId)] || {};
+    if (key && A.hasSample(Array.isArray(key) ? key[0] : key)) A.play(S.sample, { key, gain: gain * (tune.gain || 1), rate: tune.rate || 1 }, { delay, reverb: 0.06, gain: 1 });
     else if (fallback) A.play(fallback, {}, { gain, delay, reverb: 0.08 });
   }
 
@@ -300,7 +301,12 @@ export class SoundDirector {
         break;
       case 'weaponSwitch':
       case 'weaponGiven':
-        if (local) A.play(S.weaponSwitch, {}, { gain: 0.8, reverb: 0.05 });
+        if (local) {
+          A.play(S.weaponSwitch, {}, { gain: 0.8, reverb: 0.05 });
+          // (some guns have their own sound as they come up: a slide, a bolt, a charging handle)
+          const tune = e.weapon && MECH_TUNE[baseWeaponId(e.weapon)];
+          if (tune && tune.draw) this.mech(e.weapon, tune.draw, 0.22, null, 0.7);
+        }
         break;
       case 'wallBuy':
         if (local) A.play(S.purchase, {}, { gain: 0.7, reverb: 0.15 });
@@ -654,7 +660,7 @@ export class SoundDirector {
     // stuck crossbow bolts beep faster and faster
     if (!this.beepT) this.beepT = new Map();
     for (const pr of sim.projectiles) {
-      if (pr.type !== 'bolt' || !pr.stuck || !isFinite(pr.fuse)) continue;
+      if ((pr.type !== 'bolt' && pr.type !== 'scav') || !pr.stuck || !isFinite(pr.fuse)) continue;
       let t = (this.beepT.get(pr.id) ?? 0) - dt;
       if (t <= 0) { A.play(S.boltBeep, {}, { pos: pr.pos, ref: 2 }); t = 0.06 + Math.max(0, pr.fuse) * 0.2; }
       this.beepT.set(pr.id, t);

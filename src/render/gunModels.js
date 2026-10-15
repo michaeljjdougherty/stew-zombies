@@ -48,12 +48,19 @@ export const REAL_GUNS = {
   hk22: { file: 'heckler__koch_hk21', rot: [0, -90, 0], hide: /^Object_(82|86|91|95)$/, off: [0.015, 0, 0], iron: { rear: /^Object_83$/, front: /^Object_89$/, post: true }, rh: [0, 0.01, -0.1], lh: [0, 0.018, 0] },
   rpkk: { file: 'rpk_drum_mag', rot: [0, 180, 0], hide: /^RPK_Sight_0$/, mag: /RPK_Mag/, off: [-0.003, 0, 0], iron: { rear: /^RPK_Toprail_0$/, front: /^RPK_Barrel_0$/, post: true, back: 0.1 }, rh: [0, -0.015, 0.075], lh: [0, 0.02, 0] },
   dragunoff: { file: 'svd_dragunov', rot: [0, 0, 0], mag: /^mag/, rh: [0, 0.015, -0.03], lh: [0, 0.018, -0.03] },
-  l97: { file: 'l96a1_sniper', rot: [0, 90, 0], rh: [0, -0.005, -0.07], lh: [0, 0.005, 0] },
+  l97: { file: 'l96a1', rot: [0, 90, 0], hide: /Tripod/, rh: [0, -0.005, -0.07], lh: [0, 0.005, 0] },
   chinapond: { file: 'china_lake_colored', rot: [0, 0, 0], rh: [0, 0.035, 0.04], rk: -0.35, lh: [0, 0.04, 0] },
   krossbow: { file: 'crossbow', rot: [0, -90, 0], tint: '#4a4c50', rh: [0, 0.01, -0.005], lh: [0, 0.055, 0] },
   bknife: { file: 'combat_knife', rot: [0, -90, 0] },
   fucci: { file: 'retro_ray-gun', rot: [0, 90, 0], rh: [0, 0.005, 0] },
   chopper: { file: 'saw-gun', rot: [0, -90, 0] },
+  // the second wave of guns (each on the built-in gun nearest its shape)
+  scav: { file: 'scavenger', rot: [0, 0, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
+  fucci2: { file: 'fucci_mk2', rot: [0, -90, 0], len: 1.6, rh: [0, -0.025, 0.01] },
+  deagle: { file: 'deagle', rot: [0, 180, 0], len: 1.12, rh: [0, 0.01, 0.005] },
+  peacekeeper: { file: 'peacekeeper', rot: [0, -90, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
+  scarh: { file: 'scar_h', rot: [0, 180, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
+  m60: { file: 'm60', rot: [0, 90, 0], hide: /^polySurface(156|239|245|261|284|285|248|237)_/, rh: [0, 0, 0], lh: [0, -0.1, -0.22] },
 };
 export const realGunMaterials = new Set();   // the viewmodel dims these in the dark
 // First person: cut away whatever comes closer than a few cm to the eye (a
@@ -1150,6 +1157,8 @@ const BUILDERS = {
   fucci, chopper,
   pistol, revolver, rifle, doubleBarrel, smg, carbine,
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,
+  // (the real models of these sit on the nearest built-in shape: hands, sights, size)
+  scav: l97, fucci2: pistol, deagle: pistol, peacekeeper: carbine, scarh: carbine, m60: hk22,
 };
 
 // ---------------------------------------------------------------------------
