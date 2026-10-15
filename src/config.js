@@ -1211,6 +1211,7 @@ export const CONFIG = {
     fogDensity: 0.0115,
     thunderEvery: [7, 16],   // s between distant thunderclaps
     artilleryEvery: [3, 9],  // s between far-off shells landing
+    brightness: 1.35,        // exposure x on this map (it read too dark)
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
     // the guns over the Trench Front's open ground
     shelling: {

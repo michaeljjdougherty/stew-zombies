@@ -93,5 +93,13 @@ const ids = (p) => p.loadout.slots.map((s) => s.id);
   check(blocks.length === 0, 'nothing stands in the depot\'s west gap');
 }
 
+// --- no two perk machines side by side (each in its own room, well apart)
+for (const map of [SCHOOL, CRUST]) {
+  const M = new GameSim({ map, seed: 1 }).world.perkMachines;
+  let min = Infinity;
+  for (let i = 0; i < M.length; i++) for (let j = i + 1; j < M.length; j++) min = Math.min(min, Math.hypot(M[i].center.x - M[j].center.x, M[i].center.z - M[j].center.z));
+  check(new Set(M.map((m) => m.room)).size === M.length && min > 12, `${map.name}: perk machines spread out (closest ${min.toFixed(1)} m apart, one per room)`);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall Milton Kick checks passed');
 process.exit(fails ? 1 : 0);

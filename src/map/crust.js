@@ -429,7 +429,8 @@ function ship() {
   for (const [x, z, yaw, rows] of [[-12, -176, 0.25, [0, 1]], [32, -130, -0.4, [2]], [-4, -197, 1.2, [3, 4]], [28, -186, 0.9, [5]]]) {
     I.model({ a: 'containers', pick: rows.map((r) => ['Object_0', 'Object_12', 'Object_18', 'Object_21', 'Object_24', 'Object_38'][r]), x, y: BAS, z, yaw }, { collide: [x, z, 3.4, 3.4, 2.9] });
   }
-  I.model({ a: 'containers', pick: ['Object_36', 'Object_37', 'Object_39'], x: -2, y: G, z: -132, yaw: 1.4, rz: 0.03 }, { collide: [-2, -132, 4, 6.2, 2.9] });
+  // (no container at the foot of the pier: its parts only ever drew as one dark panel, inside an
+  // invisible 8 x 12 m wall with a hole in the ground under it)
   const rr = R(17);
   for (const [x, z] of [[-48, -142], [-26, -128], [-50, -186], [34, -120], [50, -150], [-14, -200], [24, -198], [-46, -126]]) {
     I.model({ a: 'maple', x, y: G - 0.2, z, yaw: rr() * 6, fit: { h: 7 + rr() * 3 }, rz: 0.12, look: { tint: '#9a8a6a' } });
@@ -1212,6 +1213,7 @@ export const CRUST = {
   openField: true,     // no zones to open: zombies come for you wherever you can be reached
   space: true,         // the islands float in space: step off an edge and you're gone
   islands: ISLANDS,
+  brightness: CONFIG.crust.brightness,   // (exposure x: src/render/renderer.js)
   pa: false,           // nobody on the speakers yet (The Shntitz comes later)
   fog: { color: '#1c2534', density: 0.006 },
   farPlane: 320,
@@ -1244,10 +1246,10 @@ export const CRUST = {
   ceasefire: out.ceasefire,      // the field telephone in the fort
   titans: out.titans,            // each island's titan, for the egg (src/sim/crustEgg.js)
   // perk machines (no power switch out here: they run from the start)
-  // (both on the depot's back wall: the west wall is a gap onto the rim)
+  // (never two side by side: one at the Anvil, one out in the Trench Front's fort)
   perkMachines: [
-    { perk: 'phdGaylor', room: 'depot', side: 'n', at: 18.6 },
     { perk: 'miltonKick', room: 'depot', side: 'n', at: 24.4 },
+    { perk: 'phdGaylor', room: 'fort1', side: 's', at: -3.5 },
   ],
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [

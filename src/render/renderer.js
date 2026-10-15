@@ -530,7 +530,7 @@ export class GameRenderer {
     const lit = bakeUniforms.bakePower.value;
     const targetExp = (g.exposureDark ?? g.exposure) + ((g.exposureLit ?? g.exposure) - (g.exposureDark ?? g.exposure)) * lit;
     this.exposure = this.exposure == null ? targetExp : this.exposure + (targetExp - this.exposure) * Math.min(1, dt * 1.5);
-    this.renderer.toneMappingExposure = mode === 'title' ? g.exposure : this.exposure;
+    this.renderer.toneMappingExposure = mode === 'title' ? g.exposure : this.exposure * (sim.mapData.brightness || 1);
     this.box.update(dt, time);
     for (const v of this.saleBoxes.values()) v.update(dt, time);
     this.cauldron.update(dt, time, sim, this.camera.position);

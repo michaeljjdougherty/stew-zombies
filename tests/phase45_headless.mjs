@@ -245,6 +245,8 @@ function makeGame(seed = 7) {
   sim.rounds.round = 8; sim.rounds.phase = 'intermission'; sim.rounds.timer = 0.1;
   function survive(x, z, seconds, label, y = 0) {
     place(x, z, x, z - 1, y);
+    // (a fresh round each time: one nearly spawned out leaves nobody to come for you)
+    if (sim.rounds.phase === 'active' && sim.rounds.toSpawn < 8) { sim.rounds.phase = 'intermission'; sim.rounds.timer = 0.05; }
     let maxStuck = 0, maxDoorway = 0;
     const stuck = new Map(), nearDoor = new Map();
     const start = log.length;

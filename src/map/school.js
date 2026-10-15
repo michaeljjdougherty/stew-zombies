@@ -436,8 +436,9 @@ export const SCHOOL = {
     { perk: 'beefcakeBroth', room: 'cafe', side: 'w', at: -24.6 },
     { perk: 'hotPotHustle', room: 'lab', side: 'e', at: -21 },
     { perk: 'doubleLadle', room: 'band', side: 'n', at: -18 },
-    { perk: 'marathonMinestrone', room: 'auditorium', side: 'w', at: -66 },
-    { perk: 'phdGaylor', room: 'auditorium', side: 'e', at: -55 },
+    // (never two machines side by side: each in its own room, well apart)
+    { perk: 'marathonMinestrone', room: 'auditorium', side: 'e', at: -68 },
+    { perk: 'phdGaylor', room: 'quad', side: 's', at: 34 },
     { perk: 'miltonKick', room: 'library', side: 'e', at: -38.6 },
   ],
 
