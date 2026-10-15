@@ -1576,8 +1576,9 @@ export const CONFIG = {
     // it, everyone can take a War Hammer from it (one each).
     // the sky out in space (src/render/crustThemes.js spaceTexture): a calm one.
     // size: the texture (px, over the whole dome); stars: faint pinpricks (their
-    // brightness from, to); bright: the few brighter ones; nebula: how strong its colour
-    sky: { size: [4096, 2048], stars: 2600, faint: [0.25, 0.7], bright: 45, nebula: 0.75 },
+    // brightness from, to); bright: the few brighter ones; nebula: how strong its colour;
+    // planetSpin: how fast the planets turn (rad/s; their clouds a touch faster)
+    sky: { size: [4096, 2048], stars: 2600, faint: [0.25, 0.7], bright: 45, nebula: 0.75, planetSpin: { body: 0.045, clouds: 0.065 } },
     hammerParts: {
       parts: {
         trench: { id: 'head', name: 'Hammer Head' },

@@ -465,6 +465,7 @@ function spacePlanets(out, sky) {
       const holder = new THREE.Group();
       holder.position.copy(new THREE.Vector3(...dir).normalize().multiplyScalar(175));
       holder.scale.setScalar(size / r);
+      const turn = Math.random() < 0.5 ? -1 : 1, pace = 0.75 + Math.random() * 0.5;   // (each its own way round, its clouds with it)
       for (const { o, cloud } of parts) {
         const m = new THREE.Mesh(o.geometry, [].concat(o.material).map((mm) => {
           const k = mm.clone();
@@ -476,7 +477,8 @@ function spacePlanets(out, sky) {
         m.matrix.copy(o.matrixWorld).premultiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
         m.renderOrder = -9;
         const spin = new THREE.Group(); spin.add(m); holder.add(spin);
-        out.planets.push({ g: spin, rate: (cloud ? 0.02 : 0.008) * (0.6 + Math.random()) });
+        const R = CONFIG.crust.sky.planetSpin;   // (rad/s: slow, but you can see it going round)
+        out.planets.push({ g: spin, rate: (cloud ? R.clouds : R.body) * pace * turn });
       }
       holder.rotation.set(Math.random() * 0.6, Math.random() * 6, 0.3);
       sky.add(holder);

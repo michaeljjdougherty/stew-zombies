@@ -456,7 +456,7 @@ function ship() {
   const CY = G, KY = 6.3;
   I.room({ id: 'capsized', kind: 'hull', rect: [38, -178, 47, -148], y: CY, height: KY - 0.3 - CY, name: 'The Capsized Hull', ceiling: 'none', fixtures: [{ x: 42.5, y: CY + 4.6, z: -170, lit: true, flicker: 0.6, kind: 'hanging' }, { x: 42.5, y: CY + 4.6, z: -154, lit: true, flicker: 0.3, kind: 'hanging' }] });
   I.links.push({ a: 'capsized', out: 'w', t: 0.5, type: 'door', id: 'door_ship_capsized', name: 'The Hull' });
-  I.wallBuys.push({ weapon: 'AK-75u', room: 'capsized', side: 'e', t: 0.3 }, { weapon: 'Olympus', room: 'capsized', side: 'e', t: 0.75 }, { weapon: 'Staykout', room: 'smokehouse', side: 's', t: 0.5 });
+  // (every wall gun's on the map once: the Graveyard has the MP41 and the PM64, in the sheds)
   I.boxSpots.push({ id: 'box_capsized', room: 'capsized', x: 46.4, z: -158, yaw: -Math.PI / 2 });
   for (const d of deckHole('hull', [37, -179, 48, -147], [40.5, -165, 44.5, -161], KY, { zone: HULLZ, look: 'hullTop' })) I.add(d, { connect: 'nswe' });
   I.railGaps.push([40.2, -165.3, 44.8, -160.7]);   // (the hole's for dropping through)
@@ -551,7 +551,7 @@ function research() {
     { a: 'mess', out: 'w', type: 'gap', width: 1.6, height: 2.4, t: 0.7 },
   );
   I.windows.push({ room: 'mainlab', side: 'n', t: 0.25 }, { room: 'mess', side: 's', t: 0.4 }, { room: 'mainlab', side: 'w', t: 0.5 });
-  I.wallBuys.push({ weapon: 'lbd', room: 'mess', side: 'e', t: 0.6 }, { weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'MP6K', room: 'genhall', side: 'e', t: 0.5 }, { weapon: 'PM64', room: 'mess', side: 'w', t: 0.3 }, { weapon: 'AK-75u', room: 'garage', side: 'e', t: 0.5 }, { weapon: 'Peacekeeper', room: 'garage', side: 's', t: 0.2 });
+  I.wallBuys.push({ weapon: 'lbd', room: 'mess', side: 'e', t: 0.6 }, { weapon: 'M17', room: 'mainlab', side: 'n', t: 0.6 }, { weapon: 'Peacekeeper', room: 'garage', side: 's', t: 0.2 });
   I.boxSpots.push({ id: 'box_garage', room: 'garage', x: 165.4, z: 10.5, yaw: -Math.PI / 2 }, { id: 'box_gen', room: 'genhall', x: 157, z: -19.4, yaw: 0 });
 
   // the radio mast: spiral stairs up to two platforms
@@ -573,7 +573,6 @@ function research() {
   });
   I.links.push({ a: 'dome', out: 'w', t: 0.5, type: 'door', id: 'door_res_dome', name: 'Observatory' });
   I.windows.push({ room: 'dome', side: 'e', t: 0.5 });
-  I.wallBuys.push({ weapon: 'Staykout', room: 'dome', side: 'n', t: 0.8 });
   const dr = I.add(spiral('domeramp', DX, DZ, 14, G, DT, { zone: RAMP, w: 2.2, perFlight: (DT - G) / 4, look: 'steel', summit: true }));
   I.joins.push({ a: 'dome_2', b: dr.bottom.id, x: 174, z: 22.9, axis: 'x', width: 2.2, dirAB: 1 });
   I.prop('telescope', DX - 2, DZ - 2, DX + 2, DZ + 2, 4.2, { y: DT });
@@ -720,7 +719,7 @@ function trench() {
     { a: 'fort1', out: 'w', t: 0.7, type: 'gap', width: 1.8, height: 2.4 },
     { a: 'fort1', out: 'e', t: 0.7, type: 'gap', width: 1.8, height: 2.4 },
   );
-  I.wallBuys.push({ weapon: 'MP41', room: 'fort1', side: 'e', t: 0.3 }, { weapon: 'Staykout', room: 'fort2', side: 'w', t: 0.5 });
+  I.wallBuys.push({ weapon: 'MPK', room: 'fort1', side: 'e', t: 0.3 }, { weapon: 'Staykout', room: 'fort2', side: 'w', t: 0.5 });
   I.boxSpots.push({ id: 'box_fort', room: 'fort1', x: -7.4, z: 147, yaw: Math.PI / 2 });
   const s1 = I.add(flight('fort_stairs1', [-6, 140, 1.5, 141.6], F1, F2, 'e', { zone: 'fort1', look: 'concrete' }));
   I.joins.push(...flightPortals(s1, 'fort1_2', 'fort2_1'));
@@ -735,7 +734,6 @@ function trench() {
   // the field telephone: call in a ceasefire
   I.ceasefire = { pos: { x: -7.95, y: F1 + 1.4, z: 144 }, normal: { x: 1, z: 0 }, room: 'fort1' };
   // a gun in the front line, guns in the pits
-  I.later.push(() => I.wallBuys.push({ weapon: 'M17', zone: TR, room: TR, ...rockFace(t, -4, 171, 0, 1, TF, 1.6) }));
   I.prop('fieldgun', -39, 136, -34, 140, 1.8); I.prop('fieldgun', 34, 136, 39, 140, 1.8);
   I.prop('crate', -33, 141, -31.8, 142.2, 1.1); I.prop('crate', 31.8, 141, 33, 142.2, 1.1);
   I.prop('barrel', 10.65, 115.65, 11.35, 116.35, 0.95, { fire: true });
@@ -948,11 +946,8 @@ function caves() {
 
   // guns on the rock, the box
   I.later.push(() => {
-    I.wallBuys.push({ weapon: 'MP41', zone: GAL, room: GAL, ...rockFace(t, -127, 3, 0, -1, F) });
-    I.wallBuys.push({ weapon: 'Olympus', zone: CAV, room: CAV, ...rockFace(t, -156, 1, 0, 1, F) });
-    I.wallBuys.push({ weapon: 'PM64', zone: LAKE, room: LAKE, ...rockFace(t, -182, 6, 0, 1, F) });
-    I.wallBuys.push({ weapon: 'Staykout', zone: MINE, room: MINE, ...rockFace(t, -146, 33, 1, 0, F) });
-    I.wallBuys.push({ weapon: 'M17', zone: SUM, room: SUM, ...rockFace(t, -172, -32, -1, 0, SUMH) });
+    I.wallBuys.push({ weapon: 'MP6K', zone: GAL, room: GAL, ...rockFace(t, -127, 3, 0, -1, F) });
+    I.wallBuys.push({ weapon: 'AK-75u', zone: CAV, room: CAV, ...rockFace(t, -156, 1, 0, 1, F) });
   });
   I.boxSpots.push({ id: 'box_cavern', room: CAV, x: -146, z: -5, yaw: 0, y: F });
   I.boxSpots.push({ id: 'box_mineworks', room: WORKS, x: -168, z: 46.5, yaw: Math.PI, y: 0.8 });

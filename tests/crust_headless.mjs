@@ -7,6 +7,7 @@
 import { CONFIG } from '../src/config.js';
 import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
+import { islandAt } from '../src/sim/crustPower.js';
 import { emptyCommand } from '../src/sim/player.js';
 import { makeZombie } from '../src/sim/zombies.js';
 import { powerAllOn } from '../src/sim/crustPower.js';
@@ -278,7 +279,10 @@ check(!CRUST.rides.some((r) => r.id === 'slide_hub'), 'no ice slide in the hub')
   me.pos.x = wb.stand.x; me.pos.z = wb.stand.z; face(wb.pos);
   step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
   check(me.loadout.slots.some((s) => s.id === 'M15'), 'bought the M15 off the pit wall');
-  check(sim.world.wallBuys.length >= 20, `${sim.world.wallBuys.length} guns on the walls round the map`);
+  const onWalls = sim.world.wallBuys.map((w) => w.weapon), dupes = onWalls.filter((w, i) => onWalls.indexOf(w) !== i);
+  check(onWalls.length >= 10 && dupes.length === 0, `${onWalls.length} guns on the walls round the map, no gun twice (${dupes.join(', ')})`);
+  const isles = new Set(sim.world.wallBuys.map((w) => islandAt(sim, w.pos)));
+  check(['hub', 'ship', 'research', 'trench', 'caves'].every((i) => isles.has(i)), `...some on every island (${[...isles].join(', ')})`);
   const box = sim.box;
   me.pos.x = box.stand.x; me.pos.z = box.stand.z; me.pos.y = (box.spot.y || 0) + 0.05; face(box.pos);
   step({}, 2); step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 2);
