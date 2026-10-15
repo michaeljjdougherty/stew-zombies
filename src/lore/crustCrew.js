@@ -1,0 +1,473 @@
+// =============================================================================
+// LORE — Call of the Crust: what everyone says out on the islands.
+//
+// Kearns, Ryan, Rocco and Brian came through the portal after Erik. Whoever
+// you play talks out loud; the others are out on the islands on Pit's
+// walkie-talkies. Pit's at his forge (his forge and power lines: PIT_FORGE and
+// PIT_POWER in crew.js). Chops, Regs and P hang in the Schnitz's cage out over
+// the void and shout down when you're near. The Schnitz has the speakers here
+// (where Erik had the PA at the school), and it wants one of you over the edge.
+//
+// Read by src/sim/crew.js (the crew) and src/sim/pa.js (the Schnitz).
+// Lines: { who, text }; `who` is a crew id (crew.js CREW) or 'schnitz'.
+// =============================================================================
+
+// The four out on the islands (any of them not being played is on the walkie)
+export const CRUST_CREW = ['kearns', 'ryan', 'rocco', 'brian'];
+// Who else can talk out here: Pit at his forge, the boys in the cage, Zach
+// (once he's back) and the Schnitz
+export const CRUST_VOICES = ['pit', 'chops', 'regs', 'p', 'zach', 'schnitz'];
+// Shouting down from the cage (heard out loud, not on a walkie)
+export const CAGED = ['chops', 'regs', 'p'];
+
+// ---------------------------------------------------------------------------
+// The Schnitz on the speakers: the same moments Erik had, in its own words.
+// ---------------------------------------------------------------------------
+export const SCHNITZ_PA = {
+  intro: [
+    "Welcome to my house. Wipe your feet. Or don't. You won't be leaving.",
+    "Five islands. Four titans. One cage. And you. This will be fun. For me.",
+  ],
+  round: [
+    "More of my guests. Be polite. Let them eat.",
+    "The dead out here have waited a long time for company.",
+    "Another wave. I have so many.",
+    "Out here, nobody can hear you scream. I checked.",
+    "I collected these myself. Every island. Every century.",
+    "Keep swinging. It's adorable.",
+    "Your little blacksmith can't save you. He can barely save himself.",
+    "The void is right there, boys. It's very peaceful.",
+  ],
+  milestone: {
+    5: "Five rounds. Erik managed that too. Then he lost.",
+    10: "Ten rounds in my house. I'm almost impressed. Almost.",
+    15: "Fifteen. You're stubborn. The last ones were stubborn too. They're in the void now.",
+    20: "Twenty rounds. Your bodies are tired. I can hear it.",
+    25: "Twenty-five. Enough. Somebody jump.",
+    30: "Thirty. I have forever. Do you?",
+  },
+  roundEnd: [
+    "Catch your breath. Space doesn't have much of it.",
+    "Still here? Hm.",
+    "Rest. The cage isn't going anywhere. Neither are you.",
+    "Take your time. I have all of it.",
+    "Tick tock. Your friends are getting cold up there.",
+    "Fine. One more.",
+  ],
+  cheddar: [
+    "Here, boys. Supper.",
+    "My dogs have been so patient. Let them play.",
+  ],
+  cheddarEnd: [
+    "Good dogs. Mostly.",
+    "Bad dogs. I'll get new ones.",
+  ],
+  boxMoved: [
+    "The box doesn't like you either.",
+    "Run after it. Run, run, run.",
+  ],
+  down: [
+    "Down you go. Stay a while.",
+    "Look at that. Gravity still works on you.",
+    "Lie there. The view is lovely from the floor.",
+    "One step closer to the edge.",
+  ],
+  revived: [
+    "Back up? Pity.",
+    "Picking each other up. Teamwork. Disgusting.",
+    "Again with the getting up.",
+  ],
+  pressureCooker: [
+    "Those were my guests!",
+    "Rude. I raised those.",
+    "Do you know how long those took to rot?",
+  ],
+  // someone steps off the edge for good
+  fell: [
+    "Into the void. That's one.",
+    "Over the edge. Not the deal, but I'll take it.",
+    "Oops.",
+  ],
+  idle: [
+    "Do you hear that? Three boys swinging in the wind. Lovely sound.",
+    "Erik was a disappointment. You won't be. You'll be dinner.",
+    "I took your Zach. I'll take the rest one by one.",
+    "Every island here used to be somebody's home. Now they're mine.",
+    "One of you goes over the edge. I'm not picky about who.",
+    "The little loud one. Rocco. He talks a lot, doesn't he.",
+    "Your launchers. Your hammers. Your little forge. All in my house.",
+    "Somewhere a dog is waiting by a door. Isn't that sad.",
+    "I've been doing this since before your school had a gym.",
+  ],
+  gameOver: [
+    "And that's the season. Thank you for playing.",
+    "Over the edge, all of you. That wasn't the deal... but I'll allow it.",
+    "Another team for my collection.",
+    "This season is over. For you.",
+  ],
+};
+
+// The Schnitz picking on whoever you're playing (mixed in with the above)
+export const SCHNITZ_ROASTS = {
+  kearns: [
+    "Kearns. I've met a lot of unlucky people. You're the only one who's proud of it.",
+    "Your sister stayed home, Kearns. All the family's brains went to her.",
+    "Kearns, the iPad mini can't help you out here. No signal.",
+  ],
+  ryan: [
+    "Strong man. Lift the cage, then. Go on. I'll wait.",
+    "Maisy dog is going to wait by that door forever, Ryan.",
+    "The Mad Dog. I've eaten bigger dogs than you.",
+  ],
+  rocco: [
+    "Well well well. Rocco. You'd make a lovely sacrifice. Small. Easy to throw.",
+    "Shut up, Lumpy. Everyone says it. Now I see why.",
+    "Rocco, nobody would miss you. I asked around.",
+  ],
+  brian: [
+    "Brian. You came through my portal without asking. Rude.",
+    "You never panic, Brian. Let's fix that.",
+    "Calm. Quiet. Annoying. Erik said the same about you.",
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Reactions: what your character says out loud. These replace the school's
+// where they're here; the rest (knife, perk, hurt...) carry over.
+// ---------------------------------------------------------------------------
+export const CRUST_REACT = {
+  roundStart: {
+    kearns: ["Space zombies. Of course it's space zombies.", "I can see the whole galaxy and it's still my bad day.", "Kearnita's home eating cereal right now. Lucky."],
+    ryan: ["Let's go. Strong man in space.", "Maisy, daddy's in space. Daddy's still coming home.", "Line 'em up, boys."],
+    rocco: ["Well well well. Space round.", "This is like 2K. If 2K had a void.", "Bring it, crusties."],
+    brian: ["Here they come.", "Watch the edges.", "Next wave."],
+  },
+  down: {
+    kearns: ["I'm down! At least I didn't fall off. Yet.", "Of course it's me. In SPACE.", "Tell Kearnita... she was right."],
+    ryan: ["Strong man's down! Get me up before I roll off!", "Maisy... daddy's on the floor...", "Ugh. Space hits harder."],
+    rocco: ["Lumpy's down! I mean Rocco! Rocco's down!", "Somebody pick me up, I'm small, I'm light!", "Don't throw me off! I'm just resting!"],
+    brian: ["Down. Get me up.", "Not out here."],
+  },
+  boxBad: {
+    kearns: ["Typical. Even the box in space hates me.", "The box left. Floated off. Probably happier."],
+    ryan: ["Box ran away. Smart box.", "Come back here, box!"],
+    rocco: ["Rigged. Rigged in space.", "That's what happens in 2K too. Rigged."],
+    brian: ["Fine. We'll find it."],
+  },
+  launch: {
+    kearns: ["Please don't miss. Please don't miss.", "I'm gonna throw up. I'm gonna throw up in space.", "WHY do we have to do it like THIS?"],
+    ryan: ["STRONG MAAAAN!", "Woo! Maisy should see this!", "Send it!"],
+    rocco: ["Well well wellllll!", "Wheeee! I'm Lumpy! I'm flying!", "Like a 2K dunk contest!"],
+    brian: ["Going over.", "Nice view.", "Hold on."],
+  },
+  hammer: {
+    kearns: ["A hammer. Finally, something that doesn't miss.", "It's heavy. It's so heavy. I love it."],
+    ryan: ["Now THIS is a strong man weapon.", "Hammer time. Mad Dog time."],
+    rocco: ["Well well well. Thor who?", "Lumpy with a hammer. Everybody run."],
+    brian: ["Good balance.", "This'll work."],
+  },
+  zip: {
+    kearns: ["This cable better hold. It won't. But it better.", "Oh no oh no oh no."],
+    ryan: ["Zip line! Hands free, baby!", "Strong man's got a grip!"],
+    rocco: ["Wheeee!", "Well well WELL!"],
+    brian: ["Going down.", "Covering you."],
+  },
+};
+export const CRUST_REACT_CHANCE = { launch: 0.55, hammer: 0.9, zip: 0.5 };
+
+// Someone on the walkie answering a reaction (added to the school's)
+export const CRUST_RADIO = {
+  down: [
+    { who: 'rocco', to: 'kearns', text: "Kearns is down. In space. That's new, even for you." },
+    { who: 'kearns', to: 'rocco', text: "Rocco's down. Should we... leave him? Just asking." },
+    { who: 'brian', text: "Hold on. I'm coming." },
+  ],
+  launch: [
+    { who: 'ryan', to: 'kearns', text: "Kearns, stop screaming on the channel!" },
+    { who: 'kearns', to: 'rocco', text: "Who launched Rocco? Do we have to bring him back?" },
+    { who: 'pit', text: "Saw you fly over, man. You looked like a bird. A scared bird." },
+    { who: 'rocco', to: 'ryan', text: "Strong man's flying! Strong man's flying!" },
+  ],
+  hammer: [
+    { who: 'pit', text: "Swing it like you mean it, man. It likes that." },
+    { who: 'ryan', to: 'rocco', text: "Who gave Rocco a hammer?! Everybody duck." },
+  ],
+};
+// when somebody goes over the edge for good: someone else on the walkie
+export const CRUST_FELL = [
+  { who: 'ryan', text: "Did somebody just fall off the island?!" },
+  { who: 'kearns', text: "Somebody went over. Was it me? It feels like it was me." },
+  { who: 'rocco', text: "Well well well. Down they go." },
+  { who: 'brian', text: "Man overboard. Watch the edges." },
+  { who: 'pit', text: "Saw something fall past the forge, man. Hope it wasn't a friend." },
+];
+
+// ---------------------------------------------------------------------------
+// The story: a conversation at each beat. Keyed by beat.
+// ---------------------------------------------------------------------------
+export const CRUST_TALKS = {
+  // round 1, after Pit's hello: everyone checks in on his walkies
+  intro: [
+    { who: 'ryan', text: "Radio check. Pit, where'd you even get walkie-talkies?" },
+    { who: 'pit', text: "Traded a guy, man. A space guy. Don't ask." },
+    { who: 'rocco', text: "Well well well. Rocco here. I'm at the bottom of a giant hole. Love that for me." },
+    { who: 'kearns', text: "Kearns. Something already bit my shoe. In space. That's a first." },
+    { who: 'brian', text: "Brian. I can see the cage from here. They're okay. For now." },
+    { who: 'chops', text: "WE CAN HEAR YOU! HELLO! WE'RE UP HERE!" },
+    { who: 'regs', text: "Can somebody please get us down? I'm not a heights guy!" },
+    { who: 'p', text: "...Sup." },
+    { who: 'ryan', text: "Hang tight, boys. We're coming." },
+    { who: 'schnitz', text: "Take your time. They're not going anywhere." },
+  ],
+  // the first burnt relay pulled
+  relay: [
+    { who: 'kearns', text: "Got a relay. It's burnt. It smells like my hair after the last game." },
+    { who: 'ryan', text: "Get it to Pit. Then we can actually leave this hole." },
+    { who: 'rocco', text: "Can I lick it? I'm gonna lick it." },
+    { who: 'ryan', text: "Shut up, Lumpy." },
+  ],
+  // the Anvil's power comes on
+  power: [
+    { who: 'rocco', text: "Lights! Well well well, look at that." },
+    { who: 'kearns', text: "Something worked. First try. I don't trust it." },
+    { who: 'ryan', text: "Launchers are live. Let's go get those hammer pieces." },
+    { who: 'brian', text: "Spread out. One island each, if you can." },
+    { who: 'schnitz', text: "Power. Cute. Light up the whole rock. It won't help you." },
+  ],
+  // the first launch
+  launch: [
+    { who: 'ryan', text: "Somebody's in the air! Woo!" },
+    { who: 'kearns', text: "Tell me when they land. Tell me IF they land." },
+    { who: 'pit', text: "Launchers are good, man. Probably. I fixed 'em. Mostly." },
+  ],
+  // the first time anyone lands on each island
+  land_ship: [
+    { who: 'rocco', text: "Ship graveyard. Smells like old fish. And older fish." },
+    { who: 'kearns', text: "There's a lighthouse. Lighthouses are good luck. Right? Right?" },
+    { who: 'pit', text: "The Captain's out there, man. Big guy. Wet guy. Don't wake him 'til you're ready." },
+  ],
+  land_research: [
+    { who: 'ryan', text: "Research base. Everything in here is sparking." },
+    { who: 'brian', text: "Something big's powered down by the helipad. Leave it for now." },
+    { who: 'rocco', text: "Well well well. Science. I hate science." },
+  ],
+  land_trench: [
+    { who: 'kearns', text: "It's on FIRE. The whole island is on fire." },
+    { who: 'ryan', text: "Stay in the trenches. Up top, they're shelling everything." },
+    { who: 'pit', text: "There's a phone in the fort, man. Call 'em. Ask nice." },
+  ],
+  land_caves: [
+    { who: 'rocco', text: "It's freezing! My lumps are freezing!" },
+    { who: 'brian', text: "Big cavern. Icicles overhead. Remember that." },
+    { who: 'kearns', text: "I slipped. I slipped already. I just got here." },
+  ],
+  // the first piece of the War Hammer
+  part: [
+    { who: 'ryan', text: "Got a piece of the hammer!" },
+    { who: 'pit', text: "Yeah, man! Bring it home. The stand's up on the dais." },
+    { who: 'rocco', text: "How heavy is it? Is it Lumpy heavy?" },
+  ],
+  // the War Hammer's whole
+  hammer: [
+    { who: 'ryan', text: "The War Hammer. Now we're talking." },
+    { who: 'kearns', text: "It's huge. Can I have one? I'm having one." },
+    { who: 'brian', text: "One each. Then we go for the titans." },
+    { who: 'schnitz', text: "Iron. How quaint. My titans have eaten iron." },
+  ],
+  // each titan wakes
+  wake_ship: [
+    { who: 'kearns', text: "The ship's moving. Why is the SHIP moving?!" },
+    { who: 'ryan', text: "Something's in its mouth! It's spitting zombies!" },
+    { who: 'schnitz', text: "Captain. Company." },
+  ],
+  wake_research: [
+    { who: 'rocco', text: "The robot's awake! The big robot's awake!" },
+    { who: 'brian', text: "Lead it past a charged coil. Make it pay." },
+    { who: 'schnitz', text: "Warden. Escort them out." },
+  ],
+  wake_caves: [
+    { who: 'ryan', text: "The ice is walking! The ICE is walking!" },
+    { who: 'pit', text: "Drop the icicles on it, man! Shoot the big ones on the ceiling!" },
+    { who: 'schnitz', text: "Golem. Hold them still." },
+  ],
+  wake_trench: [
+    { who: 'kearns', text: "Something's crawling out of the crater. Of course it is." },
+    { who: 'ryan', text: "Get on the field guns! Shell that thing!" },
+    { who: 'schnitz', text: "Fiend. Feed." },
+  ],
+  // each titan falls (the boys in the cage are watching)
+  down_ship: [
+    { who: 'rocco', text: "The Captain's down! Well well well!" },
+    { who: 'chops', text: "YEAH! GET 'EM!" },
+  ],
+  down_research: [
+    { who: 'ryan', text: "The Warden's scrap! STRONG MAN!" },
+    { who: 'regs', text: "Nice one, guys! I'm so proud of you!" },
+  ],
+  down_caves: [
+    { who: 'kearns', text: "We beat the ice. I'm still cold. But we beat it." },
+    { who: 'p', text: "...Nice." },
+  ],
+  down_trench: [
+    { who: 'brian', text: "Fiend's down." },
+    { who: 'schnitz', text: "You broke my Fiend. I liked my Fiend." },
+  ],
+  // the first War Hammer forged
+  forged: [
+    { who: 'rocco', text: "Dibs. DIBS." },
+    { who: 'kearns', text: "You can't dibs a hammer, Rocco." },
+    { who: 'rocco', text: "I just did." },
+  ],
+  // the first one tempered
+  tempered: [
+    { who: 'ryan', text: "Pit made mine spicy. Look at this thing." },
+    { who: 'pit', text: "Careful, man. It bites back now." },
+  ],
+  // all four forged
+  allForged: [
+    { who: 'ryan', text: "Four hammers. Four titans down." },
+    { who: 'kearns', text: "So we ring the Anvil and... Zach comes? Big Zach?" },
+    { who: 'pit', text: "Big Evil Zach, man. Hit him with the one he glows." },
+    { who: 'brian', text: "Let's get our friend back." },
+    { who: 'schnitz', text: "Ring it. I dare you." },
+  ],
+  // Big Evil Zach comes down
+  zach: [
+    { who: 'ryan', text: "ZACH! It's me! It's Ryan!" },
+    { who: 'kearns', text: "That's not Zach. That's the Schnitz wearing Zach." },
+    { who: 'rocco', text: "He's huge! Why is he huge?!" },
+    { who: 'regs', text: "Don't hurt him too bad! He's still in there!" },
+  ],
+  // he goes down on one knee the first time
+  zachHalf: [
+    { who: 'chops', text: "It's working! Keep going!" },
+    { who: 'kearns', text: "Hit him with the colour he's glowing! The glowing! Whatever!" },
+  ],
+  // the first Cheddar Round out here
+  cheddar: [
+    { who: 'ryan', text: "Dogs. In space. Maisy would be so confused." },
+    { who: 'rocco', text: "Cheese dogs! Space cheese dogs!" },
+    { who: 'pit', text: "I'm more of a horse guy, man." },
+  ],
+  // the first shell coming in over the Trench Front
+  shells: [
+    { who: 'kearns', text: "Something's whistling. Why is something whistling?" },
+    { who: 'ryan', text: "INCOMING! Get in the trench!" },
+  ],
+  // the field telephone
+  ceasefire: [
+    { who: 'rocco', text: "Hello? Yes. We'd like a ceasefire. And a pizza." },
+    { who: 'brian', text: "Guns are quiet. Move." },
+  ],
+  // the first zipline or ice slide
+  zip: [
+    { who: 'rocco', text: "Zip line! Zip line! ZIP LINE!" },
+    { who: 'kearns', text: "If this snaps, I'm haunting all of you." },
+  ],
+};
+
+// Between rounds, now and then
+export const CRUST_BANTER = [
+  [
+    { who: 'rocco', text: "So. The Schnitz wants one of us to go over the edge." },
+    { who: 'kearns', text: "Yep." },
+    { who: 'rocco', text: "Why is everybody looking at me?" },
+    { who: 'ryan', text: "Nobody's looking at you, Lumpy." },
+    { who: 'brian', text: "I'm looking at you." },
+  ],
+  [
+    { who: 'regs', text: "Guys? Is it normal for the cage to creak like that?" },
+    { who: 'chops', text: "It's fine, Regs. It's totally fine." },
+    { who: 'p', text: "...It's not fine." },
+    { who: 'regs', text: "P!" },
+  ],
+  [
+    { who: 'kearns', text: "Ryan. If we die out here, I want the iPad mini buried with me." },
+    { who: 'ryan', text: "It's MY iPad, Kearns." },
+    { who: 'kearns', text: "Then you can be buried with it too." },
+  ],
+  [
+    { who: 'ryan', text: "How long you think Maisy's been waiting by the door?" },
+    { who: 'kearns', text: "Like a week? Is time even the same out here?" },
+    { who: 'pit', text: "Time's weird here, man. I been here like... a year. Or a Tuesday." },
+  ],
+  [
+    { who: 'rocco', text: "You know what this is like? 2K. In space." },
+    { who: 'chops', text: "There's no 2K in space, Rocco!" },
+    { who: 'rocco', text: "There should be." },
+    { who: 'regs', text: "I'd play." },
+    { who: 'p', text: "...No." },
+  ],
+  [
+    { who: 'pit', text: "I made a sword yesterday, man. Then I made it a hammer. Then I made it a sword again." },
+    { who: 'ryan', text: "Pit. Focus." },
+    { who: 'pit', text: "(whinnies) ...sorry. Focusing." },
+  ],
+  [
+    { who: 'chops', text: "When we get down, first thing, we're getting the best table on the patio." },
+    { who: 'regs', text: "And mozzarella sticks!" },
+    { who: 'chops', text: "And mozzarella sticks." },
+    { who: 'p', text: "...I'm in." },
+  ],
+  [
+    { who: 'kearns', text: "Does anybody else think Zach's gonna be really chill about all this?" },
+    { who: 'ryan', text: "Zach's chill about everything." },
+    { who: 'rocco', text: "Zach would be happy to get eaten. 'I'm so happy to be here!'" },
+    { who: 'kearns', text: "...Yeah. That's Zach." },
+  ],
+  [
+    { who: 'brian', text: "Rocco. You talk a lot." },
+    { who: 'rocco', text: "Thank you." },
+    { who: 'brian', text: "It wasn't a compliment." },
+  ],
+  [
+    { who: 'regs', text: "Hey Pit! Thanks for the forge stuff! You're doing great!" },
+    { who: 'pit', text: "Thanks, Regs. You're doing great too, man. Hanging in there." },
+    { who: 'regs', text: "Literally!" },
+  ],
+  [
+    { who: 'kearns', text: "I just realised. We're in space. And I still stubbed my toe." },
+    { who: 'ryan', text: "Tomato foot." },
+    { who: 'kearns', text: "That's not even a THING, Ryan." },
+  ],
+  [
+    { who: 'rocco', text: "Hey, Schnitz. Hey. Schnitz. Hey." },
+    { who: 'schnitz', text: "...What." },
+    { who: 'rocco', text: "Well well well." },
+    { who: 'schnitz', text: "When it's time, I'm choosing you." },
+  ],
+  [
+    { who: 'p', text: "...Hey." },
+    { who: 'chops', text: "P talked! Everybody, P talked!" },
+    { who: 'p', text: "...Never mind." },
+  ],
+  [
+    { who: 'ryan', text: "Brian. Real talk. How'd you get through that portal?" },
+    { who: 'brian', text: "Walked." },
+    { who: 'ryan', text: "...Okay." },
+  ],
+];
+
+// The boys in the cage, when you're up near it (one of these at a time)
+export const CAGE_TALK = [
+  [{ who: 'chops', text: "Hey! HEY! Down here! Up here! Wherever you are!" }],
+  [{ who: 'regs', text: "Hi guys! Don't look down. I looked down. Big mistake." }],
+  [{ who: 'p', text: "...Sup." }],
+  [{ who: 'chops', text: "Is that Rocco? Hi, Rocco!" }, { who: 'regs', text: "Hi, Rocco!" }],
+  [{ who: 'regs', text: "Is anyone getting us down? No rush! Kind of a rush." }],
+  [{ who: 'chops', text: "Somebody tell the Schnitz this cage is NOT up to code." }],
+  [{ who: 'chops', text: "P keeps getting his forehead stuck in the bars." }, { who: 'p', text: "...Once." }],
+  [{ who: 'regs', text: "I made friends with a space bird. It left." }],
+  [{ who: 'chops', text: "We can see everything from up here! A giant ship! A fire island! It's kind of beautiful!" }, { who: 'regs', text: "It's terrifying!" }],
+  [{ who: 'chops', text: "Bring the hammers! Smash something! Smash the Schnitz!" }],
+];
+
+// Big Evil Zach (the Schnitz wearing him), now and then through the fight
+export const ZACH_TAUNTS = [
+  "Your friend is still in here. Somewhere. Hit harder.",
+  "He's so happy in here. Can't you tell?",
+  "Stomp, stomp. Those are his feet, by the way.",
+  "Bring the hammers closer. I want to see them.",
+  "He keeps saying 'I'm so happy to be here.' It's driving me mad.",
+  "Every hit hurts him too. Probably. Keep going.",
+];

@@ -1559,6 +1559,14 @@ export const CONFIG = {
       pickupRange: 1.8,      // m: walk over a part to pick it up
       standRange: 2.4,       // m from the stand to put parts on it or take a hammer
     },
+    // The boys in the Schnitz's cage shout down when you're up near it (src/sim/crew.js)
+    cageTalk: {
+      range: 30,             // m (flat) from the cage
+      first: 40,             // s into the game before they start
+      every: [35, 60],       // s between shouts
+    },
+    // Big Evil Zach (the Schnitz wearing him) taunts you through the fight
+    zachTaunt: [16, 26],     // s between taunts
     // The power (src/sim/crustPower.js). Everything electric starts dead. The
     // Anvil's four launchers have each blown a relay: pull them from the junction
     // box beside each pad, take all four to Pit and he fixes the Anvil's power
@@ -1582,7 +1590,7 @@ export const CONFIG = {
       strikeEvery: 0.85,     // s between his hammer blows while he works (the sparks)
       temperCost: 5000,      // points for Pit to temper a War Hammer (its elemental upgrade)
       temperTime: 9,         // s he takes over that
-      introDelay: 4,         // s into the game before he says hello
+      introDelay: 9,         // s into the game before he says hello (after the Schnitz's welcome)
       idleEvery: 45,         // s at least between his "bring me a core" nudges
       nearPit: 30,           // m: further than this from him and you hear him on the walkie
       lineGap: 0.5,          // s between one of his lines and the next

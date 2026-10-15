@@ -18,6 +18,8 @@ import { zombieHealthForRound } from '../config.js';
 import { makeZombie, pickZombieType } from './zombies.js';
 import { groundHeight } from './physics.js';
 import { ZACH_FINALE, PIT_FORGE } from '../lore/crew.js';
+import { ZACH_TAUNTS } from '../lore/crustCrew.js';
+import { paSay } from './pa.js';
 import { lineDuration } from '../lore/erik.js';
 import { angleWrap } from '../core/math.js';
 import { pitSay } from './forge.js';
@@ -40,7 +42,12 @@ export function startFinale(sim) {
   return true;
 }
 
-function schnitz(sim, text, shock = false) { sim.emit('schnitzSays', { text, dur: lineDuration(text) * 1.25, shock }); }
+function schnitz(sim, text, shock = false) {
+  const dur = lineDuration(text) * 1.25;
+  sim.emit('schnitzSays', { text, dur, shock });
+  // (everyone else waits until it's done: src/sim/pa.js)
+  if (sim.pa && sim.pa.enabled) sim.pa.speaking = { cat: 'finale', text, until: Math.max(sim.time + dur, sim.pa.speaking ? sim.pa.speaking.until : 0), who: 'schnitz' };
+}
 
 export const finaleOn = (E) => !!(E && E.finale && E.finale.state !== 'off' && E.finale.state !== 'done');
 export const zachElement = (sim) => { const F = sim.crustEgg && sim.crustEgg.finale; return F ? sim.cfg.crust.finale.order[Math.min(3, F.phase)] : null; };
@@ -89,6 +96,15 @@ export function updateZach(sim, dt) {
     return;
   }
   // --- the fight
+  // now and then the Schnitz, through him, has something to say
+  const tt = sim.cfg.crust.zachTaunt;
+  if (F.tauntAt == null) F.tauntAt = sim.time + tt[0];
+  if (sim.time >= F.tauntAt) {
+    F.taunts = (F.taunts || 0) + 1;
+    const text = ZACH_TAUNTS[(F.taunts - 1) % ZACH_TAUNTS.length];
+    if (sim.pa && sim.pa.enabled) paSay(sim, 'talkErik', { text, force: true, who: 'schnitz' }); else schnitz(sim, text);
+    F.tauntAt = sim.time + tt[0] + ((F.taunts * 7) % 10) / 10 * (tt[1] - tt[0]);
+  }
   const target = nearest(sim, F);
   const speed = c.speed[F.phase];
   if (F.act) { updateAct(sim, F, dt, c); return; }

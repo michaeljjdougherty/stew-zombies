@@ -825,7 +825,7 @@ function tick(cmd) {
     safely('hud:' + e.type, () => hud.onEvent(e));
     safely('range:' + e.type, () => rangeUI.onEvent(e));
     if (e.type === 'gameOver' && mode === 'play') { mode = 'dying'; dyingT = 0; }
-    if (e.type === 'erikSays' && e.cat === 'gameOver') gameOverLine = e.text;
+    if ((e.type === 'erikSays' || e.type === 'schnitzSays') && e.cat === 'gameOver') gameOverLine = e.text;
     if (e.type === 'stewSong' && !progress.song) { progress.song = true; saveProgress(progress); }
     if (e.type === 'bossEnd') endingAt = time + 2.4;
     if (e.type === 'crustVictory' && mode === 'play') crustVictory();

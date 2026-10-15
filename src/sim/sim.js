@@ -97,7 +97,7 @@ export class GameSim {
     this.rides = createRides(map);   // ziplines and ice slides (Call of the Crust)
     for (const r of this.rides) if (r.kind === 'zip') this.interactables.push(new ZiplineInteractable(r, cfg));
     this.pa = createPA(this);
-    this.crew = map.quest ? createCrew() : null;   // the crew's walkie-talkies (the school)
+    this.crew = map.quest || map.announcer ? createCrew(this) : null;   // the crew's walkie-talkies (the school; Call of the Crust)
     this.stewEgg = createStewEgg();
     this.nav = new Nav(this);
     this.rounds = createRoundState(this);

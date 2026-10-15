@@ -47,6 +47,25 @@ export const CREW = {
     voice: { f0: 120, grit: 0.2, rate: 1.05 },
     bio: 'Cheerful and friendly. The Schnitz had him for a while. Still genuinely happy to be there.',
   },
+  // (in the Schnitz's cage on Call of the Crust: they shout down, they don't play)
+  chops: {
+    name: 'Chops',
+    nick: ['Chops'],
+    voice: { f0: 96, grit: 0.3, rate: 1.0 },
+    bio: 'Big, confident and friendly. Always at the best table on the patio.',
+  },
+  regs: {
+    name: 'Regs',
+    nick: ['Regs'],
+    voice: { f0: 88, grit: 0.18, rate: 0.92 },
+    bio: "A big, lovable teddy bear. Everyone's best buddy. Not a heights guy.",
+  },
+  p: {
+    name: 'P',
+    nick: ['P'],
+    voice: { f0: 110, grit: 0.35, rate: 0.82 },
+    bio: 'Too cool for school. His forehead enters the room before he does.',
+  },
 };
 
 // ---------------------------------------------------------------------------

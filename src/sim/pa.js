@@ -2,6 +2,10 @@
 // Erik on the PA. Watches the game's events and decides when Erik says
 // something over the school speakers. Emits 'erikSays' with the line and how
 // long it takes to say; the client plays the voice placeholder and subtitles.
+// On Call of the Crust the Schnitz has the speakers instead (map.announcer):
+// its lines are SCHNITZ_PA (src/lore/crustCrew.js), and it emits 'schnitzSays'.
+// Everyone's lines (the crew's, Pit's) go through this one queue, so nobody
+// talks over anybody.
 //
 // Uses its own RNG so talking never changes gameplay randomness.
 // =============================================================================
@@ -9,7 +13,8 @@ import { RNG } from '../core/rng.js';
 import { PA_LINES, INTERCOM, INTERCOM_REPEAT, lineDuration } from '../lore/erik.js';
 import { CREW, ERIK_ROASTS, ROAST_CHANCE } from '../lore/crew.js';
 import { recordedDuration } from '../lore/voice.js';
-import { crewOnEvent } from './crew.js';
+import { crewOnEvent, updateCrew } from './crew.js';
+import { SCHNITZ_PA, SCHNITZ_ROASTS } from '../lore/crustCrew.js';
 
 // Higher = more important. Important lines queue; optional ones are dropped
 // if Erik is busy or cooling down.
@@ -19,15 +24,20 @@ const PRIORITY = {
   round: 0, roundEnd: 0, idle: 0,
   breaker: 2, breakersDone: 3, trophyPiece: 1, trophyPlaced: 3, statueFed: 2, coin: 3, cladding: 4,
   ritualStart: 3, ritualDone: 3, bossStart: 4, bossPhase2: 4, bossEnd: 5,
-  // the crew (src/sim/crew.js)
-  talk: 4, talkErik: 4, react: 3, radio: 3,
+  // the crew (src/sim/crew.js); Pit at his forge (forge.js)
+  talk: 4, talkErik: 4, react: 3, radio: 3, pit: 4,
+  fell: 3,
 };
 
 export function createPA(sim) {
   const c = sim.cfg.pa;
   const rng = new RNG((sim.seed ^ 0x51ed270b) >>> 0);
+  const schnitz = sim.mapData.announcer === 'schnitz';
   return {
     enabled: c.enabled && (sim.mode === 'zombies' || sim.mode === 'explore') && sim.mapData.pa !== false,
+    announcer: schnitz ? 'schnitz' : 'erik',     // who's on the speakers
+    book: schnitz ? SCHNITZ_PA : PA_LINES,       // what they say
+    roasts: schnitz ? SCHNITZ_ROASTS : ERIK_ROASTS,
     rng,
     speaking: null,          // { cat, text, until }
     queue: [],               // [{ cat, text, at }]
@@ -53,19 +63,20 @@ function pickLine(pa, cat, list) {
 }
 
 // Ask Erik to say a line from category `cat` (or a specific `text`).
-export function paSay(sim, cat, { text = null, delay = 0, force = false, who = 'erik', radio = false, roastTarget = null } = {}) {
+export function paSay(sim, cat, { text = null, delay = 0, force = false, who = null, radio = false, roastTarget = null, live = false } = {}) {
   const pa = sim.pa;
   if (!pa.enabled) return false;
+  who = who || pa.announcer;
   const pri = PRIORITY[cat] ?? 0;
   if (sim.stewEgg && sim.stewEgg.playing && pri < 5) return false;  // nobody talks over the song
   // now and then Erik picks on whoever you're playing instead
   if (!text && (cat === 'round' || cat === 'roundEnd' || cat === 'idle' || cat === 'down') && sim.players.length && pa.rng.chance(ROAST_CHANCE)) {
     const target = (cat === 'down' && roastTarget) || sim.players[Math.floor(pa.rng.next() * sim.players.length)];
     const ch = target.character;
-    if (ERIK_ROASTS[ch]) text = pickLine(pa, 'roast_' + ch, ERIK_ROASTS[ch]);
+    if (pa.roasts[ch]) text = pickLine(pa, 'roast_' + ch, pa.roasts[ch]);
   }
   if (!text) {
-    const list = PA_LINES[cat];
+    const list = pa.book[cat];
     if (!list || !list.length) return false;
     text = pickLine(pa, cat, list);
   }
@@ -74,7 +85,7 @@ export function paSay(sim, cat, { text = null, delay = 0, force = false, who = '
   if (!force && pri === 0 && (busy || cooling)) return false;
   if (!force && pri === 1 && busy) return false;
   if (pa.queue.length >= 3 && pri < 4) return false;
-  pa.queue.push({ cat, text, at: sim.time + delay, pri, who, radio });
+  pa.queue.push({ cat, text, at: sim.time + delay, pri, who, radio, live });
   pa.queue.sort((a, b) => b.pri - a.pri || a.at - b.at);
   return true;
 }
@@ -109,7 +120,7 @@ function onEvent(sim, e) {
   switch (e.type) {
     case 'roundStart':
       if (e.round === 1) paSay(sim, 'intro', { delay: c.introDelay });   // then the crew check in (crew.js)
-      else if (PA_LINES.milestone[e.round]) paSay(sim, 'milestone', { text: PA_LINES.milestone[e.round], delay: 1.5 });
+      else if (pa.book.milestone[e.round]) paSay(sim, 'milestone', { text: pa.book.milestone[e.round], delay: 1.5 });
       else if (e.cheddar) paSay(sim, 'cheddar', { delay: 0.6 });
       else if (chance(sim, 'round')) paSay(sim, 'round', { delay: 2 });
       break;
@@ -135,10 +146,12 @@ function onEvent(sim, e) {
     case 'stewSongEnd': paSay(sim, 'songEnd', { delay: 0.8, force: true }); break;
     case 'gameOver': {
       // the game is over, so say it right now
-      const text = pickLine(pa, 'gameOver', PA_LINES.gameOver);
+      const text = pickLine(pa, 'gameOver', pa.book.gameOver);
       speak(sim, 'gameOver', text);
       break;
     }
+    // (Call of the Crust) someone stepped off the edge for good
+    case 'playerFell': if (!e.saved && pa.book.fell) paSay(sim, 'fell', { delay: 1.2 }); break;
   }
   if (sim.crew) crewOnEvent(sim, e);
 }
@@ -149,15 +162,30 @@ const erikDuration = (text) => recordedDuration('erik', text) ?? lineDuration(te
 // Lines over the PA start with the school chime; live intercom replies and
 // his reaction to the song don't.
 export const CHIME_TIME = 1.0;
-function speak(sim, cat, text, who = 'erik', radio = false) {
+function speak(sim, cat, text, who = null, radio = false, live = false) {
   const pa = sim.pa;
+  who = who || pa.announcer;
+  if (who === 'schnitz') {
+    // the Schnitz, out of nowhere (no chime)
+    const dur = recordedDuration('schnitz', text) ?? lineDuration(text) * 1.25;
+    pa.speaking = { cat, text, until: sim.time + dur, who };
+    pa.lines++;
+    sim.emit('schnitzSays', { text, dur, cat, n: pa.lines });
+    return;
+  }
   if (who !== 'erik') {
-    // one of the crew, live or over a walkie
+    // one of the crew, live or over a walkie. (Pit's out loud if you're by his
+    // forge, else on the walkie; the boys in the cage shout)
+    if (who === 'pit' && sim.mapData.forge) {
+      const at = sim.mapData.forge.pit;
+      live = sim.players.some((p) => p.alive && Math.hypot(p.pos.x - at.x, p.pos.z - at.z) < sim.cfg.crust.forge.nearPit);
+      radio = !live;
+    }
     const v = CREW[who] ? CREW[who].voice : { rate: 1 };
     const dur = recordedDuration(who, text) ?? lineDuration(text) / (v.rate || 1);
     pa.speaking = { cat, text, until: sim.time + dur + (radio ? 0.25 : 0), who };
     pa.lines++;
-    sim.emit('crewSays', { who, text, dur, radio, cat, n: pa.lines });
+    sim.emit('crewSays', { who, text, dur, radio, live, cat, n: pa.lines });
     return;
   }
   const dur = erikDuration(text);
@@ -169,7 +197,7 @@ function speak(sim, cat, text, who = 'erik', radio = false) {
 
 export function updatePA(sim, dt) {
   const pa = sim.pa;
-  if (!pa.enabled) return;
+  if (!pa.enabled || sim.replica) return;   // (online: everyone's lines come from the host)
   const events = pa.inbox;
   pa.inbox = [];
   for (const e of events) onEvent(sim, e);
@@ -185,9 +213,10 @@ export function updatePA(sim, dt) {
     const i = pa.queue.findIndex((q) => q.at <= sim.time);
     if (i >= 0) {
       const q = pa.queue.splice(i, 1)[0];
-      if (!(sim.stewEgg && sim.stewEgg.playing && q.pri < 5)) speak(sim, q.cat, q.text, q.who, q.radio);
+      if (!(sim.stewEgg && sim.stewEgg.playing && q.pri < 5)) speak(sim, q.cat, q.text, q.who, q.radio, q.live);
     }
   }
+  if (sim.crew) updateCrew(sim);   // (the boys in the cage, shouting down)
   // the odd random barb when he's been quiet a while (only once the game is going)
   if (!pa.speaking && !pa.queue.length && sim.rounds.round >= 2 && sim.time >= pa.idleAt) {
     paSay(sim, 'idle');

@@ -5,23 +5,38 @@
 // Lines go through Erik's PA queue (src/sim/pa.js) so nobody talks over anybody.
 // A line is said "live" by a player playing that character; anyone else is on
 // the radio. Uses the PA's own RNG, so talking never changes gameplay.
-// The words are in src/lore/crew.js.
+// The words are in src/lore/crew.js (the school) and src/lore/crustCrew.js
+// (Call of the Crust: the crew on Pit's walkies, Pit, the boys in the cage,
+// and the Schnitz on the speakers).
 // =============================================================================
 import { REACT, REACT_CHANCE, RADIO, RADIO_CHANCE, TALKS, BANTER, BANTER_CHANCE, LAUNCH_CREW } from '../lore/crew.js';
+import { CRUST_CREW, CRUST_VOICES, CAGED, CRUST_REACT, CRUST_REACT_CHANCE, CRUST_RADIO, CRUST_FELL, CRUST_TALKS, CRUST_BANTER, CAGE_TALK } from '../lore/crustCrew.js';
 import { paSay } from './pa.js';
+import { islandAt } from './crustPower.js';
 
-export function createCrew() {
-  return { lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {} };
+// Each map's lines: the school's, or the Crust's (its own where it has them,
+// the school's reactions where it doesn't)
+const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = [...(a[k] || []), ...v]; return o; };
+const SETS = {
+  school: { members: LAUNCH_CREW, extra: [], talks: TALKS, banter: BANTER, react: REACT, chance: REACT_CHANCE, radio: RADIO },
+  crust: { members: CRUST_CREW, extra: CRUST_VOICES, talks: CRUST_TALKS, banter: CRUST_BANTER, react: { ...REACT, ...CRUST_REACT }, chance: { ...REACT_CHANCE, ...CRUST_REACT_CHANCE }, radio: merge(RADIO, CRUST_RADIO) },
+};
+
+export function createCrew(sim) {
+  const set = sim && sim.mapData.announcer === 'schnitz' ? 'crust' : 'school';
+  return { set, lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {}, cageAt: null, cageUsed: new Set(), landed: new Set() };
 }
+const S = (sim) => SETS[sim.crew.set];
 
 const playing = (sim) => new Set(sim.players.map((p) => p.character));
 const charOf = (sim, id) => { const p = sim.playerById(id); return p ? p.character : null; };
 
 // A whole conversation, in order. Each line is live if someone is playing that
 // character, otherwise it comes over the radio.
-export function crewTalk(sim, key, lines = TALKS[key], delay = 0.8) {
+export function crewTalk(sim, key, lines = S(sim).talks[key], delay = 0.8) {
   const C = sim.crew;
   if (!sim.pa.enabled || !lines) return false;
+  const set = S(sim), announcer = sim.pa.announcer;
   if (key && C.said.has(key)) return false;
   if (key) C.said.add(key);
   // a new story beat cuts off whatever conversation hadn't got going yet
@@ -33,9 +48,10 @@ export function crewTalk(sim, key, lines = TALKS[key], delay = 0.8) {
     if (l.onlyAs && solo !== l.onlyAs) continue;
     if (l.skipAs && solo === l.skipAs) continue;
     // a crew member who isn't in the four (Brian, before he's played) stays quiet
-    if (l.who !== 'erik' && !here.has(l.who) && !LAUNCH_CREW.includes(l.who)) continue;
+    if (l.who !== announcer && !here.has(l.who) && !set.members.includes(l.who) && !set.extra.includes(l.who)) continue;
     const who = l.who;
-    paSay(sim, who === 'erik' ? 'talkErik' : 'talk', { text: l.text, delay: delay + i * 0.002, force: true, who, radio: who !== 'erik' && !here.has(who) });
+    const shout = CAGED.includes(who);   // (the boys in the cage shout down: no walkies up there)
+    paSay(sim, who === announcer ? 'talkErik' : 'talk', { text: l.text, delay: delay + i * 0.002, force: true, who, radio: who !== announcer && !shout && !here.has(who), live: shout });
     i++;
   }
   return true;
@@ -48,17 +64,18 @@ function pick(sim, list) { return list[Math.floor(sim.pa.rng.next() * list.lengt
 function react(sim, playerId, cat) {
   const C = sim.crew, pa = sim.pa;
   const who = charOf(sim, playerId);
-  if (!who || !REACT[cat] || !REACT[cat][who]) return;
+  const set = S(sim);
+  if (!who || !set.react[cat] || !set.react[cat][who]) return;
   if (pa.speaking && (pa.speaking.cat === 'talk' || pa.speaking.cat === 'talkErik')) return;
   if (pa.queue.some((q) => q.cat === 'talk')) return;
   if (sim.time - (C.lastReact[playerId] ?? -99) < sim.cfg.crew.reactCooldown) return;
-  if (!pa.rng.chance(REACT_CHANCE[cat] ?? 0.5)) return;
-  const text = pick(sim, REACT[cat][who]);
+  if (!pa.rng.chance(set.chance[cat] ?? 0.5)) return;
+  const text = pick(sim, set.react[cat][who]);
   if (!paSay(sim, 'react', { text, delay: 0.3, who, radio: false, force: true })) return;
   C.lastReact[playerId] = sim.time;
   // a reply over the radio from someone who isn't playing
   const here = playing(sim);
-  const replies = (RADIO[cat] || []).filter((r) => r.who !== who && !here.has(r.who) && (!r.to || r.to === who));
+  const replies = (set.radio[cat] || []).filter((r) => r.who !== who && !here.has(r.who) && (!r.to || r.to === who) && (set.members.includes(r.who) || set.extra.includes(r.who)));
   if (replies.length && pa.rng.chance(RADIO_CHANCE)) {
     const r = pick(sim, replies);
     paSay(sim, 'radio', { text: r.text, delay: 0.31, force: true, who: r.who, radio: true });
@@ -72,18 +89,20 @@ export function crewOnEvent(sim, e) {
   const C = sim.crew;
   switch (e.type) {
     case 'roundStart':
-      if (e.round === 1) { crewTalk(sim, 'intro', TALKS.intro, sim.cfg.pa.introDelay + 0.5); break; }
-      if (e.cheddar) { if (!crewTalk(sim, 'cheddar', TALKS.cheddar, 1.5)) for (const p of sim.players) react(sim, p.id, 'cheddar'); break; }
+      // (out on the Crust, after Pit's hello)
+      if (e.round === 1) { crewTalk(sim, 'intro', S(sim).talks.intro, sim.cfg.pa.introDelay + (C.set === 'crust' ? 2.5 : 0.5)); break; }
+      if (e.cheddar) { if (!crewTalk(sim, 'cheddar', S(sim).talks.cheddar, 1.5)) for (const p of sim.players) react(sim, p.id, 'cheddar'); break; }
       { const p = sim.players[Math.floor(sim.pa.rng.next() * sim.players.length)]; if (p) react(sim, p.id, 'roundStart'); }
       break;
     case 'roundEnd': {
       if (e.cheddar || sim.rounds.round < 2) break;
       if (!sim.pa.rng.chance(BANTER_CHANCE)) break;
-      const left = BANTER.map((b, i) => i).filter((i) => !C.banterUsed.has(i));
+      const banter = S(sim).banter;
+      const left = banter.map((b, i) => i).filter((i) => !C.banterUsed.has(i));
       if (!left.length) break;
       const i = left[Math.floor(sim.pa.rng.next() * left.length)];
       C.banterUsed.add(i);
-      crewTalk(sim, null, BANTER[i], 2.5);
+      crewTalk(sim, null, banter[i], 2.5);
       break;
     }
     case 'zombieKilled': {
@@ -116,4 +135,60 @@ export function crewOnEvent(sim, e) {
     case 'ritualDone': crewTalk(sim, 'ritual', TALKS.ritual, 2.5); break;
     case 'bossStart': crewTalk(sim, 'boss', TALKS.boss, 4); break;
   }
+  if (C.set === 'crust') crustOnEvent(sim, e);
+}
+
+// --- Call of the Crust ---------------------------------------------------------
+function crustOnEvent(sim, e) {
+  const C = sim.crew;
+  switch (e.type) {
+    case 'playerLaunch': if (!crewTalk(sim, 'launch', undefined, 2)) react(sim, e.playerId, 'launch'); break;
+    case 'playerLaunchLand': {
+      const isl = islandAt(sim, e.pos);
+      if (isl && isl !== 'hub' && !C.landed.has(isl)) { C.landed.add(isl); crewTalk(sim, 'land_' + isl, undefined, 1.2); }
+      break;
+    }
+    case 'relayPulled': crewTalk(sim, 'relay', undefined, 1.5); break;
+    case 'islandPower': if (e.island === 'hub') crewTalk(sim, 'power', undefined, 5); break;
+    case 'partPicked': crewTalk(sim, 'part', undefined, 3); break;
+    case 'warHammerBuilt': crewTalk(sim, 'hammer', undefined, 6); break;
+    case 'warHammerTaken': case 'hammerTaken': react(sim, e.playerId, 'hammer'); break;
+    case 'titanWake': crewTalk(sim, 'wake_' + e.id, undefined, 1.5); break;
+    case 'titanDown': crewTalk(sim, 'down_' + e.id, undefined, 3); break;
+    case 'hammerForged': if (e.count === 1) crewTalk(sim, 'forged', undefined, 3); break;
+    case 'hammerTempered': if (!crewTalk(sim, 'tempered', undefined, 2.5)) react(sim, e.playerId, 'hammer'); break;
+    case 'hammersAll': crewTalk(sim, 'allForged', undefined, 6); break;
+    case 'zachDescend': crewTalk(sim, 'zach', undefined, 4); break;
+    case 'zachKneel': if (e.phase === 0) crewTalk(sim, 'zachHalf', undefined, 3.5); break;
+    case 'shellIncoming': crewTalk(sim, 'shells', undefined, 0.3); break;
+    case 'ceasefire': crewTalk(sim, 'ceasefire', undefined, 1.5); break;
+    case 'rideStart': if (e.kind === 'zip' || e.kind === 'slide') { if (!crewTalk(sim, 'zip', undefined, 0.6)) react(sim, e.playerId, 'zip'); } break;
+    case 'playerFell': {
+      // over the edge for good: someone else says so on the walkie
+      if (e.saved) break;
+      const gone = charOf(sim, e.playerId), here = playing(sim);
+      const alive = (ch) => sim.players.some((p) => p.character === ch && p.alive);
+      const who = CRUST_FELL.filter((l) => l.who !== gone && (!here.has(l.who) || alive(l.who)));
+      if (who.length) { const l = pick(sim, who); paSay(sim, 'radio', { text: l.text, delay: 2.4, force: true, who: l.who, radio: !here.has(l.who) }); }
+      break;
+    }
+  }
+}
+
+// Each tick (from the PA): the boys in the cage shout down when you're up near it
+export function updateCrew(sim) {
+  const C = sim.crew, pa = sim.pa;
+  if (C.set !== 'crust' || !sim.mapData.forge || !sim.mapData.forge.cage) return;
+  const c = sim.cfg.crust.cageTalk, cage = sim.mapData.forge.cage;
+  if (C.cageAt == null) C.cageAt = sim.time + c.first;
+  if (sim.time < C.cageAt || pa.speaking || pa.queue.length) return;
+  C.cageAt = sim.time + 1;   // (look again in a second)
+  if (!sim.players.some((p) => p.alive && !p.launch && Math.hypot(p.pos.x - cage.x, p.pos.z - cage.z) < c.range)) return;
+  if (sim.crustEgg && sim.crustEgg.finale && sim.crustEgg.finale.state !== 'off') return;   // (nobody chats through the finale)
+  if (C.cageUsed.size >= CAGE_TALK.length) C.cageUsed.clear();
+  const left = CAGE_TALK.map((l, i) => i).filter((i) => !C.cageUsed.has(i));
+  const i = left[Math.floor(pa.rng.next() * left.length)];
+  C.cageUsed.add(i);
+  crewTalk(sim, null, CAGE_TALK[i], 0.3);
+  C.cageAt = sim.time + pa.rng.range(c.every[0], c.every[1]);
 }

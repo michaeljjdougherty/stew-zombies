@@ -1290,7 +1290,7 @@ export const CRUST = {
   islands: ISLANDS,
   brightness: CONFIG.crust.brightness,
   boxBeam: CONFIG.crust.boxBeam,       // the Mystery Box's beam: seen in the sky from anywhere   // (exposure x: src/render/renderer.js)
-  pa: false,           // nobody on the speakers yet (The Shntitz comes later)
+  announcer: 'schnitz', // the Schnitz has the speakers out here (src/lore/crustCrew.js); the crew's on Pit's walkies
   fog: { color: '#1c2534', density: 0.006 },
   farPlane: 320,
   lampScale: 0.55,     // (the lamps are bright on all this snow)

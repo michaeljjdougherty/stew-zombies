@@ -58,7 +58,7 @@ const forgeAll = (g) => {
 {
   const g = game(3, 'pit');
   check(g.me.character !== 'pit', `picking Pit: you play ${g.me.character} instead`);
-  g.step({}, 60 * (CONFIG.crust.forge.introDelay + 24));
+  g.step({}, 60 * (CONFIG.crust.forge.introDelay + 45));
   check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /relay/.test(e.text)), 'Pit tells you about the burnt relays from his bench');
   check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /War Hammer/.test(e.text)), '...and the War Hammer');
   const s2 = new GameSim({ map: CRUST, seed: 1 });

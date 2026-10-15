@@ -28,6 +28,7 @@ import { giveWeapon, cancelReload } from './weapons.js';
 import { HAMMER_ELEMENTS, HAMMER_IDS } from './hammers.js';
 import { startFinale } from './zachBoss.js';
 import { giveRelays, relaysCarriedBy, relaysFixed, hubPowered } from './crustPower.js';
+import { paSay } from './pa.js';
 
 // which titan guards which element
 export const CORE_ELEMENT = { ship: 'wind', research: 'lightning', caves: 'ice', trench: 'fire' };
@@ -56,6 +57,8 @@ export function createForge(sim) {
 export function pitSay(sim, text, delay = 0) {
   const F = sim.crustEgg && sim.crustEgg.forge;
   if (!F || !text) return;
+  // (with the speakers on, he waits his turn with everyone else: src/sim/pa.js)
+  if (sim.pa && sim.pa.enabled && sim.crew) { paSay(sim, 'pit', { text, delay: delay + F.lines.length * 0.001, force: true, who: 'pit' }); return; }
   F.lines.push({ text, at: sim.time + delay });
 }
 function pitTalk(sim, F) {
