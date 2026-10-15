@@ -1452,25 +1452,29 @@ export const CONFIG = {
       nearPit: 30,           // m: further than this from him and you hear him on the walkie
       lineGap: 0.5,          // s between one of his lines and the next
     },
-    // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of you,
-    // then the element goes off where it lands
+    // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of
+    // you. Forged, they're plain iron; Pit tempers each into its "+", and only
+    // then does its element come out (inspired by the Origins staffs): on top of
+    // the swing's own burst, each leaves something behind
     hammers: {
       reach: 3.4,            // m in front of you a swing smashes
       angle: 70,             // degrees either side of where you look
       maxKills: 8,           // zombies one swing kills outright
       landAt: 2.2,           // m ahead of you the head comes down (where the element goes off)
       titanDamage: 0,        // (the titans each have their own way down)
-      fire: { blast: 'hammerFire' },                                  // a burst of flame
-      ice: { radius: 7, freeze: 6, maxFrozen: 24 },                  // everything round you frozen solid (a frozen one shatters at the next hit)
-      wind: { range: 12, angle: 30, near: 1.8, maxKills: 18 },       // a gale down the line you swung along
-      lightning: { chains: 8, hop: 6, reach: 9 },                     // a bolt jumping zombie to zombie
-      // tempered by Pit (each hammer's "+"): more of everything
       tempered: {
-        fire: { blast: 'hammerFireUp' },
-        ice: { radius: 10, freeze: 9, maxFrozen: 40 },
-        wind: { range: 16, angle: 36, near: 2.2, maxKills: 30 },
-        lightning: { chains: 14, hop: 7.5, reach: 12 },
         maxKills: 12,
+        // a burst of flame, and a pool of fire where it landed: anything that walks in catches
+        fire: { blast: 'hammerFireUp', pool: { radius: 4.2, time: 7, burnKill: 2.4, max: 30 } },
+        // everything round you frozen solid (a frozen one shatters at the next hit), and a
+        // blizzard left behind that freezes whatever comes in
+        ice: { radius: 10, freeze: 9, maxFrozen: 40, storm: { radius: 5.5, time: 6, freeze: 3.5, max: 30 } },
+        // a gale down the line you swung along, and a tornado that carries on down it,
+        // dragging zombies in and throwing them
+        wind: { range: 16, angle: 36, near: 2.2, maxKills: 30, tornado: { speed: 3.4, time: 5, pull: 6, pullSpeed: [3, 9], catch: 1.5, max: 30 } },
+        // a bolt jumping zombie to zombie, and a ball of lightning that drifts on,
+        // striking anything near it
+        lightning: { chains: 14, hop: 7.5, reach: 12, orb: { time: 6, speed: 1.8, height: 1.6, every: 0.3, reach: 7, max: 24 } },
       },
       // how they look (src/render/warHammer.js): the downloaded hammer, sized so the
       // haft's butt sits at z `butt` and the head's centre at z `headAt` (metres),

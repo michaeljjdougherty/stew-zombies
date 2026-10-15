@@ -1,17 +1,19 @@
 // =============================================================================
 // The War Hammers (Call of the Crust). Pit forges one from each titan's core;
-// you take it from its socket on the Anvil. A swing smashes everything just
-// in front of you, then the hammer's element goes off where its head lands:
-//   Fire       a burst of flame
-//   Ice        everything round you frozen solid (the next hit shatters it)
-//   Wind       a gale down the line you swung along (flings them off the island)
-//   Lightning  a bolt that jumps zombie to zombie
-// Pit's tempered "+" hammers do more of all of it. They're also the only
-// thing that gets through The Schnitz's hold on Big Evil Zach (zachBoss.js).
+// you take it from its socket on the Anvil. Forged, a hammer is plain iron: a
+// swing smashes everything just in front of you. Pit tempers it (its "+") and
+// its element comes out, Origins-staff style: a burst where its head lands,
+// and something left behind (src/sim/gadgets.js runs those):
+//   Fire       a burst of flame, and a pool of fire: anything that walks in catches
+//   Ice        everything round you frozen solid, and a blizzard that freezes more
+//   Wind       a gale down the line you swung along, and a tornado carrying on down it
+//   Lightning  a bolt jumping zombie to zombie, and a ball of lightning drifting on
+// They're also the only thing that gets through The Schnitz's hold on Big
+// Evil Zach (zachBoss.js); which hammer it is counts there, tempered or not.
 // Numbers: CONFIG.crust.hammers.
 // =============================================================================
 import { damageZombie } from './zombies.js';
-import { explode } from './projectiles.js';
+import { explode, spawnProjectile } from './projectiles.js';
 import { windBlast } from './wind.js';
 import { zachHammerHit } from './zachBoss.js';
 import { DEG } from '../core/math.js';
@@ -24,7 +26,7 @@ export const HAMMER_IDS = { wind: 'Wind Hammer', lightning: 'Lightning Hammer', 
 
 export function hammerSlam(sim, p, eye, dir, def, weapon) {
   const H = sim.cfg.crust.hammers, el = def.hammer, up = !!def.upgraded;
-  const E = up ? H.tempered[el] : H[el];
+  const E = H.tempered[el];
   let fx = dir.x, fz = dir.z;
   const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
   const land = { x: p.pos.x + fx * H.landAt, y: p.pos.y + 0.15, z: p.pos.z + fz * H.landAt };
@@ -51,8 +53,10 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
   }
   sim.emit('hammerSlam', { playerId: p.id, element: el, upgraded: up, pos: land, dir: { x: fx, z: fz }, smashed: Math.min(hits.length, maxKills), weapon });
 
-  // the element
-  if (el === 'fire') explode(sim, { x: land.x, y: land.y + 0.5, z: land.z }, E.blast, p.id);
+  // the element: only once Pit's tempered it
+  if (!up) { zachHammerHit(sim, p, el, land, { x: fx, z: fz }); return; }
+  const leave = (type, o = {}) => { const pr = spawnProjectile(sim, type, land, { x: fx, y: 0, z: fz }, p.id, { gravity: 0, weapon }); pr.resting = true; pr.dir = { x: fx, z: fz }; Object.assign(pr, o); return pr; };
+  if (el === 'fire') { explode(sim, { x: land.x, y: land.y + 0.5, z: land.z }, E.blast, p.id); leave('hfire'); }
   else if (el === 'ice') {
     const near = [];
     for (const z of sim.zombies) {
@@ -64,7 +68,8 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
     const ids = [];
     for (const { z } of near.slice(0, E.maxFrozen)) { z.frozen = E.freeze; ids.push(z.id); }
     sim.emit('hammerFreeze', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, radius: E.radius, ids });
-  } else if (el === 'wind') windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: E }, weapon);
+    leave('hice');
+  } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: E }, weapon); leave('hwind'); }
   else if (el === 'lightning') {
     const pts = [{ x: land.x, y: land.y + 0.2, z: land.z }];
     const hit = new Set();
@@ -84,6 +89,7 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
       from = best.pos; reach = E.hop;
     }
     sim.emit('hammerChain', { playerId: p.id, points: pts });
+    leave('hbolt', { pos: { x: land.x, y: land.y + E.orb.height, z: land.z } });
   }
 
   // Big Evil Zach (the finale): the only thing that gets through

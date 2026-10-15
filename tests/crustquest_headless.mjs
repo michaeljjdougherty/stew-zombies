@@ -90,31 +90,64 @@ const forgeAll = (g) => {
   // a second core while he works: on the pile
 }
 
-// --- each hammer's swing
+// --- each hammer's swing: plain iron as forged, its element once Pit's tempered it
 {
   const g = game(5);
   for (const el of ['fire', 'ice', 'wind', 'lightning']) {
-    g.sim.zombies.length = 0;
+    g.sim.zombies.length = 0; g.sim.projectiles.length = 0;
     giveWeapon(g.sim, g.me, HAMMER_IDS[el]); g.step({}, 50);
     g.at(0, 11, 0, 30);   // south of the dais, facing south
-    const near = addZ(g, 0, 12.6), mid = addZ(g, 1.5, 15), far = addZ(g, -3, 16.5);
-    const n0 = g.log.length;
+    let near = addZ(g, 0, 12.6), mid = addZ(g, 1.5, 15), far = addZ(g, -3, 16.5);
+    let n0 = g.log.length;
     swing(g);
-    const L = g.log.slice(n0);
-    check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === el), `${el}: the swing smashes the one in front of you`);
-    if (el === 'fire') check(L.some((e) => e.type === 'explosion' && e.etype === 'hammerFire'), 'fire: a burst of flame where it lands');
+    let L = g.log.slice(n0);
+    check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === el && !e.upgraded), `${el}: the swing smashes the one in front of you`);
+    check(!L.some((e) => ['explosion', 'hammerFreeze', 'windBlast', 'hammerChain'].includes(e.type)) && mid.state !== 'dead' && !(mid.frozen > 0) && !g.sim.projectiles.length, '  ...and that\'s all: forged, it\'s plain iron');
+    // tempered
+    g.sim.zombies.length = 0;
+    giveWeapon(g.sim, g.me, HAMMER_IDS[el] + '+'); g.step({}, 50);
+    g.at(0, 11, 0, 30);
+    near = addZ(g, 0, 12.6); mid = addZ(g, 1.5, 15); far = addZ(g, -3, 16.5);
+    n0 = g.log.length;
+    swing(g);
+    L = g.log.slice(n0);
+    const left = g.sim.projectiles.find((p) => p.type === { fire: 'hfire', ice: 'hice', wind: 'hwind', lightning: 'hbolt' }[el]);
+    check(near.state === 'dead' && !!left, `${el}+: smashes, and leaves its ${left && left.type} behind`);
+    if (el === 'fire') {
+      check(L.some((e) => e.type === 'explosion' && e.etype === 'hammerFireUp'), '  fire: a burst of flame where it lands');
+      const walker = addZ(g, left.pos.x + 6, left.pos.z); walker.speed = 0;
+      g.step({}, 5); walker.pos.x = left.pos.x + 1; g.step({}, 10);
+      check(!!walker.burn, '  ...and one that walks into the pool catches');
+      g.step({}, 60 * 4);
+      check(walker.state === 'dead', '  ...and burns down');
+    }
     if (el === 'ice') {
-      check(mid.frozen > 0 && far.frozen > 0, 'ice: everything round you frozen');
+      check(mid.frozen > 0 && far.frozen > 0, '  ice: everything round you frozen');
       const x = mid.pos.x;
       g.step({}, 30);
-      check(mid.pos.x === x && mid.state !== 'dead', '...frozen solid');
+      check(mid.pos.x === x && mid.state !== 'dead', '  ...frozen solid');
+      const walker = addZ(g, left.pos.x + 9, left.pos.z); g.step({}, 5); walker.frozen = 0; walker.pos.x = left.pos.x + 2; g.step({}, 5);
+      check(walker.frozen > 0, '  ...one that comes into the blizzard freezes too');
       giveWeapon(g.sim, g.me, 'M1912'); g.step({}, 40);
       g.at(0, 11, 1.5, 15); g.me.pitch = -0.12;
       g.step({ fire: true, firePressed: true }); g.step({}, 3);
-      check(mid.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'zombieShatter'), '...and one pistol round shatters one');
+      check(mid.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'zombieShatter'), '  ...and one pistol round shatters one');
     }
-    if (el === 'wind') check(L.some((e) => e.type === 'windBlast') && mid.state === 'dead', 'wind: a gale down the line');
-    if (el === 'lightning') check(L.some((e) => e.type === 'hammerChain' && e.points.length >= 3) && far.state === 'dead', 'lightning: a bolt jumping zombie to zombie');
+    if (el === 'wind') {
+      check(L.some((e) => e.type === 'windBlast') && mid.state === 'dead', '  wind: a gale down the line');
+      const z0 = L.find((e) => e.type === 'hammerSlam').pos.z;
+      const side = addZ(g, left.pos.x + 3.5, left.pos.z - 1);
+      g.step({}, 60 * 2);
+      check(left.pos.z > z0 + 3 && side.state === 'dead', `  ...and a tornado carries on (${(left.pos.z - z0).toFixed(1)} m), dragging one in`);
+    }
+    if (el === 'lightning') {
+      check(L.some((e) => e.type === 'hammerChain' && e.points.length >= 3) && far.state === 'dead', '  lightning: a bolt jumping zombie to zombie');
+      const later = addZ(g, left.pos.x + 4, left.pos.z + 3);
+      g.step({}, 60);
+      check(later.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'hammerZap'), '  ...and the ball of lightning strikes one that comes near');
+    }
+    g.step({}, 60 * 8);
+    check(!g.sim.projectiles.some((p) => p === left), '  ...then it\'s gone');
   }
   const d = CONFIG.weapons['Fire Hammer'];
   check(d.infinite && d.noAds && !CONFIG.box.weights['Fire Hammer'], 'no ammo, no sights, never in the box');
