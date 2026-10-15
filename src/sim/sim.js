@@ -145,7 +145,7 @@ export class GameSim {
 
   eyePosition(p) {
     const c = this.cfg.player;
-    const h = p.downed ? this.cfg.lastStand.eyeHeight : p.dive ? (p.dive.phase === 'air' ? c.dive.airEyeHeight : c.dive.proneEyeHeight) : p.crouching ? c.crouchEyeHeight : c.eyeHeight;
+    const h = p.downed ? this.cfg.lastStand.eyeHeight : p.dive ? (p.dive.phase === 'air' ? c.dive.airEyeHeight : c.dive.proneEyeHeight) : p.prone ? c.prone.eyeHeight : p.crouching ? c.crouchEyeHeight : c.eyeHeight;
     return v3(p.pos.x, p.pos.y + h, p.pos.z);
   }
 

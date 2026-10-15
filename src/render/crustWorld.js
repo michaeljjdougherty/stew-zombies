@@ -393,14 +393,16 @@ export function buildCrust(mv) {
   if (map.terrains) buildDecor(out, group, map, mats, mv);
   for (const L of map.launchers || []) buildPad(out, group, L, map, mats, mv);
   buildSnow(out, group, r);
-  // slush (it slows you down): dark wet patches on the ice
+  // deep mud (it slows you down): dark wet patches on the dried harbor's bed,
+  // lying on the ground there (not at sea level, under it)
   if (map.mud) {
-    const slush = new THREE.MeshStandardMaterial({ color: '#3c4650', roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const slush = new THREE.MeshStandardMaterial({ color: '#2e2219', roughness: 0.45, metalness: 0.05, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const groundAt = (x, z) => { for (const t of map.terrains || []) if (t.contains(x, z)) return t.heightAt(x, z); return 0; };
     for (const m of map.mud) {
       const g = new THREE.CircleGeometry(m.r, 28).rotateX(-Math.PI / 2);
       const p = g.attributes.position;
       for (let i = 1; i < p.count; i++) { const k = 0.85 + r() * 0.25; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); }
-      const mesh = new THREE.Mesh(g, slush); mesh.position.set(m.x, (m.y || 0) + 0.012, m.z); group.add(mesh);
+      const mesh = new THREE.Mesh(g, slush); mesh.position.set(m.x, (m.y ?? groundAt(m.x, m.z)) + 0.02, m.z); group.add(mesh);
     }
   }
   // shell craters (looks only)

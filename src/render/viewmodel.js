@@ -6,6 +6,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { maisyDog, lbdBaby } from './gadgetView.js';
+import { proneLevel } from '../sim/player.js';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { perkBottleModel } from './propModels.js';
@@ -688,6 +689,8 @@ export class Viewmodel {
     let gunDip = 0;
     // a dolphin dive: the gun drops as you go flat
     if (p.dive) gunDip = p.dive.phase === 'air' ? 0.45 : 0.3 * (1 - Math.min(1, p.dive.t / this.cfg.player.dive.proneTime));
+    // getting up off the ground: the gun dips while you push yourself up
+    else if (p.prone && p.prone.up != null) gunDip = 0.35 * Math.sin(Math.PI * (1 - proneLevel(p, this.cfg)));
     if (this.meleeT >= 0) {
       this.meleeT += dt;
       const t = this.meleeT / this.cfg.melee.duration;

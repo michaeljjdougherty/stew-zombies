@@ -611,7 +611,7 @@ function research() {
   // blast walls across the open yards (not the helipad: it's for landing on)
   for (const [x0, z0, x1, z1] of [[176, -11, 183, -9.8], [165, -34, 166.2, -27], [146, -37, 152, -35.8], [126, -32, 131, -30.8], [172, -19.5, 177, -18.3], [137.5, -30, 138.7, -25], [138, 24.5, 142, 25.7], [186, -17, 189, -15.8]]) I.barrier(x0, z0, x1, z1, 3.4, { base: G });
   // a zipline off the radio mast's top deck, down over the base to the yard
-  I.rides.push({ id: 'zip_mast', kind: 'zip', label: 'the yard', pts: [[184, 12.47 + ZIPH, -25], [127, 0.8 + ZIPH, -10]] });
+  I.rides.push({ id: 'zip_mast', kind: 'zip', label: 'the yard', pts: [[184, 12.47 + ZIPH, -25], [127, 0.8 + ZIPH, -21.5]] });   // (south of the labs: clear of their roofs)
   return I;
 }
 

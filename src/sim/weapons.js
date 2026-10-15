@@ -59,6 +59,7 @@ export function currentSpread(sim, p, def) {
   const ads = s.ads + w.bloom * (s.adsPerShot / Math.max(0.01, s.perShot)) * 0.5 + moveFrac * s.moving * 0.15;
   let spread = lerp(hip, ads, w.adsAmount);
   if (p.crouching) spread *= s.crouchMult;
+  if (p.prone) spread *= sim.cfg.player.prone.spreadMult;
   return spread;
 }
 
@@ -110,7 +111,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   w.recoilPitch *= settle;
   w.recoilYaw *= settle;
   if (def.scope && w.adsAmount > 0.01) {
-    const amp = def.scope.sway * DEG * w.adsAmount * (p.crouching ? 0.45 : 1) * (p.moveSpeed > 0.5 ? 1.6 : 1);
+    const amp = def.scope.sway * DEG * w.adsAmount * (p.crouching ? 0.45 : 1) * (p.prone ? sim.cfg.player.prone.swayMult : 1) * (p.moveSpeed > 0.5 ? 1.6 : 1);
     w.swayPitch = Math.sin(sim.time * 1.15) * amp;
     w.swayYaw = Math.sin(sim.time * 0.71 + 1.3) * amp * 1.4;
   } else { w.swayPitch *= 0.85; w.swayYaw *= 0.85; }

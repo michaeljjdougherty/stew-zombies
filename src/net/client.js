@@ -4,7 +4,7 @@
 // and mirrors everything else from the host's updates. Zombies, projectiles
 // and teammates are drawn a few frames in the past, smoothly between updates.
 // =============================================================================
-import { updatePlayer } from '../sim/player.js';
+import { updatePlayer, proneLevel } from '../sim/player.js';
 import { applyPatch, applyMirror, positionFrame, clean } from './state.js';
 
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -87,7 +87,7 @@ export class NetClient {
     const p = this.me, w = p.loadout;
     return clean({
       pos: p.pos, vel: p.vel, yaw: p.yaw, pitch: p.pitch,
-      cr: p.crouching, sp: p.sprinting, gr: p.grounded, ms: p.moveSpeed, h: p.height, sta: p.stamina,
+      cr: p.crouching, pr: proneLevel(p, this.sim.cfg), dv: p.dive ? (p.dive.phase === 'air' ? 1 : 2) : 0, sp: p.sprinting, gr: p.grounded, ms: p.moveSpeed, h: p.height, sta: p.stamina,
       th: p.throwing, mt: p.melee.timer, ml: p.melee.lunge, dw: p.distanceWalked,
       ads: w.adsAmount, rl: w.reloading,
       inv: p.invRev, cur: w.current, slots: w.slots.map((s) => ({ id: s.id, clip: s.clip, clipL: s.clipL || 0, reserve: s.reserve })),

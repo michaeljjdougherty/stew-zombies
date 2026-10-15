@@ -42,10 +42,36 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
   check(!!landed && air > 10, `lands on your belly (${(air / 60).toFixed(2)} s in the air)`);
   const zLand = g.me.pos.z;
   g.step({ crouch: true }, 60);
-  check(!g.me.dive, 'then up again');
+  check(!g.me.dive && !!g.me.prone, 'the skid over: you\'re lying prone');
   check(z0 - g.me.pos.z > 4.5 && z0 - zLand > 3, `covers ground (${(z0 - g.me.pos.z).toFixed(1)} m)`);
-  check(g.me.crouching, 'still holding crouch: crouched');
+  g.step({}, 120);
+  check(!!g.me.prone, '...and you stay down until you get up');
+  const zp = g.me.pos.z; g.step({ moveY: 1 }, 60);
+  const crawl = zp - g.me.pos.z;
+  check(crawl > 0.1 && crawl < 1, `crawling along (${crawl.toFixed(2)} m a second)`);
+  g.step({ jump: true, jumpPressed: true }, 1);
+  check(g.me.prone && g.me.prone.up != null, 'jump: you push yourself up');
+  check(g.me.pos.y < 0.05, '...without jumping');
+  g.step({}, 40);
+  check(!g.me.prone && !g.me.crouching && g.me.height === g.sim.cfg.player.height, 'and stand');
   check(g.me.health === g.me.maxHealth, 'a dive on the flat doesn\'t hurt');
+}
+
+// --- prone on purpose: hold crouch; crouch again or sprint to get up
+{
+  const g = game();
+  g.step({ crouch: true }, 10);
+  check(g.me.crouching && !g.me.prone, 'tap crouch: just a crouch');
+  g.step({ crouch: true }, 30);
+  check(!!g.me.prone && g.log.some((e) => e.type === 'playerProne'), 'hold it: down prone');
+  g.step({}, 10); g.step({ crouch: true }, 1);
+  check(g.me.prone && g.me.prone.up != null, 'crouch again: getting up');
+  g.step({ crouch: true }, 30);
+  check(!g.me.prone && g.me.crouching, '...to a crouch while you hold it (not straight back down)');
+  g.step({}, 5); g.step({ crouch: true }, 30);
+  check(!!g.me.prone, 'let go and hold again: prone again');
+  g.step({ moveY: 1, sprint: true }, 40);
+  check(!g.me.prone, 'sprint: up and off');
 }
 
 // --- no dive without sprinting
@@ -84,16 +110,22 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
   check(hurt > 0 && g2.me.health === g2.me.maxHealth, `your own grenade: ${Math.round(hurt)} without, 0 with PHD Gaylor`);
 }
 
-// --- PHD Gaylor: a dive lands with a blast (a bigger one off something high)
+// --- PHD Gaylor: a dive off something lands with a blast (a bigger one off something high)
 {
+  const g0 = game();
+  givePerk(g0.sim, g0.me, 'phdGaylor');
+  sprintDive(g0);
+  g0.step({ crouch: true }, 90);
+  check(g0.log.some((e) => e.type === 'diveLand') && !g0.log.some((e) => e.type === 'explosion'), 'a dive along flat ground: no blast, even with PHD Gaylor');
   const g = game();
   givePerk(g.sim, g.me, 'phdGaylor');
   const zs = [];
   sprintDive(g);
+  g.me.dive.from += 1.6;   // (as if off a ledge)
   // (round where it'll land)
   for (const [dx, dz] of [[0, -3.5], [1.8, -3], [-1.8, -4]]) { const z = makeZombie(g.sim, { pos: { x: g.me.pos.x + dx, z: g.me.pos.z + dz }, health: 1500, state: 'chase' }); z.speed = 0; g.sim.zombies.push(z); zs.push(z); }
   g.step({ crouch: true }, 90);
-  check(g.log.some((e) => e.type === 'explosion' && e.etype === 'phd'), 'the dive lands with a purple blast');
+  check(g.log.some((e) => e.type === 'explosion' && e.etype === 'phd'), 'off a ledge: the dive lands with a purple blast');
   check(zs.filter((z) => z.state === 'dead').length >= 2, `it kills what's round you (${zs.filter((z) => z.state === 'dead').length} of 3)`);
   check(g.me.health === g.me.maxHealth, 'and not you');
   const g2 = game();

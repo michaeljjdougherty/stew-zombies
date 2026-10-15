@@ -282,6 +282,8 @@ export class Trailer {
   // --- the camera ---------------------------------------------------------------
   look(px, py, pz, tx, ty, tz, fov = 50, roll = 0) {
     const s = this.shake;
+    // never under the ground's surface (looking up through it from below)
+    py = Math.max(py, this.gy(px, pz) + 0.3);
     const n = (k) => Math.sin(this.t * (37 + k * 11) + k * 2.1) * 0.6 + Math.sin(this.t * (53 + k * 7)) * 0.4;
     this.cam.position.set(px + n(1) * s * 0.12, py + n(2) * s * 0.1, pz + n(3) * s * 0.12);
     this.cam.up.set(0, 1, 0);
@@ -302,11 +304,22 @@ export class Trailer {
     this.film.position.set(...from);
   }
 
-  skip() { if (this.t < this.C.end - 3) this.t = this.times.cards.find((c) => c.style === 'title').t0; }
+  skip() {
+    if (this.t >= this.C.end - 3) return;
+    this.t = this.times.cards.find((c) => c.style === 'title').t0;
+    if (this.onSeek) this.onSeek(this.t);
+  }
 
   // --- each frame ---------------------------------------------------------------
+  // With a clock (the song: see src/audio/trailerSong.js) the time is wherever
+  // the song is, and the frame's step is however far that moved (a slow frame
+  // just jumps ahead, never back); without one (recording), it steps by dt.
   update(dt, time) {
-    this.t += dt;
+    if (this.clock) {
+      const ct = this.clock();
+      if (ct == null) dt = 0;                       // (the song's still loading: hold the first frame)
+      else { dt = Math.min(0.1, Math.max(0, ct - this.t)); this.t = Math.max(this.t, ct); }
+    } else this.t += dt;
     this.dt = dt;
     const t = this.t;
     if (t >= this.C.end) this.done = true;
@@ -501,7 +514,7 @@ export const SHOTS = {
         T.crew[id].yaw = -Math.PI / 2;   // walking +x, toward the camera
       });
       T.light(0.35, '#c8d8d0', [130, 8, 6]);
-      T.look(125.5, 1.15, 0.5, 113, 1.9, 0, 42);
+      T.look(125.5, T.ground(125.5, 0.5) + 0.45, 0.5, 113, 1.9, 0, 42);
     },
   },
 
@@ -541,31 +554,36 @@ export const SHOTS = {
     },
   },
 
-  // Ryan sprints in and dolphin dives into the middle of them: he lands belly
-  // first and PHD Gaylor goes off under him in a purple blast.
+  // Ryan sprints along the top of the Anvil's east terrace and dolphin dives
+  // off the edge, down onto the pack on the terrace below: he lands belly first
+  // and PHD Gaylor goes off under him in a purple blast (it only goes off from a height).
   diveBlast: {
-    enter(T) { T.blasted = false; for (let i = 0; i < 8; i++) T.zombie(170 + (i % 4) * 1.2, -4.6 + Math.floor(i / 4) * 2.6 + (i % 2) * 0.4, { type: 'walker', yaw: -Math.PI / 2 }); },
+    enter(T) { T.blasted = false; for (let i = 0; i < 8; i++) T.zombie(16.7 + (i % 4) * 0.95, -1.6 + Math.floor(i / 4) * 2.2 + (i % 2) * 0.4, { type: 'walker', yaw: Math.PI / 2 }); },
     frame(T, u, d, k) {
-      const c = { x: 172, z: -3.3 }, gy = T.ground(c.x, c.z);
-      T.slow = k > 0.33 && k < 0.72 ? 0.35 : 1;
-      const run = sm(0, 0.34, k), fly = sm(0.34, 0.6, k);
-      const x = lerp(lerp(187, 177.5, run), c.x, fly), arc = Math.sin(fly * Math.PI) * 0.85;
-      const air = k > 0.34 && k < 0.6, prone = k >= 0.6 && k < 0.88;
-      T.pose('ryan', { x, z: c.z, y: T.ground(x, c.z) + arc + (prone ? 0 : 0), sprint: k < 0.34, dive: air || prone, crouch: k >= 0.88, pitch: air ? -0.2 : 0 });
-      T.crew.ryan.yaw = Math.PI / 2;   // facing -x, into them
-      T.zs.forEach((zz) => !zz.dead && T.moveZ(zz, zz.pos.x + 0.004, zz.pos.z, { yaw: -Math.PI / 2, speed: 1 }));
-      if (k >= 0.6 && !T.blasted) {
+      const top = T.ground(26, -0.6), low = T.ground(17.6, -0.6), z = -0.6;
+      T.slow = k > 0.3 && k < 0.66 ? 0.4 : 1;
+      const run = sm(0, 0.3, k), fly = sm(0.3, 0.62, k);
+      const x0 = 29.5, edge = 21.7, land = 17.3;
+      const x = fly > 0 ? lerp(edge, land, fly) : lerp(x0, edge, run);
+      const y = fly > 0 ? lerp(top, low, fly * fly) + Math.sin(fly * Math.PI) * 1.1 : top;
+      const air = k > 0.3 && k < 0.62, prone = k >= 0.62 && k < 0.9;
+      T.pose('ryan', { x, z, y, sprint: k < 0.3, dive: air || prone, crouch: k >= 0.9, pitch: air ? -0.25 : 0 });
+      T.crew.ryan.yaw = Math.PI / 2;   // facing -x: off the edge and into them
+      T.zs.forEach((zz) => !zz.dead && T.moveZ(zz, zz.pos.x + 0.004, zz.pos.z, { yaw: Math.PI / 2, speed: 1 }));
+      if (k >= 0.62 && !T.blasted) {
         T.blasted = true;
-        const p = V(c.x, gy + 0.4, c.z);
-        T.fx.energyBurst(p, '#9b4dff', 6);
-        T.fx.energyBurst(p.clone().add(V(0, 0.6, 0)), '#d6a8ff', 3.5);
-        T.R.flash = Math.max(T.R.flash || 0, 0.35);
-        T.shake = 1.8;
+        const p = V(land, low + 0.4, z);
+        T.fx.energyBurst(p, '#9b4dff', 6.5);
+        T.fx.energyBurst(p.clone().add(V(0, 0.6, 0)), '#d6a8ff', 3.8);
+        T.R.flash = Math.max(T.R.flash || 0, 0.4);
+        T.shake = 2;
         for (const zz of T.zs) T.kill(zz, p, { up: 3 + Math.random() * 2.5, dist: 6 + Math.random() * 5 });
       }
       if (k < 0.1) T.blasted = false;
-      T.light(0.7, '#d8c0ff', [c.x + 2, gy + 7, c.z + 7]);
-      T.look(lerp(176, 172.5, k), gy + 0.75, c.z + 6.2, x - 1.5, gy + 0.9, c.z, 50);
+      T.light(0.7, '#d8c0ff', [20, top + 5, z + 7]);
+      // beside him: high up with him on the top, down with him to the terrace
+      const ck = sm(0.22, 0.7, k);
+      T.look(lerp(22.5, 14.8, ck), lerp(top + 2.2, low + 1.6, ck), lerp(8, 6.6, ck), x - 1, lerp(y + 0.9, low + 0.7, sm(0.55, 0.8, k)), z, 52);
     },
   },
 
@@ -597,10 +615,10 @@ export const SHOTS = {
       const i = Math.min(3, Math.floor(k * 4)), lk = k * 4 - i;
       if (i !== T.titCut) { T.titCut = i; T.wakeTitan(ids[i]); T.fx.clear(); }
       const shots = {
-        ship: [[10, 2.6, -199, 9, 9, -225], [8.5, 2.0, -203, 9, 11, -225], 50, '#a0ffd0'],
+        ship: [[10, 2.6, -199, 9, 9, -225], [6.5, 2.1, -200.5, 9, 11, -225], 50, '#a0ffd0'],
         research: [[124.5, 1.3, -10.5, 114, 4.5, -20], [122, 1.0, -12.5, 114, 6, -20], 46, '#ffb0a0'],
         trench: [[29, 4.6, 130.5, 40.5, 4, 118.5], [31.5, 3.6, 128, 40.5, 6, 118.5], 48, '#ffc080'],
-        caves: [[-156.5, 11.3, -28.5, -164.5, 13.5, -36.5], [-158.5, 10.9, -30.5, -164.5, 14.5, -36.5], 48, '#b0e0ff'],
+        caves: [[-169, 11.6, -26, -164.5, 13.5, -36.5], [-172, 11.2, -31, -164.5, 14.5, -36.5], 48, '#b0e0ff'],
       };
       const [a, b, fov, col] = shots[ids[i]];
       T.path(a, b, sm(0, 1, lk), fov);
@@ -613,7 +631,7 @@ export const SHOTS = {
   // Ryan and Kearns ride the zipline off the radio mast, hanging by one hand,
   // firing down into the yard as they go.
   zipline: {
-    enter(T) { for (let i = 0; i < 9; i++) T.zombie(144 + (i % 3) * 3.2, -9.5 + Math.floor(i / 3) * 2.2, { type: i % 2 ? 'runner' : 'walker', yaw: Math.PI }); },
+    enter(T) { for (let i = 0; i < 9; i++) T.zombie(140.5 + (i % 3) * 3, -25.4 + Math.floor(i / 3) * 1.6, { type: i % 2 ? 'runner' : 'walker', yaw: -Math.PI / 2 }); },   // (out in the yard south of the labs, under the line)
     frame(T, u, d, k) {
       const R = T.sim.rides.find((r) => r.id === 'zip_mast');
       if (!R) return;
@@ -628,7 +646,7 @@ export const SHOTS = {
       });
       T.zs.forEach((zz, q) => {
         if (zz.dead) return;
-        T.moveZ(zz, zz.pos.x, zz.pos.z - 0.01, { yaw: Math.PI, speed: 1.2 });
+        T.moveZ(zz, zz.pos.x + 0.01, zz.pos.z, { yaw: -Math.PI / 2, speed: 1.2 });
         if (k > 0.2 + q * 0.075) T.kill(zz, V(zz.pos.x, zz.pos.y + 6, zz.pos.z - 2), { kind: 'bullet', dist: 2, up: 0.5 });
       });
       // the camera rides along beside them, a little below
@@ -754,7 +772,7 @@ export const SHOTS = {
       if (k > 0.3 && !T.roared) { T.roared = true; T.fx.energyBurst(V(117.5, 5.4, 5.5), '#5aff70', 3); }
       if (k < 0.1) T.roared = false;
       T.light(0.9, '#c0ffd0', [126, 4, 10]);
-      T.look(123.5, 0.45, 7.8, 117.5, 3.8, 5.5, 60, 0.05);
+      T.look(123.5, T.ground(123.5, 7.8) + 0.4, 7.8, 117.5, 3.8, 5.5, 60, 0.05);   // (from just off the ground: never under it)
     },
   },
 
@@ -770,7 +788,7 @@ export const SHOTS = {
       if (k > 0.2) T.fire('brian', V(174.5, 1.6 + Math.sin(u * 20) * 0.3, -2.6 + Math.sin(u * 7)), 0.08);
       if (k > 0.82) T.zs.slice(0, 2).forEach((zz) => T.kill(zz, V(x, 0, -2.6), { kind: 'bullet', dist: 3, up: 1 }));
       T.light(0.7, '#d8dcff', [176, 8, 6]);
-      T.look(175, 0.8, 3.6, 175.5, 1.3, -2.8, 54);
+      T.look(175, T.ground(175, 3.6) + 0.45, 3.6, 175.5, T.ground(175.5, -2.8) + 0.6, -2.8, 54);
     },
   },
 
@@ -805,7 +823,7 @@ export const SHOTS = {
       }
       if (k < 0.1) T.stomped = false;
       T.light(0.9, '#b0ffc0', [c.x + 5, 6, c.z - 6]);
-      T.look(c.x + 2.2, 2.6, c.z - 6.2, c.x, 5.6, c.z, 64, -0.06);
+      T.look(c.x + 0.9, T.ground(c.x + 0.9, c.z - 6.2) + 0.6, c.z - 6.2, c.x, 5.6, c.z, 64, -0.06);   // (clear of the bunker beside him)
     },
   },
 
@@ -879,7 +897,7 @@ export const SHOTS = {
       if (k > 0.3) { T.fire('brian', V(zx, 6, zz), 0.1); T.fire('ryan', V(zx, 7, zz), 0.12); }
       if (k > 0.5) T.shake = Math.max(T.shake, 0.7);
       T.light(0.8, '#a0ffb0', [zx + 8, 10, zz + 6]);
-      T.look(122.5, 0.6, 3, zx, 5.2, zz, 62);
+      T.look(122.5, T.ground(122.5, 3) + 0.4, 3, zx, 5.2, zz, 62);
     },
   },
 

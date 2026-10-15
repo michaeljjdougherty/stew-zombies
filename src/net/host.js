@@ -101,6 +101,8 @@ export class NetHost {
     Object.assign(p.vel, st.vel);
     p.yaw = st.yaw; p.pitch = st.pitch;
     p.crouching = st.cr; p.sprinting = st.sp; p.grounded = st.gr;
+    p.prone = st.pr ? { t: 0, lvl: st.pr } : null;
+    p.dive = st.dv ? { phase: st.dv === 1 ? 'air' : 'prone', t: 0, peak: p.pos.y, from: p.pos.y } : null;
     p.moveSpeed = st.ms; p.height = st.h; p.stamina = st.sta;
     p.throwing = st.th; p.melee.timer = st.mt; p.melee.lunge = st.ml;
     p.distanceWalked = st.dw;

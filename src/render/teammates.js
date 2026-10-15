@@ -8,6 +8,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { buildCharacter } from './characters.js';
+import { proneLevel } from '../sim/player.js';
 import { idleCharacter, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
 import { HAND_POSES } from './hands.js';
@@ -114,7 +115,7 @@ export class Teammate {
     const downed = !!p.downed;
     this.crouch = approach(this.crouch, p.crouching && !downed ? 1 : 0, 10, dt);
     this.down = approach(this.down, downed ? 1 : 0, 6, dt);
-    this.dive = approach(this.dive || 0, p.dive && !downed ? 1 : 0, 12, dt);
+    this.dive = approach(this.dive || 0, downed ? 0 : p.dive ? 1 : proneLevel(p, this.cfg), 12, dt);
     const sprint = p.sprinting && !downed;
     const busy = w.reloading || !!p.drinking || !!p.throwing || (p.melee && p.melee.timer > 0);
     // how high the gun is held: level when aiming, angled down to sprint or reload

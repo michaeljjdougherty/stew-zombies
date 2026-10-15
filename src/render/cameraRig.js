@@ -3,6 +3,7 @@
 // damage shake, FOV (settings + ADS + sprint).
 // =============================================================================
 import * as THREE from 'three';
+import { proneLevel } from '../sim/player.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -74,7 +75,9 @@ export class CameraRig {
     const c = this.cfg.camera, pc = this.cfg.player;
     const w = p.loadout;
     const A = aim || { ads: w.adsAmount, recoilPitch: w.recoilPitch, recoilYaw: w.recoilYaw, swayPitch: w.swayPitch || 0, swayYaw: w.swayYaw || 0 };
-    const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.dive ? (p.dive.phase === 'air' ? pc.dive.airEyeHeight : pc.dive.proneEyeHeight) : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
+    const pk = proneLevel(p, this.cfg);
+    const stood = p.crouching && !(p.prone && p.prone.up != null) ? pc.crouchEyeHeight : pc.eyeHeight;
+    const targetEye = p.downed ? this.cfg.lastStand.eyeHeight : p.dive ? (p.dive.phase === 'air' ? pc.dive.airEyeHeight : pc.dive.proneEyeHeight) : p.prone ? lerp(stood, pc.prone.eyeHeight, pk) : p.crouching ? pc.crouchEyeHeight : pc.eyeHeight;
     this.eyeY = lerp(this.eyeY, targetEye, 1 - Math.exp(-c.eyeSmoothing * dt));
 
     // smooth step-ups: follow pos.y with a little lag

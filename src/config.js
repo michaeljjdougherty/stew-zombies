@@ -125,6 +125,10 @@ export const CONFIG = {
     // 4 m through the air), come down belly first with a thud, skid a short way,
     // then you're crouched. (A low hop and a long skid read as a slide.)
     dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6 },
+    // prone: flat on your belly. A dive ends in it (you have to get up); hold
+    // crouch to go down on purpose. Jump, crouch or sprint gets you up again
+    // (it takes getUpTime). You crawl at speedMult, and hold your aim steadier.
+    prone: { height: 0.6, eyeHeight: 0.42, speedMult: 0.22, holdTime: 0.4, getUpTime: 0.4, minTime: 0.2, spreadMult: 0.6, swayMult: 0.5 },
     // falls hurt: landing faster than minImpact m/s (about a 3 m drop) costs perMs
     // health per m/s over it, up to max (PHD Gaylor: nothing)
     fallDamage: { minImpact: 11, perMs: 5.5, max: 80 },
@@ -1070,8 +1074,8 @@ export const CONFIG = {
       },
       phdGaylor: {
         name: 'PHD Gaylor', cost: 2000, color: '#9b4dff', power: true, glyph: 'P',
-        desc: 'Your own explosions and falls can\'t hurt you, and a dolphin dive lands with a purple blast (a big one from high up).',
-        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', highDrop: 2.5,
+        desc: 'Your own explosions and falls can\'t hurt you, and a dolphin dive off a ledge lands with a purple blast (the higher, the bigger).',
+        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', minDrop: 1.2, highDrop: 2.5,
       },
       marathonMinestrone: {
         name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',
@@ -1208,6 +1212,7 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   trailer: {
     song: 'assets/music/design_in_malice.mp3',
+    songWait: 8,             // s to wait for the song to load before running without it
     drop: 20.18,             // s: where the beat drops in the song (trailerDropTime)
     bpm: 90,                 // the song's tempo after the drop (a beat = 60 / bpm s)
     fadeOut: [58, 60],       // s: the music fades out over this

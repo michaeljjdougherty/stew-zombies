@@ -91,12 +91,31 @@ export function updatePlayer(sim, p, cmd, dt) {
   const crouchPressed = !!cmd.crouch && !p.crouchHeld;
   p.crouchHeld = !!cmd.crouch;
   if (p.diveCooldown > 0) p.diveCooldown -= dt;
-  if (downed || p.ride) p.dive = null;
-  else if (crouchPressed && p.sprinting && p.grounded && !p.dive && !(p.diveCooldown > 0)) startDive(sim, p);
+  if (downed || p.ride) { p.dive = null; p.prone = null; }
+  else if (crouchPressed && p.sprinting && p.grounded && !p.dive && !p.prone && !(p.diveCooldown > 0)) startDive(sim, p);
+
+  // --- prone: down on purpose (hold crouch), or where a dive leaves you; up with jump, crouch or sprint
+  const PR = cfg.prone;
+  if (p.prone) {
+    p.prone.t += dt;
+    if (p.prone.up != null) {
+      p.prone.up -= dt;
+      if (p.prone.up <= 0) { p.prone = null; p.crouchHold = -1; sim.emit('playerStand', { playerId: p.id }); }
+    } else if (p.prone.t >= PR.minTime && (cmd.jumpPressed || crouchPressed || (cmd.sprint && cmd.moveY > 0.3))) {
+      p.prone.up = PR.getUpTime;
+      sim.emit('playerGetUp', { playerId: p.id });
+    }
+  } else if (!downed && !p.dive && p.grounded && cmd.crouch && !p.sprinting && !p.ride) {
+    if ((p.crouchHold ?? 0) >= 0) {
+      p.crouchHold = (p.crouchHold || 0) + dt;
+      if (p.crouchHold >= PR.holdTime) { p.prone = { t: 0 }; p.crouchHold = -1; sim.emit('playerProne', { playerId: p.id }); }
+    }
+  }
+  if (!cmd.crouch) p.crouchHold = 0;
 
   // --- stance
-  p.crouching = downed || !!p.dive || (cmd.crouch && p.grounded);
-  p.height = downed ? 0.8 : p.dive ? cfg.dive.height : p.crouching ? cfg.crouchHeight : cfg.height;
+  p.crouching = downed || !!p.dive || !!p.prone || (cmd.crouch && p.grounded);
+  p.height = downed ? 0.8 : p.dive ? cfg.dive.height : p.prone ? PR.height : p.crouching ? cfg.crouchHeight : cfg.height;
   const sprintMax = cfg.sprintDuration * perkMult(sim, p, 'sprintMult');
 
   // --- sprint state machine
@@ -129,7 +148,8 @@ export function updatePlayer(sim, p, cmd, dt) {
     else if (Math.abs(mx) > Math.abs(my)) speed *= cfg.strafeMult;
     speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;
   }
-  if (p.crouching) speed *= cfg.crouchSpeedMult;
+  if (p.prone) speed = p.prone.up != null ? 0 : cfg.walkSpeed * PR.speedMult;
+  else if (p.crouching) speed *= cfg.crouchSpeedMult;
   speed *= perkMult(sim, p, 'speedMult');
   if (p.boosts && p.boosts.speed) speed *= p.boosts.speed;   // restored by the half-court ritual
   if (downed) speed = sim.cfg.lastStand.crawlSpeed;
@@ -154,7 +174,8 @@ export function updatePlayer(sim, p, cmd, dt) {
       const sp = Math.hypot(p.vel.x, p.vel.z);
       const k = sp > 1e-4 ? Math.max(0, sp - cfg.dive.slideDecel * dt) / sp : 0;
       p.vel.x *= k; p.vel.z *= k;
-      if (p.dive.t >= cfg.dive.proneTime) { p.dive = null; p.diveCooldown = cfg.dive.cooldown; }
+      // the skid over, you're flat on the ground: get up yourself
+      if (p.dive.t >= cfg.dive.proneTime) { p.dive = null; p.diveCooldown = cfg.dive.cooldown; p.prone = { t: 0, dove: true }; p.crouchHold = -1; }
     }
   } else if (p.melee.lunge > 0 && p.melee.lungeDir) {
     p.vel.x = p.melee.lungeDir.x * sim.cfg.melee.lungeSpeed;
@@ -218,6 +239,13 @@ export function updatePlayer(sim, p, cmd, dt) {
   updateUseAndHealth(sim, p, cmd, dt);
 }
 
+// How flat you are (0 standing .. 1 prone): getting up runs it back down.
+export function proneLevel(p, cfg) {
+  if (!p.prone) return 0;
+  if (p.prone.lvl != null) return p.prone.lvl;   // (a teammate online: as their browser said)
+  return p.prone.up != null ? Math.max(0, p.prone.up / cfg.player.prone.getUpTime) : 1;
+}
+
 // Dolphin dive: thrown flat out forward and a little up.
 function startDive(sim, p) {
   const c = sim.cfg.player.dive;
@@ -236,6 +264,8 @@ function diveLand(sim, p) {
   sim.emit('diveLand', { playerId: p.id, pos: { ...p.pos }, drop });
   const perk = p.perks.map((id) => sim.cfg.perks.list[id]).find((d) => d.diveBlast);
   if (!perk) return;
+  // (only off something: a dive along flat ground just lands)
+  if (drop < perk.minDrop) return;
   const kind = drop >= perk.highDrop ? perk.diveBlastHigh : perk.diveBlast;
   const pos = { x: p.pos.x, y: p.pos.y + 0.3, z: p.pos.z };
   if (sim.replica) sim.netOut.push({ k: 'boom', pos, kind });

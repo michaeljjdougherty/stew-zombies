@@ -625,6 +625,11 @@ export class HUD {
     else if (w.reloading) hint = '';
     else if (low && slot.reserve > 0) hint = 'Press [R] to reload';
     else if (low) hint = 'Low ammo';
+    // flat on the ground after a dive: how to get up (only until it's been seen a few times)
+    if (!hint && p.prone && p.prone.up == null && p.prone.t > 0.6 && (this.proneHints = this.proneHints || 0) < 3) {
+      hint = 'Press [Space] to get up';
+      if (!this.proneShown) { this.proneShown = true; this.proneHints++; }
+    } else if (!p.prone) this.proneShown = false;
     this.set('hint', this.el.hint, hint && glyphify(hint), 'innerHTML');
 
     if (showFps) {

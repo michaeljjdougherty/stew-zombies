@@ -45,6 +45,7 @@ import { SignInUI, AchievementToast, refreshProfileChip, renderCareer } from './
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
+import { TrailerSong } from './audio/trailerSong.js';
 import { LINEUP } from './render/characters.js';
 import { SHIRT_COLORS, CHARACTERS } from './render/characters.js';
 import { OnlineSession } from './net/online.js';
@@ -515,13 +516,23 @@ function startTrailer({ silent = false, recording = false } = {}) {
   const T = renderer.startTrailer();
   T.recording = recording;
   trailerUI.show(CONFIG.trailer.letterbox);
-  if (!silent) {
-    trailerSong = new Audio(CONFIG.trailer.song);
-    trailerSong.volume = Math.min(1, (settings.master ?? 1) * Math.max(0.6, settings.music ?? 1));
-    trailerSong.play().catch(() => {});
+  if (!silent && audio.ctx) {
+    // the song is the clock: the picture follows it (no seeking it back to the picture)
+    const song = trailerSong = new TrailerSong(audio.ctx, CONFIG.trailer.song);
+    song.setVolume(trailerVolume());
+    const t0 = performance.now();
+    T.clock = () => {
+      if (song.playing) return song.time();
+      if (song.loaded) { song.play(T.t); return T.t; }
+      // (no song after a while: run on the frame clock)
+      if (song.failed || performance.now() - t0 > CONFIG.trailer.songWait * 1000) { T.clock = null; return T.t; }
+      return null;
+    };
+    T.onSeek = (t) => { if (song.loaded) song.play(t); };
   }
   return T;
 }
+const trailerVolume = () => Math.min(1, (settings.master ?? 1) * Math.max(0.6, settings.music ?? 1));
 function updateTrailer() {
   const T = renderer.ending;
   if (!T) return;
@@ -530,8 +541,8 @@ function updateTrailer() {
   if (trailerSong) {
     const [f0, f1] = CONFIG.trailer.fadeOut;
     const k = Math.min(1, Math.max(0, (T.t - f0) / (f1 - f0)));
-    trailerSong.volume = Math.max(0, Math.min(1, (settings.master ?? 1) * Math.max(0.6, settings.music ?? 1)) * (1 - k));
-    if (Math.abs(trailerSong.currentTime - T.t) > 0.25 && !trailerSong.paused) trailerSong.currentTime = T.t;
+    const v = trailerVolume() * (1 - k);
+    if (Math.abs(v - (trailerSong.vol ?? -1)) > 0.01) { trailerSong.vol = v; trailerSong.setVolume(v); }
   }
 }
 function finishTrailer() {
@@ -539,7 +550,7 @@ function finishTrailer() {
   renderer.applySettings(settings);
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   trailerUI.hide();
-  if (trailerSong) { trailerSong.pause(); trailerSong = null; }
+  if (trailerSong) { trailerSong.stop(); trailerSong = null; }
   restart('zombies');
   mode = 'title';
   menus.show('title');
