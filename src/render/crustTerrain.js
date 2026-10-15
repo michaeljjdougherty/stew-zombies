@@ -8,6 +8,7 @@
 // the toppled ice pillars, the frozen waterfall, the observatory's dome).
 // =============================================================================
 import * as THREE from 'three';
+import { CONFIG } from '../config.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildLighthouse } from './crustLighthouse.js';
 import { BoxBatch } from './geometry.js';
@@ -532,7 +533,7 @@ export function buildRides(out, group, map, mats) {
     if (r.kind === 'zip') {
       // the cable (a little sag), and a pole at each end
       const a = P[0], b = P[P.length - 1];
-      const mid = a.clone().lerp(b, 0.5); mid.y -= a.distanceTo(b) * 0.02;
+      const mid = a.clone().lerp(b, 0.5); mid.y -= a.distanceTo(b) * CONFIG.crust.ride.sag;
       const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
       group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.035, 5), iron));
       for (const e of [a, b]) {

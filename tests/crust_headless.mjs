@@ -4,6 +4,7 @@
 // stairs carry you (and the zombies) up; ledges let you (and some zombies)
 // jump down; the launchers fling you between islands; ziplines and ice slides
 // carry you while you shoot. Run: node tests/crust_headless.mjs
+import { CONFIG } from '../src/config.js';
 import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
 import { emptyCommand } from '../src/sim/player.js';
@@ -236,6 +237,26 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   for (let i = 0; i < 400 && !me.grounded; i++) step({}, 1);
   check(me.grounded, `  and you drop (to y ${me.pos.y.toFixed(1)})`);
   check(log.some((e) => e.type === 'rideStart') && log.some((e) => e.type === 'rideEnd'), '  ride events');
+}
+
+// --- the other ziplines: stand at the top, grab it, ride it all the way down, land on your feet
+for (const id of ['zip_gallery', 'zip_mast', 'zip_trench', 'zip_caves']) {
+  const { sim, me, step, put } = game();
+  const R = CRUST.rides.find((r) => r.id === id);
+  check(!!R, `zipline ${id}`);
+  if (!R) continue;
+  const [a, b] = [R.pts[0], R.pts[R.pts.length - 1]];
+  const groundA = a[1] - CONFIG.crust.ride.cable, groundB = b[1] - CONFIG.crust.ride.cable;
+  put(a[0], a[2], groundA);
+  step({}, 20);
+  check(Math.abs(me.pos.y - groundA) < 0.4, `  you can stand at its top (y ${me.pos.y.toFixed(2)} for ${groundA.toFixed(2)})`);
+  check(me.prompt && /zipline/i.test(me.prompt.text), `  "${me.prompt && me.prompt.text}"`);
+  step({ use: true, usePressed: true, yaw: me.yaw });
+  let t = 0;
+  for (; t < 60 * 12 && me.ride; t++) step({}, 1);
+  step({}, 60);
+  check(!me.ride && me.grounded && Math.abs(me.pos.y - groundB) < 0.5 && Math.hypot(me.pos.x - b[0], me.pos.z - b[2]) < 4.5, `  down in ${(t / 60).toFixed(1)} s, on the ground at the far end (y ${me.pos.y.toFixed(2)}, grounded ${me.grounded}, ${Math.hypot(me.pos.x - b[0], me.pos.z - b[2]).toFixed(1)} m off)`);
+  check(me.alive && me.health === me.maxHealth, '  unhurt');
 }
 
 // --- no slide in the hub any more (the spawn is the forge)

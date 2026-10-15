@@ -168,6 +168,17 @@ export class Teammate {
     // --- diving: legs out straight behind
     if (this.dive > 0.001) for (const [L] of legs) { L.hip.rotation.x = lerp(L.hip.rotation.x, 0.1, this.dive); L.knee.rotation.x = lerp(L.knee.rotation.x, 0.15, this.dive); }
 
+    // --- on a zipline: hanging off the handle by one hand, legs swinging
+    const onZip = !!(p.ride && (p.ride.zip || (p.ride.ride && p.ride.ride.kind === 'zip')));
+    this.zip = approach(this.zip || 0, onZip ? 1 : 0, 12, dt);
+    if (this.zip > 0.001) {
+      legs.forEach(([L], i) => {
+        L.hip.rotation.x = lerp(L.hip.rotation.x, -0.35 + Math.sin(time * 2.6 + i * 0.9) * 0.18, this.zip);
+        L.knee.rotation.x = lerp(L.knee.rotation.x, 0.45 + Math.sin(time * 2.6 + i) * 0.12, this.zip);
+      });
+      k.torso.rotation.x = lerp(k.torso.rotation.x, -0.06, this.zip);
+    }
+
     // --- the gun: held where they're looking, lowered to sprint or reload
     const pt = Math.max(-1.1, Math.min(1.1, pitch));
     const lean = k.torso.rotation.x + k.hips.rotation.x + 1.3 * this.dive;   // the gun hangs off the torso: undo its lean (and a dive's)
@@ -185,7 +196,25 @@ export class Teammate {
     const fwd = new THREE.Vector3(0, 0, 1).applyEuler(H.rotation);
     const solR = solveArm(k.armR, grip, new THREE.Vector3(-0.9, -1, -0.3));
     applyArm(k.armR, solR, orientHand(k.armR, solR.q, solR.bend, new THREE.Vector3(0.8, -0.7, 0.1).add(fwd.clone().multiplyScalar(0.2)), new THREE.Vector3(1, 0, 0)), 1);
-    if (!(p.melee && p.melee.timer > 0)) {
+    if (this.handle && this.zip <= 0.5) this.handle.visible = false;
+    if (this.zip > 0.5) {
+      // the left hand up on the zipline's handle, over their head
+      const up = new THREE.Vector3(k.armL.shoulder.position.x * 0.5, k.armL.shoulderY + 0.62, 0.06);
+      const solL = solveArm(k.armL, up, new THREE.Vector3(1, 0, -0.4));
+      applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)), 1);
+      if (!this.handle) {
+        const iron = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.5, metalness: 0.7 });
+        const red = new THREE.MeshStandardMaterial({ color: '#8a1c14', roughness: 0.6 });
+        this.handle = new THREE.Group();
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 8).rotateZ(Math.PI / 2), red); this.handle.add(bar);
+        const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 5), iron); strap.position.y = 0.15; this.handle.add(strap);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 12), iron); wheel.position.y = 0.32; wheel.rotation.y = Math.PI / 2; this.handle.add(wheel);
+        k.torso.add(this.handle);
+      }
+      this.handle.position.copy(up).add(new THREE.Vector3(0, 0.04, 0));
+      this.handle.visible = true;
+    } else if (!(p.melee && p.melee.timer > 0)) {
+      if (this.handle) this.handle.visible = false;
       const solL = solveArm(k.armL, fore, new THREE.Vector3(0.6, -1, -0.2));
       applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(-1, 0.1, 0).add(fwd.clone().multiplyScalar(0.4)), new THREE.Vector3(0, 1, 0)), 1);
     } else {

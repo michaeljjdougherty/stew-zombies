@@ -1512,6 +1512,8 @@ export const CONFIG = {
     // ziplines and ice slides
     ride: {
       hang: 2.0,             // m your feet hang below a zipline's cable
+      cable: 2.3,            // m a zipline's cable runs over the ground at each end
+      sag: 0.006,            // how far the drawn cable dips in the middle (x its length)
       zipStart: 4,           // m/s as you push off
       zipSpeed: 13,          // m/s top speed on a zipline
       zipAccel: 9,           // m/s² getting there

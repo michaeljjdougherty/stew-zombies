@@ -36,6 +36,9 @@ const R = (seed) => { let x = seed >>> 0 || 1; return () => { x = (x * 16807) % 
 // doors; sets placed together stand side by side, 3.2 m apart. Laid square to the world (yaw 0 or
 // a quarter turn) so the box you bump into is the container you see.
 const CONTAINERS = [['Object_10', 'Object_12', 'Object_14'], ['Object_16', 'Object_18', 'Object_20'], ['Object_22', 'Object_24', 'Object_26'], ['Object_34', 'Object_36', 'Object_38'], ['Object_58', 'Object_60', 'Object_62'], ['Object_64', 'Object_66', 'Object_68']];
+// how high a zipline's cable runs over the ground where you grab it and let go (m)
+const ZIPH = CONFIG.crust.ride.cable;
+
 function containers(I, x, y, z, turned, sets) {
   const along = 13.2 / 2, across = ((sets.length - 1) * 3.2 + 2.5) / 2;
   I.model({ a: 'containers', pick: sets.flatMap((k) => CONTAINERS[k]), exact: true, x, y, z, yaw: turned ? Math.PI / 2 : 0 }, { collide: [x, z, turned ? across : along, turned ? along : across, 2.9] });
@@ -483,6 +486,8 @@ function ship() {
   // (wake it from the north shore; it spits its crew onto the island: src/sim/crustEgg.js)
   I.titan = { id: 'ship', home: { x: 9, y: -4, z: -225, yaw: -Math.PI / 2 + 0.15 }, wake: { x: 9, y: G, z: -198.5, r: 4.5 } };
   I.pads.push({ id: 'pad_ship', x: 0, z: -114, to: 'pad_hub_n', label: 'the Anvil' });
+  // a zipline from the top of the gallery, down over the wrecks to the harbor
+  I.rides.push({ id: 'zip_gallery', kind: 'zip', label: 'the harbor', pts: [[-46, 15.15 + ZIPH, -192], [-46, 0.8 + ZIPH, -135]] });
   return I;
 }
 
@@ -605,6 +610,8 @@ function research() {
   I.dive(177.7, -28, { label: 'the yard' }); I.dive(147.7, 33, { label: 'the coils' }); I.dive(170.3, 33, { label: 'the coils' });
   // blast walls across the open yards (not the helipad: it's for landing on)
   for (const [x0, z0, x1, z1] of [[176, -11, 183, -9.8], [165, -34, 166.2, -27], [146, -37, 152, -35.8], [126, -32, 131, -30.8], [172, -19.5, 177, -18.3], [137.5, -30, 138.7, -25], [138, 24.5, 142, 25.7], [186, -17, 189, -15.8]]) I.barrier(x0, z0, x1, z1, 3.4, { base: G });
+  // a zipline off the radio mast's top deck, down over the base to the yard
+  I.rides.push({ id: 'zip_mast', kind: 'zip', label: 'the yard', pts: [[184, 12.47 + ZIPH, -25], [127, 0.8 + ZIPH, -10]] });
   return I;
 }
 
@@ -745,6 +752,8 @@ function trench() {
   I.dive(0, 138.7, { label: "no man's land" }); I.dive(-25, 159.5, { label: 'the trench' });
   // shattered rock thrown up across no man's land: cover from the guns
   for (const [x, z, r, h] of [[36.5, 157, 2.6, 4.2], [-19.5, 118.5, 2.2, 3.5], [16.5, 120, 2.4, 3.8], [-16.5, 143, 2.6, 4.5], [16.5, 143, 2.4, 4.2], [-15.5, 160, 2.4, 3.6], [-41.5, 144, 2.2, 3.8], [43.5, 141, 2, 3.4], [16.5, 162.5, 1.8, 3]]) I.outcrop(x, z, r, h, { base: G });
+  // a zipline from the hill behind the lines, right over no-man's land
+  I.rides.push({ id: 'zip_trench', kind: 'zip', label: 'the front line', pts: [[-37, 9 + ZIPH, 185], [14, 2.3 + ZIPH, 155]] });
   return I;
 }
 
@@ -970,6 +979,8 @@ function caves() {
   // dive off the shelves down into the cavern
   I.dive(-150, -7, { label: 'the cavern' }); I.dive(-147.5, 8, { label: 'the cavern' });
   I.mud = [{ x: -184, z: 8, r: 5, y: F }, { x: -178, z: 0, r: 4, y: F }];
+  // a zipline off the ridge over the caves, down across the ice
+  I.rides.push({ id: 'zip_caves', kind: 'zip', label: 'the ice', pts: [[-144, 19.2 + ZIPH, 37], [-177, 5.95 + ZIPH, 46]] });
   return I;
 }
 
