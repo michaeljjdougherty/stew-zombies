@@ -35,7 +35,8 @@ export class PowerInteractable {
 
 // ---------------------------------------------------------------------------
 // (a map with no power switch has its machines running from the start)
-const needsPower = (sim, d) => d.power && !sim.power && !!sim.world.powerSwitch;
+// (a map with no way to turn the power on, like Call of the Crust, runs its machines from the start)
+const needsPower = (sim, d) => d.power && !sim.power && !!(sim.world.powerSwitch || sim.world.quest);
 
 export class PerkInteractable {
   constructor(machine) {

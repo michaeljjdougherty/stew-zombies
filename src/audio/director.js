@@ -20,6 +20,8 @@ const PERK_TUNES = {
   hotPotHustle: [659, 784, 880, 988, 880, 784, 1175],
   doubleLadle: [392, 392, 494, 494, 587, 587, 784],
   marathonMinestrone: [330, 392, 440, 523, 587, 659, 784, 880],
+  phdGaylor: [440, 554, 659, 880, 659, 554, 880, 1109],
+  miltonKick: [294, 440, 294, 440, 587, 523, 440, 587],
 };
 
 export class SoundDirector {

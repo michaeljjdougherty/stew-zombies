@@ -92,6 +92,21 @@ function perkSymbol(g, cx, cy, r, def) {
       g.closePath(); g.fill();
       g.fillStyle = '#efe6cc'; g.beginPath(); g.arc(cx, cy, k * 0.28, 0, Math.PI * 2); g.fill();
       break;
+    case 'miltonKick':      // a boot, mid-kick
+      g.moveTo(cx - k * 0.55, cy - k);            // top of the shaft
+      g.lineTo(cx + k * 0.05, cy - k);
+      g.lineTo(cx + k * 0.1, cy + k * 0.15);      // down the front to the laces
+      g.lineTo(cx + k * 0.85, cy + k * 0.35);     // the toe cap
+      g.quadraticCurveTo(cx + k * 1.05, cy + k * 0.55, cx + k * 0.85, cy + k * 0.75);
+      g.lineTo(cx - k * 0.6, cy + k * 0.75);      // the sole
+      g.lineTo(cx - k * 0.6, cy + k * 0.55);
+      g.closePath(); g.fill();
+      g.strokeStyle = '#efe6cc'; g.lineWidth = r * 0.07; g.beginPath(); g.moveTo(cx - k * 0.62, cy + k * 0.55); g.lineTo(cx + k * 0.9, cy + k * 0.55); g.stroke();
+      // motion lines behind the heel
+      g.strokeStyle = def.color; g.lineWidth = r * 0.09; g.beginPath();
+      for (const dy of [-0.5, -0.1, 0.3]) { g.moveTo(cx - k * 1.05, cy + dy * k); g.lineTo(cx - k * 0.75, cy + dy * k); }
+      g.stroke();
+      break;
     case 'doubleLadle':     // two crossed ladles
       g.lineWidth = r * 0.16;
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx - s * k * 0.8, cy - k * 0.8); g.lineTo(cx + s * k * 0.45, cy + k * 0.45); g.stroke(); g.beginPath(); g.arc(cx + s * k * 0.55, cy + k * 0.55, k * 0.3, 0, Math.PI * 2); g.fill(); }

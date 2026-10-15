@@ -5,7 +5,7 @@
 //  - Co-op: you bleed out unless a teammate holds [F] on you in time.
 // You lose your perks either way.
 // =============================================================================
-import { hasPerk, loseAllPerks, perkMult } from './perks.js';
+import { hasPerk, loseAllPerks, perkMult, weaponLimit } from './perks.js';
 import { makeSlot, cancelReload } from './weapons.js';
 
 // Health ran out.
@@ -75,6 +75,12 @@ export function revive(sim, p, byId = null) {
   if (w.reloading) cancelReload(sim, p);
   if (saved) {
     w.slots = saved.slots;
+    // Milton Kick went with your perks: the gun in the third slot is gone
+    const limit = weaponLimit(sim, p);
+    if (w.slots.length > limit) {
+      for (const s of w.slots.splice(limit)) sim.emit('weaponDropped', { playerId: p.id, weapon: s.id, lostPerk: true });
+      if (saved.current >= limit) saved.current = 0;
+    }
     w.current = Math.min(saved.current, w.slots.length - 1);
   }
   w.drawTimer = sim.cfg.weapons[w.slots[w.current].id].drawTime;

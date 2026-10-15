@@ -112,7 +112,7 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
 {
   check(SCHOOL.perkMachines.some((m) => m.perk === 'phdGaylor'), 'a PHD Gaylor machine at the school');
   const g = game(CRUST);
-  const it = g.sim.interactables.find((i) => i.kind === 'perk');
+  const it = g.sim.interactables.find((i) => i.kind === 'perk' && i.m.perk === 'phdGaylor');
   check(!!it && it.m.perk === 'phdGaylor', 'and one at the Anvil');
   g.me.pos.x = it.stand.x; g.me.pos.z = it.stand.z; g.me.pos.y = it.m.center.y + 0.05; g.me.points = 5000;
   g.me.yaw = Math.atan2(-(it.pos.x - it.stand.x), -(it.pos.z - it.stand.z));

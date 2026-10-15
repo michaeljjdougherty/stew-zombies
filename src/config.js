@@ -194,6 +194,7 @@ export const CONFIG = {
       melee: ['KeyV', 'KeyE'],
       weapon1: ['Digit1'],
       weapon2: ['Digit2'],
+      weapon3: ['Digit3'],
       grenade: ['KeyG'],
       tactical: ['KeyQ'],
     },
@@ -980,6 +981,11 @@ export const CONFIG = {
       marathonMinestrone: {
         name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',
         desc: 'Sprint almost forever and move a little faster.', sprintMult: 3, speedMult: 1.07,
+      },
+      miltonKick: {
+        name: 'Milton Kick', cost: 4000, color: '#3fdc5a', power: true, glyph: 'K',
+        desc: 'Carry a third weapon. Go down and you lose it (the one in the third slot).',
+        extraSlots: 1,
       },
     },
   },

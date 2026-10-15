@@ -1244,7 +1244,11 @@ export const CRUST = {
   ceasefire: out.ceasefire,      // the field telephone in the fort
   titans: out.titans,            // each island's titan, for the egg (src/sim/crustEgg.js)
   // perk machines (no power switch out here: they run from the start)
-  perkMachines: [{ perk: 'phdGaylor', room: 'depot', side: 'w', at: -22.5 }],
+  // (both on the depot's back wall: the west wall is a gap onto the rim)
+  perkMachines: [
+    { perk: 'phdGaylor', room: 'depot', side: 'n', at: 18.6 },
+    { perk: 'miltonKick', room: 'depot', side: 'n', at: 24.4 },
+  ],
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [
     { x: -33, z: -330, h: 96 },

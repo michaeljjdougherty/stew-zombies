@@ -62,3 +62,10 @@ export function loseAllPerks(sim, p) {
   applyPerkStats(sim, p);
   sim.emit('perksLost', { playerId: p.id, perks: lost });
 }
+
+// How many guns a player can carry: two, plus Milton Kick's extra slot.
+export function weaponLimit(sim, p) {
+  let n = sim.cfg.player.maxWeapons;
+  for (const id of p.perks) n += sim.cfg.perks.list[id].extraSlots || 0;
+  return n;
+}

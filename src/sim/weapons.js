@@ -10,7 +10,7 @@ import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
 import { windBlast } from './wind.js';
-import { perkMult } from './perks.js';
+import { perkMult, weaponLimit } from './perks.js';
 
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
 // host what it hit (src/net/host.js applies it).
@@ -345,7 +345,7 @@ export function giveWeapon(sim, p, id) {
     return;
   }
   const slot = makeSlot(sim, id);
-  if (w.slots.length < sim.cfg.player.maxWeapons) {
+  if (w.slots.length < weaponLimit(sim, p)) {
     w.slots.push(slot);
     w.current = w.slots.length - 1;
   } else {
