@@ -1559,6 +1559,21 @@ export const CONFIG = {
       pickupRange: 1.8,      // m: walk over a part to pick it up
       standRange: 2.4,       // m from the stand to put parts on it or take a hammer
     },
+    // The power (src/sim/crustPower.js). Everything electric starts dead. The
+    // Anvil's four launchers have each blown a relay: pull them from the junction
+    // box beside each pad, take all four to Pit and he fixes the Anvil's power
+    // (its launchers, its perk machine, its lights). Each other island has a
+    // power switch by its launcher pad: flip it and that island's on.
+    power: {
+      launchersNeedPower: true,  // the Anvil's launchers don't fly until its power's on
+      relayRange: 1.9,           // m from a junction box to pull its relay
+      switchRange: 1.7,          // m from an island's power switch to flip it
+      fixTime: 14,               // s Pit takes over the four relays
+      boxOut: 3.6,               // m out to the side of a launcher pad its junction box stands
+      switchOut: 4.4,            // m out to the side of an island's pad its power switch stands
+      relayName: 'Burnt Relay',
+      waveSpeed: 40,             // m/s the lights come on outward from the switch (or Pit)
+    },
     forge: {
       pickupRange: 1.8,      // m: walk over a dropped core to pick it up
       benchRange: 2.6,       // m from Pit's bench to hand him things

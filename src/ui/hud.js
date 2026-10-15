@@ -8,6 +8,7 @@ import { powerupIconURL } from '../render/powerupIcons.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 import { questObjective } from '../sim/quest.js';
 import { crustEggObjective } from '../sim/crustEgg.js';
+import { powerObjective } from '../sim/crustPower.js';
 import { CREW } from '../lore/crew.js';
 
 // the War Hammers' colours and names (Call of the Crust)
@@ -209,6 +210,19 @@ export class HUD {
         break;
       case 'hammerReturned':
         if (e.playerId === this.localId) this.toast(`The ${HAMMER_NAME[e.element]} Hammer`, 'back on the Anvil · yours is plain iron again', HAMMER_HUE[e.element], 2.2);
+        break;
+      // --- the power (Call of the Crust)
+      case 'relayPulled':
+        if (e.playerId === this.localId) this.toast('Burnt relay', 'take it down to Pit at his forge', '#7fd4ff', 3);
+        break;
+      case 'relayReturned':
+        this.toast('A relay fell', 'it\'s back in its launcher\'s box', '#c04040', 3);
+        break;
+      case 'relayGiven':
+        this.toast(e.count < e.total ? 'Relay to Pit' : 'All four relays', e.count < e.total ? `${e.count} of ${e.total}` : 'Pit\'s fixing them', '#7fd4ff', 3);
+        break;
+      case 'islandPower':
+        this.toast(e.island === 'hub' ? 'The Anvil has power' : `Power on · ${e.name}`, e.island === 'hub' ? 'the launchers, the lights, the perk machine' : 'its perk machine and its lights', '#ffd23a', 3.5);
         break;
       case 'partPicked':
         if (e.playerId === this.localId) this.toast(`The War Hammer's ${e.name}`, 'take it to the stand at the Anvil', '#ffc860', 3);
@@ -515,6 +529,7 @@ export class HUD {
     const Z = sim.crustEgg && sim.crustEgg.finale;
     if (!titan && Z && (Z.state === 'fight' || Z.state === 'kneel' || Z.state === 'descend')) titan = { name: 'Big Evil Zach', of: 4, done: Z.phase + (Z.state === 'kneel' ? 1 : 0), state: Z.state };
     const obj = sim.quest && !this.hardcore ? questObjective(sim) : sim.crustEgg ? crustEggObjective(sim, this.localId) : null;
+    const powerObj = !titan && sim.crustEgg && obj && obj === powerObjective(sim, this.localId);
     // a titan's bar: one pip for each blow it has left (each wave, for the Captain)
     const bar = titan ? `${titan.name}|${titan.of}|${titan.done}|${titan.state}` : '';
     if (bar !== this.last.titanBar) {
@@ -527,7 +542,7 @@ export class HUD {
     }
     if (obj !== this.last.objective) {
       this.last.objective = obj;
-      this.el.quest.querySelector('b').textContent = titan ? titan.name : sim.crustEgg ? 'The War Hammers' : 'The Final Whistle';
+      this.el.quest.querySelector('b').textContent = titan ? titan.name : powerObj ? 'The Power' : sim.crustEgg ? 'The War Hammers' : 'The Final Whistle';
       this.el.quest.hidden = !obj;
       this.el.quest.querySelector('span').textContent = obj || '';
       this.el.quest.classList.remove('new'); void this.el.quest.offsetWidth; this.el.quest.classList.add('new');

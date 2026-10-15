@@ -1305,6 +1305,8 @@ export class MapView {
         // dark until the power is on
         const lamp = f.kind === 'lamp' || f.kind === 'glow';
         const fx = { data: f, orig: f, grp, tubeMat, beam: null, on: !!f.lit, level: f.lit ? 1 : 0, target: f.lit ? 1 : 0, timer: Math.random() * 3, burst: 0, onAt: null, lamp };
+        // (Call of the Crust: the electric ones run off their island's power; torches burn regardless)
+        if (this.map.islands && f.kind !== 'torch' && f.kind !== 'glow') fx.isle = (this.map.islands.find((I) => f.x >= I.bounds[0] && f.x <= I.bounds[2] && f.z >= I.bounds[1] && f.z <= I.bounds[3]) || {}).id || null;
         const tall = f.y > 6;
         if (f.kind === 'torch') {
           fx.v = this.addVirtualLight({ x: f.x, y: f.y, z: f.z }, 0xff8a3a, 34 * (this.map.lampScale ?? 1), 13, 1.7, fx);
@@ -1439,12 +1441,15 @@ export class MapView {
       if (v) v.t = 0;
     } else if (e.type === 'powerOn') {
       this.powerOn(false);
+    } else if (e.type === 'islandPower') {
+      (this.powerFrom || (this.powerFrom = {}))[e.island] = e.pos;
     }
   }
 
   // New game on the same map: back to emergency lighting.
   resetPower() {
     this.powered = false;
+    this.isleOn = {}; this.powerFrom = {};
     for (const f of this.fixtures) {
       f.data = f.orig; f.on = !!f.orig.lit; f.onAt = null;
       f.level = f.on ? 1 : 0; f.target = f.level; f.burst = 0;
@@ -1469,6 +1474,31 @@ export class MapView {
     if (this.stageLights) for (const l of this.stageLights) l.material.color.setRGB(3, 2.4, 1.4);
   }
 
+  // Call of the Crust: each island's electric lights are dark until its power's
+  // on, then come on in a wave out from where it was turned on (the switch, Pit)
+  islandLights(PW) {
+    const was = this.isleOn || (this.isleOn = {});
+    for (const [id, on] of Object.entries(PW.on)) {
+      if (was[id] === on) continue;
+      const first = was[id] === undefined;
+      was[id] = on;
+      if (!on || first) continue;
+      const from = (this.powerFrom && this.powerFrom[id]) || null;
+      const speed = this.cfg.crust.power.waveSpeed;
+      for (const f of this.fixtures) {
+        if (f.isle !== id) continue;
+        f.on = false;
+        f.onAt = this.time + (from ? 0.4 + Math.hypot(f.data.x - from.x, f.data.z - from.z) / speed : 0.3) + Math.random() * 0.25;
+      }
+    }
+    // (dark while its island's off; on at once if it already was when we first looked)
+    for (const f of this.fixtures) {
+      if (!f.isle) continue;
+      if (!PW.on[f.isle]) { f.on = false; f.onAt = null; }
+      else if (!f.on && f.onAt == null) f.onAt = this.time;
+    }
+  }
+
   update(dt, eye, roundInfo) {
     this.time += dt;
     // the jukebox lights up and spins while a song is on
@@ -1483,6 +1513,8 @@ export class MapView {
     const bp = bakeUniforms.bakePower;
     bp.value += ((this.powered && !this.blackout ? 1 : 0) - bp.value) * Math.min(1, dt * (this.blackout ? 30 : 1.2));
     if (this.sim.power && !this.powered) this.powerOn(true);
+    const PW = this.sim.crustEgg && this.sim.crustEgg.power;
+    if (PW) this.islandLights(PW);
     if (this.boilerGlow) this.boilerGlow.material.color.setRGB(2.0 + Math.sin(this.time * 7) * 0.3 + (this.powered ? 1 : 0), 0.6, 0.15);
     if (this.flag) this.flag.rotation.y = Math.sin(this.time * 0.9) * 0.15;
     if (this.story) updateStoryProps(this.story, dt, this.time);

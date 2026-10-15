@@ -5,7 +5,16 @@
 // touch you in the air.
 // =============================================================================
 
+import { islandAt } from './crustPower.js';
+
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+// the Anvil's launchers are dead until its power's on (src/sim/crustPower.js)
+function dead(sim, pad) {
+  const P = sim.crustEgg && sim.crustEgg.power;
+  if (!P || !sim.cfg.crust.power.launchersNeedPower) return false;
+  const isl = islandAt(sim, pad);
+  return isl === 'hub' && !P.on.hub;
+}
 
 export class LaunchInteractable {
   constructor(pad, target) {
@@ -21,13 +30,17 @@ export class LaunchInteractable {
   canUse(sim, p) { return p.alive && !p.downed && !p.launch && !p.drinking; }
   cost(sim) { return sim.mode === 'explore' ? 0 : sim.cfg.crust.launch.cost; }
   prompt(sim, p) {
+    if (dead(sim, this.pad)) {
+      const r = sim.mapData.relays.find((q) => q.pad === this.pad.id), st = r && sim.crustEgg.power.relays[r.id].state;
+      return { text: 'The launcher\'s dead', cost: null, sub: st === 'blown' ? 'Its relay\'s burnt out · pull it from the box beside the pad, take it to Pit' : 'Pit has to fix the relays' };
+    }
     const wait = (p.launchReady || 0) - sim.time;
     if (wait > 0) return { text: `The launcher's recharging · ${Math.ceil(wait)}s`, cost: null };
     return { text: `Press [F] to launch to ${this.pad.label}`, cost: this.cost(sim) || null };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
-    if (sim.time < (p.launchReady || 0)) { sim.emit('useDenied', { playerId: p.id }); return; }
+    if (dead(sim, this.pad) || sim.time < (p.launchReady || 0)) { sim.emit('useDenied', { playerId: p.id }); return; }
     const c = this.cost(sim);
     if (c) {
       if (p.points < c) { sim.emit('cantAfford', { playerId: p.id, cost: c }); return; }

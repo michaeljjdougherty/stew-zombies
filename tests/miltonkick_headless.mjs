@@ -80,6 +80,7 @@ const ids = (p) => p.loadout.slots.map((s) => s.id);
     check(!!it, `${where}: a machine`);
     if (!it) continue;
     g.sim.power = true;
+    if (g.sim.crustEgg) g.sim.crustEgg.power.on.hub = true;   // (the Anvil's own power: crustpower_headless.mjs)
     g.me.pos.x = it.stand.x; g.me.pos.z = it.stand.z; g.me.pos.y = it.m.center.y + 0.05; g.me.points = 5000;
     g.me.yaw = Math.atan2(-(it.pos.x - it.stand.x), -(it.pos.z - it.stand.z));
     g.step({}, 30);

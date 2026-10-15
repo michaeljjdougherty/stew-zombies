@@ -9,6 +9,7 @@ import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
 import { emptyCommand } from '../src/sim/player.js';
 import { makeZombie } from '../src/sim/zombies.js';
+import { powerAllOn } from '../src/sim/crustPower.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
@@ -43,6 +44,7 @@ const dt = 1 / 60;
 
 function game(seed = 5, mode = 'zombies') {
   const sim = new GameSim({ map: CRUST, seed, mode });
+  powerAllOn(sim);   // (the power's its own test: crustpower_headless.mjs)
   const me = sim.addPlayer('p1', 'Tester');
   const log = [];
   const step = (patch = {}, n = 1) => { for (let i = 0; i < n; i++) { sim.setInput('p1', { ...emptyCommand(), yaw: me.yaw, pitch: me.pitch, ...patch }); sim.step(dt); log.push(...sim.drainEvents()); } };

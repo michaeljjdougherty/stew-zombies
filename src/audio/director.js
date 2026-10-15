@@ -429,6 +429,10 @@ export class SoundDirector {
       case 'zombieFrozen': A.play(S.iceShatter, { gain: 0.3, rate: 1.5 }, { pos: e.pos, ref: 3, reverb: 0.3 }); break;
       case 'hammerZap': A.play(S.lightningZap, {}, { pos: e.points[1], ref: 4, gain: 0.8, reverb: 0.3 }); break;
       case 'forgeStrike': { const f = sim.mapData.forge; if (f) A.play(S.anvilClang, { pitch: 0.94 + (e.n % 3) * 0.04 }, { pos: { x: f.pit.x + 1, y: 1.2, z: f.pit.z }, ref: 3, reverb: 0.6, gain: 0.8 }); break; }
+      // the power: a relay pulled sparks; Pit's done, or a switch thrown, and it hums up
+      case 'relayPulled': A.play(S.electrocute, {}, { pos: e.pos, ref: 3, gain: 0.45, reverb: 0.4 }); A.play(S.stewItemGet, { count: 1 }, { gain: 0.6, reverb: 0.4, bus: 'music' }); break;
+      case 'relayGiven': A.play(S.stewItemGet, { count: e.count }, { gain: 0.7, reverb: 0.4, bus: 'music' }); break;
+      case 'islandPower': A.play(S.powerOn, {}, { gain: 1, reverb: 0.8 }); break;
       case 'partPicked': case 'partPlaced': case 'warHammerTaken':
       case 'corePicked': case 'coreGiven': A.play(S.stewItemGet, { count: 1 }, { gain: 0.7, reverb: 0.4, bus: 'music' }); break;
       case 'hammerForged': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.5, bus: 'music' }); break;

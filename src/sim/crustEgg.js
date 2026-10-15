@@ -29,6 +29,7 @@ import { explode } from './projectiles.js';
 import { spawnPowerup } from './powerups.js';
 import { angleWrap, lookDir } from '../core/math.js';
 import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
+import { createCrustPower, updateCrustPower, powerObjective, crustPowerInteractables } from './crustPower.js';
 import { updateZach, zachTargets, zachObjective, finaleOn } from './zachBoss.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -67,6 +68,7 @@ export function createCrustEgg(sim) {
     }
   }
   E.forge = createForge(sim);       // Pit's forge: the cores become the War Hammers (forge.js)
+  E.power = createCrustPower(sim);  // the power: the Anvil's relays, the islands' switches (crustPower.js)
   E.finale = { state: 'off' };      // Big Evil Zach (zachBoss.js)
   return E;
 }
@@ -80,6 +82,7 @@ export function crustEggInteractables(sim) {
   E.coils.forEach((c, i) => out.push(new CoilInteractable(i)));
   E.guns.forEach((g, i) => out.push(new FieldGunInteractable(i)));
   out.push(...forgeInteractables(sim));
+  out.push(...crustPowerInteractables(sim));
   return out;
 }
 
@@ -207,6 +210,7 @@ export function updateCrustEgg(sim, dt) {
     if (T.state === 'fight' && T.done >= T.of) beaten(sim, T);
   }
   updateHazards(sim, dt);
+  updateCrustPower(sim);
   updateForge(sim, dt);
   updateZach(sim, dt);
 }
@@ -731,7 +735,7 @@ export function crustEggShot(sim, id, p) {
 export function crustEggObjective(sim, pid = null) {
   const E = sim.crustEgg;
   if (E && finaleOn(E)) return zachObjective(sim);
-  if (E && !E.active) return forgeObjective(sim, pid);
+  if (E && !E.active) return powerObjective(sim, pid) || forgeObjective(sim, pid);
   if (!E || !E.active) return null;
   const T = E.titans[E.active];
   if (T.state === 'dying') return `${T.name} is falling`;

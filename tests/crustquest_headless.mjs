@@ -2,6 +2,7 @@
 // the titans' cores, the four War Hammers (and tempering), the Anvil, and
 // Big Evil Zach.
 // Run: node tests/crustquest_headless.mjs
+import { powerAllOn } from '../src/sim/crustPower.js';
 import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
 import { emptyCommand } from '../src/sim/player.js';
@@ -19,6 +20,7 @@ const F = CRUST.forge;
 
 function game(seed = 3, character = 'kearns') {
   const sim = new GameSim({ map: CRUST, seed });
+  powerAllOn(sim);   // (the power's its own test: crustpower_headless.mjs)
   const me = sim.addPlayer('p1', 'Tester', { character });
   sim.rounds.timer = 1e9;
   me.health = me.maxHealth = 1e6;
@@ -56,8 +58,9 @@ const forgeAll = (g) => {
 {
   const g = game(3, 'pit');
   check(g.me.character !== 'pit', `picking Pit: you play ${g.me.character} instead`);
-  g.step({}, 60 * (CONFIG.crust.forge.introDelay + 6));
-  check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /War Hammer/.test(e.text)), 'Pit tells you about the War Hammer from his bench');
+  g.step({}, 60 * (CONFIG.crust.forge.introDelay + 24));
+  check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /relay/.test(e.text)), 'Pit tells you about the burnt relays from his bench');
+  check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /War Hammer/.test(e.text)), '...and the War Hammer');
   const s2 = new GameSim({ map: CRUST, seed: 1 });
   const a = s2.addPlayer('a', 'A', { character: 'pit' }), b = s2.addPlayer('b', 'B', { character: 'kearns' });
   check(a.character !== 'pit' && b.character === 'kearns', `online: nobody plays Pit here (${a.character}, ${b.character})`);

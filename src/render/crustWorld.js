@@ -974,7 +974,9 @@ function buildPad(out, group, L, map, mats, mv) {
   g.position.set(L.x, L.y || 0, L.z);
   group.add(g);
   out.spin.push({ obj: inner, rate: 0.8 });
-  mv.addVirtualLight({ x: L.x, y: (L.y || 0) + 1.2, z: L.z }, el.light, 10, 9, 1.6);
+  const light = mv.addVirtualLight({ x: L.x, y: (L.y || 0) + 1.2, z: L.z }, el.light, 10, 9, 1.6);
+  // (the Anvil's go dark while its power's out: src/render/crustPowerView.js)
+  (out.pads || (out.pads = [])).push({ id: L.id, ring, inner, arrow, light, color: new THREE.Color(el.color) });
 }
 // --- the props (collision comes from the map data) -------------------------------------------
 function buildProps(out, root, world, r, mats, mv0) {

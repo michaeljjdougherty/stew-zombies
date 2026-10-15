@@ -149,9 +149,12 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
   g.me.pos.x = it.stand.x; g.me.pos.z = it.stand.z; g.me.pos.y = it.m.center.y + 0.05; g.me.points = 5000;
   g.me.yaw = Math.atan2(-(it.pos.x - it.stand.x), -(it.pos.z - it.stand.z));
   g.step({}, 30);
+  check(g.me.prompt && /power must be on/.test(g.me.prompt.text), `no power at the Front yet: "${g.me.prompt && g.me.prompt.text}"`);
+  g.sim.crustEgg.power.on.trench = true;
+  g.step({}, 2);
   check(g.me.prompt && /PHD Gaylor/.test(g.me.prompt.text), `its prompt: "${g.me.prompt && g.me.prompt.text}"`);
   g.step({ use: true, usePressed: true }); g.step({}, 160);
-  check(g.me.perks.includes('phdGaylor'), 'no power switch out there: it works from the start');
+  check(g.me.perks.includes('phdGaylor'), 'with the Front\'s power on it works');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall dive checks passed');

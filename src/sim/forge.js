@@ -21,12 +21,13 @@
 // Everything here is plain data in sim.crustEgg.forge / .cores, so an online
 // host sends it with the rest. Pit's lines: PIT_FORGE in src/lore/crew.js.
 // =============================================================================
-import { PIT_FORGE, CREW } from '../lore/crew.js';
+import { PIT_FORGE, PIT_POWER, CREW } from '../lore/crew.js';
 import { lineDuration } from '../lore/erik.js';
 import { recordedDuration } from '../lore/voice.js';
 import { giveWeapon, cancelReload } from './weapons.js';
 import { HAMMER_ELEMENTS, HAMMER_IDS } from './hammers.js';
 import { startFinale } from './zachBoss.js';
+import { giveRelays, relaysCarriedBy, relaysFixed, hubPowered } from './crustPower.js';
 
 // which titan guards which element
 export const CORE_ELEMENT = { ship: 'wind', research: 'lightning', caves: 'ice', trench: 'fire' };
@@ -144,7 +145,13 @@ export function updateForge(sim, dt) {
     h.by = null;
     sim.emit('hammerReturned', { element: el });
   }
-  // Pit at work
+  // Pit at work: the Anvil's relays first (once he has all four), then the cores
+  const PW = E.power;
+  if (!F.work && PW && PW.fixQueued) {
+    PW.fixQueued = false;
+    F.work = { kind: 'power', spark: 'lightning', t: 0, strikes: 0 };
+    sim.emit('powerFixStart', {});
+  }
   if (!F.work && F.queue.length) {
     const id = F.queue.shift();
     F.work = { kind: 'forge', id, element: CORE_ELEMENT[id], t: 0, strikes: 0 };
@@ -153,21 +160,29 @@ export function updateForge(sim, dt) {
   if (F.work) {
     const W = F.work;
     W.t += dt;
-    const total = W.kind === 'forge' ? c.forgeTime : c.temperTime;
-    if (W.t >= (W.strikes + 1) * c.strikeEvery && W.t < total - 0.4) { W.strikes++; sim.emit('forgeStrike', { element: W.element, n: W.strikes }); }
+    const total = workTime(sim, W);
+    if (W.t >= (W.strikes + 1) * c.strikeEvery && W.t < total - 0.4) { W.strikes++; sim.emit('forgeStrike', { element: W.spark || W.element, n: W.strikes }); }
     if (W.t >= total) finishWork(sim, F, W);
   }
-  // nobody's brought him anything in a while
-  if (sim.time > F.nudgeAt && !F.work && !F.queue.length && hammersForged(E) < 4 && !Object.values(E.cores).some((k) => k.state !== 'forged') && !E.active) {
+  // nobody's brought him anything in a while (the relays, while the power's out; then cores)
+  if (F.intro && sim.time > F.nudgeAt && !F.work && !F.queue.length && hammersForged(E) < 4 && !Object.values(E.cores).some((k) => k.state !== 'forged') && !E.active && !(PW && PW.fixQueued)) {
     F.nudgeAt = sim.time + c.idleEvery;
     const n = (F.said.nudge = (F.said.nudge || 0) + 1);
-    if (sim.players.some((p) => p.alive && flat(p.pos, sim.mapData.forge.pit) < 12)) pitSay(sim, PIT_FORGE.nudge[n % PIT_FORGE.nudge.length]);
+    const lines = hubPowered(sim) ? PIT_FORGE.nudge : PIT_POWER.nudge;
+    if (sim.players.some((p) => p.alive && flat(p.pos, sim.mapData.forge.pit) < 12)) pitSay(sim, lines[n % lines.length]);
   }
   pitTalk(sim, F);
 }
 
+// how long Pit takes over a job
+function workTime(sim, W) {
+  const c = sim.cfg.crust.forge;
+  return W.kind === 'forge' ? c.forgeTime : W.kind === 'power' ? sim.cfg.crust.power.fixTime : c.temperTime;
+}
+
 function finishWork(sim, F, W) {
   F.work = null;
+  if (W.kind === 'power') { relaysFixed(sim); return; }
   const el = W.element;
   if (W.kind === 'forge') {
     sim.crustEgg.cores[W.id].state = 'forged';
@@ -240,12 +255,16 @@ class BenchInteractable {
   }
   prompt(sim, p) {
     const E = sim.crustEgg, F = E.forge, c = sim.cfg.crust.forge;
+    const relays = E.power ? relaysCarriedBy(E.power, p.id) : [];
+    if (relays.length) return { text: `Press [F] to give Pit the ${sim.cfg.crust.power.relayName.toLowerCase()}${relays.length > 1 ? 's' : ''}`, cost: null };
     const mine = carriedBy(E, p.id);
     if (mine.length) return { text: `Press [F] to give Pit the ${mine.map((id) => ELEMENT_NAMES[CORE_ELEMENT[id]]).join(' and ')} core${mine.length > 1 ? 's' : ''}`, cost: null };
     if (F.work) {
-      const total = F.work.kind === 'forge' ? c.forgeTime : c.temperTime;
-      return { text: `Pit is ${F.work.kind === 'forge' ? 'forging' : 'tempering'} the ${HAMMER_IDS[F.work.element]} · ${Math.max(1, Math.ceil(total - F.work.t))}s`, cost: null };
+      const left = Math.max(1, Math.ceil(workTime(sim, F.work) - F.work.t));
+      if (F.work.kind === 'power') return { text: `Pit is fixing the relays · ${left}s`, cost: null };
+      return { text: `Pit is ${F.work.kind === 'forge' ? 'forging' : 'tempering'} the ${HAMMER_IDS[F.work.element]} · ${left}s`, cost: null };
     }
+    if (!hubPowered(sim)) return { text: 'Pit needs the launchers\' burnt relays', cost: null, sub: 'One in the box beside each launcher, up on the rim' };
     const el = this.heldHammer(sim, p);
     if (el && !F.queue.length) return { text: `Press [F] to have Pit temper the ${HAMMER_IDS[el]}`, cost: c.temperCost, sub: `It comes back as the ${sim.cfg.weapons[HAMMER_IDS[el] + '+'].name}` };
     if (hammersForged(E) === 4) return { text: F.rung ? 'Pit' : 'Pit: "Ring the Anvil, man."', cost: null };
@@ -254,6 +273,7 @@ class BenchInteractable {
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     const E = sim.crustEgg, F = E.forge, c = sim.cfg.crust.forge;
+    if (giveRelays(sim, p)) return;
     const mine = carriedBy(E, p.id);
     if (mine.length) {
       for (const id of mine) {

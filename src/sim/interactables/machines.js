@@ -34,9 +34,9 @@ export class PowerInteractable {
 }
 
 // ---------------------------------------------------------------------------
-// (a map with no power switch has its machines running from the start)
-// (a map with no way to turn the power on, like Call of the Crust, runs its machines from the start)
-const needsPower = (sim, d) => d.power && !sim.power && !!(sim.world.powerSwitch || sim.world.quest);
+// (a map with no way to turn the power on runs its machines from the start;
+// Call of the Crust's run off their own island's power)
+const needsPower = (sim, d, at) => d.power && !sim.powerAt(at) && !!(sim.world.powerSwitch || sim.world.quest || (sim.crustEgg && sim.crustEgg.power));
 
 export class PerkInteractable {
   constructor(machine) {
@@ -57,7 +57,7 @@ export class PerkInteractable {
   canUse(sim, p) { return up(p) && !p.drinking; }
   prompt(sim, p) {
     const d = this.def(sim);
-    if (needsPower(sim, d)) return { text: 'The power must be on', cost: null };
+    if (needsPower(sim, d, this.m.center)) return { text: 'The power must be on', cost: null, sub: sim.crustEgg && sim.crustEgg.power ? (sim.crustEgg.power.on.hub ? 'The power switch is by the launcher' : 'Pit has to fix the launchers\' relays first') : undefined };
     if (this.soloSoldOut(sim)) return { text: `${d.name} is sold out`, cost: null };
     if (hasPerk(p, this.m.perk)) return { text: `You already have ${d.name}`, cost: null };
     if (p.perks.length >= sim.cfg.perks.limit) return { text: `You can only hold ${sim.cfg.perks.limit} perks`, cost: null };
@@ -66,7 +66,7 @@ export class PerkInteractable {
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     const d = this.def(sim);
-    if (needsPower(sim, d) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= sim.cfg.perks.limit) {
+    if (needsPower(sim, d, this.m.center) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= sim.cfg.perks.limit) {
       sim.emit('useDenied', { playerId: p.id });
       return;
     }

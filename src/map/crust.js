@@ -636,6 +636,7 @@ function research() {
 function trench() {
   const I = new Isle('trench', 'Trench Front', 'fire', { x0: -60, z0: 102, x1: 60, z1: 196 });
   I.railStyle = 'sandbag';
+  I.switchSide = -1;   // (its power switch on the pad's other side: clear ground there)
   I.rampart = { w: 4, h: [4, 8], keep: [[-37, 176, -27, 185], [-5, 178, 5, 187], [27, 176, 37, 185]] };   // (crags round the rim: hide the void, stop the walking off)
   const t = I.t;
   const LZ = I.zone('lz', 'Landing Zone');
@@ -1252,6 +1253,29 @@ for (const L of out.launchers) {
   const D = out.launchers.find((q) => q.id === L.to);
   out.models.push({ a: 'launcher', x: L.x, y: L.y - 0.05, z: L.z, yaw: Math.atan2(D.x - L.x, D.z - L.z) + Math.PI / 2, fit: { len: 6.4 } });
 }
+
+// The power (src/sim/crustPower.js): beside each of the Anvil's launcher pads, the
+// junction box its burnt relay's pulled from; by each island's pad, its power
+// switch. Both stand out to one side of the pad (clear of where it flings you),
+// facing it. (normal: the way the front faces)
+out.relays = []; out.powerSwitches = [];
+{
+  const PW = CONFIG.crust.power;
+  for (const L of out.launchers) {
+    const D = out.launchers.find((q) => q.id === L.to);
+    const isle = out.islands.find((i) => { const [x0, z0, x1, z1] = i.bounds; return L.x >= x0 && L.x <= x1 && L.z >= z0 && L.z <= z1; });
+    const I = ISLES.find((q) => q.id === isle.id);
+    const hub = isle.id === 'hub';
+    const a = Math.atan2(D.x - L.x, D.z - L.z) + (Math.PI / 2) * (I.switchSide || 1);
+    const r = hub ? PW.boxOut : PW.switchOut;
+    const x = +(L.x + Math.sin(a) * r).toFixed(2), z = +(L.z + Math.cos(a) * r).toFixed(2);
+    const y = I.t.heightAt(x, z);
+    const normal = { x: Math.round(-Math.sin(a) * 1e4) / 1e4 || 0, z: Math.round(-Math.cos(a) * 1e4) / 1e4 || 0 };
+    if (hub) out.relays.push({ id: 'relay_' + L.id.slice(-1), pad: L.id, label: L.label, x, y, z, normal });
+    else out.powerSwitches.push({ id: 'switch_' + isle.id, island: isle.id, name: isle.name, pad: L.id, x, y, z, normal });
+    out.props.push({ kind: 'model', box: box6(x - 0.42, z - 0.42, x + 0.42, z + 0.42, y, y + 1.7) });
+  }
+}
 export const LAUNCHERS = out.launchers;
 export const ISLANDS = out.islands;
 const HUB = ISLES[0];
@@ -1300,12 +1324,18 @@ export const CRUST = {
   dives: out.dives,              // the gaps in them: ledges to dive off
   ceasefire: out.ceasefire,      // the field telephone in the fort
   titans: out.titans,            // each island's titan, for the egg (src/sim/crustEgg.js)
-  // perk machines (no power switch out here: they run from the start)
-  // (never two side by side: one at the Anvil, one out in the Trench Front's fort)
+  // perk machines: one on each island, each running off its island's power
+  // (src/sim/crustPower.js)
   perkMachines: [
     { perk: 'miltonKick', room: 'depot', side: 'n', at: 24.4 },
     { perk: 'phdGaylor', room: 'fort1', side: 's', at: -3.5 },
+    { perk: 'marathonMinestrone', room: 'netshed', side: 's', at: -36.5 },
+    { perk: 'doubleLadle', room: 'genhall', side: 's', at: 151.5 },
+    // (out in the open at the Mine Works: backed up against the shed)
+    { perk: 'beefcakeBroth', room: 'mineworks', free: { x: -167.5, y: 0.8, z: 40.5, normal: { x: 1, z: 0 } } },
   ],
+  relays: out.relays,              // the Anvil's launchers' junction boxes
+  powerSwitches: out.powerSwitches, // each other island's power switch
   // Far off to the north, past the ship graveyard: the four stacks (the final fight).
   stacks: [
     { x: -33, z: -330, h: 96 },

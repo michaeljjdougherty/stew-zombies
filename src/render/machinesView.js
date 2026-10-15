@@ -148,7 +148,7 @@ export class MachinesView {
   }
 
   perkOn(pv) {
-    if (pv.def.power && !this.sim.power) return false;
+    if (pv.def.power && !this.sim.powerAt(pv.m.center)) return false;   // (Call of the Crust: its own island's power)
     if (pv.def.soloUses && this.sim.players.length === 1 && (this.sim.perkBuys[pv.m.perk] || 0) >= pv.def.soloUses) return false;
     return true;
   }

@@ -5,6 +5,7 @@
 // The local player is just one entry in sim.players; co-op will add more
 // players fed by network commands instead of this keyboard.
 // =============================================================================
+import { powerAllOn } from './sim/crustPower.js';
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
 import { CRUST } from './map/crust.js';
@@ -507,6 +508,7 @@ function startTrailer({ silent = false, recording = false } = {}) {
   hud.show(false);
   sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   sim.power = true;
+  powerAllOn(sim);
   // the best picture this machine can make, full screen (for recording it)
   if (!recording) {
     // (a phone or tablet gets a lighter picture, so it keeps up with the song)
@@ -614,6 +616,7 @@ function startFilm(name, then) {
   hud.show(false);
   sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   sim.power = true;
+  powerAllOn(sim);   // (the Crust: every island lit, the launchers live)
   const T = renderer.startFilm(name);
   T.onLine = (who, text, secs) => { if (settings.subtitles !== false) cutsceneUI.line(who, text, secs); sound.voiceLine(who, text, secs); };
   T.onCue = (n) => sound.cue(n);

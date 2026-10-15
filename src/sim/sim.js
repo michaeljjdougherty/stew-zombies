@@ -34,6 +34,7 @@ import { LaunchInteractable } from './launchers.js';
 import { updateVoid } from './void.js';
 import { createShelling, updateShelling, CeasefireInteractable } from './shelling.js';
 import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets } from './crustEgg.js';
+import { crustPowered } from './crustPower.js';
 import { finaleOn } from './zachBoss.js';
 import { setFloor } from './physics.js';
 
@@ -185,6 +186,12 @@ export class GameSim {
   spendPoints(p, amount) {
     if (this.mode !== 'explore') p.points -= amount;
     this.emit('points', { playerId: p.id, amount: -amount, reason: 'spend', total: p.points });
+  }
+
+  // Is the power on here? (Call of the Crust: each island has its own, src/sim/crustPower.js)
+  powerAt(pos) {
+    const P = this.crustEgg && this.crustEgg.power;
+    return P && pos ? !!crustPowered(this, pos) : this.power;
   }
 
   turnOnPower(byPlayer = null) {

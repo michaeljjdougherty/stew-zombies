@@ -16,6 +16,7 @@ import { buildCharacter, idleCharacter } from './characters.js';
 import { buildWarHammer, HAMMER_COLORS } from './warHammer.js';
 import { CORE_ELEMENT } from '../sim/forge.js';
 import { CrustCage } from './crustCage.js';
+import { CrustPowerView } from './crustPowerView.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const ELS = ['wind', 'lightning', 'ice', 'fire'];
@@ -35,6 +36,8 @@ export class ForgeView {
     this.buildStand();
     // the Schnitz's cage, the boys in it
     this.cage = this.spec.cage ? new CrustCage(this.group, this.spec.cage, { map: this.map }) : null;
+    // the power: the launchers' junction boxes, the islands' switches
+    this.power = sim.mapData.relays ? new CrustPowerView(this.group, sim, cfg, map, effects) : null;
     this.cores = new Map();
     this.parts = new Map();
     this.ice = [];
@@ -45,6 +48,7 @@ export class ForgeView {
 
   setSim(sim) {
     this.sim = sim;
+    if (this.power) this.power.setSim(sim);
     for (const c of this.cores.values()) this.group.remove(c.g);
     this.cores.clear();
     for (const c of this.parts.values()) { this.group.remove(c.g); this.map.removeVirtualLight(c.light); }
@@ -199,6 +203,7 @@ export class ForgeView {
     this.updateParts(dt, F);
     if (this.cage && !this.cage.held) this.cage.update(dt, this.time);
     this.updateStand(dt, F);
+    if (this.power) { this.power.update(dt); this.power.benchRelays(this.workAt, E && E.power, F); }
     this.updateIce(E);
     this.updateArcs(dt);
   }
@@ -388,6 +393,7 @@ export class ForgeView {
   // --- events -------------------------------------------------------------------
   onEvent(e, R) {
     const fx = this.effects;
+    if (this.power) this.power.onEvent(e);
     switch (e.type) {
       case 'forgeStrike': {
         const p = this.workAt;

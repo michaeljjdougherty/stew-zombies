@@ -57,8 +57,9 @@ export const CREW = {
 // ---------------------------------------------------------------------------
 export const PIT_FORGE = {
   intro: [
-    "Okay. The War Hammer's in four pieces, man. One at every island's shrine.",
-    "Bring 'em back and put 'em on the stand. Enough iron for everybody.",
+    "Okay. Power's out, man. Every launcher up on the rim blew a relay.",
+    "Pull all four and bring 'em down to me. I can fix 'em. Probably.",
+    "Then the War Hammer. It's in four pieces, one at every island's shrine. Put 'em on the stand.",
     "Then the titans. Each one's sitting on a core. Cores make the hammers... spicy.",
   ],
   partPicked: {
@@ -112,6 +113,37 @@ export const PIT_FORGE = {
   },
   ring: "Here he comes, man. Here he comes.",
   freed: "Zach! Zach, buddy. Welcome back, man.",
+};
+
+// Pit and the power (src/sim/crustPower.js): the Anvil's four burnt relays, the
+// other islands' switches.
+export const PIT_POWER = {
+  firstPulled: "That's a relay. Smells like burnt hair, right? Bring it down here, man.",
+  given: [
+    "One relay. Crispy. Three to go.",
+    "Two. Keep 'em coming, man.",
+    "Three. One more. Up on the rim.",
+  ],
+  allIn: [
+    "That's all four, man. Gimme a minute.",
+    "Don't touch anything. Especially me.",
+  ],
+  busy: "Soon as this is done, man. One thing at a time.",
+  fixed: [
+    "There. Power's on, man. The launchers, the lights, the machine up in the depot.",
+    "The other islands got their own switches. Flip 'em when you land.",
+  ],
+  nudge: [
+    "Launchers are dead, man. Bring me the relays.",
+    "Relays, man. Up on the rim. One by every launcher.",
+    "(whinnies) ...the relays. Please.",
+  ],
+  island: {
+    ship: "Lights on at the Graveyard. Look at you, man.",
+    research: "Research Base is humming. I can hear it from here. Actually I can't.",
+    trench: "Power at the Front? Somebody's gonna regret that. Them, hopefully.",
+    caves: "Ice Caves got power? Weird. Cool. Cold. Whatever.",
+  },
 };
 
 // The Schnitz, wearing Zach, in the finale (src/sim/zachBoss.js); and Zach once it lets go.
