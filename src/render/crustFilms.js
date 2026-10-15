@@ -132,9 +132,9 @@ export const INTRO_SHOTS = {
         if (k < t0 + 0.01) Tr['thud' + i] = false;
       });
       Tr.light(0.9, '#c8ffd8', [2, 9, 14]);
-      // from the south terrace, looking down onto the dais: the portal, and them coming out of it
-      const look = lerpV(V(0, 4.2, 5.8), V(0, 1.2, 5.9), sm(0.25, 0.7, k));
-      Tr.look(lerp(1.6, 1.0, k), camAt(Tr, 1.2, 9.2, 1.5), 9.2, look.x, look.y, look.z, 58);
+      // from the side of the dais: up at the portal, then down with them as they come out of it
+      const look = lerpV(V(0, 5.2, 6.1), V(0, 1.0, 5.9), sm(0.25, 0.7, k));
+      Tr.look(lerp(6.0, 5.6, k), camAt(Tr, 5.8, 3.3, 1.2), 3.3, look.x, look.y, look.z, 64);
     },
   },
 
@@ -266,7 +266,7 @@ export const ENDING_SHOTS = {
       if (out > 0.2 && !Tr.tore) { Tr.tore = true; Tr.fx.energyBurst(V(zx, 3, zz), '#5aff70', 7); Tr.R.flash = Math.max(Tr.R.flash || 0, 0.5); Tr.shake = 1.4; if (Tr.onCue) Tr.onCue('tear'); }
       if (k < 0.1) Tr.tore = false;
       Tr.light(0.8, '#c0ffc8', [zx - 4, 7, zz + 6]);
-      Tr.look(lerp(-0.2, 0.6, k), camAt(Tr, -0.5, 9.4, 1.6), 9.4, zx, lerp(3.4, 1.4, out), zz, 46);
+      Tr.look(lerp(2.3, 2.8, k), camAt(Tr, 2.5, 4.8, 1.7), 4.8, zx, lerp(3.2, 1.4, out), zz, 50);
     },
   },
 
@@ -276,10 +276,9 @@ export const ENDING_SHOTS = {
       Tr.far = 420;
       for (const [id, x] of Object.entries(ROW)) { Tr.pose(id, { x, z: ROWZ, gesture: id === 'ryan' && k > 0.6 ? 'point' : null }); Tr.face(id, x * 0.3, -60); }
       if (k > 0.65) Tr.face('ryan', ROW.kearns, ROWZ);
-      Tr.light(0.9, '#d0e4ff', [4, 8, -36]);
-      // behind them, tilted up: them at the bottom of the frame, the cage hanging over the void above
-      const cy = camAt(Tr, 1.2, -38.4, 1.4);
-      Tr.look(lerp(1.5, 0.8, k), cy, -38.4, 0.4, cy + lerp(7.5, 9.5, k), -54, 64);
+      Tr.light(1.1, '#d0e4ff', [3, 6, -52]);
+      // from out over the void, looking back at them on the ledge (the cage is behind us)
+      Tr.look(lerp(3.4, 2.6, k), 1.3, -48.2, 0.2, 1.9, -41.8, lerp(48, 42, k));
     },
   },
 
@@ -304,17 +303,21 @@ export const ENDING_SHOTS = {
       // and over he goes, arms going, down and away into the dark
       const f = Math.max(0, (k - 0.14) / 0.86);
       const tt = f * d * 0.86;
-      const A = Tr.pose('rocco', { x: 0.2 + tt * 0.1, z: -43.8 - Math.min(3, tt * 2.8) - tt * 0.5, y: 0.8 + tt * 1.5 - 2.7 * tt * tt, gesture: f > 0 ? 'flail' : null });
+      const A = Tr.pose('rocco', { x: 0.2 + tt * 0.1, z: -43.8 - Math.min(3, tt * 2.8) - tt * 0.3, y: 0.8 + tt * 1.5 - 1.6 * tt * tt, gesture: f > 0 ? 'flail' : null });
       A.yaw = 0;
       if (f > 0) A.spin = { x: 0.6 + tt * 2.2, y: 0, z: Math.sin(tt * 3) * 0.4 };
       if (f > 0 && !Tr.shoved) { Tr.shoved = true; if (Tr.onCue) Tr.onCue('shove'); }
       if (k < 0.05) Tr.shoved = false;
       Tr.light(0.8, '#d8e4ff', [5, 6, -40]);
-      // side on as it happens; then from out over the void, down after him
-      const after = k > 0.34;
+      // side on as it happens; then down after him: the camera drops with him a
+      // moment, then lets him go, tumbling away into the dark
       const r = Tr.crew.rocco.pos;
-      if (!after) Tr.look(5.6, camAt(Tr, 5.6, -42.6, 1.25), -42.6, 0.4, 1.4, -43.6, 42);
-      else Tr.look(3.2, 3.4, -49.5, r.x, r.y + 0.6, r.z, 50);
+      if (k <= 0.34) Tr.look(5.6, camAt(Tr, 5.6, -42.6, 1.25), -42.6, 0.4, 1.4, -43.6, 42);
+      else {
+        const hold = Math.min(tt, 2.2), hy = 0.8 + hold * 1.5 - 1.6 * hold * hold;
+        Tr.look(r.x + 2.4, hy + 3.4, -52, r.x, r.y + 0.7, r.z, 46);
+        Tr.light(1.1, '#e0e8ff', [r.x + 4, hy + 6, -40]);
+      }
     },
   },
 

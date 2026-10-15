@@ -317,7 +317,7 @@ function hub() {
       stand: { x: 5.4, y: F + 0.3, z: 5.0 },
       // the Schnitz's cage: the top of its chain, out over the void past the north rim
       // (src/render/crustCage.js); and the ledge it's let down onto at the end
-      cage: { x: 0, y: 48, z: -55, ledge: { x: 0, y: 0.8, z: -42.5 } },
+      cage: { x: 0, y: 30, z: -55, ledge: { x: 0, y: 0.8, z: -42.5 } },
     };
     I.prop('model', -7.0, 1.6, -5.6, 4.2, 0.95);      // (the bench: drawn by src/render/forgeView.js)
     I.prop('model', -8.15, 2.6, -7.55, 3.2, 1.8);     // (Pit)
