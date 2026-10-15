@@ -1248,6 +1248,20 @@ export const CONFIG = {
     ],
   },
 
+  // How the Maisy Dog and the LBD look (src/render/gadgetView.js)
+  gadgetLook: {
+    maisy: { model: 'assets/props/maisydog.glb', length: 0.5, inHand: 0.32, howl: 0.9 },
+    lbd: { model: 'assets/props/lbd.glb', length: 0.42, inHand: 0.26, blink: 1.6 },
+    hole: {
+      color: '#8a4dff', color2: '#3fb8ff',
+      core: 0.5, disk: 2.3,         // m: the black core's radius, the swirl's
+      spin: 4.5,                    // the swirl turning (rad/s)
+      open: 0.5, close: 0.35,       // s to open up, and to snap shut
+      motes: 90, reach: 6,          // streaks a second pulled in, from up to this far
+      shrink: 0.7,                  // s a swallowed zombie takes to vanish into it
+    },
+  },
+
   // Big Evil Zach: what The Schnitz made of Zach (src/render/evilZach.js)
   bigZach: {
     scale: 2.6,              // x a normal character's size

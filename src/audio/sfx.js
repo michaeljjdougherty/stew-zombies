@@ -2000,3 +2000,56 @@ export function anvilClang(A, out, t, p = {}) {
   const n = A.noiseSource('white', t, 0.04); const hp = A.filter('highpass', 3000, 0.7); const ng = A.gain(0); A.env(ng, t, 0.001, 0.03, 0.5); n.connect(hp); hp.connect(ng); ng.connect(out);
   return 1.0;
 }
+
+// --- the Maisy Dog and the LBD ------------------------------------------------
+// A little dog's howl: a rising, wavering "aroooo".
+export function maisyHowl(A, out, t) {
+  voice(A, out, t, { f0: 520, dur: 1.0, formants: [[800, 6, 1], [1300, 7, 0.5], [2900, 9, 0.2]], grit: 0.08, breath: 0.15, vib: 6, vibDepth: 0.03, glide: 1.3, peak: 0.45 });
+  voice(A, out, t + 0.95, { f0: 690, dur: 0.5, formants: [[750, 6, 1], [1250, 7, 0.4]], grit: 0.05, breath: 0.2, vib: 7, vibDepth: 0.04, glide: 0.75, peak: 0.3 });
+  return 1.6;
+}
+// The hole tearing open: a deep suck of air and a tone dropping away.
+export function vortexOpen(A, out, t) {
+  const n = A.noiseSource('pink', t, 1.6);
+  const bp = A.filter('bandpass', 2400, 0.9); bp.frequency.exponentialRampToValueAtTime(160, t + 1.4);
+  const g = A.gain(0); A.env(g, t, 0.05, 1.5, 0.7); n.connect(bp); bp.connect(g); g.connect(out);
+  const o = A.osc('sawtooth', 220, t, 1.6); o.frequency.exponentialRampToValueAtTime(38, t + 1.5);
+  const lp = A.filter('lowpass', 600, 2); const og = A.gain(0); A.env(og, t, 0.02, 1.5, 0.5);
+  o.connect(lp); lp.connect(og); og.connect(out);
+  return 1.8;
+}
+// ...and humming while it's open: a low throb with a whine over it.
+export function vortexHum(A, out, t, p = {}) {
+  const dur = p.duration || 6;
+  const o = A.osc('sine', 46, t, dur); const lfo = A.osc('sine', 3.2, t, dur); const lg = A.gain(9); lfo.connect(lg); lg.connect(o.frequency);
+  const g = A.gain(0); A.env(g, t, 0.4, dur - 0.6, 0.55); o.connect(g); g.connect(out);
+  const w = A.osc('triangle', 880, t, dur); const wl = A.osc('sine', 0.7, t, dur); const wg = A.gain(70); wl.connect(wg); wg.connect(w.frequency);
+  const wgn = A.gain(0); A.env(wgn, t, 0.6, dur - 0.8, 0.06); w.connect(wgn); wgn.connect(out);
+  const n = A.noiseSource('brown', t, dur); const nlp = A.filter('lowpass', 300, 1); const ng = A.gain(0); A.env(ng, t, 0.5, dur - 0.6, 0.35);
+  n.connect(nlp); nlp.connect(ng); ng.connect(out);
+  return dur + 0.2;
+}
+// Snapping shut: a rising suck and a hard pop.
+export function vortexClose(A, out, t) {
+  const o = A.osc('sine', 60, t, 0.5); o.frequency.exponentialRampToValueAtTime(900, t + 0.35);
+  const g = A.gain(0); A.env(g, t, 0.25, 0.1, 0.5); o.connect(g); g.connect(out);
+  click(A, out, t + 0.35, 900, 2, 0.25, 1.0, 120);
+  return 0.9;
+}
+// An LBD set down: a soft bump and a sleepy little sigh.
+export function lbdPlant(A, out, t) {
+  click(A, out, t, 300, 1.5, 0.12, 0.6, 140);
+  voice(A, out, t + 0.15, { f0: 420, dur: 0.35, formants: [[900, 5, 1], [2300, 8, 0.3]], grit: 0, breath: 0.6, vib: 4, vibDepth: 0.02, glide: 0.85, peak: 0.18 });
+  return 0.6;
+}
+export function lbdArmed(A, out, t) {
+  for (const k of [0, 0.12]) { const o = A.osc('square', 1760, t + k, 0.06); const g = A.gain(0); A.env(g, t + k, 0.003, 0.05, 0.08); o.connect(g); g.connect(out); }
+  return 0.3;
+}
+// Woken up: a startled wail and a spring.
+export function lbdPop(A, out, t) {
+  voice(A, out, t, { f0: 480, dur: 0.38, formants: [[1000, 5, 1], [1700, 6, 0.6], [3100, 9, 0.3]], grit: 0.25, breath: 0.2, vib: 9, vibDepth: 0.06, glide: 1.4, peak: 0.55 });
+  const o = A.osc('triangle', 180, t, 0.4); o.frequency.exponentialRampToValueAtTime(620, t + 0.3);
+  const g = A.gain(0); A.env(g, t, 0.005, 0.35, 0.3); o.connect(g); g.connect(out);
+  return 0.6;
+}

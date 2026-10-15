@@ -5,6 +5,7 @@
 // draw). Rendered in its own scene/camera so it never clips into walls.
 // =============================================================================
 import * as THREE from 'three';
+import { maisyDog, lbdBaby } from './gadgetView.js';
 import * as T from './textures.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { perkBottleModel } from './propModels.js';
@@ -193,6 +194,10 @@ export class Viewmodel {
     const fuseLight = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.4, 0.2) })); fuseLight.position.set(0, 0.0, 0.046); pot.add(fuseLight);
     pot.visible = false;
     this.potMesh = pot;
+    // a Maisy Dog and an LBD, small in the hand
+    const L = this.cfg.gadgetLook;
+    this.dogMesh = maisyDog(L.maisy.inHand); this.dogMesh.position.set(-0.02, -0.03, -0.02); this.dogMesh.rotation.y = Math.PI / 2; this.dogMesh.visible = false; this.grenadeArm.add(this.dogMesh);
+    this.babyMesh = lbdBaby(L.lbd.inHand); this.babyMesh.position.set(0, -0.05, -0.03); this.babyMesh.visible = false; this.grenadeArm.add(this.babyMesh);
     const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.42, 10), m.sleeve);
     arm.position.set(-0.07, -0.14, 0.16); arm.rotation.set(1.0, 0, 0.5);
     this.grenadeArm.add(arm);
@@ -200,9 +205,11 @@ export class Viewmodel {
 
   // What's in the throwing hand: a frag or a Stew Bomb.
   showHeld(on) {
-    const stew = this.heldKind === 'stew';
-    for (const q of this.fragParts) q.visible = on && !stew;
-    this.potMesh.visible = on && stew;
+    const k = this.heldKind;
+    for (const q of this.fragParts) q.visible = on && k === 'frag';
+    this.potMesh.visible = on && k === 'stew';
+    this.dogMesh.visible = on && k === 'maisy';
+    this.babyMesh.visible = on && k === 'lbd';
   }
 
   // Left hand holding a perk bottle.
@@ -315,6 +322,9 @@ export class Viewmodel {
       case 'melee':
         this.meleeT = 0;
         this.meleeLunge = e.lunge;
+        break;
+      case 'lbdPlant':
+        this.plantT = 0; this.heldKind = 'lbd';
         break;
       case 'grenadeThrow':
         this.throwT = 0;
@@ -716,6 +726,17 @@ export class Viewmodel {
         this.showHeld(t < 0.25);
         if (t >= 1) { this.throwT = -1; this.grenadeArm.visible = false; }
       }
+    } else if (this.plantT >= 0) {
+      // an LBD: the hand comes down low in front and sets it on the floor
+      this.plantT += dt;
+      const t = clamp01(this.plantT / this.cfg.equipment.lbd.plantLock);
+      const down = seg(t, 0, 0.55), back = seg(t, 0.6, 1);
+      gunDip = Math.max(gunDip, 1 - back);
+      this.grenadeArm.visible = true;
+      this.grenadeArm.position.set(-0.1, -0.2 - down * 0.25 - back * 0.3, -0.36 - down * 0.08);
+      this.grenadeArm.rotation.set(0.2 + down * 0.6, 0.1, 0.2);
+      this.showHeld(t < 0.55);
+      if (t >= 1) { this.plantT = -1; this.grenadeArm.visible = false; }
     } else this.grenadeArm.visible = false;
 
     // --- drinking a perk: gun drops away, bottle comes up and tips back

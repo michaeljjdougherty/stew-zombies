@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { gunMaterials } from './gunModels.js';
 import * as T from './textures.js';
+import { maisyDog, lbdBaby, blackHole, updateHole } from './gadgetView.js';
 
 const _d = new THREE.Vector3();
 const FWD = new THREE.Vector3(0, 0, -1);
@@ -23,6 +24,70 @@ export class ProjectileViews {
     this.bladeMat = new THREE.MeshStandardMaterial({ color: '#a0a2a0', roughness: 0.25, metalness: 0.9 });
     this.time = 0;
     this.glowTex = T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
+    this.closing = [];   // black holes snapping shut (their dog gone with them)
+  }
+
+  // The Maisy Dog: tumbling through the air; on the floor, she sits up and
+  // howls; then the hole opens over her, and at the very end she's pulled up into it.
+  updateMaisy(v, pr, dt) {
+    const L = this.cfg.gadgetLook, C = this.cfg.equipment.maisyDog;
+    const dog = v.spinner;
+    if (!pr.resting) { v.spin += dt * 10; dog.rotation.set(v.spin * 0.7, v.spin * 0.4, v.spin); return; }
+    if (!v.landed) { v.landed = true; v.yaw = Math.random() * Math.PI * 2; v.t = 0; }
+    dog.rotation.set(0, v.yaw, 0);
+    // the howl: nose up, a little shiver
+    const howl = pr.hole ? 0 : Math.min(1, v.t / L.maisy.howl);
+    dog.rotation.z = howl * 0.35 * (1 - (pr.hole ? 1 : 0));
+    dog.position.x = Math.sin(this.time * 40) * 0.006 * howl;
+    if (pr.hole) {
+      if (!v.hole) {
+        v.hole = blackHole(this.glowTex);
+        v.hole.position.set(pr.pos.x, pr.pos.y + C.holeY, pr.pos.z);
+        this.scene.add(v.hole);
+        this.effects.energyBurst(v.hole.position.clone(), L.hole.color, 2.2);
+      }
+      const ht = pr.hole.t ?? 0;
+      const open = Math.min(1, ht / L.hole.open);
+      updateHole(v.hole, dt, open, this.effects, this.time);
+      // the last second: she floats up into it, spinning
+      const lift = Math.max(0, (ht - (C.holeTime - 1.2)) / 1.2);
+      dog.position.y = lift * lift * C.holeY;
+      dog.rotation.y = v.yaw + lift * lift * 12;
+      dog.scale.setScalar(Math.max(0.05, 1 - lift * lift));
+    }
+  }
+
+  // The LBD: asleep on the floor, its red light blinking once it's live; set
+  // off, it pops up into the air, turning.
+  updateLbd(v, pr, dt) {
+    const L = this.cfg.gadgetLook, C = this.cfg.equipment.lbd;
+    const baby = v.spinner;
+    if (!v.yawSet) { v.yawSet = true; v.g.rotation.y = pr.yaw || 0; }
+    const live = !!pr.armed && pr.pop == null;
+    v.beep.visible = live && Math.sin(this.time * Math.PI * 2 * L.lbd.blink) > 0.6;
+    v.glow.visible = v.beep.visible;
+    if (pr.pop != null) {
+      const k = Math.min(1, pr.pop / C.popTime);
+      baby.position.y = Math.sin(k * Math.PI * 0.5) * C.popHeight;
+      baby.rotation.y += dt * 14;
+      if (!v.popped) { v.popped = true; this.effects.puff(v.g.position.clone(), { color: 0x8a8070, size: 0.4, grow: 2, life: 0.6, alpha: 0.5 }); }
+    }
+  }
+
+  // Holes snapping shut after their dog's gone.
+  updateClosing(dt) {
+    const L = this.cfg.gadgetLook.hole;
+    for (let i = this.closing.length - 1; i >= 0; i--) {
+      const c = this.closing[i];
+      c.t += dt;
+      const k = c.t / L.close;
+      updateHole(c.h, dt, Math.max(0, 1 - k * k), null, this.time);
+      if (k >= 1) {
+        this.effects.energyBurst(c.h.position.clone(), L.color, 3);
+        this.scene.remove(c.h);
+        this.closing.splice(i, 1);
+      }
+    }
   }
 
   build(e) {
@@ -86,6 +151,14 @@ export class ProjectileViews {
       spin = lid;
       glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: new THREE.Color(1.6, 1.0, 0.3), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0 }));
       glow.scale.setScalar(1.6); glow.position.y = 0.2; g.add(glow);
+    } else if (e.ptype === 'maisy') {
+      spin = maisyDog(); g.add(spin);
+    } else if (e.ptype === 'lbd') {
+      spin = lbdBaby(); g.add(spin);
+      beep = add(new THREE.SphereGeometry(0.018, 8, 6), this.beepMat, 0, 0.16, 0.12);
+      beep.visible = false;
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: new THREE.Color(3, 0.3, 0.2), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      glow.scale.setScalar(0.25); glow.position.set(0, 0.16, 0.12); glow.visible = false; g.add(glow);
     } else if (e.ptype === 'frag') {
       add(new THREE.SphereGeometry(0.045, 10, 8), this.fragMat).scale.set(1, 1.25, 1);
       add(new THREE.BoxGeometry(0.018, 0.03, 0.018), m.metal, 0, 0.06, 0);
@@ -138,6 +211,7 @@ export class ProjectileViews {
         for (let i = 0; i < 10; i++) this.effects.spawnParticle(at, new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 4, (Math.random() - 0.5) * 5), { life: 0.3, size: 0.012, color: [1.5, 3.5, 4.5], gravity: 6, drag: 1 });
         this.effects.puff(at, { color: 0x9fe8ff, size: 0.25, grow: 2.5, life: 0.35, alpha: 0.5, shade: false });
       }
+      if (v && v.hole) this.closing.push({ h: v.hole, dog: v.spinner, t: 0 });
       if (v) { this.scene.remove(v.g); this.views.delete(e.id); }
       this.prev.delete(e.id);
     }
@@ -145,10 +219,11 @@ export class ProjectileViews {
 
   update(sim, dt, alpha) {
     this.time += dt;
+    this.updateClosing(dt);
     const live = new Map(sim.projectiles.map((p) => [p.id, p]));
     for (const [id, v] of this.views) {
       const pr = live.get(id);
-      if (!pr) { this.scene.remove(v.g); this.views.delete(id); continue; }
+      if (!pr) { if (v.hole) this.closing.push({ h: v.hole, t: 0 }); this.scene.remove(v.g); this.views.delete(id); continue; }
       const prev = this.prev.get(id);
       if (prev && !v.stuck) v.g.position.lerpVectors(prev, _d.set(pr.pos.x, pr.pos.y, pr.pos.z), alpha);
       else v.g.position.set(pr.pos.x, pr.pos.y, pr.pos.z);
@@ -178,6 +253,12 @@ export class ProjectileViews {
           while (v.trailT > 0.12) { v.trailT -= 0.12; this.effects.puff(v.g.position.clone().add(new THREE.Vector3(0, 0.25, 0)), { color: 0xd8d0c0, size: 0.12, grow: 3, life: 1.2, alpha: 0.25, vel: new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.7, (Math.random() - 0.5) * 0.2) }); }
         }
         continue;
+      } else if (v.type === 'maisy') {
+        this.updateMaisy(v, pr, dt);
+        continue;
+      } else if (v.type === 'lbd') {
+        this.updateLbd(v, pr, dt);
+        continue;
       } else if (v.type === 'frag') {
         if (!pr.resting) { v.spin += dt * 14; v.g.rotation.set(v.spin, v.spin * 0.7, 0); }
       } else if (!v.stuck) {
@@ -200,7 +281,9 @@ export class ProjectileViews {
   }
 
   clear() {
-    for (const v of this.views.values()) this.scene.remove(v.g);
+    for (const v of this.views.values()) { this.scene.remove(v.g); if (v.hole) this.scene.remove(v.hole); }
+    for (const c of this.closing) this.scene.remove(c.h);
+    this.closing = [];
     this.views.clear(); this.prev.clear();
   }
 }

@@ -514,6 +514,15 @@ export class SoundDirector {
       case 'sawHit': A.play(S.sawCut, {}, { pos: e.pos, ref: 3 }); break;
       case 'sawRicochet': A.play(S.sawRicochet, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
       case 'sawStick': A.play(S.sawStick, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
+      case 'maisyLand': A.play(S.maisyHowl, {}, { pos: e.pos, ref: 4, reverb: 0.4, gain: 1.1 }); break;
+      case 'maisyOpen':
+        A.play(S.vortexOpen, {}, { pos: e.pos, ref: 6, reverb: 0.5, gain: 1.2 });
+        A.play(S.vortexHum, { duration: e.time }, { pos: e.pos, ref: 6, reverb: 0.4, gain: 1.0 });
+        break;
+      case 'maisyClose': A.play(S.vortexClose, {}, { pos: e.pos, ref: 6, reverb: 0.5, gain: 1.2 }); break;
+      case 'lbdPlant': A.play(S.lbdPlant, {}, { pos: e.pos, ref: 2, reverb: 0.2 }); break;
+      case 'lbdArmed': A.play(S.lbdArmed, {}, { pos: e.pos, ref: 2, reverb: 0.1, gain: 0.5 }); break;
+      case 'lbdPop': A.play(S.lbdPop, {}, { pos: e.pos, ref: 4, reverb: 0.3, gain: 1.1 }); break;
       case 'stewBombLand': {
         A.play(S.stewBombLand, {}, { pos: e.pos, ref: 3 });
         A.play(S.stewBombTune, { duration: this.cfg.equipment.stewBomb.lureTime }, { pos: { x: e.pos.x, y: 0.4, z: e.pos.z }, ref: 4, reverb: 0.5, gain: 1.1 });

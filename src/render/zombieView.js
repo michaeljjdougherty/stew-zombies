@@ -197,6 +197,17 @@ export class ZombieViews {
   }
 
   // A spirit zombie dies: it goes limp and floats up into the air, fading out.
+  // Swallowed by a Maisy Dog's black hole: spun in toward it and gone.
+  suck(v, e) {
+    if (v.mixer) {
+      v.mixer.stopAllAction();
+      const a = v.actions.deathFly || v.actions.hit2 || v.actions.idle;
+      if (a) { a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.timeScale = 0.6; a.play(); }
+    }
+    v.root.rotation.order = 'YXZ';
+    this.corpses.push({ v, t: 0, vortex: { from: v.root.position.clone(), to: new THREE.Vector3(e.vortex.x, e.vortex.y - 0.8, e.vortex.z), scale: v.root.scale.x, yaw: v.root.rotation.y } });
+  }
+
   ascend(v, color = null) {
     if (v.meshes) for (const m of v.meshes) { m.material.transparent = true; m.material.depthWrite = false; }
     if (v.mixer) {
@@ -531,6 +542,7 @@ export class ZombieViews {
 
   makeCorpse(v, e) {
     this.eyesOut(v);
+    if (e.vortex) { this.suck(v, e); return; }
     if (v.spirit) { this.ascend(v); return; }
     if (v.rig) { this.corpseRigged(v, e); return; }
     if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
@@ -729,6 +741,19 @@ export class ZombieViews {
       const c = this.corpses[i];
       const v = c.v;
       c.t += dt;
+      if (c.vortex) {
+        // pulled up and in, spinning faster and faster, shrinking to nothing
+        if (v.mixer) v.mixer.update(dt);
+        const V0 = c.vortex, k = Math.min(1, c.t / (this.cfg.gadgetLook ? this.cfg.gadgetLook.hole.shrink : 0.7)), e = k * k;
+        const ang = e * 9;
+        const r = (1 - e) * 0.5;
+        v.root.position.set(V0.from.x + (V0.to.x - V0.from.x) * e + Math.cos(ang) * r, V0.from.y + (V0.to.y - V0.from.y) * e, V0.from.z + (V0.to.z - V0.from.z) * e + Math.sin(ang) * r);
+        v.root.rotation.y = V0.yaw + ang * 2;
+        v.root.rotation.x = -e * 1.4;
+        v.root.scale.setScalar(V0.scale * Math.max(0.02, 1 - e));
+        if (k >= 1) { this.scene.remove(v.root); this.corpses.splice(i, 1); }
+        continue;
+      }
       if (c.spirit) {
         // up, up and away, slowly turning, fading out in a trail of blue sparks
         if (v.mixer) v.mixer.update(dt);

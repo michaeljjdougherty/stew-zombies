@@ -540,7 +540,7 @@ export class HUD {
     this.set('wcolor', this.el.wname.style, def.view.camo || '', 'color');
     this.set('clip', this.el.clip, def.infinite ? '∞' : String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
-    this.set('grenades', this.el.grenades, '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
+    this.set('grenades', this.el.grenades, '<u></u>'.repeat(Math.max(0, p.lbds || 0)) + '<s></s>'.repeat(Math.max(0, p.maisyDogs || 0)) + '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('scopeThermal', this.el.scope, scoped && def.thermal ? 'thermal' : '', 'className');

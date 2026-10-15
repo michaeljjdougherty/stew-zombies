@@ -1078,7 +1078,17 @@ export function chalkTexture(def, model) {
       for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(cx - 30, 150 + k * 20); g.lineTo(cx + 30, 150 + k * 20); g.stroke(); }
     }
   }
-  const pts = model === 'frag' ? [] : shapes[model] || shapes[byClass[def.class]] || shapes.rifle;
+  if (model === 'lbd') {
+    // a swaddled baby, asleep: a round head on a bundled body
+    for (let pass = 0; pass < 3; pass++) {
+      g.lineWidth = pass === 0 ? 5 : 2; g.globalAlpha = pass === 0 ? 0.5 : 0.8;
+      g.beginPath(); g.arc(196 + rr(-2, 2), 148, 34, 0, 7); g.stroke();                 // head
+      g.beginPath(); g.ellipse(300, 154, 78, 40, 0, 0, 7); g.stroke();                  // bundle
+      g.beginPath(); g.moveTo(240, 128); g.quadraticCurveTo(300, 170, 372, 140); g.stroke();   // the blanket's fold
+      g.beginPath(); g.arc(186, 146, 6, 0.2, Math.PI - 0.2); g.stroke(); g.beginPath(); g.arc(206, 146, 6, 0.2, Math.PI - 0.2); g.stroke();   // closed eyes
+    }
+  }
+  const pts = model === 'frag' || model === 'lbd' ? [] : shapes[model] || shapes[byClass[def.class]] || shapes.rifle;
   for (let pass = 0; pass < 3 && pts.length; pass++) {
     g.lineWidth = pass === 0 ? 5 : 2;
     g.globalAlpha = pass === 0 ? 0.5 : 0.8;

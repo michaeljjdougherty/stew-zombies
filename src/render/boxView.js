@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import * as T from './textures.js';
 import { buildGun } from './gunModels.js';
 import { mysteryBoxModel } from './propModels.js';
+import { maisyDog } from './gadgetView.js';
 
 const W = 1.05, H = 0.55, D = 0.52;
 
@@ -62,7 +63,7 @@ export class BoxView {
     this.group.add(this.display);
     // guns are built the first time the box shows them
     this.guns = new Map();
-    this.pool = Object.keys(cfg.box.weights).filter((id) => cfg.weapons[id] || id === 'stewBomb');
+    this.pool = Object.keys(cfg.box.weights).filter((id) => cfg.weapons[id] || id === 'stewBomb' || id === 'maisyDog');
     // Erik's bobblehead: what the box gives you when it's about to leave
     this.bobble = bobblehead();
     this.bobble.visible = false;
@@ -112,6 +113,7 @@ export class BoxView {
       obj.rotation.y = Math.PI / 2; // barrel along the box's length
       obj.scale.setScalar(1.25);
     } else if (id === 'stewBomb') obj = stewPot();
+    else if (id === 'maisyDog') { obj = maisyDog(0.5); obj.rotation.y = Math.PI / 2; }
     else return null;
     obj.visible = false;
     this.display.add(obj);
