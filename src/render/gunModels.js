@@ -14,6 +14,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { gltfLoader, fetchGlb as fetchModel } from './gltfLite.js';
 import { addShaderPatch } from './shaderPatch.js';
 import { buildWarHammer } from './warHammer.js';
+import { CONFIG } from '../config.js';
 
 // --- real gun models ----------------------------------------------------------
 // Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
@@ -1180,9 +1181,9 @@ function chopper(m) {
 // A War Hammer in first person (Call of the Crust): the haft up the middle of
 // your hands (both round it, the left above the right), the head up past
 // your shoulder. The hammer itself is src/render/warHammer.js.
-const FP_HAMMER = 0.78;   // its size in your hands (x the real thing)
 function warHammerFp(el) {
   return (m) => {
+    const FP = CONFIG.crust.hammers.fp, FP_HAMMER = FP.scale;
     const g = new THREE.Group();
     const H = buildWarHammer(el, { halo: true });
     H.group.rotation.x = -Math.PI / 2;    // (its haft runs along +Z: stand it up the grip axis)
@@ -1190,13 +1191,13 @@ function warHammerFp(el) {
     g.add(H.group);
     // the hands need something as thick as a grip to close round
     const wrap = new THREE.MeshStandardMaterial({ color: '#2a1a12', roughness: 0.9 });
-    for (const y of [0, 0.2]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 12), wrap); c.position.y = y; g.add(c); }
+    const leftAt = 0.26 * FP_HAMMER;   // (where the left hand closes, up the haft)
+    for (const y of [0, leftAt]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 12), wrap); c.position.y = y; g.add(c); }
     return {
       group: g, parts: { head: H.head }, muzzleAt: [0, 0.82 * FP_HAMMER, 0],
       right: { pos: [0.0, 0.0, 0.0], rot: [0, 0, 0], kind: 'grip' },
-      left: { pos: [0.0, 0.2, 0.0], rot: [0, 0, 0], kind: 'vgrip' },
-      hip: { x: 0.24, y: -0.36, z: -0.55, rx: -0.45, ry: 0.35, rz: 0.3 },
-      aim: { y: -0.3, z: -0.5 },
+      left: { pos: [0.0, leftAt, 0.0], rot: [0, 0, 0], kind: 'vgrip' },
+      hip: { ...FP.hip }, aim: { ...FP.aim },
       hammer: el, hammerH: H,
     };
   };

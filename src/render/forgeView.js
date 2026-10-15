@@ -168,9 +168,10 @@ export class ForgeView {
       if (!on) continue;
       const total = work.kind === 'forge' ? this.cfg.crust.forge.forgeTime : this.cfg.crust.forge.temperTime;
       const k = Math.min(1, work.t / total);
-      // red-hot iron cooling into the element's own glow
-      const hot = new THREE.Color(2.6, 0.7, 0.15), done = new THREE.Color(HAMMER_COLORS[el]).multiplyScalar(2.2);
-      H.glowMat.color.copy(hot).lerp(done, sm(0.55, 1, k));
+      // red-hot iron cooling: plain iron when it's forged, its element coming out when it's tempered
+      H.setHeat(1 - sm(0.55, 1, k));
+      const up = work.kind !== 'forge' && k > 0.6;
+      if (!!H.tempered !== up) H.temper(up ? this.cfg.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el] + '+'].view.camo : null);
       H.group.scale.setScalar(work.kind === 'forge' ? 0.4 + 0.6 * sm(0, 0.6, k) : 1);
       if (H.halo) H.halo.material.opacity = 0.4 + 0.5 * k;
     }
@@ -179,12 +180,12 @@ export class ForgeView {
       const S = this.sockets[el], h = F && F.hammers[el];
       const show = !!(h && h.forged && !h.by);
       S.H.group.visible = show;
-      S.light.level = show ? 1 : 0;
+      S.light.level = show ? (S.tempered ? 1 : 0.3) : 0;
       if (show) {
         S.H.head.rotation.y = Math.sin(this.time * 0.8 + el.length) * 0.08;
         if (S.H.halo) S.H.halo.material.opacity = 0.65 + Math.sin(this.time * 2.2 + el.length) * 0.15;
         if (h.tempered !== S.tempered) { S.tempered = h.tempered; S.H.temper(h.tempered ? this.cfg.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el] + '+'].view.camo : null); }
-        if (Math.random() < dt * 3) { const p = S.H.head.getWorldPosition(V()); this.effects.spawnParticle(p, V((Math.random() - 0.5) * 0.6, 0.6 + Math.random(), (Math.random() - 0.5) * 0.6), { life: 0.8, size: 0.02, color: S.H.color.toArray().map((c) => c * 3), gravity: -0.5, drag: 0.6 }); }
+        if (S.tempered && Math.random() < dt * 3) { const p = S.H.head.getWorldPosition(V()); this.effects.spawnParticle(p, V((Math.random() - 0.5) * 0.6, 0.6 + Math.random(), (Math.random() - 0.5) * 0.6), { life: 0.8, size: 0.02, color: S.H.color.toArray().map((c) => c * 3), gravity: -0.5, drag: 0.6 }); }
       }
     }
     this.updateCores(dt, E);
@@ -240,6 +241,36 @@ export class ForgeView {
     for (const c of this.cores.values()) c.light.pos.set(c.g.position.x, c.g.position.y + 1, c.g.position.z);
   }
 
+  // A tempered hammer coming down: each its own.
+  slamElement(el, p, dir, col, R) {
+    const fx = this.effects;
+    if (el === 'fire') {
+      // a fireball off the head and a ring of flame rolling out along the ground
+      fx.explosion(p, 4.5);
+      if (fx.flames) for (let i = 0; i < 60; i++) {
+        const a = (i / 60) * Math.PI * 2, sp = 6 + Math.random() * 3;
+        fx.flames.emit({ x: p.x, y: p.y + 0.2, z: p.z }, { x: Math.cos(a) * sp, y: 0.6 + Math.random(), z: Math.sin(a) * sp }, { size: 0.9 + Math.random() * 0.5, life: 0.7 + Math.random() * 0.3, rise: 1.6, drag: 2.4 });
+      }
+      for (let i = 0; i < 40; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 7, 2 + Math.random() * 5, (Math.random() - 0.5) * 7), { life: 1 + Math.random(), size: 0.016, color: [5, 1.8, 0.4], gravity: 3, drag: 0.4 });
+    } else if (el === 'ice') {
+      // shards of ice flung up, frost bursting out
+      fx.energyBurst(p, col, 2.4);
+      for (let i = 0; i < 50; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 9, 2 + Math.random() * 5, (Math.random() - 0.5) * 9), { life: 0.8 + Math.random() * 0.5, size: 0.028, color: [1.8, 2.4, 3], gravity: 11, drag: 0.3 });
+    } else if (el === 'wind') {
+      // a ring of dust blown flat out from it, and the gale down the line
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * Math.PI * 2;
+        fx.puff(p.clone().add(V(Math.cos(a) * 0.6, 0.15, Math.sin(a) * 0.6)), { color: 0xb0a890, size: 0.6, grow: 3, life: 0.9, alpha: 0.45, vel: V(Math.cos(a) * 9, 0.4, Math.sin(a) * 9) });
+      }
+      fx.energyBurst(p, col, 2.2);
+    } else if (el === 'lightning') {
+      // a bolt out of the sky onto the head as it lands
+      fx.lightning(p);
+      fx.energyBurst(p, col, 3);
+      if (R) R.flash = Math.max(R.flash || 0, 0.45);
+    }
+  }
+
   // lightning jumping between them
   arc(points, color) {
     const pts = [];
@@ -290,11 +321,11 @@ export class ForgeView {
       case 'titanCore': fx.energyBurst({ x: e.pos.x, y: e.pos.y + 1, z: e.pos.z }, HAMMER_COLORS[e.element], 3); break;
       case 'hammerSlam': {
         const p = V(e.pos.x, e.pos.y + 0.1, e.pos.z), col = HAMMER_COLORS[e.element];
-        // the head hitting the ground
+        // the head hitting the ground: dust and sparks off the iron
         for (let i = 0; i < 6; i++) fx.puff(p.clone().add(V((Math.random() - 0.5) * 1.2, 0.1, (Math.random() - 0.5) * 1.2)), { color: 0x8a8070, size: 0.5, grow: 2.2, life: 0.9, alpha: 0.4, vel: V((Math.random() - 0.5) * 2, 0.6, (Math.random() - 0.5) * 2) });
-        fx.energyBurst(p, col, e.upgraded ? 2.6 : 1.8);
-        if (e.element === 'fire') fx.explosion(p, e.upgraded ? 5 : 3.6);
-        R.shake(e.playerId === R.localId ? 0.55 : 0.25, e.pos, 18);
+        for (let i = 0; i < 14; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 5, 1 + Math.random() * 3, (Math.random() - 0.5) * 5), { life: 0.3 + Math.random() * 0.3, size: 0.012, color: [4, 2.6, 1], gravity: 12, drag: 0.5 });
+        if (e.upgraded) this.slamElement(e.element, p, e.dir, col, R);
+        R.shake(e.playerId === R.localId ? (e.upgraded ? 0.8 : 0.45) : 0.25, e.pos, 18);
         break;
       }
       case 'hammerFreeze': {

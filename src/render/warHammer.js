@@ -397,10 +397,124 @@ function elementFx(el, H, dims) {
     setPower(k, color) {
       st.power = k;
       if (color) { st.color.set(color); st.base.copy(st.color).multiplyScalar(H.glowBoost); H.glowMat.color.copy(st.base); }
-      if (H.headMat) { H.headMat.emissive.copy(st.color); H.headMat.emissiveIntensity = LOOK().headGlow * k; }
     },
   };
 }
+
+
+// ---------------------------------------------------------------------------
+// The tempered iron, element by element (the model's head):
+//   fire       charred black, molten cracks glowing through it, flickering
+//   ice        frosted pale, inside a shell of clear ice
+//   wind       weathered pale grey-green, wind-lines streaming across it
+//   lightning  blackened, violet veins crackling through it
+// ---------------------------------------------------------------------------
+const SKIN_TEX = {};
+function skinTexture(kind) {
+  if (SKIN_TEX[kind]) return SKIN_TEX[kind];
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
+  g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
+  let seed = { cracks: 7, veins: 13, wind: 29 }[kind];
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const glowLine = (pts, w) => {
+    for (const [lw, a] of [[w * 4, 0.12], [w * 2, 0.3], [w, 1]]) {
+      g.globalAlpha = a; g.lineWidth = lw; g.beginPath();
+      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+    }
+    g.globalAlpha = 1;
+  };
+  if (kind === 'cracks') {
+    // molten cracks: jagged lines branching across the iron
+    for (let i = 0; i < 26; i++) {
+      let x = rnd() * S, y = rnd() * S, a = rnd() * Math.PI * 2;
+      const pts = [[x, y]];
+      for (let k = 0; k < 7; k++) { a += (rnd() - 0.5) * 1.3; x += Math.cos(a) * 14; y += Math.sin(a) * 14; pts.push([x, y]); }
+      glowLine(pts, 1.5 + rnd() * 2);
+    }
+  } else if (kind === 'veins') {
+    // lightning veins: forks off forks
+    const fork = (x, y, a, len, w, depth) => {
+      const pts = [[x, y]];
+      for (let k = 0; k < len; k++) { a += (rnd() - 0.5) * 0.9; x += Math.cos(a) * 10; y += Math.sin(a) * 10; pts.push([x, y]); if (depth < 3 && rnd() < 0.18) fork(x, y, a + (rnd() - 0.5) * 1.8, len >> 1, w * 0.6, depth + 1); }
+      glowLine(pts, w);
+    };
+    for (let i = 0; i < 9; i++) fork(rnd() * S, rnd() * S, rnd() * Math.PI * 2, 14, 2.4, 0);
+  } else {
+    // wind-lines: long soft curves streaming one way
+    for (let i = 0; i < 18; i++) {
+      const y0 = rnd() * S, amp = 6 + rnd() * 14, ph = rnd() * 6, len = 80 + rnd() * 140, x0 = rnd() * S;
+      const pts = [];
+      for (let x = 0; x <= len; x += 6) pts.push([x0 + x, y0 + Math.sin(x / 40 + ph) * amp]);
+      glowLine(pts, 1 + rnd() * 1.5);
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  SKIN_TEX[kind] = t;
+  return t;
+}
+// the model's head has no texture coordinates: give it some, projected off whichever way each face points
+function boxUV(geo) {
+  if (geo.attributes.uv) return;
+  const P = geo.attributes.position, N = geo.attributes.normal;
+  if (!N) geo.computeVertexNormals();
+  geo.computeBoundingBox();
+  const sz = geo.boundingBox.getSize(new THREE.Vector3()), mn = geo.boundingBox.min, k = 1.6 / Math.max(sz.x, sz.y, sz.z);
+  const uv = new Float32Array(P.count * 2), n = new THREE.Vector3(), p = new THREE.Vector3();
+  for (let i = 0; i < P.count; i++) {
+    p.fromBufferAttribute(P, i).sub(mn); n.fromBufferAttribute(geo.attributes.normal, i);
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    const [u, v] = ax >= ay && ax >= az ? [p.z, p.y] : ay >= az ? [p.x, p.z] : [p.x, p.y];
+    uv[i * 2] = u * k; uv[i * 2 + 1] = v * k;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function skin(el, H, on) {
+  const m = H.headMat, B = H.headBase, K = LOOK().skin[el];
+  if (H.shell) { H.shell.parent && H.shell.parent.remove(H.shell); H.shell = null; }
+  m.emissiveMap = null; m.color.copy(B.color); m.roughness = B.rough; m.metalness = B.metal;
+  m.emissive.setRGB(0, 0, 0); m.emissiveIntensity = 1;
+  H.skinTick = null;
+  if (on && K) {
+    boxUV(H.headMesh.geometry);
+    if (K.darken) m.color.multiplyScalar(K.darken);
+    if (K.color) m.color.set(K.color);
+    if (K.rough != null) m.roughness = K.rough;
+    if (K.metal != null) m.metalness = K.metal;
+    m.emissive.set(K.glow); m.emissiveIntensity = K.power;
+    if (el === 'fire') {
+      m.emissiveMap = skinTexture('cracks');
+      const [f1, a1, f2, a2] = K.flicker;
+      H.skinTick = (t) => { m.emissiveIntensity = K.power + Math.sin(t * f1) * a1 + Math.sin(t * f2) * a2; };
+    } else if (el === 'lightning') {
+      m.emissiveMap = skinTexture('veins');
+      H.skinTick = (t) => { m.emissiveIntensity = Math.random() < K.flashOdds ? K.flash : K.power + Math.sin(t * 30) * 0.2; };
+    } else if (el === 'wind') {
+      const tx = skinTexture('wind'); m.emissiveMap = tx;
+      H.skinTick = (t) => { tx.offset.x = -t * K.stream; };
+    } else if (el === 'ice') {
+      // a shell of clear ice round the head
+      const ice = new THREE.MeshStandardMaterial({ color: '#cfefff', roughness: 0.05, metalness: 0.1, transparent: true, opacity: K.shellOpacity, emissive: new THREE.Color('#7fd8ff'), emissiveIntensity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+      const o = H.headMesh;
+      o.geometry.computeBoundingBox();
+      const c = o.geometry.boundingBox.getCenter(new THREE.Vector3());
+      const sh = new THREE.Mesh(o.geometry.clone().translate(-c.x, -c.y, -c.z).scale(...K.shell).translate(c.x, c.y, c.z), ice);
+      sh.position.copy(o.position); sh.quaternion.copy(o.quaternion); sh.scale.copy(o.scale);
+      o.parent.add(sh); H.shell = sh;
+      H.skinTick = (t) => { ice.opacity = K.shellOpacity + Math.sin(t * 1.3) * 0.05; };
+    }
+  }
+  m.needsUpdate = true;
+}
+// red-hot from the forge (on top of whatever look it has)
+function applyHeat(H) {
+  if (!H.headMat) return;
+  if (H.heat > 0.001) { H.headMat.emissive.setRGB(1, 0.28, 0.05); H.headMat.emissiveMap = null; H.headMat.emissiveIntensity = H.heat * LOOK().heatGlow; H.headMat.needsUpdate = true; H.heatShown = true; }
+  else if (H.heatShown) { H.heatShown = false; const on = !!H.tempered; skin(H.el, H, on); }
+}
+
+export const temperedColor = (el) => CONFIG.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el]].upgrade.color;
 
 export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, tempered = null } = {}) {
   const M = mats();
@@ -414,17 +528,18 @@ export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, temp
   add(new THREE.CylinderGeometry(0.027, 0.027, 0.3, 10).rotateX(Math.PI / 2), M.leather, 0, 0, 0.0);
   for (let i = 0; i < 6; i++) add(new THREE.TorusGeometry(0.027, 0.003, 4, 12), M.darkIron, 0, 0, -0.13 + i * 0.05);
   add(new THREE.CylinderGeometry(0.032, 0.026, 0.06, 10).rotateX(Math.PI / 2), M.iron, 0, 0, -0.19);            // pommel
-  add(new THREE.SphereGeometry(0.03, 10, 8), glowMat, 0, 0, -0.225, g, false);
+  const pommelGlow = add(new THREE.SphereGeometry(0.03, 10, 8), glowMat, 0, 0, -0.225, g, false);
   add(new THREE.CylinderGeometry(0.03, 0.024, 0.12, 10).rotateX(Math.PI / 2), M.iron, 0, 0, 0.7);               // throat
   for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.008, 0.05, 0.2), M.darkIron, s * 0.024, 0, 0.62);        // langets
   // the head (its centre); the element's iron work sits in `deco`, sized to the 0.34 x 0.17 x 0.17 built head
   const head = new THREE.Group(); head.position.z = LOOK().headAt; g.add(head);
   const deco = new THREE.Group(); head.add(deco);
+  const bands = [];
   add(new THREE.BoxGeometry(0.34, 0.17, 0.17), M.iron, 0, 0, 0, head);
   for (const s of [-1, 1]) {
     add(new THREE.BoxGeometry(0.04, 0.21, 0.21), M.darkIron, s * 0.185, 0, 0, head);              // striking faces
-    add(new THREE.BoxGeometry(0.02, 0.175, 0.175), glowMat, s * 0.1, 0, 0, head);                  // glowing bands (the built head's)
-    add(new THREE.BoxGeometry(0.012, 0.15, 0.15), glowMat, s * 0.207, 0, 0, head);                 // the faces' cores
+    bands.push(add(new THREE.BoxGeometry(0.02, 0.175, 0.175), glowMat, s * 0.1, 0, 0, head));      // glowing bands (the built head's)
+    bands.push(add(new THREE.BoxGeometry(0.012, 0.15, 0.15), glowMat, s * 0.207, 0, 0, head));     // the faces' cores
   }
   const core = add(new THREE.OctahedronGeometry(0.05), glowMat, 0, 0.1, 0, deco, false);
   const D = (geo, mat, x, y, z) => add(geo, mat, x, y, z, deco, false);
@@ -453,36 +568,45 @@ export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, temp
   const grip = new THREE.Object3D(); grip.position.z = 0.3; g.add(grip);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
 
-  const H = { group: g, head, grip, core, glowMat, halo: haloSprite, color: col, glowBoost: glow, fx: null };
-  // the element round the built head first; again round the model's when it's in
-  let fx = elementFx(el, H, new THREE.Vector3(0.34, 0.17, 0.17));
-  head.add(fx.group);
-  H.fx = fx;
-  let power = 1, powerColor = null;
-  H.temper = (upColor) => { power = upColor ? LOOK().temperedPower : 1; powerColor = upColor || HAMMER_COLORS[el]; H.fx.setPower(power, powerColor); };
-  if (tempered) H.temper(tempered);
+  const H = { el, group: g, head, grip, core, glowMat, halo: haloSprite, color: col, glowBoost: glow, fx: null, tempered: null, heat: 0 };
+  // Forged, it's plain iron; tempered, its element comes out (the iron's own
+  // look, the details worked into it, and the element going off round it).
+  let fx = null, dims = new THREE.Vector3(0.34, 0.17, 0.17), skinOn = null;
+  const refresh = () => {
+    const on = !!H.tempered;
+    deco.visible = on; pommelGlow.visible = on;
+    for (const b of bands) b.visible = on && !H.headMesh;
+    if (haloSprite) haloSprite.visible = on;
+    if (on && !fx) { fx = elementFx(el, H, dims); head.add(fx.group); H.fx = fx; }
+    if (fx) { fx.group.visible = on; if (on) fx.setPower(LOOK().temperedPower, H.tempered); }
+    if (H.headMat && skinOn !== on) { skinOn = on; skin(el, H, on); }
+    applyHeat(H);
+  };
+  H.temper = (upColor) => { H.tempered = upColor || null; refresh(); };
+  // red-hot from the forge (0..1), cooling as Pit works it
+  H.setHeat = (k) => { H.heat = k; applyHeat(H); };
+  H.tempered = tempered || null;
+  refresh();
   hammerModel().then((T0) => {
     if (!T0) return;
     const m = T0.group.clone(true);
     g.add(m);
-    // the head's iron lit from inside by its element (its own copy of the material)
+    // the head: its own copy of the material (its look changes when it's tempered)
     m.traverse((o) => {
       if (!o.isMesh || !/^Cube/.test(o.name)) return;
       o.material = o.material.clone();
-      o.material.emissive = col.clone();
-      o.material.emissiveIntensity = LOOK().headGlow;
-      H.headMat = o.material;
+      H.headMat = o.material; H.headMesh = o;
+      H.headBase = { color: o.material.color.clone(), rough: o.material.roughness, metal: o.material.metalness };
+      o.onBeforeRender = () => { if (H.skinTick) H.skinTick(now()); };
     });
     for (const o of proc) o.visible = false;
     head.position.set(T0.headOffset.x, T0.headOffset.y, LOOK().headAt);
-    const hs = T0.headSize;
-    deco.scale.set(hs.x / 0.34, hs.y / 0.17, hs.z / 0.17);
-    if (haloSprite) haloSprite.scale.setScalar(Math.max(hs.x, 0.34) * 2);
-    head.remove(fx.group);
-    fx = elementFx(el, H, hs);
-    head.add(fx.group);
-    H.fx = fx;
-    fx.setPower(power, powerColor);
+    dims = T0.headSize;
+    deco.scale.set(dims.x / 0.34, dims.y / 0.17, dims.z / 0.17);
+    if (haloSprite) haloSprite.scale.setScalar(Math.max(dims.x, 0.34) * 2);
+    if (fx) { head.remove(fx.group); fx = null; }
+    skinOn = null;
+    refresh();
   });
   return H;
 }

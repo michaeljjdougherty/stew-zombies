@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { Teammate } from './teammates.js';
 import { buildEvilZach } from './evilZach.js';
-import { buildWarHammer, hammerClock } from './warHammer.js';
+import { buildWarHammer, hammerClock, temperedColor } from './warHammer.js';
 import { maisyDog, lbdBaby, blackHole, updateHole } from './gadgetView.js';
 import { ridePoint } from '../sim/rides.js';
 import { makeZombie } from '../sim/zombies.js';
@@ -442,7 +442,8 @@ function perkFront(pk) {
 }
 
 // (the War Hammers: src/render/warHammer.js, the same ones as in the game)
-const buildHammer = (el) => buildWarHammer(el);
+// (the trailer shows them tempered, their elements going)
+const buildHammer = (el) => buildWarHammer(el, { tempered: temperedColor(el) });
 
 // =============================================================================
 // The shots. enter(T) sets the stage; frame(T, u, d, k): u seconds into the

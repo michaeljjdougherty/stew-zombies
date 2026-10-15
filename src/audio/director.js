@@ -415,9 +415,12 @@ export class SoundDirector {
       case 'titanWave': A.play(e.cleared ? S.roundEndSting : S.roundStartSting, {}, { bus: 'music', gain: 0.9, reverb: 0.5 }); break;
       case 'titanDown': A.play(S.titanRoar, { f0: 34, dur: 3.5 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 40, gain: 1.5, reverb: 0.9 }); A.play(S.explosion, { big: 2 }, { pos: e.pos, ref: 30, gain: 1.2, reverb: 0.8, delay: 1.2 }); break;
       // --- Call of the Crust: the War Hammers, Pit's forge, Big Evil Zach
-      case 'hammerSlam': A.play(S.hammerImpact, { element: e.element }, e.playerId === this.localId ? { gain: 1.0, reverb: 0.4 } : { pos: e.pos, ref: 4, reverb: 0.5 }); break;
-      case 'hammerChain': A.play(S.thunder, { near: 0.35 }, { pos: e.points[0], ref: 6, gain: 0.6, reverb: 0.4 }); break;
-      case 'zombieShatter': A.play(S.hammerImpact, { element: 'ice' }, { pos: e.pos, ref: 3, gain: 0.35, reverb: 0.3 }); break;
+      case 'hammerSlam': A.play(S.hammerImpact, { element: e.element, upgraded: !!e.upgraded }, e.playerId === this.localId ? { gain: 1.0, reverb: 0.4 } : { pos: e.pos, ref: 4, reverb: 0.5 }); break;
+      // (the tempered Lightning Hammer's thunderclap is already in its slam)
+      case 'hammerChain': if (!A.hasSample('g_ham_lightning')) A.play(S.thunder, { near: 0.35 }, { pos: e.points[0], ref: 6, gain: 0.6, reverb: 0.4 }); break;
+      case 'zombieShatter': A.play(S.iceShatter, {}, { pos: e.pos, ref: 3, gain: 0.7, reverb: 0.3 }); break;
+      case 'zombieFrozen': A.play(S.iceShatter, { gain: 0.3, rate: 1.5 }, { pos: e.pos, ref: 3, reverb: 0.3 }); break;
+      case 'hammerZap': A.play(S.lightningZap, {}, { pos: e.points[1], ref: 4, gain: 0.8, reverb: 0.3 }); break;
       case 'forgeStrike': { const f = sim.mapData.forge; if (f) A.play(S.anvilClang, { pitch: 0.94 + (e.n % 3) * 0.04 }, { pos: { x: f.pit.x + 1, y: 1.2, z: f.pit.z }, ref: 3, reverb: 0.6, gain: 0.8 }); break; }
       case 'corePicked': case 'coreGiven': A.play(S.stewItemGet, { count: 1 }, { gain: 0.7, reverb: 0.4, bus: 'music' }); break;
       case 'hammerForged': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.5, bus: 'music' }); break;

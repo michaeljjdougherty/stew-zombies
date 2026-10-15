@@ -1961,7 +1961,46 @@ export function hammerSwing(A, out, t, p = {}) {
 }
 
 // ...and its head hitting the ground: a deep thud, iron ringing, then the element.
+// A War Hammer coming down. Recorded: a heavy iron door slammed (every hammer),
+// and when it's tempered a deep bass hit under it and its element on top
+// (a big fire whooshing up, ice cracking, a gust of wind, a thunderclap).
+const HAMMER_ELEMENT = {
+  fire: { key: 'g_ham_fire', gain: 0.7 },
+  ice: { key: 'g_ham_ice', gain: 1.0 },
+  wind: { key: 'g_ham_wind', gain: 0.75 },
+  lightning: { key: 'g_ham_lightning', gain: 0.75 },
+};
 export function hammerImpact(A, out, t, p = {}) {
+  if (!A.hasSample('g_ham_hit')) return hammerImpactSynth(A, out, t, p);
+  let d = sample(A, out, t, { key: 'g_ham_hit', gain: p.upgraded ? 0.7 : 0.8, rate: p.upgraded ? 0.94 : 1 });
+  if (p.upgraded) {
+    d = Math.max(d, sample(A, out, t, { key: 'g_ham_bass', gain: 0.85 }));
+    const E = HAMMER_ELEMENT[p.element];
+    if (E && A.hasSample(E.key)) d = Math.max(d, sample(A, out, t + 0.03, { key: E.key, gain: E.gain }));
+  }
+  return Math.max(d, 1.3);
+}
+
+// A frozen one breaking: ice cracking, higher and quieter.
+export function iceShatter(A, out, t, p = {}) {
+  if (A.hasSample('g_ham_ice')) return sample(A, out, t, { key: 'g_ham_ice', gain: p.gain ?? 0.5, rate: p.rate ?? 1.25 });
+  for (let i = 0; i < 6; i++) { const th = t + i * 0.03; const c = A.osc('sine', 2400 + Math.random() * 2600, th, 0.3); const cg = A.gain(0); A.env(cg, th, 0.001, 0.25, 0.06); c.connect(cg); cg.connect(out); }
+  return 0.5;
+}
+
+// The ball of lightning striking: a short electric crack.
+export function lightningZap(A, out, t) {
+  for (let i = 0; i < 4; i++) {
+    const th = t + i * 0.025 + Math.random() * 0.01;
+    const z = A.noiseSource('white', th, 0.04); const hp = A.filter('highpass', 2200, 0.7); const zg = A.gain(0); A.env(zg, th, 0.001, 0.035, 0.45);
+    z.connect(hp); hp.connect(zg); zg.connect(out);
+  }
+  const b = A.osc('sawtooth', 110, t, 0.2); b.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+  const bl = A.filter('lowpass', 900, 3); const bg = A.gain(0); A.env(bg, t, 0.001, 0.15, 0.2); b.connect(bl); bl.connect(bg); bg.connect(out);
+  return 0.4;
+}
+
+function hammerImpactSynth(A, out, t, p = {}) {
   const el = p.element || 'fire';
   const o = A.osc('sine', 95, t, 0.5);
   o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
@@ -1974,6 +2013,7 @@ export function hammerImpact(A, out, t, p = {}) {
   for (const [f, a] of [[310, 0.12], [747, 0.08], [1290, 0.05]]) {
     const r = A.osc('sine', f, t, 1.2); const rg = A.gain(0); A.env(rg, t, 0.001, 1.0, a); r.connect(rg); rg.connect(out);
   }
+  if (!p.upgraded) return 1.3;
   if (el === 'ice') {
     for (let i = 0; i < 6; i++) { const th = t + 0.04 + i * 0.05; const c = A.osc('sine', 2200 + Math.random() * 2600, th, 0.5); const cg = A.gain(0); A.env(cg, th, 0.001, 0.45, 0.07); c.connect(cg); cg.connect(out); }
     const w = A.noiseSource('white', t + 0.05, 0.8); const hp = A.filter('highpass', 3500, 0.7); const wg = A.gain(0); A.env(wg, t + 0.05, 0.05, 0.7, 0.25); w.connect(hp); hp.connect(wg); wg.connect(out);

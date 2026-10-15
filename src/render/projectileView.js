@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { gunMaterials } from './gunModels.js';
 import * as T from './textures.js';
 import { maisyDog, lbdBaby, blackHole, updateHole } from './gadgetView.js';
+import { HammerFxView, HAMMER_FX } from './hammerFxView.js';
 
 const _d = new THREE.Vector3();
 const FWD = new THREE.Vector3(0, 0, -1);
@@ -25,6 +26,7 @@ export class ProjectileViews {
     this.time = 0;
     this.glowTex = T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
     this.closing = [];   // black holes snapping shut (their dog gone with them)
+    this.hammerFx = new HammerFxView(effects, cfg);
   }
 
   // The Maisy Dog: tumbling through the air; on the floor, she sits up and
@@ -94,8 +96,10 @@ export class ProjectileViews {
     const g = new THREE.Group();
     const m = this.mats;
     const add = (geo, mat, x = 0, y = 0, z = 0) => { const q = new THREE.Mesh(geo, mat); q.position.set(x, y, z); g.add(q); return q; };
-    let beep = null, spin = null, glow = null;
-    if (e.ptype === 'fucci') {
+    let beep = null, spin = null, glow = null, fx = null;
+    if (HAMMER_FX.has(e.ptype)) {
+      fx = this.hammerFx.build(e.ptype, g);
+    } else if (e.ptype === 'fucci') {
       const up = this.cfg && e.weapon && this.cfg.weapons[e.weapon] && this.cfg.weapons[e.weapon].upgraded;
       const col = up ? new THREE.Color(3.2, 0.6, 1.8) : new THREE.Color(3.2, 2.4, 0.7);
       const ringMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -183,7 +187,7 @@ export class ProjectileViews {
       add(new THREE.BoxGeometry(0.02, 0.03, 0.01), m.darkMetal, 0, 0, 0.025);
     }
     this.scene.add(g);
-    return { g, type: e.ptype, beep, spinner: spin, glow, stuck: false, spin: 0, trailT: 0, t: 0 };
+    return { g, type: e.ptype, beep, spinner: spin, glow, fx, stuck: false, spin: 0, trailT: 0, t: 0 };
   }
 
   beginStep(sim) {
@@ -203,6 +207,8 @@ export class ProjectileViews {
         v.stuck = true;
         if (e.dir) { _d.set(e.dir.x, e.dir.y, e.dir.z).normalize(); v.g.quaternion.setFromUnitVectors(FWD, _d); }
       }
+    } else if (e.type === 'hammerZap') {
+      this.hammerFx.zap(this.scene, e.points);
     } else if (e.type === 'projectileGone') {
       const v = this.views.get(e.id);
       // a beam that hit something: a flash and sparks where it landed
@@ -220,6 +226,7 @@ export class ProjectileViews {
   update(sim, dt, alpha) {
     this.time += dt;
     this.updateClosing(dt);
+    this.hammerFx.updateArcs(dt);
     const live = new Map(sim.projectiles.map((p) => [p.id, p]));
     for (const [id, v] of this.views) {
       const pr = live.get(id);
@@ -228,6 +235,7 @@ export class ProjectileViews {
       if (prev && !v.stuck) v.g.position.lerpVectors(prev, _d.set(pr.pos.x, pr.pos.y, pr.pos.z), alpha);
       else v.g.position.set(pr.pos.x, pr.pos.y, pr.pos.z);
       v.t += dt;
+      if (v.fx) { this.hammerFx.update(v.type, v, v.g, dt, this.time); continue; }
       if (v.type === 'saw') {
         v.spinner.rotation.y -= dt * 40;
         // the blade flies flat, tilted a little toward its heading
@@ -284,6 +292,7 @@ export class ProjectileViews {
     for (const v of this.views.values()) { this.scene.remove(v.g); if (v.hole) this.scene.remove(v.hole); }
     for (const c of this.closing) this.scene.remove(c.h);
     this.closing = [];
+    this.hammerFx.clear();
     this.views.clear(); this.prev.clear();
   }
 }

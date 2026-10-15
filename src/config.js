@@ -1480,10 +1480,32 @@ export const CONFIG = {
       // haft's butt sits at z `butt` and the head's centre at z `headAt` (metres),
       // with its element going off round the head. A tempered hammer's element
       // runs `temperedPower` times harder.
+      // in your hands, first person: its size (x the real thing) and where it sits
+      fp: { scale: 0.56, hip: { x: 0.34, y: -0.5, z: -0.6, rx: -0.4, ry: 0.3, rz: 0.32 }, aim: { y: -0.44, z: -0.58 } },
+      // their recorded sounds, one file cut up: [start s, length s]
+      sound: {
+        url: 'assets/sfx/gear/g_hammers.mp3',
+        segs: { g_ham_hit: [0.2, 1.725], g_ham_bass: [2.325, 1.2], g_ham_fire: [3.925, 2.2], g_ham_ice: [6.62, 0.58], g_ham_wind: [7.625, 2.0], g_ham_lightning: [10.025, 2.85] },
+      },
       look: {
         model: 'assets/props/hammer.glb', butt: -0.22, headAt: 0.82,
         temperedPower: 1.8,
-        headGlow: 0.05,        // the iron's own glow in its element's color (x temperedPower when tempered)
+        // the head's iron once it's tempered (forged, it's the model's own plain iron)
+        skin: {
+          fire: { darken: 0.4, rough: 0.85, glow: '#ff5a10', power: 1.6, flicker: [7, 0.35, 17, 0.2] },        // charred, molten cracks
+          lightning: { darken: 0.35, metal: 0.9, rough: 0.35, glow: '#b583ff', power: 1.1, flash: 3.2, flashOdds: 0.12 },  // black, violet veins
+          wind: { color: '#a9b8b0', metal: 0.6, rough: 0.55, glow: '#d8fff0', power: 0.7, stream: 0.35 },      // weathered, wind-lines streaming
+          ice: { color: '#bcd8ea', metal: 0.3, rough: 0.25, glow: '#2a6a90', power: 0.35, shell: [1.09, 1.12, 1.12], shellOpacity: 0.3 },  // frosted, in clear ice
+        },
+        heatGlow: 2.2,         // red-hot from the forge
+        // what each tempered hammer leaves behind (src/render/hammerFxView.js)
+        linger: {
+          fadeIn: 0.35, fadeOut: 1.0,
+          fire: { flamesPerSec: 70, emberPerSec: 30, flameSize: 0.9, flameLife: 0.9, discGlow: 1.6 },
+          ice: { snowPerSec: 90, mistPerSec: 6, spikes: 9, spikeHeight: [0.5, 1.3], swirl: 2.2 },
+          wind: { height: 6, radius: [0.35, 2.6], spin: 7, dustPerSec: 14, debrisPerSec: 40 },
+          lightning: { core: 0.16, glow: 1.6, arcs: 4, arcReach: 0.9, sparksPerSec: 30 },
+        },
         fire: { flames: 60, embers: 22, rise: 0.26, rate: 1.9, flameSize: 0.17, emberSize: 0.022, flicker: 0.35 },
         ice: { mist: 26, flakes: 22, orbit: 0.22, sink: 0.22, rate: 0.35, mistSize: 0.2, mistGlow: 0.22, flakeSize: 0.02 },
         wind: { motes: 40, radius: 0.2, spin: 5.5, drift: 0.5, size: 0.028, ribbons: 2, ribbonSpin: 3.2, ribbonGlow: 0.32 },
