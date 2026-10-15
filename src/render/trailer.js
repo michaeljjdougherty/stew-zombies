@@ -35,12 +35,19 @@ export function trailerTimes(cfg) {
   return { beat: B, shots, cards };
 }
 
+// (The same machinery plays the Crust's cutscenes, src/render/crustFilms.js:
+// pass a film { C: its timings, lines and cues, shots: its choreography,
+// crew: who's in it }. A film's crew can be empty-handed: a null in C.loadout.)
 export class Trailer {
-  constructor(renderer, sim, cfg) {
+  constructor(renderer, sim, cfg, film = null) {
     this.R = renderer;
     this.sim = sim;
     this.cfg = cfg;
-    this.C = cfg.trailer;
+    this.spec = film;
+    this.C = film ? film.C : cfg.trailer;
+    this.shots = film ? film.shots : SHOTS;
+    this.crewIds = film ? film.crew : CREW;
+    this.lineAt = 0; this.cueAt = 0;
     this.times = trailerTimes(this.C);
     this.t = 0;
     this.done = false;
@@ -61,8 +68,9 @@ export class Trailer {
     this.zs = [];
     // the crew, each with their gun
     this.crew = {};
-    for (const id of CREW) {
-      const p = { id: 'tr_' + id, name: id, character: id, alive: true, downed: null, crouching: false, sprinting: false, melee: { timer: 0 }, drinking: null, throwing: null, loadout: { current: 0, reloading: false, slots: [{ id: this.C.loadout[id] }] } };
+    for (const id of this.crewIds) {
+      const gun = this.C.loadout[id];
+      const p = { id: 'tr_' + id, name: id, character: id, alive: true, downed: null, crouching: false, sprinting: false, melee: { timer: 0 }, drinking: null, throwing: null, unarmed: !gun, loadout: { current: 0, reloading: false, slots: [{ id: gun || 'M1912' }] } };
       const tm = new Teammate(this.group, p, cfg);
       tm.tag.visible = false;
       this.crew[id] = { id, p, tm, pos: V(0, -200, 0), yaw: 0, pitch: 0, on: false, slide: 0, hammer: null };
@@ -110,6 +118,8 @@ export class Trailer {
     a.p.dive = o.dive ? { phase: 'air' } : null;
     a.p.ride = o.zip ? { zip: true } : null;
     a.p.launch = o.launch ? { t: 0 } : null;
+    a.p.gesture = o.gesture || null;
+    if (o.unarmed != null) a.p.unarmed = o.unarmed;
     if (o.yaw != null) a.yaw = o.yaw;
     a.pitch = o.pitch ?? 0;
     a.p.sprinting = !!o.sprint;
@@ -248,7 +258,7 @@ export class Trailer {
   // tied to the map's), dark until each flickers on.
   buildPerks() {
     const spots = [[116.4, -21.5], [119.8, -21.5]];
-    this.C.perks.forEach((pk, i) => {
+    (this.C.perks || []).forEach((pk, i) => {
       const [x, z] = spots[i];
       const g = new THREE.Group();
       const col = new THREE.Color(pk.color);
@@ -306,6 +316,8 @@ export class Trailer {
   }
 
   skip() {
+    // a film: straight to its end
+    if (this.spec) { this.t = this.C.end; this.lineAt = (this.C.lines || []).length; this.cueAt = (this.C.cues || []).length; this.done = true; return; }
     if (this.t >= this.C.end - 3) return;
     this.t = this.times.cards.find((c) => c.style === 'title').t0;
     if (this.onSeek) this.onSeek(this.t);
@@ -339,8 +351,13 @@ export class Trailer {
     this.black = sh.id === 'black';
     this.film.intensity = 0;
     this.zachLight.intensity = 14; this.zachLight.distance = 12;
-    const fn = SHOTS[sh.id];
+    const fn = this.shots[sh.id];
+    if (this.spec && this.spec.always) this.spec.always(this, t);
     if (fn && fn.frame) fn.frame(this, this.u, d, Math.min(1, this.u / d));
+    // a film's lines and sound cues, as their moments pass
+    const LN = this.C.lines || [], CU = this.C.cues || [];
+    while (this.lineAt < LN.length && t >= LN[this.lineAt].at) { const l = LN[this.lineAt++]; if (this.onLine && t < l.at + 1) this.onLine(l.who, l.text, l.dur); }
+    while (this.cueAt < CU.length && t >= CU[this.cueAt].at) { const c = CU[this.cueAt++]; if (this.onCue && t < c.at + 1) this.onCue(c.name); }
     // (the key light aims where the camera looks)
     this.film.target.position.copy(this.cam.position).add(this.cam.getWorldDirection(this.tmpD || (this.tmpD = new THREE.Vector3())).multiplyScalar(6));
     this.R.renderer.toneMappingExposure = this.C.exposure ?? 1.5;
@@ -353,6 +370,8 @@ export class Trailer {
       a.tm.update(a.p, a.pos, a.yaw, a.pitch, dt * this.slow, time, this.cam);
       a.tm.tag.visible = false;
       const k = a.tm.k;
+      if (a.spin) a.tm.root.rotation.set(a.spin.x || 0, a.spin.y ?? a.tm.root.rotation.y, a.spin.z || 0, 'YXZ');
+      if (a.scale != null) a.tm.root.scale.setScalar(a.scale);
       if (a.slide) {
         // a slide: down low, leaning back, the front leg out
         k.hips.position.y = 0.42; k.torso.rotation.x = -0.45;
@@ -401,7 +420,7 @@ export class Trailer {
     const sh = this.times.shots[ix];
     this.shot = sh;
     // a hard cut: a clean slate
-    for (const id of CREW) { this.takeHammer(id); this.hide(id); this.crew[id].slide = 0; this.crew[id].p.dive = null; this.crew[id].p.ride = null; this.crew[id].p.loadout.slots[0].id = this.C.loadout[id]; }
+    for (const id of this.crewIds) { const a = this.crew[id]; this.takeHammer(id); this.hide(id); a.slide = 0; a.spin = null; a.p.dive = null; a.p.ride = null; a.p.launch = null; a.p.gesture = null; a.p.unarmed = !this.C.loadout[id]; a.p.loadout.slots[0].id = this.C.loadout[id] || 'M1912'; }
     if (this.titanOn) this.wakeTitan(null);
     this.forgeOn = false;
     if (this.sim.crustEgg) this.sim.crustEgg.forge.work = null;
@@ -417,7 +436,7 @@ export class Trailer {
     this.fired.clear();
     this.shake = 0;
     this.u = 0;
-    const fn = SHOTS[sh.id];
+    const fn = this.shots[sh.id];
     if (fn && fn.enter) fn.enter(this, sh);
   }
 
@@ -430,7 +449,8 @@ export class Trailer {
     this.cullFar(0);
     this.clearZombies();
     this.fx.clear();
-    for (const id of CREW) { this.takeHammer(id); this.crew[id].tm.dispose(this.group); }
+    for (const id of this.crewIds) { this.takeHammer(id); this.crew[id].tm.dispose(this.group); }
+    if (this.spec && this.spec.dispose) this.spec.dispose(this);
     this.scene.remove(this.group);
     this.map.removeVirtualLight(this.zachLight);
     for (const pv of this.perks) this.map.removeVirtualLight(pv.v);

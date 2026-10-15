@@ -181,48 +181,57 @@ export class Teammate {
       k.torso.rotation.x = lerp(k.torso.rotation.x, -0.06, this.zip);
     }
 
-    // --- the gun: held where they're looking, lowered to sprint or reload
     const pt = Math.max(-1.1, Math.min(1.1, pitch));
-    const lean = k.torso.rotation.x + k.hips.rotation.x + 1.3 * this.dive;   // the gun hangs off the torso: undo its lean (and a dive's)
-    const sh = k.armR.shoulder.position, shY = k.armR.shoulderY;
-    const lower = 1.35 - this.raise;                         // 0 aiming .. ~0.65 sprinting
-    const H = this.holder;
-    if (this.pistol) H.position.set(sh.x * 0.25, shY - 0.1 - lower * 0.12, 0.4 - lower * 0.12);
-    else H.position.set(sh.x * 0.55, shY - 0.15 - lower * 0.1, 0.27 - lower * 0.06);
-    H.rotation.set(-(pt + lean) + lower * 0.9, lower * 0.4, w.reloading ? 0.5 : 0);
-    if (p.melee && p.melee.timer > 0) H.rotation.x += 0.5;
-    this.root.updateMatrixWorld(true);
-    // right hand on the grip, left hand under the barrel (or wrapped round a pistol)
-    const grip = H.position.clone();
-    const fore = k.torso.worldToLocal(this.leftGrip.getWorldPosition(new THREE.Vector3()));
-    const fwd = new THREE.Vector3(0, 0, 1).applyEuler(H.rotation);
-    const solR = solveArm(k.armR, grip, new THREE.Vector3(-0.9, -1, -0.3));
-    applyArm(k.armR, solR, orientHand(k.armR, solR.q, solR.bend, new THREE.Vector3(0.8, -0.7, 0.1).add(fwd.clone().multiplyScalar(0.2)), new THREE.Vector3(1, 0, 0)), 1);
-    if (this.handle && this.zip <= 0.5) this.handle.visible = false;
-    if (this.zip > 0.5) {
-      // the left hand up on the zipline's handle, over their head
-      const up = new THREE.Vector3(k.armL.shoulder.position.x * 0.5, k.armL.shoulderY + 0.62, 0.06);
-      const solL = solveArm(k.armL, up, new THREE.Vector3(1, 0, -0.4));
-      applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)), 1);
-      if (!this.handle) {
-        const iron = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.5, metalness: 0.7 });
-        const red = new THREE.MeshStandardMaterial({ color: '#8a1c14', roughness: 0.6 });
-        this.handle = new THREE.Group();
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 8).rotateZ(Math.PI / 2), red); this.handle.add(bar);
-        const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 5), iron); strap.position.y = 0.15; this.handle.add(strap);
-        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 12), iron); wheel.position.y = 0.32; wheel.rotation.y = Math.PI / 2; this.handle.add(wheel);
-        k.torso.add(this.handle);
-      }
-      this.handle.position.copy(up).add(new THREE.Vector3(0, 0.04, 0));
-      this.handle.visible = true;
-    } else if (!(p.melee && p.melee.timer > 0)) {
+    // empty-handed (a cutscene: someone with no gun out), and what their arms are doing
+    if (p.unarmed) {
+      if (this.holder) this.holder.visible = false;
       if (this.handle) this.handle.visible = false;
-      const solL = solveArm(k.armL, fore, new THREE.Vector3(0.6, -1, -0.2));
-      applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(-1, 0.1, 0).add(fwd.clone().multiplyScalar(0.4)), new THREE.Vector3(0, 1, 0)), 1);
+      this.gesture(p, time);
     } else {
-      // knife: a quick jab with the left arm
-      const m = Math.sin(Math.min(1, p.melee.timer / 0.5) * Math.PI);
-      k.armL.shoulder.rotation.set(-1.5 * m, 0, 0.1); k.armL.elbow.rotation.set(-0.1, 0, 0);
+      if (this.holder) this.holder.visible = true;
+      // --- the gun: held where they're looking, lowered to sprint or reload
+      const lean = k.torso.rotation.x + k.hips.rotation.x + 1.3 * this.dive;   // the gun hangs off the torso: undo its lean (and a dive's)
+      const sh = k.armR.shoulder.position, shY = k.armR.shoulderY;
+      const lower = 1.35 - this.raise;                         // 0 aiming .. ~0.65 sprinting
+      const H = this.holder;
+      if (this.pistol) H.position.set(sh.x * 0.25, shY - 0.1 - lower * 0.12, 0.4 - lower * 0.12);
+      else H.position.set(sh.x * 0.55, shY - 0.15 - lower * 0.1, 0.27 - lower * 0.06);
+      H.rotation.set(-(pt + lean) + lower * 0.9, lower * 0.4, w.reloading ? 0.5 : 0);
+      if (p.melee && p.melee.timer > 0) H.rotation.x += 0.5;
+      this.root.updateMatrixWorld(true);
+      // right hand on the grip, left hand under the barrel (or wrapped round a pistol)
+      const grip = H.position.clone();
+      const fore = k.torso.worldToLocal(this.leftGrip.getWorldPosition(new THREE.Vector3()));
+      const fwd = new THREE.Vector3(0, 0, 1).applyEuler(H.rotation);
+      const solR = solveArm(k.armR, grip, new THREE.Vector3(-0.9, -1, -0.3));
+      applyArm(k.armR, solR, orientHand(k.armR, solR.q, solR.bend, new THREE.Vector3(0.8, -0.7, 0.1).add(fwd.clone().multiplyScalar(0.2)), new THREE.Vector3(1, 0, 0)), 1);
+      if (this.handle && this.zip <= 0.5) this.handle.visible = false;
+      if (this.zip > 0.5) {
+        // the left hand up on the zipline's handle, over their head
+        const up = new THREE.Vector3(k.armL.shoulder.position.x * 0.5, k.armL.shoulderY + 0.62, 0.06);
+        const solL = solveArm(k.armL, up, new THREE.Vector3(1, 0, -0.4));
+        applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)), 1);
+        if (!this.handle) {
+          const iron = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.5, metalness: 0.7 });
+          const red = new THREE.MeshStandardMaterial({ color: '#8a1c14', roughness: 0.6 });
+          this.handle = new THREE.Group();
+          const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 8).rotateZ(Math.PI / 2), red); this.handle.add(bar);
+          const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 5), iron); strap.position.y = 0.15; this.handle.add(strap);
+          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 12), iron); wheel.position.y = 0.32; wheel.rotation.y = Math.PI / 2; this.handle.add(wheel);
+          k.torso.add(this.handle);
+        }
+        this.handle.position.copy(up).add(new THREE.Vector3(0, 0.04, 0));
+        this.handle.visible = true;
+      } else if (!(p.melee && p.melee.timer > 0)) {
+        if (this.handle) this.handle.visible = false;
+        const solL = solveArm(k.armL, fore, new THREE.Vector3(0.6, -1, -0.2));
+        applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, new THREE.Vector3(-1, 0.1, 0).add(fwd.clone().multiplyScalar(0.4)), new THREE.Vector3(0, 1, 0)), 1);
+      } else {
+        // knife: a quick jab with the left arm
+        const m = Math.sin(Math.min(1, p.melee.timer / 0.5) * Math.PI);
+        k.armL.shoulder.rotation.set(-1.5 * m, 0, 0.1); k.armL.elbow.rotation.set(-0.1, 0, 0);
+      }
+
     }
 
     // look up and down with the head too
@@ -235,6 +244,22 @@ export class Teammate {
     const sc = Math.max(0.45, Math.min(2.8, dist * 0.055));
     this.tag.scale.set(sc * 2, sc * 0.5, 1);
     this.tagMat.opacity = downed ? 1 : Math.max(0.35, Math.min(0.95, 1.2 - dist / 40));
+  }
+
+  // Arms with no gun in them: hanging, or cheering (both up, bouncing),
+  // reaching (both straight out: a shove), flailing (falling), pointing.
+  gesture(p, time) {
+    const k = this.k, G = p.gesture;
+    const arm = (a, x, z, el) => { a.shoulder.rotation.set(x, 0, z * a.side); a.elbow.rotation.set(el, 0, 0); };
+    if (G === 'cheer') {
+      const b = Math.sin(time * 9 + this.k.phase * 7);
+      arm(k.armL, -2.7 - b * 0.15, 0.35, -0.3); arm(k.armR, -2.7 + b * 0.15, 0.35, -0.3);
+      this.root.position.y += Math.max(0, b) * 0.08;
+    } else if (G === 'reach') { arm(k.armL, -1.5, 0.05, -0.05); arm(k.armR, -1.5, 0.05, -0.05); }
+    else if (G === 'flail') { arm(k.armL, -2.4 + Math.sin(time * 11) * 0.6, 0.6, -0.4); arm(k.armR, -2.4 + Math.sin(time * 13 + 1) * 0.6, 0.6, -0.4); }
+    else if (G === 'point') { arm(k.armR, -1.55, 0.1, 0); arm(k.armL, 0.05, 0.08, -0.15); }
+    else if (G === 'bars') { arm(k.armL, -1.9, 0.25, -0.9); arm(k.armR, -1.9 - Math.max(0, Math.sin(time * 7)) * 0.25, 0.25, -0.9); }
+    else { arm(k.armL, 0.05, 0.08, -0.15); arm(k.armR, 0.05, 0.08, -0.15); }
   }
 
   muzzle() {

@@ -27,6 +27,7 @@ import { QuestView } from './questView.js';
 import { Ending } from './ending.js';
 import { Intro } from './intro.js';
 import { Trailer } from './trailer.js';
+import { INTRO_SHOTS, ENDING_SHOTS, restoreCage } from './crustFilms.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 import { applyQuality, AutoRes } from './quality.js';
@@ -450,6 +451,15 @@ export class GameRenderer {
   // The Call of the Crust trailer, through the same slot.
   startTrailer() {
     this.ending = new Trailer(this, this.sim, this.cfg);
+    this.endingScene = this.scene;
+    return this.ending;
+  }
+
+  // One of Call of the Crust's cutscenes (src/render/crustFilms.js), on the trailer's machinery.
+  startFilm(name) {
+    const C = this.cfg.crustFilms[name];
+    const film = { C, crew: C.crew, shots: name === 'intro' ? INTRO_SHOTS : ENDING_SHOTS, always: (T) => { T.forgeOn = true; }, dispose: restoreCage };
+    this.ending = new Trailer(this, this.sim, this.cfg, film);
     this.endingScene = this.scene;
     return this.ending;
   }

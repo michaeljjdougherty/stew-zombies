@@ -15,6 +15,7 @@ import * as TX from './textures.js';
 import { buildCharacter, idleCharacter } from './characters.js';
 import { buildWarHammer, HAMMER_COLORS } from './warHammer.js';
 import { CORE_ELEMENT } from '../sim/forge.js';
+import { CrustCage } from './crustCage.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const ELS = ['wind', 'lightning', 'ice', 'fire'];
@@ -32,6 +33,8 @@ export class ForgeView {
     this.buildPit();
     this.buildSockets();
     this.buildStand();
+    // the Schnitz's cage, the boys in it
+    this.cage = this.spec.cage ? new CrustCage(this.group, this.spec.cage, { map: this.map }) : null;
     this.cores = new Map();
     this.parts = new Map();
     this.ice = [];
@@ -194,6 +197,7 @@ export class ForgeView {
     }
     this.updateCores(dt, E);
     this.updateParts(dt, F);
+    if (this.cage && !this.cage.held) this.cage.update(dt, this.time);
     this.updateStand(dt, F);
     this.updateIce(E);
     this.updateArcs(dt);

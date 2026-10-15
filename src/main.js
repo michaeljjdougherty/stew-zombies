@@ -451,16 +451,16 @@ function watchEnding() {
 const mapSelect = new MapSelect({
   play: (id, withIntro) => {
     mapSelect.close();
-    // Map 2 (in development): straight in, no intro yet
-    if (id === 'crust') { restart('zombies', 'crust'); startPlaying(); return; }
+    // Map 2: its own intro (the first time, or when asked for), then in
+    if (id === 'crust') { if (withIntro) { startFilm('intro', 'play'); return; } restart('zombies', 'crust'); startPlaying(); return; }
     if (withIntro) { startIntro('play'); return; }
     if (sim.mode !== 'zombies' || sim.mapData.id !== 'lastbell') restart('zombies');
     startPlaying();
   },
   explore: (id) => { mapSelect.close(); restart('explore', id); startPlaying(); },
-  watchIntro: () => { mapSelect.close(); startIntro('maps'); },
+  watchIntro: (id) => { mapSelect.close(); if (id === 'crust') startFilm('intro', 'maps'); else startIntro('maps'); },
   back: () => { mapSelect.close(); menus.show('title'); },
-  introSeen: () => !!progress.introSeen,
+  introSeen: (id) => (id === 'crust' ? !!progress.crustIntroSeen : !!progress.introSeen),
   hints: () => settings.questHints || 'walkthrough',
   setHints: (v) => { settings.questHints = v === 'hardcore' ? 'hardcore' : 'walkthrough'; saveSettings(settings); },
 });
@@ -594,8 +594,51 @@ function finishEnding() {
   startTitleMusic();
 }
 
-// Call of the Crust is done: Zach's free (and playable from now on)
-function crustVictory() {
+// Call of the Crust's cutscenes (src/render/crustFilms.js), through the trailer's
+// machinery: the intro before a game (or watched from the map screen), the
+// ending once Zach's free. then: 'play' | 'maps' | 'victory'
+let filmThen = null;
+function startFilm(name, then) {
+  if (renderer.ending) renderer.endEnding();
+  audio.init(); audio.applyVolumes();
+  titleMusic.stop(0.6);
+  if (jukebox.playing) jukebox.stop(0.3);
+  if (name === 'intro' || !sim.mapData.forge) restart('zombies', 'crust');   // (watched from somewhere else: the Crust first)
+  else sim.zombies.length = 0;
+  menus.hideAll();
+  filmThen = then;
+  mode = 'film';
+  input.enabled = false;
+  input.reset();
+  input.releaseLock();
+  hud.show(false);
+  sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
+  sim.power = true;
+  const T = renderer.startFilm(name);
+  T.onLine = (who, text, secs) => { if (settings.subtitles !== false) cutsceneUI.line(who, text, secs); sound.voiceLine(who, text, secs); };
+  T.onCue = (n) => sound.cue(n);
+  cutsceneUI.show(`${glyph('skip')} skip`);
+  cutsceneUI.root.classList.remove('on');   // (the trailer overlay draws the bars; this one's just the words)
+  trailerUI.show(CONFIG.crustFilms[name].letterbox);
+  return T;
+}
+function finishFilm() {
+  renderer.endEnding();
+  cutsceneUI.hide();
+  trailerUI.hide();
+  const then = filmThen; filmThen = null;
+  if (then === 'victory') { showCrustVictory(); return; }
+  if (!progress.crustIntroSeen) { progress.crustIntroSeen = true; saveProgress(progress); }
+  if (then === 'play') { restart('zombies', 'crust'); startPlaying(); return; }
+  restart('zombies');
+  mode = 'title';
+  if (then === 'maps') openMapSelect(); else menus.show('title');
+  startTitleMusic();
+}
+
+// Call of the Crust is done: Zach's free (and playable from now on). The ending first.
+function crustVictory() { startFilm('ending', 'victory'); }
+function showCrustVictory() {
   mode = 'over';
   input.enabled = false;
   input.releaseLock();
@@ -713,7 +756,7 @@ window.addEventListener('keydown', (e) => {
     if (mode === 'play') { if (sim.mode === 'explore') openExplorePanel(); else openRangePanel(); }
     else if (mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); }
   }
-  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
   if (e.code === 'Escape' && mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
@@ -938,7 +981,7 @@ function padFrame(fdt) {
     if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
   }
   const playing = mode === 'play';
-  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
   // menus first (no menu is up while playing, so this only tracks the screen)
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
@@ -987,6 +1030,7 @@ function frame(now) {
   if (mode === 'ending' && renderer.ending && renderer.ending.done) finishEnding();
   if (mode === 'intro' && renderer.ending && renderer.ending.done) finishIntro();
   if (mode === 'trailer') { if (renderer.ending && renderer.ending.done) finishTrailer(); else updateTrailer(); }
+  if (mode === 'film') { if (renderer.ending && renderer.ending.done) finishFilm(); else if (renderer.ending) trailerUI.update(renderer.ending, false); }
 
   if (mode === 'dying') {
     dyingT += fdt;
@@ -1004,7 +1048,7 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
-  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' ? 'ending' : 'play'));
+  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
@@ -1053,9 +1097,11 @@ window.STEW = {
     // the trailer: start it (silent for recording), or render one frame of it at
     // time t (frame by frame, for a recorded export: call with rising t)
     trailer(opts = {}) { return startTrailer(opts); },
+    // one of the Crust's cutscenes ('intro' | 'ending'), back to the title after
+    film(name = 'intro') { startFilm(name, name === 'intro' ? 'maps' : 'victory'); return renderer.ending.C.end; },
     trailerFrame(t, dt = 1 / 30, draw = true) {
       const T = renderer.ending;
-      if (!T || mode !== 'trailer') return 'no trailer';
+      if (!T || (mode !== 'trailer' && mode !== 'film')) return 'no trailer';
       T.t = t - dt;
       renderer.noDraw = !draw;   // (stepping through to a frame: the world moves on, nothing's drawn)
       renderer.render(dt, 1, { pitch: 0, yaw: 0, dx: 0, dy: 0 }, null, t, 'ending');

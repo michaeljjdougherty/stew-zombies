@@ -1285,6 +1285,75 @@ export const CONFIG = {
     ],
   },
 
+  // Call of the Crust's cutscenes (src/render/crustFilms.js): when each shot
+  // starts (s), the words (who says what, when), sound cues and title cards.
+  // A null in loadout: empty-handed.
+  crustFilms: {
+    intro: {
+      end: 58, letterbox: 2.2,
+      shots: [
+        { id: 'black', at: 0 }, { id: 'arrive', at: 1.2 }, { id: 'getup', at: 8 }, { id: 'pit', at: 15.5 },
+        { id: 'cage', at: 25 }, { id: 'schnitz', at: 33 }, { id: 'zach', at: 44 }, { id: 'plan', at: 48.5 }, { id: 'black', at: 55.2 },
+      ],
+      cards: [
+        { text: 'Somewhere past the edge of everything', style: 'card', at: 0.1, len: 1.1 },
+        { text: 'CALL OF THE CRUST', style: 'title', at: 55.3, len: 2.6 },
+      ],
+      cues: [{ at: 2, name: 'portal' }, { at: 34.5, name: 'schnitzEyes' }, { at: 45.6, name: 'roar' }],
+      lines: [
+        { at: 8.6, who: 'rocco', text: 'Well well well... where are we now?', dur: 2.2 },
+        { at: 11.2, who: 'ryan', text: 'Space, boys. We\'re in space. Again.', dur: 2.2 },
+        { at: 13.6, who: 'kearns', text: 'Of course we are.', dur: 1.5 },
+        { at: 15.9, who: 'pit', text: 'Yo. Yo yo yo. You made it, man.', dur: 2.2 },
+        { at: 18.4, who: 'kearns', text: 'Pit?! How are you even here?', dur: 2 },
+        { at: 20.8, who: 'pit', text: 'Got here first, man. Been here a while. Like... a while.', dur: 2.8 },
+        { at: 23.4, who: 'pit', text: 'I\'m a blacksmith now.', dur: 1.5 },
+        { at: 25.6, who: 'chops', text: 'GUYS! UP HERE!', dur: 1.6 },
+        { at: 27.6, who: 'regs', text: 'Get us down, man! It\'s really high!', dur: 2.2 },
+        { at: 30.4, who: 'p', text: '...Sup.', dur: 1.2 },
+        { at: 33.6, who: 'schnitz', text: 'You beat my Erik. Now you\'re in my house.', dur: 3 },
+        { at: 37, who: 'schnitz', text: 'Your Zach is mine. And these three... are mine.', dur: 3.2 },
+        { at: 40.6, who: 'schnitz', text: 'The cage opens for one price. One of you goes over the edge. For all of them.', dur: 3.4 },
+        { at: 45, who: 'schnitz', text: 'Come and take him back.', dur: 2 },
+        { at: 48.9, who: 'pit', text: 'Okay. The War Hammer\'s in four pieces, man. One on every island.', dur: 3.2 },
+        { at: 52.3, who: 'pit', text: 'Bring \'em to the stand. I\'ll do the rest.', dur: 1.9 },
+        { at: 54.2, who: 'brian', text: 'Then let\'s go.', dur: 1.1 },
+      ],
+      loadout: { kearns: 'M15', ryan: 'M17', rocco: 'Fucci Gun', brian: 'AK-75u' },
+      crew: ['kearns', 'ryan', 'rocco', 'brian'],
+    },
+    ending: {
+      end: 62, letterbox: 2.2,
+      shots: [
+        { id: 'freed', at: 0 }, { id: 'deal', at: 8 }, { id: 'step', at: 16.5 }, { id: 'push', at: 22 },
+        { id: 'cheer', at: 29 }, { id: 'release', at: 36 }, { id: 'portal', at: 46 }, { id: 'black', at: 55.5 },
+      ],
+      cards: [
+        { text: 'Where they ended up, nobody knows.', style: 'card', at: 55.7, len: 3 },
+        { text: 'TO BE CONTINUED', style: 'title', at: 58.9, len: 3 },
+      ],
+      cues: [{ at: 2.2, name: 'tear' }, { at: 23.5, name: 'scream' }, { at: 37, name: 'chain' }, { at: 43, name: 'cageDoor' }],
+      lines: [
+        { at: 1, who: 'schnitz', text: 'Fine. Keep him.', dur: 1.6 },
+        { at: 4.8, who: 'zach', text: '...Guys? Why\'s everybody holding hammers?', dur: 2.6 },
+        { at: 8.5, who: 'schnitz', text: 'But a deal is a deal. One of you goes over the edge...', dur: 3 },
+        { at: 11.8, who: 'schnitz', text: '...or they hang there forever.', dur: 2 },
+        { at: 14.4, who: 'ryan', text: 'So... who\'s it gonna be?', dur: 1.8 },
+        { at: 17.2, who: 'rocco', text: 'Well well well. It\'s a long way do—', dur: 2.6 },
+        { at: 23.6, who: 'rocco', text: 'WAAAAAAAAH!', dur: 2.4 },
+        { at: 31.3, who: 'ryan', text: 'STRONG MAN!', dur: 1.2 },
+        { at: 32.6, who: 'pit', text: '(whinnies) ...sorry. Habit.', dur: 1.8 },
+        { at: 34.4, who: 'kearns', text: 'Problem solved.', dur: 1.3 },
+        { at: 36.4, who: 'schnitz', text: '...That works.', dur: 1.6 },
+        { at: 44.2, who: 'chops', text: 'Was that Rocco?', dur: 1.5 },
+        { at: 45.8, who: 'kearns', text: 'Was who?', dur: 1 },
+        { at: 47.2, who: 'zach', text: 'I\'m so happy to be here. Where\'s here?', dur: 2.2 },
+      ],
+      loadout: { kearns: null, ryan: null, rocco: null, brian: null, zach: null, pit: null, chops: null, regs: null, p: null },
+      crew: ['kearns', 'ryan', 'rocco', 'brian', 'zach', 'pit', 'chops', 'regs', 'p'],
+    },
+  },
+
   // How fire looks (src/render/flameFx.js): the flamethrower's stream and
   // anything alight
   flameLook: {
@@ -1448,6 +1517,20 @@ export const CONFIG = {
       },
     },
     // Pit's forge at the Anvil (src/sim/forge.js): the titans' cores become the War Hammers
+    // The Schnitz's cage (src/render/crustCage.js): Chops, Regs and P in an iron-barred
+    // crate hanging out over the void past the north rim, on a chain up into a green whirl
+    cage: {
+      chain: 18,             // m of chain from the whirl down to the cage's roof
+      size: [2.6, 2.3, 2.2], // m: wide, tall, deep
+      barGap: 0.24,          // m between its bars
+      linkStep: 0.19,        // m per chain link
+      maxLinks: 400,
+      whirl: 9,              // m across, the whirl at the top
+      whirlColor: '#5aff70',
+      sway: 0.035, swayRate: 0.6,   // rad, and how fast it swings
+      detail: 0.7, boyScale: 0.92,  // the three inside
+      light: 9, lightRange: 10, lightColor: '#b0ffc0',
+    },
     // The War Hammer's four parts (src/sim/forge.js): one lying at each island's
     // shrine; carry them back to the stand on the Anvil's dais. With all four on
     // it, everyone can take a War Hammer from it (one each).

@@ -88,6 +88,13 @@ export class SoundDirector {
       case 'schnitzEyes': A.play(S.thunder, { near: 0.15 }, { gain: 0.9, reverb: 0.9 }); A.play(S.powerDown, {}, { gain: 0.6, reverb: 0.9 }); break;
       case 'schnitzFarewell': A.play(S.schnitzVoice, { text: SCHNITZ_LINES.farewell, dur: FAREWELL_SECS }, { gain: 1.5, reverb: 1, bus: 'voice' }); break;
       case 'portal': A.play(S.thunder, { near: 0.4 }, { gain: 0.9, reverb: 0.8 }); A.play(S.electrocute, {}, { gain: 0.9, reverb: 0.6, delay: 0.3 }); break;
+      // --- Call of the Crust's cutscenes (src/render/crustFilms.js)
+      case 'roar': A.play(S.titanRoar, { f0: 38, dur: 2.6 }, { gain: 1.3, reverb: 0.9 }); break;
+      case 'tear': A.play(S.thunder, { near: 0.6 }, { gain: 1, reverb: 0.8 }); A.play(S.powerDown, {}, { gain: 0.9, reverb: 0.9 }); break;
+      case 'shove': A.play(S.boxThud, {}, { gain: 0.8, reverb: 0.2 }); break;
+      case 'scream': break;
+      case 'chain': for (let i = 0; i < 6; i++) A.play(S.creak, {}, { gain: 0.5, reverb: 0.7, delay: i * 0.9 }); break;
+      case 'cageDoor': A.play(S.creak, {}, { gain: 1.1, reverb: 0.6 }); A.play(S.bang, {}, { gain: 0.8, reverb: 0.6, delay: 0.8 }); break;
       case 'brian': A.play(S.stewTalk, { text: 'You guys coming?', dur: 1.6 }, { gain: 1.1, reverb: 0.3, bus: 'voice' }); break;
       case 'black': A.play(S.bang, {}, { gain: 1.3, reverb: 0.2 }); break;
       case 'card': A.play(S.roundStartSting, {}, { gain: 1, reverb: 0.8 }); break;

@@ -7,6 +7,7 @@
 // =============================================================================
 import { SCHOOL } from '../map/school.js';
 
+const HAS_INTRO = new Set(['lastbell', 'crust']);   // (the maps with an intro cutscene)
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -23,7 +24,7 @@ export const MAPS = [
   },
   {
     id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
-    blurb: 'Five islands adrift in space. You come to in the Anvil\'s ancient forge pit; launchers on the rim fling you to the windswept Ship Graveyard, the storm-wracked Research Base, the molten Trench Front and the Ice Caves. Each island has its own dead, and a titan guarding its War Hammer core: bring the cores back to Pit at his forge and he\'ll make the hammers that can free Zach. Ride ziplines and ice slides, keep to the trenches when the shells come in, and don\'t step off the edge. The season isn\'t over.',
+    blurb: 'Five islands adrift in space. You crash down into the Anvil\'s ancient forge pit, where Pit has become a blacksmith, and Chops, Regs and P hang in the Schnitz\'s cage out over the void. Launchers on the rim fling you to the windswept Ship Graveyard, the storm-wracked Research Base, the molten Trench Front and the Ice Caves: bring back the War Hammer\'s four pieces, then the titans\' cores, and Pit will make the hammers that can free Zach. The cage only opens for one price. The season isn\'t over.',
     facts: ['Map 2 · early build', 'Solo for now', 'Developers only'],
   },
   {
@@ -206,7 +207,7 @@ export class MapSelect {
     $('ms-explore').addEventListener('click', () => this.tryPlay(true));
     $('ms-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.tryPlay(); } e.stopPropagation(); });
     for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.addEventListener('change', () => { if (r.checked && this.h.setHints) this.h.setHints(r.value); });
-    $('ms-watch').addEventListener('click', () => this.h.watchIntro());
+    $('ms-watch').addEventListener('click', () => this.h.watchIntro(this.sel));
     $('ms-back').addEventListener('click', () => this.h.back());
     this.raf = null;
   }
@@ -229,11 +230,11 @@ export class MapSelect {
       $('ms-code').value = '';
     }
     if (explore) { this.h.explore(m.id); return; }
-    this.h.play(m.id, m.id === 'lastbell' && $('ms-intro').checked);
+    this.h.play(m.id, HAS_INTRO.has(m.id) && $('ms-intro').checked);
   }
 
   open() {
-    $('ms-intro').checked = !this.h.introSeen();
+    $('ms-intro').checked = !this.h.introSeen(this.sel);
     const hints = this.h.hints ? this.h.hints() : 'walkthrough';
     for (const r of document.querySelectorAll('input[name="ms-hints"]')) r.checked = r.value === hints;
     this.resize();
@@ -295,7 +296,9 @@ export class MapSelect {
     $('ms-play').disabled = !m.ready;
     $('ms-play').textContent = m.ready ? 'Play' : 'Coming soon';
     $('ms-explore').hidden = !m.ready;
-    $('ms-introrow').hidden = m.id !== 'lastbell';
+    $('ms-introrow').hidden = !HAS_INTRO.has(m.id);
+    $('ms-intro').checked = !this.h.introSeen(m.id);
+    $('ms-watch').hidden = !HAS_INTRO.has(m.id);
     $('ms-moderow').hidden = m.id !== 'lastbell';
     $('ms-coderow').hidden = !m.locked;
     $('ms-code').value = ''; $('ms-codemsg').textContent = '';
