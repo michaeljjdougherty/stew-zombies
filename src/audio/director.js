@@ -422,9 +422,10 @@ export class SoundDirector {
       case 'zombieFrozen': A.play(S.iceShatter, { gain: 0.3, rate: 1.5 }, { pos: e.pos, ref: 3, reverb: 0.3 }); break;
       case 'hammerZap': A.play(S.lightningZap, {}, { pos: e.points[1], ref: 4, gain: 0.8, reverb: 0.3 }); break;
       case 'forgeStrike': { const f = sim.mapData.forge; if (f) A.play(S.anvilClang, { pitch: 0.94 + (e.n % 3) * 0.04 }, { pos: { x: f.pit.x + 1, y: 1.2, z: f.pit.z }, ref: 3, reverb: 0.6, gain: 0.8 }); break; }
+      case 'partPicked': case 'partPlaced': case 'warHammerTaken':
       case 'corePicked': case 'coreGiven': A.play(S.stewItemGet, { count: 1 }, { gain: 0.7, reverb: 0.4, bus: 'music' }); break;
       case 'hammerForged': A.play(S.stewItemGet, { count: e.count }, { gain: 0.9, reverb: 0.5, bus: 'music' }); break;
-      case 'hammersAll': case 'anvilRung': A.play(S.anvilClang, { pitch: 0.5 }, { gain: 1.2, reverb: 1 }); A.play(S.anvilClang, { pitch: 0.75 }, { gain: 0.8, reverb: 1, delay: 0.05 }); break;
+      case 'warHammerBuilt': case 'hammersAll': case 'anvilRung': A.play(S.anvilClang, { pitch: 0.5 }, { gain: 1.2, reverb: 1 }); A.play(S.anvilClang, { pitch: 0.75 }, { gain: 0.8, reverb: 1, delay: 0.05 }); break;
       case 'zachDescend': A.play(S.thunder, { near: 1 }, { gain: 1.1, reverb: 0.9 }); break;
       case 'zachLand': A.play(S.explosion, { big: 2 }, { gain: 1.2, reverb: 0.7 }); A.play(S.titanRoar, { f0: 52, dur: 2.6 }, { pos: e.pos, ref: 12, gain: 1.2, reverb: 0.7, delay: 0.6 }); break;
       case 'zachStomp': A.play(S.explosion, { big: 1.4 }, { pos: e.pos, ref: 10, gain: 1.0, reverb: 0.6 }); break;

@@ -109,8 +109,9 @@ const at = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.P
   const { sim, me, log, step, put } = game();
   for (const [pad, dest, island] of [['pad_hub_s', 'pad_trench', 'trench'], ['pad_hub_n', 'pad_ship', 'ship'], ['pad_hub_e', 'pad_research', 'research'], ['pad_hub_w', 'pad_caves', 'caves']]) {
     const P = CRUST.launchers.find((q) => q.id === pad), D = CRUST.launchers.find((q) => q.id === dest);
+    me.launchReady = 0;   // (each pad tried fresh)
     put(P.x + 0.3, P.z + 0.3, P.y);
-    check(me.prompt && /launch/i.test(me.prompt.text), `${pad}: "${me.prompt && me.prompt.text}"`);
+    check(me.prompt && /Press \[F\] to launch/i.test(me.prompt.text), `${pad}: "${me.prompt && me.prompt.text}"`);
     step({ use: true, usePressed: true, yaw: me.yaw });
     let top = 0, hurt = false;
     for (let i = 0; i < 60 * 5 && me.launch; i++) { step({}, 1); top = Math.max(top, me.pos.y); if (me.launch && me.launch.t > 1 && !hurt) { const h = me.health; sim.damagePlayer(me, 50, null); hurt = me.health !== h; } }
@@ -119,6 +120,11 @@ const at = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.P
     check(!hurt && !me.launch && Math.hypot(me.pos.x - D.x, me.pos.z - D.z) < 0.5 && Math.abs(me.pos.y - D.y) < 0.2 && isl.rooms.includes(sim.roomAt(me.pos).id), `  flew to ${isl.name}, untouchable in the air (up to ${top.toFixed(0)} m)`);
     step({}, 90);
     put(D.x + 0.2, D.z - 0.2, D.y);
+    check(me.prompt && /recharging/.test(me.prompt.text), `  straight back? "${me.prompt && me.prompt.text}"`);
+    step({ use: true, usePressed: true, yaw: me.yaw }); step({}, 5);
+    check(!me.launch, '  ...no: you have to wait');
+    me.launchReady = 0;   // (after the wait)
+    step({}, 2);
     step({ use: true, usePressed: true, yaw: me.yaw });
     for (let i = 0; i < 60 * 5 && me.launch; i++) step({}, 1);
     step({}, 10);

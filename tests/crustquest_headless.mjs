@@ -57,7 +57,7 @@ const forgeAll = (g) => {
   const g = game(3, 'pit');
   check(g.me.character !== 'pit', `picking Pit: you play ${g.me.character} instead`);
   g.step({}, 60 * (CONFIG.crust.forge.introDelay + 6));
-  check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /Anvil/.test(e.text)), 'Pit says hello from his bench');
+  check(g.log.some((e) => e.type === 'crewSays' && e.who === 'pit' && /War Hammer/.test(e.text)), 'Pit tells you about the War Hammer from his bench');
   const s2 = new GameSim({ map: CRUST, seed: 1 });
   const a = s2.addPlayer('a', 'A', { character: 'pit' }), b = s2.addPlayer('b', 'B', { character: 'kearns' });
   check(a.character !== 'pit' && b.character === 'kearns', `online: nobody plays Pit here (${a.character}, ${b.character})`);
@@ -84,15 +84,77 @@ const forgeAll = (g) => {
   g.step({}, 60 * CONFIG.crust.forge.forgeTime);
   check(E(g).forge.hammers.lightning.forged && g.log.some((e) => e.type === 'hammerForged'), 'the Lightning Hammer is forged, into its socket');
   g.socket('lightning');
-  check(g.me.prompt && /take the Lightning Hammer/.test(g.me.prompt.text), `at its socket: "${g.me.prompt && g.me.prompt.text}"`);
+  check(g.me.prompt && !/Press/.test(g.me.prompt.text) && /War Hammer/.test(g.me.prompt.sub || ''), `no War Hammer: "${g.me.prompt && g.me.prompt.text}" (${g.me.prompt && g.me.prompt.sub})`);
+  giveWeapon(g.sim, g.me, 'War Hammer'); g.step({}, 40);
+  g.socket('lightning');
+  check(g.me.prompt && /take the Lightning Hammer/.test(g.me.prompt.text), `with one: "${g.me.prompt && g.me.prompt.text}"`);
+  const n = g.me.loadout.slots.length;
   g.use();
-  check(g.me.loadout.slots.some((s) => s.id === 'Lightning Hammer') && E(g).forge.hammers.lightning.by === 'p1', 'you have the Lightning Hammer');
+  check(g.me.loadout.slots.some((s) => s.id === 'Lightning Hammer') && !g.me.loadout.slots.some((s) => s.id === 'War Hammer') && g.me.loadout.slots.length === n && E(g).forge.hammers.lightning.by === 'p1', 'your War Hammer becomes the Lightning Hammer');
+  g.use();
+  check(g.me.loadout.slots.some((s) => s.id === 'War Hammer') && E(g).forge.hammers.lightning.by === null, 'put it back: plain iron again');
   // a second core while he works: on the pile
+}
+
+// --- the War Hammer: four parts, one on each island; the stand at the Anvil; one each
+{
+  const g = game(8);
+  const Fg = E(g).forge;
+  check(Object.keys(Fg.parts).length === 4 && Object.values(Fg.parts).every((k) => k.state === 'lying'), 'four parts, lying out on the islands');
+  check(new Set(Object.values(Fg.parts).map((k) => k.island)).size === 4, '...one on each');
+  const stand = () => g.at(F.stand.x - 1.6, F.stand.z + 0.3, F.stand.x, F.stand.z);
+  stand();
+  check(g.me.prompt && /0 of 4/.test(g.me.prompt.text), `the stand: "${g.me.prompt && g.me.prompt.text}"`);
+  let first = true;
+  for (const [id, k] of Object.entries(Fg.parts)) {
+    g.me.pos.x = k.x; g.me.pos.z = k.z; g.me.pos.y = k.y + 0.05; g.step({}, 3);
+    check(k.state === 'carried' && k.by === 'p1', `walk over the ${id}: you carry it`);
+    if (first) {
+      first = false;
+      const obj = g.sim.objective ? g.sim.objective('p1') : null;
+      stand();
+      check(g.me.prompt && /put the .* on the stand/.test(g.me.prompt.text), `back at the stand: "${g.me.prompt && g.me.prompt.text}"`);
+    }
+    stand(); g.use();
+    check(k.state === 'placed', `...and onto the stand`);
+  }
+  check(g.log.some((e) => e.type === 'warHammerBuilt'), 'all four: the War Hammer is whole');
+  stand();
+  check(g.me.prompt && /take a War Hammer/.test(g.me.prompt.text), `"${g.me.prompt && g.me.prompt.text}"`);
+  g.use(); g.step({}, 30);
+  check(g.me.loadout.slots.some((s) => s.id === 'War Hammer'), 'you take one');
+  stand();
+  check(g.me.prompt && !/Press/.test(g.me.prompt.text), `one each: "${g.me.prompt && g.me.prompt.text}"`);
+  const before = g.me.loadout.slots.filter((s) => s.id === 'War Hammer').length;
+  g.use(); g.step({}, 5);
+  check(g.me.loadout.slots.filter((s) => s.id === 'War Hammer').length === before, '...and not a second');
+  // a teammate gets their own
+  const b = g.sim.addPlayer('p2', 'B', { character: 'ryan' });
+  b.pos.x = F.stand.x + 1.6; b.pos.z = F.stand.z + 0.3; b.pos.y = F.stand.y + 0.05;
+  g.sim.setInput('p2', { ...emptyCommand(), use: true, usePressed: true, yaw: Math.atan2(1.6, -0.3) }); g.sim.step(1 / 60);
+  for (let i = 0; i < 30; i++) { g.sim.setInput('p2', { ...emptyCommand() }); g.sim.step(1 / 60); }
+  check(b.loadout.slots.some((s) => s.id === 'War Hammer'), 'a teammate takes their own');
+  // carrying a part and going down: it goes back to its shrine
+  const g2 = game(9);
+  const [pid, k2] = Object.entries(E(g2).forge.parts)[0];
+  g2.me.pos.x = k2.x; g2.me.pos.z = k2.z; g2.me.pos.y = k2.y + 0.05; g2.step({}, 3);
+  g2.me.alive = false; g2.step({}, 2);
+  check(k2.state === 'lying' && k2.x === k2.home.x, `die carrying the ${pid}: it's back at its shrine`);
 }
 
 // --- each hammer's swing: plain iron as forged, its element once Pit's tempered it
 {
   const g = game(5);
+  {
+    giveWeapon(g.sim, g.me, 'War Hammer'); g.step({}, 50);
+    g.at(0, 11, 0, 30);   // south of the dais, facing south
+    const near = addZ(g, 0, 12.6), mid = addZ(g, 1.5, 15);
+    const n0 = g.log.length;
+    swing(g);
+    const L = g.log.slice(n0);
+    check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === 'iron'), 'the War Hammer: the swing smashes the one in front of you');
+    check(!L.some((e) => ['explosion', 'hammerFreeze', 'windBlast', 'hammerChain'].includes(e.type)) && mid.state !== 'dead' && !(mid.frozen > 0) && !g.sim.projectiles.length, '  ...and that\'s all: plain iron');
+  }
   for (const el of ['fire', 'ice', 'wind', 'lightning']) {
     g.sim.zombies.length = 0; g.sim.projectiles.length = 0;
     giveWeapon(g.sim, g.me, HAMMER_IDS[el]); g.step({}, 50);
@@ -102,7 +164,8 @@ const forgeAll = (g) => {
     swing(g);
     let L = g.log.slice(n0);
     check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === el && !e.upgraded), `${el}: the swing smashes the one in front of you`);
-    check(!L.some((e) => ['explosion', 'hammerFreeze', 'windBlast', 'hammerChain'].includes(e.type)) && mid.state !== 'dead' && !(mid.frozen > 0) && !g.sim.projectiles.length, '  ...and that\'s all: forged, it\'s plain iron');
+    const goesOff = { fire: 'explosion', ice: 'hammerFreeze', wind: 'windBlast', lightning: 'hammerChain' }[el];
+    check(L.some((e) => e.type === goesOff) && !g.sim.projectiles.length, `  ...its element goes off (${goesOff}), but nothing's left behind until it's tempered`);
     // tempered
     g.sim.zombies.length = 0;
     giveWeapon(g.sim, g.me, HAMMER_IDS[el] + '+'); g.step({}, 50);
@@ -159,6 +222,7 @@ const forgeAll = (g) => {
   forgeAll(g);
   check(['wind', 'lightning', 'ice', 'fire'].every((el) => E(g).forge.hammers[el].forged), 'all four forged');
   check(g.log.some((e) => e.type === 'hammersAll'), '...Pit tells you to ring the Anvil');
+  giveWeapon(g.sim, g.me, 'War Hammer'); g.step({}, 40);
   g.socket('fire'); g.use();
   check(g.me.loadout.slots[g.me.loadout.current].id === 'Fire Hammer', 'take the Fire Hammer');
   g.me.points = 6000;

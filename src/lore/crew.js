@@ -57,11 +57,21 @@ export const CREW = {
 // ---------------------------------------------------------------------------
 export const PIT_FORGE = {
   intro: [
-    "Yo. Yo yo yo. You made it, man.",
-    "Welcome to the Anvil. I've been here a while. Like... a while.",
-    "The Schnitz took Zach, man. Made him huge. Made him... not Zach.",
-    "Those big things out on the islands? Titans. Each one's sitting on a War Hammer core.",
-    "Bring me the cores. I'll forge the hammers. I'm real good at hammers now.",
+    "Okay. The War Hammer's in four pieces, man. One at every island's shrine.",
+    "Bring 'em back and put 'em on the stand. Enough iron for everybody.",
+    "Then the titans. Each one's sitting on a core. Cores make the hammers... spicy.",
+  ],
+  partPicked: {
+    head: "That's the head, man. Heavy, right? Bring it home.",
+    haft: "Got the haft? Nice. Don't use it as a paddle.",
+    grip: "The grip. It's a little shocky. That's normal. Probably.",
+    pommel: "The pommel. Cold, huh. Bring it to the stand.",
+  },
+  partPlaced: "On the stand. Keep 'em coming, man.",
+  hammerBuilt: [
+    "That's all four, man. The War Hammer's whole.",
+    "Grab one each off the stand. Just one. I'm not made of iron. I mean... I kinda am now.",
+    "Now go get me some titan cores.",
   ],
   coreDropped: {
     ship: "Felt that from here, man. The Captain's down. Bring me that core.",

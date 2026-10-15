@@ -511,7 +511,7 @@ function skin(el, H, on) {
 function applyHeat(H) {
   if (!H.headMat) return;
   if (H.heat > 0.001) { H.headMat.emissive.setRGB(1, 0.28, 0.05); H.headMat.emissiveMap = null; H.headMat.emissiveIntensity = H.heat * LOOK().heatGlow; H.headMat.needsUpdate = true; H.heatShown = true; }
-  else if (H.heatShown) { H.heatShown = false; const on = !!H.tempered; skin(H.el, H, on); }
+  else if (H.heatShown) { H.heatShown = false; skin(H.el, H, !!HAMMER_COLORS[H.el]); }
 }
 
 export const temperedColor = (el) => CONFIG.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el]].upgrade.color;
@@ -572,13 +572,16 @@ export function buildWarHammer(el, { halo = true, glow = 2.2, color = null, temp
   // Forged, it's plain iron; tempered, its element comes out (the iron's own
   // look, the details worked into it, and the element going off round it).
   let fx = null, dims = new THREE.Vector3(0.34, 0.17, 0.17), skinOn = null;
+  // (the plain War Hammer never shows an element; an elemental one always does,
+  // brighter once it's tempered)
+  const elemental = !!HAMMER_COLORS[el];
   const refresh = () => {
-    const on = !!H.tempered;
+    const on = elemental;
     deco.visible = on; pommelGlow.visible = on;
     for (const b of bands) b.visible = on && !H.headMesh;
     if (haloSprite) haloSprite.visible = on;
     if (on && !fx) { fx = elementFx(el, H, dims); head.add(fx.group); H.fx = fx; }
-    if (fx) { fx.group.visible = on; if (on) fx.setPower(LOOK().temperedPower, H.tempered); }
+    if (fx) { fx.group.visible = on; if (on) fx.setPower(H.tempered ? LOOK().temperedPower : 1, H.tempered || HAMMER_COLORS[el]); }
     if (H.headMat && skinOn !== on) { skinOn = on; skin(el, H, on); }
     applyHeat(H);
   };

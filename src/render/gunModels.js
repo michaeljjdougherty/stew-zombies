@@ -1204,7 +1204,7 @@ function warHammerFp(el) {
 }
 
 const BUILDERS = {
-  warhammer_fire: warHammerFp('fire'), warhammer_ice: warHammerFp('ice'), warhammer_wind: warHammerFp('wind'), warhammer_lightning: warHammerFp('lightning'),
+  warhammer_iron: warHammerFp('iron'), warhammer_fire: warHammerFp('fire'), warhammer_ice: warHammerFp('ice'), warhammer_wind: warHammerFp('wind'), warhammer_lightning: warHammerFp('lightning'),
   fucci, chopper,
   pistol, revolver, rifle, doubleBarrel, smg, carbine,
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,

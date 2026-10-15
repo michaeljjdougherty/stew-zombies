@@ -18,11 +18,16 @@ export class LaunchInteractable {
   }
   get range() { return this.cfgRange ?? 2.2; }
   distanceTo(sim, p) { this.cfgRange = sim.cfg.crust.launch.range; return flat(p.pos, this.pos); }
-  canUse(sim, p) { return p.alive && !p.downed && !p.launch && !p.drinking && sim.time >= (p.launchReady || 0); }
+  canUse(sim, p) { return p.alive && !p.downed && !p.launch && !p.drinking; }
   cost(sim) { return sim.mode === 'explore' ? 0 : sim.cfg.crust.launch.cost; }
-  prompt(sim, p) { return { text: `Press [F] to launch to ${this.pad.label}`, cost: this.cost(sim) || null }; }
+  prompt(sim, p) {
+    const wait = (p.launchReady || 0) - sim.time;
+    if (wait > 0) return { text: `The launcher's recharging · ${Math.ceil(wait)}s`, cost: null };
+    return { text: `Press [F] to launch to ${this.pad.label}`, cost: this.cost(sim) || null };
+  }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
+    if (sim.time < (p.launchReady || 0)) { sim.emit('useDenied', { playerId: p.id }); return; }
     const c = this.cost(sim);
     if (c) {
       if (p.points < c) { sim.emit('cantAfford', { playerId: p.id, cost: c }); return; }
@@ -64,7 +69,7 @@ export function updateLaunch(sim, p, dt) {
     p.vel.x = p.vel.y = p.vel.z = 0;
     p.grounded = true;
     p.launch = null;
-    p.launchReady = sim.time + sim.cfg.crust.launch.cooldown;
+    p.launchReady = sim.time + (sim.mode === 'explore' ? sim.cfg.crust.launch.exploreCooldown : sim.cfg.crust.launch.cooldown);
     p.region = sim.nav.regionAt(p.pos, null);
     sim.emit('playerLaunchLand', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z } });
   }

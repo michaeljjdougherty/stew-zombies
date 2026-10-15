@@ -53,28 +53,34 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
   }
   sim.emit('hammerSlam', { playerId: p.id, element: el, upgraded: up, pos: land, dir: { x: fx, z: fz }, smashed: Math.min(hits.length, maxKills), weapon });
 
-  // the element: only once Pit's tempered it
-  if (!up) { zachHammerHit(sim, p, el, land, { x: fx, z: fz }); return; }
-  const leave = (type, o = {}) => { const pr = spawnProjectile(sim, type, land, { x: fx, y: 0, z: fz }, p.id, { gravity: 0, weapon }); pr.resting = true; pr.dir = { x: fx, z: fz }; Object.assign(pr, o); return pr; };
-  if (el === 'fire') { explode(sim, { x: land.x, y: land.y + 0.5, z: land.z }, E.blast, p.id); leave('hfire'); }
+  // the plain War Hammer: just the smash (Big Evil Zach shrugs it off)
+  if (!E) { zachHammerHit(sim, p, el, land, { x: fx, z: fz }); return; }
+  // an elemental hammer: its element goes off (at elementK of full strength);
+  // tempered, at full strength, and it leaves something behind
+  const k = up ? 1 : H.elementK;
+  const leave = (type, o = {}) => {
+    if (!up) return null;
+    const pr = spawnProjectile(sim, type, land, { x: fx, y: 0, z: fz }, p.id, { gravity: 0, weapon }); pr.resting = true; pr.dir = { x: fx, z: fz }; Object.assign(pr, o); return pr;
+  };
+  if (el === 'fire') { explode(sim, { x: land.x, y: land.y + 0.5, z: land.z }, up ? E.blast : 'hammerFire', p.id); leave('hfire'); }
   else if (el === 'ice') {
     const near = [];
     for (const z of sim.zombies) {
       if (!alive(z)) continue;
       const d = Math.hypot(z.pos.x - p.pos.x, z.pos.z - p.pos.z);
-      if (d <= E.radius && Math.abs(z.pos.y - p.pos.y) < 3) near.push({ z, d });
+      if (d <= E.radius * k && Math.abs(z.pos.y - p.pos.y) < 3) near.push({ z, d });
     }
     near.sort((a, b) => a.d - b.d);
     const ids = [];
-    for (const { z } of near.slice(0, E.maxFrozen)) { z.frozen = E.freeze; ids.push(z.id); }
-    sim.emit('hammerFreeze', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, radius: E.radius, ids });
+    for (const { z } of near.slice(0, Math.round(E.maxFrozen * k))) { z.frozen = E.freeze * k; ids.push(z.id); }
+    sim.emit('hammerFreeze', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, radius: E.radius * k, ids });
     leave('hice');
-  } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: E }, weapon); leave('hwind'); }
+  } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: { ...E, range: E.range * k, maxKills: Math.round(E.maxKills * k) } }, weapon); leave('hwind'); }
   else if (el === 'lightning') {
     const pts = [{ x: land.x, y: land.y + 0.2, z: land.z }];
     const hit = new Set();
-    let from = land, reach = E.reach;
-    for (let i = 0; i < E.chains; i++) {
+    let from = land, reach = E.reach * k;
+    for (let i = 0; i < Math.round(E.chains * k); i++) {
       let best = null, bd = reach;
       for (const z of sim.zombies) {
         if (!alive(z) || hit.has(z.id)) continue;
@@ -86,7 +92,7 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
       const c = center(best);
       pts.push(c);
       damageZombie(sim, best, 1e6, { playerId: p.id, part: 'torso', kind: 'electric', dir: { x: 0, y: 1, z: 0 }, point: c, force: 1, weapon });
-      from = best.pos; reach = E.hop;
+      from = best.pos; reach = E.hop * k;
     }
     sim.emit('hammerChain', { playerId: p.id, points: pts });
     leave('hbolt', { pos: { x: land.x, y: land.y + E.orb.height, z: land.z } });

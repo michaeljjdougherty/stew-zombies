@@ -855,7 +855,10 @@ export const CONFIG = {
         heat: { up: 0.11, cool: 0.5, lock: 1.6 },
       },
     }),
-    // The four War Hammers (Pit tempers each into its "+" for a price)
+    // The War Hammer: built from its four parts (one on each island) at the stand
+    // on the Anvil's dais, one each. Plain iron: a titan's core turns it elemental.
+    'War Hammer': warHammer('iron', { name: 'War Hammer' }),
+    // The four elemental War Hammers (Pit tempers each into its "+" for a price)
     'Wind Hammer': warHammer('wind', { name: 'Wind Hammer', upgrade: { name: 'Tempest Hammer', color: '#bfffe0' } }),
     'Lightning Hammer': warHammer('lightning', { name: 'Lightning Hammer', upgrade: { name: 'Thunder Hammer', color: '#c79bff' } }),
     'Ice Hammer': warHammer('ice', { name: 'Ice Hammer', upgrade: { name: 'Glacier Hammer', color: '#9feaff' } }),
@@ -1445,6 +1448,19 @@ export const CONFIG = {
       },
     },
     // Pit's forge at the Anvil (src/sim/forge.js): the titans' cores become the War Hammers
+    // The War Hammer's four parts (src/sim/forge.js): one lying at each island's
+    // shrine; carry them back to the stand on the Anvil's dais. With all four on
+    // it, everyone can take a War Hammer from it (one each).
+    hammerParts: {
+      parts: {
+        trench: { id: 'head', name: 'Hammer Head' },
+        ship: { id: 'haft', name: 'Haft' },
+        research: { id: 'grip', name: 'Grip' },
+        caves: { id: 'pommel', name: 'Pommel' },
+      },
+      pickupRange: 1.8,      // m: walk over a part to pick it up
+      standRange: 2.4,       // m from the stand to put parts on it or take a hammer
+    },
     forge: {
       pickupRange: 1.8,      // m: walk over a dropped core to pick it up
       benchRange: 2.6,       // m from Pit's bench to hand him things
@@ -1459,10 +1475,12 @@ export const CONFIG = {
       lineGap: 0.5,          // s between one of his lines and the next
     },
     // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of
-    // you. Forged, they're plain iron; Pit tempers each into its "+", and only
-    // then does its element come out (inspired by the Origins staffs): on top of
-    // the swing's own burst, each leaves something behind
+    // you. The War Hammer is plain iron; a titan's core makes it elemental (its
+    // element goes off with every swing, at elementK of its full strength); Pit
+    // tempers that into its "+" (inspired by the Origins staffs): full strength,
+    // and each leaves something behind
     hammers: {
+      elementK: 0.6,         // an untempered elemental hammer's element, x the tempered one's
       reach: 3.4,            // m in front of you a swing smashes
       angle: 70,             // degrees either side of where you look
       maxKills: 8,           // zombies one swing kills outright
@@ -1562,7 +1580,8 @@ export const CONFIG = {
       apex: 34,              // m above the higher pad at the top of the arc
       flyLean: 0.8,          // how far over someone flying leans (1: flat out, as in a dive)
       range: 2.2,            // how close to the pad's middle you stand to use it
-      cooldown: 1.0,         // s after landing before you can launch again
+      cooldown: 30,          // s after landing before you can launch again (no bouncing back and forth)
+      exploreCooldown: 1,    // (in Explore: next to none)
     },
     strandedTime: 5,         // s a zombie with no way to reach anyone waits before it's recycled near the players
   },

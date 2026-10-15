@@ -1973,11 +1973,10 @@ const HAMMER_ELEMENT = {
 export function hammerImpact(A, out, t, p = {}) {
   if (!A.hasSample('g_ham_hit')) return hammerImpactSynth(A, out, t, p);
   let d = sample(A, out, t, { key: 'g_ham_hit', gain: p.upgraded ? 0.7 : 0.8, rate: p.upgraded ? 0.94 : 1 });
-  if (p.upgraded) {
-    d = Math.max(d, sample(A, out, t, { key: 'g_ham_bass', gain: 0.85 }));
-    const E = HAMMER_ELEMENT[p.element];
-    if (E && A.hasSample(E.key)) d = Math.max(d, sample(A, out, t + 0.03, { key: E.key, gain: E.gain }));
-  }
+  // an elemental hammer: its element on top (quieter until it's tempered); tempered: the bass hit under it
+  const E = HAMMER_ELEMENT[p.element];
+  if (E && A.hasSample(E.key)) d = Math.max(d, sample(A, out, t + 0.03, { key: E.key, gain: E.gain * (p.upgraded ? 1 : 0.7) }));
+  if (p.upgraded) d = Math.max(d, sample(A, out, t, { key: 'g_ham_bass', gain: 0.85 }));
   return Math.max(d, 1.3);
 }
 
@@ -2013,7 +2012,7 @@ function hammerImpactSynth(A, out, t, p = {}) {
   for (const [f, a] of [[310, 0.12], [747, 0.08], [1290, 0.05]]) {
     const r = A.osc('sine', f, t, 1.2); const rg = A.gain(0); A.env(rg, t, 0.001, 1.0, a); r.connect(rg); rg.connect(out);
   }
-  if (!p.upgraded) return 1.3;
+  if (!HAMMER_ELEMENT[p.element]) return 1.3;
   if (el === 'ice') {
     for (let i = 0; i < 6; i++) { const th = t + 0.04 + i * 0.05; const c = A.osc('sine', 2200 + Math.random() * 2600, th, 0.5); const cg = A.gain(0); A.env(cg, th, 0.001, 0.45, 0.07); c.connect(cg); cg.connect(out); }
     const w = A.noiseSource('white', t + 0.05, 0.8); const hp = A.filter('highpass', 3500, 0.7); const wg = A.gain(0); A.env(wg, t + 0.05, 0.05, 0.7, 0.25); w.connect(hp); hp.connect(wg); wg.connect(out);

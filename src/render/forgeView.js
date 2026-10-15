@@ -31,7 +31,9 @@ export class ForgeView {
     this.buildBench();
     this.buildPit();
     this.buildSockets();
+    this.buildStand();
     this.cores = new Map();
+    this.parts = new Map();
     this.ice = [];
     this.iceGeo = new THREE.CapsuleGeometry(0.42, 1.0, 4, 10);
     this.iceMat = new THREE.MeshStandardMaterial({ color: '#bfefff', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.45, emissive: new THREE.Color('#4aa8d8'), emissiveIntensity: 0.35, depthWrite: false });
@@ -42,6 +44,8 @@ export class ForgeView {
     this.sim = sim;
     for (const c of this.cores.values()) this.group.remove(c.g);
     this.cores.clear();
+    for (const c of this.parts.values()) { this.group.remove(c.g); this.map.removeVirtualLight(c.light); }
+    this.parts.clear();
     for (const a of this.arcs) this.group.remove(a.line);
     this.arcs = [];
   }
@@ -189,8 +193,87 @@ export class ForgeView {
       }
     }
     this.updateCores(dt, E);
+    this.updateParts(dt, F);
+    this.updateStand(dt, F);
     this.updateIce(E);
     this.updateArcs(dt);
+  }
+
+  // --- the War Hammer's parts, and the stand they go on -------------------------
+  // each part: iron, glowing warm gold, with a beam up from it to find it by
+  partMesh(id) {
+    const g = new THREE.Group();
+    const iron = new THREE.MeshStandardMaterial({ color: '#3a3a40', roughness: 0.4, metalness: 0.9, emissive: new THREE.Color('#ffb84a'), emissiveIntensity: 0.25 });
+    const wood = new THREE.MeshStandardMaterial({ color: '#4a3020', roughness: 0.8, emissive: new THREE.Color('#ffb84a'), emissiveIntensity: 0.15 });
+    const leather = new THREE.MeshStandardMaterial({ color: '#2a1a12', roughness: 0.9, emissive: new THREE.Color('#ffb84a'), emissiveIntensity: 0.12 });
+    if (id === 'head') { g.add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.17), iron)); for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.21, 0.21), iron); f.position.x = s * 0.185; g.add(f); } }
+    else if (id === 'haft') { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.75, 10), wood); g.add(h); }
+    else if (id === 'grip') { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 10), leather); g.add(h); for (let i = 0; i < 5; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.004, 4, 12).rotateX(Math.PI / 2), iron); r.position.y = -0.12 + i * 0.06; g.add(r); } }
+    else { g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.035, 0.09, 12), iron)); const b = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), iron); b.position.y = -0.06; g.add(b); }
+    return g;
+  }
+  updateParts(dt, F) {
+    const seen = new Set();
+    if (F && F.parts) for (const [id, k] of Object.entries(F.parts)) {
+      if (k.state !== 'lying') continue;
+      seen.add(id);
+      let c = this.parts.get(id);
+      if (!c) {
+        const g = new THREE.Group();
+        const piece = this.partMesh(id); piece.scale.setScalar(1.6); g.add(piece);
+        const col = new THREE.Color('#ffc860');
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+        halo.scale.setScalar(1.6); g.add(halo);
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.32, 40, 12, 1, true), new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(0.8), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        beam.position.y = 20; g.add(beam);
+        this.group.add(g);
+        const light = this.map.addVirtualLight({ x: k.x, y: k.y + 1, z: k.z }, col.getHex(), 7, 7, 1.6); light.live = true;
+        c = { g, piece, halo, light };
+        this.parts.set(id, c);
+      }
+      c.g.position.set(k.x, k.y, k.z);
+      c.piece.position.y = 0.9 + Math.sin(this.time * 2 + id.length) * 0.1;
+      c.piece.rotation.set(0.4, this.time * 1.4, 0.3);
+      c.halo.position.y = c.piece.position.y;
+    }
+    for (const [id, c] of this.parts) if (!seen.has(id)) { this.group.remove(c.g); this.map.removeVirtualLight(c.light); this.parts.delete(id); }
+  }
+  // the stand on the dais: an iron rack on a stone block; each part shows on it
+  // once it's brought back, and with all four a War Hammer stands in it
+  buildStand() {
+    const s = this.spec.stand;
+    if (!s) return;
+    const g = new THREE.Group(); g.position.set(s.x, s.y || 0, s.z); this.group.add(g);
+    const stone = new THREE.MeshStandardMaterial({ color: '#5a5450', roughness: 0.95 });
+    const iron = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.45, metalness: 0.85 });
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+    add(new THREE.BoxGeometry(1.4, 0.7, 0.9), stone, 0, 0.35, 0);
+    add(new THREE.BoxGeometry(1.5, 0.08, 1.0), stone, 0, 0.74, 0);
+    for (const x of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.06, 0.9, 0.06), iron, x, 1.2, -0.3);
+    add(new THREE.BoxGeometry(1.26, 0.06, 0.06), iron, 0, 1.62, -0.3);
+    // where each part lies on it
+    this.standParts = {};
+    const spots = { head: [-0.42, 0.86, 0.15, 0], haft: [0, 0.82, 0.12, Math.PI / 2], grip: [0.32, 0.82, 0.25, Math.PI / 2], pommel: [0.5, 0.84, -0.05, 0] };
+    for (const [id, [x, y, z, rz]] of Object.entries(spots)) {
+      const m = this.partMesh(id); m.position.set(x, y, z); m.rotation.z = rz; m.visible = false; g.add(m); this.standParts[id] = m;
+    }
+    // the finished War Hammer, standing in the rack
+    const H = buildWarHammer('iron', { halo: false });
+    H.group.rotation.x = -Math.PI / 2; H.group.position.set(0, 0.8, -0.3); H.group.scale.setScalar(1.15);
+    H.group.visible = false; g.add(H.group);
+    this.standHammer = H;
+    this.standGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: new THREE.Color('#ffc860'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    this.standGlow.scale.setScalar(2.6); this.standGlow.position.y = 1.4; g.add(this.standGlow);
+    this.standG = g;
+  }
+  updateStand(dt, F) {
+    if (!this.standG) return;
+    const parts = (F && F.parts) || {};
+    const ids = Object.keys(parts), placed = ids.filter((id) => parts[id].state === 'placed');
+    const whole = ids.length > 0 && placed.length === ids.length;
+    for (const [id, m] of Object.entries(this.standParts)) m.visible = !whole && !!parts[id] && parts[id].state === 'placed';
+    this.standHammer.group.visible = whole;
+    this.standGlow.material.opacity = whole ? 0.35 + Math.sin(this.time * 2) * 0.1 : placed.length ? 0.15 : 0;
   }
 
   // the cores lying about (and a beam of light up from each, to find them by)
@@ -242,32 +325,32 @@ export class ForgeView {
   }
 
   // A tempered hammer coming down: each its own.
-  slamElement(el, p, dir, col, R) {
-    const fx = this.effects;
+  slamElement(el, p, dir, col, R, up = true) {
+    const fx = this.effects, k = up ? 1 : 0.6;
     if (el === 'fire') {
       // a fireball off the head and a ring of flame rolling out along the ground
-      fx.explosion(p, 4.5);
-      if (fx.flames) for (let i = 0; i < 60; i++) {
-        const a = (i / 60) * Math.PI * 2, sp = 6 + Math.random() * 3;
+      fx.explosion(p, 4.5 * k);
+      if (fx.flames) for (let i = 0; i < 60 * k; i++) {
+        const a = (i / (60 * k)) * Math.PI * 2, sp = (6 + Math.random() * 3) * k;
         fx.flames.emit({ x: p.x, y: p.y + 0.2, z: p.z }, { x: Math.cos(a) * sp, y: 0.6 + Math.random(), z: Math.sin(a) * sp }, { size: 0.9 + Math.random() * 0.5, life: 0.7 + Math.random() * 0.3, rise: 1.6, drag: 2.4 });
       }
       for (let i = 0; i < 40; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 7, 2 + Math.random() * 5, (Math.random() - 0.5) * 7), { life: 1 + Math.random(), size: 0.016, color: [5, 1.8, 0.4], gravity: 3, drag: 0.4 });
     } else if (el === 'ice') {
       // shards of ice flung up, frost bursting out
-      fx.energyBurst(p, col, 2.4);
-      for (let i = 0; i < 50; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 9, 2 + Math.random() * 5, (Math.random() - 0.5) * 9), { life: 0.8 + Math.random() * 0.5, size: 0.028, color: [1.8, 2.4, 3], gravity: 11, drag: 0.3 });
+      fx.energyBurst(p, col, 2.4 * k);
+      for (let i = 0; i < 50 * k; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 9, 2 + Math.random() * 5, (Math.random() - 0.5) * 9), { life: 0.8 + Math.random() * 0.5, size: 0.028, color: [1.8, 2.4, 3], gravity: 11, drag: 0.3 });
     } else if (el === 'wind') {
       // a ring of dust blown flat out from it, and the gale down the line
       for (let i = 0; i < 20; i++) {
         const a = (i / 20) * Math.PI * 2;
-        fx.puff(p.clone().add(V(Math.cos(a) * 0.6, 0.15, Math.sin(a) * 0.6)), { color: 0xb0a890, size: 0.6, grow: 3, life: 0.9, alpha: 0.45, vel: V(Math.cos(a) * 9, 0.4, Math.sin(a) * 9) });
+        fx.puff(p.clone().add(V(Math.cos(a) * 0.6, 0.15, Math.sin(a) * 0.6)), { color: 0xb0a890, size: 0.6, grow: 3, life: 0.9, alpha: 0.45, vel: V(Math.cos(a) * 9 * k, 0.4, Math.sin(a) * 9 * k) });
       }
-      fx.energyBurst(p, col, 2.2);
+      fx.energyBurst(p, col, 2.2 * k);
     } else if (el === 'lightning') {
       // a bolt out of the sky onto the head as it lands
       fx.lightning(p);
-      fx.energyBurst(p, col, 3);
-      if (R) R.flash = Math.max(R.flash || 0, 0.45);
+      fx.energyBurst(p, col, 3 * k);
+      if (R) R.flash = Math.max(R.flash || 0, 0.45 * k);
     }
   }
 
@@ -324,8 +407,8 @@ export class ForgeView {
         // the head hitting the ground: dust and sparks off the iron
         for (let i = 0; i < 6; i++) fx.puff(p.clone().add(V((Math.random() - 0.5) * 1.2, 0.1, (Math.random() - 0.5) * 1.2)), { color: 0x8a8070, size: 0.5, grow: 2.2, life: 0.9, alpha: 0.4, vel: V((Math.random() - 0.5) * 2, 0.6, (Math.random() - 0.5) * 2) });
         for (let i = 0; i < 14; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 5, 1 + Math.random() * 3, (Math.random() - 0.5) * 5), { life: 0.3 + Math.random() * 0.3, size: 0.012, color: [4, 2.6, 1], gravity: 12, drag: 0.5 });
-        if (e.upgraded) this.slamElement(e.element, p, e.dir, col, R);
-        R.shake(e.playerId === R.localId ? (e.upgraded ? 0.8 : 0.45) : 0.25, e.pos, 18);
+        if (HAMMER_COLORS[e.element]) this.slamElement(e.element, p, e.dir, col, R, !!e.upgraded);
+        R.shake(e.playerId === R.localId ? (e.upgraded ? 0.8 : HAMMER_COLORS[e.element] ? 0.6 : 0.45) : 0.25, e.pos, 18);
         break;
       }
       case 'hammerFreeze': {

@@ -205,10 +205,25 @@ export class HUD {
         this.toast(`The ${e.name}`, `forged · ${e.count} of 4 · on the Anvil`, HAMMER_HUE[e.element], 4);
         break;
       case 'hammerTaken':
-        if (e.playerId === this.localId) this.toast(this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer`].name, 'swing it: no ammo, no sights', HAMMER_HUE[e.element], 3);
+        if (e.playerId === this.localId) this.toast(this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer`].name, 'your War Hammer takes its element', HAMMER_HUE[e.element], 3);
         break;
       case 'hammerReturned':
-        if (e.playerId === this.localId) this.toast(`The ${HAMMER_NAME[e.element]} Hammer`, 'back on the Anvil', HAMMER_HUE[e.element], 2.2);
+        if (e.playerId === this.localId) this.toast(`The ${HAMMER_NAME[e.element]} Hammer`, 'back on the Anvil · yours is plain iron again', HAMMER_HUE[e.element], 2.2);
+        break;
+      case 'partPicked':
+        if (e.playerId === this.localId) this.toast(`The War Hammer's ${e.name}`, 'take it to the stand at the Anvil', '#ffc860', 3);
+        break;
+      case 'partReturned':
+        this.toast('A War Hammer part fell', 'it\'s back at its shrine', '#c04040', 3);
+        break;
+      case 'partPlaced':
+        this.toast(`The ${e.name}`, `on the stand · ${e.count} of ${e.total}`, '#ffc860', 3);
+        break;
+      case 'warHammerBuilt':
+        this.toast('The War Hammer', 'whole · take one each from the stand', '#ffc860', 4);
+        break;
+      case 'warHammerTaken':
+        if (e.playerId === this.localId) this.toast('War Hammer', 'swing it: no ammo, no sights · a titan\'s core makes it elemental', '#ffc860', 3.5);
         break;
       case 'hammerTempered':
         this.toast(e.name, 'tempered by Pit', HAMMER_HUE[e.element], 3.5);
