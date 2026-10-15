@@ -28,8 +28,9 @@ const each = (v, who) => {
 for (const f of ['intro', 'ending']) for (const l of CONFIG.crustFilms[f].lines) add(l.who, l.text);
 each(L.SCHNITZ_PA, 'schnitz');
 each(PIT_FORGE, 'pit'); each(PIT_POWER, 'pit');
-each(L.CRUST_TALKS); each(L.CRUST_BANTER); each(L.CAGE_TALK);
-each(L.CRUST_REACT); each(L.CRUST_RADIO); each(L.CRUST_FELL);
+each(L.CRUST_TALKS); each(L.CRUST_BANTER); each(L.CRUST_ISLAND_BANTER); each(L.CAGE_TALK);
+each(L.CRUST_REACT); each(L.CRUST_ISLAND_REACT); each(L.CRUST_RADIO); each(L.CRUST_FELL);
+for (const P of Object.values(L.CRUST_PLACES)) { for (const [who, t] of Object.entries(P)) if (who !== 'reply') add(who, t); if (P.reply) add(P.reply.who, P.reply.text); }
 each(L.SCHNITZ_ROASTS, 'schnitz'); each(L.ZACH_TAUNTS, 'schnitz');
 // the finale: the Schnitz through Zach, then Zach himself
 each(ZACH_FINALE.descend, 'schnitz'); each(ZACH_FINALE.phase, 'schnitz'); each(ZACH_FINALE.freed, 'schnitz'); each(ZACH_FINALE.zach, 'zach');
@@ -49,7 +50,13 @@ const parse = (s) => {
   if (cur || row.length) { row.push(cur); rows.push(row); }
   return rows;
 };
-const rows = parse(csv).slice(1);
+let rows = parse(csv).slice(1);
+// Crust lines that aren't in the game any more (rewritten) and were never
+// recorded come out of the script; recorded ones stay (the clips are kept)
+const wanted = new Set(lines.map(([w, t]) => w + '|' + t));
+const recorded = (name) => fs.existsSync(path.join(ROOT, 'tools/voice/clips', name.split('_')[0], name + '.mp3'));
+const dropped = rows.filter((r) => r[2].includes('_crust_') && !wanted.has(r[2].split('_')[0] + '|' + r[0]) && !recorded(r[2]));
+rows = rows.filter((r) => !dropped.includes(r));
 const have = new Set(rows.map((r) => r[2].split('_')[0] + '|' + r[0]));
 const used = new Set(rows.map((r) => r[2]));
 const next = {};
@@ -63,7 +70,8 @@ for (const [who, text] of lines) {
   used.add(name);
   out.push(`${esc(text)},${VOICE[who]},${name}`);
 }
-if (out.length) fs.writeFileSync(SCRIPT, csv.replace(/\n?$/, '\n') + out.join('\n') + '\n');
+// (the script's CRLF, as it was sent out)
+fs.writeFileSync(SCRIPT, ['text,voice,filename', ...rows.map((r) => `${esc(r[0])},${r[1]},${r[2]}`), ...out].join('\r\n') + '\r\n');
 const by = {};
 for (const r of out) { const w = r.slice(r.lastIndexOf(',') + 1).split('_')[0]; by[w] = (by[w] || 0) + 1; }
-console.log(`added ${out.length} lines to tools/voice/script.csv`, by);
+console.log(`added ${out.length} lines to tools/voice/script.csv`, by, dropped.length ? `(took out ${dropped.length} rewritten ones)` : '');

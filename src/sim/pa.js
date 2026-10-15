@@ -15,6 +15,7 @@ import { CREW, ERIK_ROASTS, ROAST_CHANCE } from '../lore/crew.js';
 import { recordedDuration } from '../lore/voice.js';
 import { crewOnEvent, updateCrew } from './crew.js';
 import { SCHNITZ_PA, SCHNITZ_ROASTS } from '../lore/crustCrew.js';
+import { islandAt } from './crustPower.js';
 
 // Higher = more important. Important lines queue; optional ones are dropped
 // if Erik is busy or cooling down.
@@ -114,6 +115,19 @@ function chance(sim, cat) {
   return p == null || sim.pa.rng.chance(p);
 }
 
+// (the Schnitz, all of you on one island: something about it, half the time)
+function islandLine(sim) {
+  const pa = sim.pa, by = pa.book.island;
+  if (!by || !pa.rng.chance(0.5)) return null;
+  let isl;
+  for (const p of sim.players) {
+    if (!p.alive) continue;
+    const i = islandAt(sim, p.pos);
+    if (isl === undefined) isl = i; else if (i !== isl) return null;
+  }
+  return isl && by[isl] ? pickLine(pa, 'island_' + isl, by[isl]) : null;
+}
+
 // React to this tick's events.
 function onEvent(sim, e) {
   const pa = sim.pa, c = sim.cfg.pa;
@@ -122,7 +136,7 @@ function onEvent(sim, e) {
       if (e.round === 1) paSay(sim, 'intro', { delay: c.introDelay });   // then the crew check in (crew.js)
       else if (pa.book.milestone[e.round]) paSay(sim, 'milestone', { text: pa.book.milestone[e.round], delay: 1.5 });
       else if (e.cheddar) paSay(sim, 'cheddar', { delay: 0.6 });
-      else if (chance(sim, 'round')) paSay(sim, 'round', { delay: 2 });
+      else if (chance(sim, 'round')) paSay(sim, 'round', { delay: 2, text: islandLine(sim) });
       break;
     case 'roundEnd':
       if (e.cheddar) { if (chance(sim, 'cheddarEnd')) paSay(sim, 'cheddarEnd', { delay: 1 }); }

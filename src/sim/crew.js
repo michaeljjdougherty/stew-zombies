@@ -10,21 +10,29 @@
 // and the Schnitz on the speakers).
 // =============================================================================
 import { REACT, REACT_CHANCE, RADIO, RADIO_CHANCE, TALKS, BANTER, BANTER_CHANCE, LAUNCH_CREW } from '../lore/crew.js';
-import { CRUST_CREW, CRUST_VOICES, CAGED, CRUST_REACT, CRUST_REACT_CHANCE, CRUST_RADIO, CRUST_FELL, CRUST_TALKS, CRUST_BANTER, CAGE_TALK } from '../lore/crustCrew.js';
+import { CRUST_CREW, CRUST_VOICES, CAGED, CRUST_REACT, CRUST_REACT_CHANCE, CRUST_RADIO, CRUST_FELL, CRUST_TALKS, CRUST_BANTER, CAGE_TALK, CRUST_ISLAND_REACT, CRUST_PLACES, CRUST_ISLAND_BANTER } from '../lore/crustCrew.js';
 import { paSay } from './pa.js';
 import { islandAt } from './crustPower.js';
 
-// Each map's lines: the school's, or the Crust's (its own where it has them,
-// the school's reactions where it doesn't)
-const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = [...(a[k] || []), ...v]; return o; };
+// Each map's lines: the school's, or the Crust's (all its own)
 const SETS = {
   school: { members: LAUNCH_CREW, extra: [], talks: TALKS, banter: BANTER, react: REACT, chance: REACT_CHANCE, radio: RADIO },
-  crust: { members: CRUST_CREW, extra: CRUST_VOICES, talks: CRUST_TALKS, banter: CRUST_BANTER, react: { ...REACT, ...CRUST_REACT }, chance: { ...REACT_CHANCE, ...CRUST_REACT_CHANCE }, radio: merge(RADIO, CRUST_RADIO) },
+  crust: { members: CRUST_CREW, extra: CRUST_VOICES, talks: CRUST_TALKS, banter: CRUST_BANTER, react: CRUST_REACT, chance: { ...REACT_CHANCE, ...CRUST_REACT_CHANCE }, radio: CRUST_RADIO },
 };
+// which island everyone (alive) is on, if they're all on the same one
+function sharedIsland(sim) {
+  let isl;
+  for (const p of sim.players) {
+    if (!p.alive || p.launch) continue;
+    const i = islandAt(sim, p.pos);
+    if (isl === undefined) isl = i; else if (i !== isl) return null;
+  }
+  return isl || null;
+}
 
 export function createCrew(sim) {
   const set = sim && sim.mapData.announcer === 'schnitz' ? 'crust' : 'school';
-  return { set, lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {}, cageAt: null, cageUsed: new Set(), landed: new Set() };
+  return { set, lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {}, cageAt: null, cageUsed: new Set(), landed: new Set(), places: new Set(), placeAt: 0 };
 }
 const S = (sim) => SETS[sim.crew.set];
 
@@ -70,7 +78,14 @@ function react(sim, playerId, cat) {
   if (pa.queue.some((q) => q.cat === 'talk')) return;
   if (sim.time - (C.lastReact[playerId] ?? -99) < sim.cfg.crew.reactCooldown) return;
   if (!pa.rng.chance(set.chance[cat] ?? 0.5)) return;
-  const text = pick(sim, set.react[cat][who]);
+  let list = set.react[cat][who];
+  // (out on the Crust, a round starting: mostly about the island you're on)
+  if (C.set === 'crust' && cat === 'roundStart') {
+    const p = sim.playerById(playerId), isl = p && islandAt(sim, p.pos);
+    const by = isl && CRUST_ISLAND_REACT[isl] && CRUST_ISLAND_REACT[isl][who];
+    if (by && pa.rng.chance(set.chance.islandRound)) list = by;
+  }
+  const text = pick(sim, list);
   if (!paSay(sim, 'react', { text, delay: 0.3, who, radio: false, force: true })) return;
   C.lastReact[playerId] = sim.time;
   // a reply over the radio from someone who isn't playing
@@ -97,6 +112,15 @@ export function crewOnEvent(sim, e) {
     case 'roundEnd': {
       if (e.cheddar || sim.rounds.round < 2) break;
       if (!sim.pa.rng.chance(BANTER_CHANCE)) break;
+      // (out on the Crust, all of you on one island: something about it, if there's any left)
+      const isl = C.set === 'crust' ? sharedIsland(sim) : null;
+      const local = isl && CRUST_ISLAND_BANTER[isl] ? CRUST_ISLAND_BANTER[isl].map((b, i) => [isl + ':' + i, b]).filter(([k]) => !C.banterUsed.has(k)) : [];
+      if (local.length) {
+        const [k, b] = local[Math.floor(sim.pa.rng.next() * local.length)];
+        C.banterUsed.add(k);
+        crewTalk(sim, null, b, 2.5);
+        break;
+      }
       const banter = S(sim).banter;
       const left = banter.map((b, i) => i).filter((i) => !C.banterUsed.has(i));
       if (!left.length) break;
@@ -175,10 +199,12 @@ function crustOnEvent(sim, e) {
   }
 }
 
-// Each tick (from the PA): the boys in the cage shout down when you're up near it
+// Each tick (from the PA): somewhere new, and the boys in the cage
 export function updateCrew(sim) {
   const C = sim.crew, pa = sim.pa;
-  if (C.set !== 'crust' || !sim.mapData.forge || !sim.mapData.forge.cage) return;
+  if (C.set !== 'crust') return;
+  updatePlaces(sim, C, pa);
+  if (!sim.mapData.forge || !sim.mapData.forge.cage) return;
   const c = sim.cfg.crust.cageTalk, cage = sim.mapData.forge.cage;
   if (C.cageAt == null) C.cageAt = sim.time + c.first;
   if (sim.time < C.cageAt || pa.speaking || pa.queue.length) return;
@@ -191,4 +217,24 @@ export function updateCrew(sim) {
   C.cageUsed.add(i);
   crewTalk(sim, null, CAGE_TALK[i], 0.3);
   C.cageAt = sim.time + pa.rng.range(c.every[0], c.every[1]);
+}
+
+// The first time anyone gets somewhere worth saying something about
+function updatePlaces(sim, C, pa) {
+  if (sim.time < C.placeAt) return;
+  C.placeAt = sim.time + 0.5;
+  if (pa.queue.length >= 3) return;
+  const here = playing(sim);
+  for (const p of sim.players) {
+    if (!p.alive || p.launch || p.downed) continue;
+    const zone = sim.zoneOf(p.pos, p.region);
+    const P = zone && CRUST_PLACES[zone];
+    if (!P || C.places.has(zone)) continue;
+    C.places.add(zone);
+    const text = P[p.character];
+    if (!text) continue;
+    paSay(sim, 'react', { text, delay: 0.4, force: true, who: p.character, radio: false });
+    if (P.reply && P.reply.who !== p.character) paSay(sim, 'radio', { text: P.reply.text, delay: 0.45, force: true, who: P.reply.who, radio: !here.has(P.reply.who) });   // (Pit: live or radio by where you are, pa.js)
+    return;   // (one at a time)
+  }
 }

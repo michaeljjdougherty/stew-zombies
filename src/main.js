@@ -616,7 +616,7 @@ function startFilm(name, then) {
   hud.show(false);
   sim.rounds.phase = 'pregame'; sim.rounds.timer = 1e9;
   sim.power = true;
-  powerAllOn(sim);   // (the Crust: every island lit, the launchers live)
+  if (name !== 'intro') powerAllOn(sim);   // (the Crust: every island lit, the launchers live; in the intro the power's still out)
   const T = renderer.startFilm(name);
   T.onLine = (who, text, secs) => { if (settings.subtitles !== false) cutsceneUI.line(who, text, secs); sound.voiceLine(who, text, secs); };
   T.onCue = (n) => sound.cue(n);

@@ -13,7 +13,12 @@
 //             it: Zach is its, the boys are its, and the cage opens for one
 //             price. Somebody goes over the edge
 //   zach      Big Evil Zach, out in the dark
-//   plan      Pit: the War Hammer's in four pieces, one on every island
+//   tour_*    Pit names the islands, a slow look at each from the air: the
+//             Ship Graveyard, the Research Base, the Trench Front, the Ice
+//             Caves (and each one's titan)
+//   relays    the north launcher, dead: its junction box spitting sparks. The
+//             power's out; every launcher blew a relay
+//   plan      Pit: then the War Hammer's four pieces; Brian: then let's go
 //
 // THE ENDING ("A Deal's a Deal")
 //   freed     the last hammer lands; the Schnitz lets go of Zach
@@ -23,7 +28,8 @@
 //   push      Kearns shoves him off. He's gone
 //   cheer     a beat of silence. Then everybody's thrilled
 //   release   "...That works." The cage comes down; the boys walk out
-//   portal    a portal opens; they all go through. Where to, nobody knows
+//   portal    a portal opens; they all go through (Pit says bye to his forge).
+//             Where to, nobody knows
 // =============================================================================
 import * as THREE from 'three';
 import * as T from './textures.js';
@@ -96,6 +102,19 @@ function walk(Tr, id, a, b, k, o = {}) {
   return A;
 }
 const camAt = (Tr, x, z, up) => Tr.ground(x, z) + up;
+// A slow aerial drift over one island: from c0 to c1, looking from l0 to l1
+function tour(c0, c1, l0, l1, fov) {
+  return {
+    frame(Tr, u, d, k) {
+      Tr.far = 600;
+      for (const id of ['kearns', 'ryan', 'rocco', 'brian']) Tr.hide(id);
+      const e = sm(0, 1, k);
+      const c = lerpV(V(...c0), V(...c1), e), l = lerpV(V(...l0), V(...l1), e);
+      Tr.light(0.6, '#e8f0ff', [c.x, c.y + 10, c.z]);
+      Tr.look(c.x, Math.max(c.y, Tr.ground(c.x, c.z) + 4), c.z, l.x, l.y, l.z, fov);
+    },
+  };
+}
 
 // ============================================================================
 // THE INTRO
@@ -213,6 +232,25 @@ export const INTRO_SHOTS = {
       if (k < 0.1) Tr.roared = false;
       Tr.light(0.5, '#90ffa0', [0, 30, -60]);
       Tr.look(lerp(-1.2, 0.6, k), camAt(Tr, 0, -33.5, 1.6), -33.5, 0, 17, -84, lerp(40, 34, k));
+    },
+  },
+
+  // Pit names the islands: a long slow look at each from the air, its titan asleep
+  tour_ship: tour([30, 30, -110], [18, 26, -118], [0, 2, -178], [6, 0, -190], 52),
+  tour_research: tour([122, 9, 3], [119, 7, -4], [114, 4.5, -20], [114, 5, -21], 50),
+  tour_trench: tour([-30, 24, 112], [-24, 21, 108], [6, 2, 148], [18, 0, 138], 54),
+  tour_caves: tour([-149, 33, -27], [-152, 30, -30], [-165, 12, -37], [-166, 12, -39], 46),
+
+  // the north launcher, dead, its junction box spitting sparks
+  relays: {
+    frame(Tr, u, d, k) {
+      const r = Tr.sim.mapData.relays && Tr.sim.mapData.relays[0];
+      if (!r) return;
+      for (const id of ['kearns', 'ryan', 'rocco', 'brian']) Tr.hide(id);
+      Tr.light(0.7, '#c8d8ff', [r.x + 3, r.y + 4, r.z + 2]);
+      const c = lerpV(V(r.x + 1.6, r.y + 1.5, r.z + 0.8), V(r.x + 3.6, r.y + 2.2, r.z + 3.4), sm(0.05, 0.9, k));
+      const l = lerpV(V(r.x, r.y + 1.3, r.z), V(r.x + 1.5, r.y + 0.9, r.z - 0.6), sm(0.05, 0.9, k));
+      Tr.look(c.x, c.y, c.z, l.x, l.y, l.z, lerp(40, 52, k));
     },
   },
 

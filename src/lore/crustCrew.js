@@ -88,6 +88,14 @@ export const SCHNITZ_PA = {
     "Over the edge. Not the deal, but I'll take it.",
     "Oops.",
   ],
+  // a round starting with all of you on one island
+  island: {
+    hub: ["Back in the forge pit. Pit can't help you, you know.", "The Anvil. My favourite rock. Watch the ramps."],
+    ship: ["The Graveyard. My Captain's dreaming about you.", "The fog brings friends."],
+    research: ["Mind the coils. Or don't.", "The Warden's been charging for this."],
+    trench: ["My guns don't miss. Much.", "The Fiend's hungry. It's always hungry."],
+    caves: ["Cold enough? It gets colder.", "The Golem's listening."],
+  },
   idle: [
     "Do you hear that? Three boys swinging in the wind. Lovely sound.",
     "Erik was a disappointment. You won't be. You'll be dinner.",
@@ -132,10 +140,58 @@ export const SCHNITZ_ROASTS = {
 };
 
 // ---------------------------------------------------------------------------
-// Reactions: what your character says out loud. These replace the school's
-// where they're here; the rest (knife, perk, hurt...) carry over.
+// Reactions: what your character says out loud (all their own out here: none
+// of the school's carry over).
 // ---------------------------------------------------------------------------
 export const CRUST_REACT = {
+  multiKill: {
+    kearns: ["Did that just... go RIGHT for me? In SPACE?", "Somebody write that down. Kearns, good luck, one time, on a rock.", "Back to the void, you freaks."],
+    ryan: ["Strong man! STRONG MAN!", "That's what a Mad Dog does. Even up here.", "Stack 'em up, boys. Off the edge they go."],
+    rocco: ["Well well WELL!", "That's a highlight. Space highlight.", "Did the cage see that? Somebody tell the cage."],
+    brian: ["Clean.", "Too easy.", "Next."],
+  },
+  knife: {
+    kearns: ["Up close and personal. Space gross.", "I'm gonna need to wash this hand. In what? There's no water. It's all ice."],
+    ryan: ["Hands on. Just how I like it.", "That's a Mad Dog bite."],
+    rocco: ["Shank city, baby. Crust edition.", "Little guy, big knife."],
+    brian: ["Quiet way.", "No ammo needed."],
+  },
+  revived: {
+    kearns: ["Back up. Still unlucky. Still in space.", "Thanks. Don't tell the Schnitz."],
+    ryan: ["Strong man's back.", "Can't keep a Mad Dog down. Not even out here."],
+    rocco: ["Well well well. Look who's alive.", "Respawned. Like 2K. Space 2K."],
+    brian: ["Appreciated.", "Back in."],
+  },
+  dryFire: {
+    kearns: ["Out of ammo. Naturally. In space.", "Click. CLICK. Why is it always me?"],
+    ryan: ["Empty! Gotta reload or punch something.", "Out! Somebody check the box!"],
+    rocco: ["Click click click. That's not good.", "Out! Out out out!"],
+    brian: ["Empty.", "Switching."],
+  },
+  hurt: {
+    kearns: ["They always go for me! Even the space ones!", "Ow! My tomato foot!"],
+    ryan: ["Hit me harder, see what happens!", "That's gonna leave a crater."],
+    rocco: ["Hey! Pick on someone your own size!", "Ow! Lumpy got hit!"],
+    brian: ["Getting close.", "Back off."],
+  },
+  boxGood: {
+    kearns: ["No way. Something went right for me. Out here.", "I'm keeping this. Forever. Like my iPad."],
+    ryan: ["Now THAT'S a weapon.", "Strong gun for a strong man."],
+    rocco: ["Well well well. Look what Lumpy pulled.", "Legendary pull. Space legendary."],
+    brian: ["This'll do.", "Nice."],
+  },
+  perk: {
+    kearns: ["Tastes like soup. Space soup.", "Feeling lucky. Which is new. And weird."],
+    ryan: ["Mmm. Protein.", "Now we're cooking. Thanks for the power, Pit."],
+    rocco: ["Spicy! Lumpy likes it spicy.", "Well well well. Island soda."],
+    brian: ["Better.", "Ready."],
+  },
+  cheddar: {
+    kearns: ["Dogs. On a floating rock. It had to be dogs.", "Why do they always smell like cheese?"],
+    ryan: ["Here, doggy doggy. Mad Dog wants to play.", "No offense to Maisy, but these ones go over the edge."],
+    rocco: ["Well well well. Space cheese dogs.", "Sit! ...nope, they don't sit."],
+    brian: ["Dogs. Aim low.", "Watch the edges. They don't."],
+  },
   roundStart: {
     kearns: ["Space zombies. Of course it's space zombies.", "I can see the whole galaxy and it's still my bad day.", "Kearnita's home eating cereal right now. Lucky."],
     ryan: ["Let's go. Strong man in space.", "Maisy, daddy's in space. Daddy's still coming home.", "Line 'em up, boys."],
@@ -173,10 +229,90 @@ export const CRUST_REACT = {
     brian: ["Going down.", "Covering you."],
   },
 };
-export const CRUST_REACT_CHANCE = { launch: 0.55, hammer: 0.9, zip: 0.5 };
+export const CRUST_REACT_CHANCE = { launch: 0.55, hammer: 0.9, zip: 0.5, place: 1, islandRound: 0.6 };
 
-// Someone on the walkie answering a reaction (added to the school's)
+// Round start, on a particular island (instead of the plain round-start line,
+// most of the time)
+export const CRUST_ISLAND_REACT = {
+  hub: {
+    kearns: ["Back in the hole. My favourite hole.", "The Anvil again. At least Pit's here."],
+    ryan: ["Hold the pit, boys.", "Pit, keep the forge hot. We got company."],
+    rocco: ["Well well well. Forge round.", "They're climbing down the ramps! Like ants! Gross ants!"],
+    brian: ["Watch the ramps.", "Up on the terraces. Better angles."],
+  },
+  ship: {
+    kearns: ["The fog's rolling in off the wrecks. Great.", "Something's coming up the pier. Of course it is."],
+    ryan: ["Hold the village, boys!", "Smells like fish and dead guys."],
+    rocco: ["Ahoy, ugly!", "Well well well. Pirate zombies."],
+    brian: ["Covering the pier.", "Up on the roofs. Watch the shore."],
+  },
+  research: {
+    kearns: ["Everything in here is sparking. That's fine. That's normal.", "Please don't let the robot wake up. Please."],
+    ryan: ["Hold the labs!", "Lab zombies. Smart ones? Hope not."],
+    rocco: ["Well well well. Science round.", "They're coming through the airlock!"],
+    brian: ["Watch the corridor.", "Stay off the catwalks till it's clear."],
+  },
+  trench: {
+    kearns: ["It's so HOT. Why is the lava hot. Why is there lava.", "Stay in the trench, stay in the trench..."],
+    ryan: ["Hold the line, boys! Literally, the line!", "Keep your head down. Those guns don't care who you are."],
+    rocco: ["Well well well. Barbecue round.", "Trench warfare! Like the history channel!"],
+    brian: ["Stay low.", "Hold the fort."],
+  },
+  caves: {
+    kearns: ["It's so cold my teeth are chattering in Morse code.", "Don't slip. Don't slip. I slipped."],
+    ryan: ["Hold the cavern!", "Cold doesn't scare the strong man."],
+    rocco: ["Well well well. Snow round.", "My lumps are freezing. Every single lump."],
+    brian: ["Watch the shelves.", "Keep moving. Stay warm."],
+  },
+};
+
+// The first time anyone gets to these places, whoever's there says something
+// (and maybe someone answers on the walkie). Keyed by zone.
+export const CRUST_PLACES = {
+  scaffold: { kearns: "Catwalks. Over a pit. Wobbly ones. Love it.", ryan: "Good view of the forge from up here.", rocco: "I can see Pit's bald spot from up here!", brian: "High ground. Good.", reply: { who: 'pit', text: "That's not a bald spot, man. That's a forge tan." } },
+  depot: { kearns: "A supply depot. With supplies? No. Of course not.", ryan: "Depot. There's a perk machine in here!", rocco: "Well well well. Space Costco.", brian: "Depot's clear." },
+  lighthouseGallery: { kearns: "Top of the lighthouse. Lighthouses are good luck. I'm calling it.", ryan: "You can see the whole graveyard from up here.", rocco: "I'm the lighthouse now. BWAAAMP.", brian: "Good sight lines. I can see the Captain." },
+  galleon: { kearns: "We're on a pirate ship. In space. On a rock.", ryan: "Big boat. Big dead boat.", rocco: "I'm the captain now! Captain Lumpy!", brian: "Galleon's quiet. For now.", reply: { who: 'ryan', text: "You're not the captain, Lumpy." } },
+  capsized: { kearns: "We're inside an upside-down ship. Everything is upside-down. Even my luck. Wait.", ryan: "Hull's solid. Good spot to hold.", rocco: "Upside-down boat! Upside-down Rocco!", brian: "Tight in here. Watch both ends." },
+  mast: { kearns: "This mast is very tall and I am very not okay with it.", ryan: "Top of the radio mast! Strong man in the sky!", rocco: "Hello? Hello? Is this thing on? Can I call 2K support?", brian: "Mast's up. Whole base in view." },
+  dome: { kearns: "An observatory. Look, stars. Stars everywhere. Too many stars.", ryan: "Big telescope. Point it at home.", rocco: "I can see my house from here! No I can't.", brian: "Observatory's clear." },
+  teslayard: { kearns: "Giant tesla coils. Of course. Nothing bad has ever happened near a tesla coil.", ryan: "These coils are humming. That's the robot's weak spot.", rocco: "My hair's standing up! Well, more than usual!", brian: "Coils. Remember them for the Warden." },
+  fort1: { kearns: "The fort. Walls. Finally, walls.", ryan: "Hold the fort, boys. I've always wanted to say that.", rocco: "There's a phone in here! Can I order a pizza?", brian: "Phone's live. It calls the guns off." },
+  nomansland: { kearns: "Why am I up here? I'm not supposed to be up here!", ryan: "No man's land! Get down, get down!", rocco: "Well well well. Bad idea. This is a bad idea.", brian: "Exposed. Moving through." },
+  gunpitW: { kearns: "A field gun. I'm not touching it. I'm touching it.", ryan: "Field guns! Point 'em at the crater!", rocco: "BOOM. Can I BOOM? I'm gonna BOOM.", brian: "Guns are good. Crater's in range." },
+  gunpitE: { kearns: "Another gun. Twice the chances for this to go wrong.", ryan: "East gun's ready!", rocco: "Two guns! Double BOOM!", brian: "East gun. Covering the crater." },
+  cavern: { kearns: "It's so big in here. And so cold. And so dark.", ryan: "Great cavern. Look at the icicles on the roof.", rocco: "ECHO! Echo! echo...", brian: "Big clusters on the ceiling. Those'll drop." },
+  falls: { kearns: "Frozen waterfall. Steps cut in the ice. Who cut them? Nobody wants to know.", ryan: "Up the falls! Watch your feet!", rocco: "I'm an ice climber now!", brian: "Falls lead to the summit." },
+  summit: { kearns: "There's a golem up here. A sleeping golem. Everyone be quiet.", ryan: "Wind Summit. There's the Golem.", rocco: "HELLO, GOLEM!", brian: "Golem's asleep. Let's keep it that way. For now.", reply: { who: 'kearns', text: "ROCCO." } },
+  mine: { kearns: "An old mine. Collapsed. Like my hopes.", ryan: "Mine's tight. Watch your heads.", rocco: "Diamonds? Any diamonds? No diamonds.", brian: "Mine's clear." },
+  lake: { kearns: "A frozen lake. If it cracks, I'm going first. I always go first.", ryan: "Frozen lake. Careful.", rocco: "Ice skating! Wheee!", brian: "Big icicles over the lake too." },
+};
+
+// Someone on the walkie answering a reaction (the Crust's own)
 export const CRUST_RADIO = {
+  roundStart: [
+    { who: 'rocco', text: "Well well well. Here they come, ladies." },
+    { who: 'ryan', text: "Everybody check in. Who's on what island?" },
+    { who: 'pit', text: "More of 'em, man. I can hear 'em climbing the ramps." },
+    { who: 'kearns', text: "Is anybody else's walkie full of space static? Mine's full of space static." },
+  ],
+  multiKill: [
+    { who: 'rocco', text: "Was that you? Whoever that was, well well well." },
+    { who: 'ryan', to: 'kearns', text: "Kearns did that? Somebody check if he's okay." },
+    { who: 'pit', text: "Heard that from the forge, man. That was loud." },
+    { who: 'brian', text: "Nice." },
+  ],
+  boxBad: [
+    { who: 'ryan', to: 'kearns', text: "The box ran from Kearns. Even the space box knows." },
+    { who: 'rocco', to: 'kearns', text: "Worst luck on five islands. Carrot farmer strikes again." },
+  ],
+  boxGood: [
+    { who: 'rocco', text: "What'd you get? Gimme. I'll trade you my spot in the cage line." },
+    { who: 'kearns', to: 'ryan', text: "Ryan got the good gun. Of course Ryan got the good gun." },
+  ],
+  perk: [
+    { who: 'pit', text: "Power's good for something, man." },
+  ],
   down: [
     { who: 'rocco', to: 'kearns', text: "Kearns is down. In space. That's new, even for you." },
     { who: 'kearns', to: 'rocco', text: "Rocco's down. Should we... leave him? Just asking." },
@@ -447,6 +583,57 @@ export const CRUST_BANTER = [
     { who: 'ryan', text: "...Okay." },
   ],
 ];
+
+// Between rounds on a particular island (when everyone's on it)
+export const CRUST_ISLAND_BANTER = {
+  ship: [
+    [
+      { who: 'kearns', text: "Does anybody else hear singing? Out in the fog? Sea shanty singing?" },
+      { who: 'ryan', text: "That's the Captain. Snoring." },
+      { who: 'rocco', text: "Snoring in tune. Respect." },
+    ],
+    [
+      { who: 'rocco', text: "If I find treasure on the galleon, it's mine." },
+      { who: 'brian', text: "If you find treasure, the Schnitz put it there." },
+      { who: 'rocco', text: "...Then it's yours." },
+    ],
+  ],
+  research: [
+    [
+      { who: 'kearns', text: "There's a whiteboard in the lab that says 'DO NOT WAKE THE WARDEN.'" },
+      { who: 'ryan', text: "So we're gonna wake the Warden." },
+      { who: 'kearns', text: "We're definitely gonna wake the Warden." },
+    ],
+    [
+      { who: 'rocco', text: "The mess hall's got pudding cups. Space pudding." },
+      { who: 'pit', text: "Bring me one, man. Chocolate." },
+      { who: 'rocco', text: "It's all vanilla. I ate the chocolate." },
+    ],
+  ],
+  trench: [
+    [
+      { who: 'ryan', text: "Every time a shell lands I think of Maisy hiding under the couch on the Fourth of July." },
+      { who: 'kearns', text: "Same. Except I'm the one under the couch." },
+    ],
+    [
+      { who: 'rocco', text: "I called the guns off on the phone. They said 'who is this.'" },
+      { who: 'brian', text: "What'd you say?" },
+      { who: 'rocco', text: "'Well well well.' They hung up." },
+    ],
+  ],
+  caves: [
+    [
+      { who: 'kearns', text: "My eyelashes are frozen. Is that bad? That feels bad." },
+      { who: 'ryan', text: "Walk it off." },
+      { who: 'kearns', text: "I can't feel my legs to walk it off, Ryan." },
+    ],
+    [
+      { who: 'rocco', text: "I licked the ice wall. My tongue's stuck. Well well wellll." },
+      { who: 'brian', text: "Leave him." },
+      { who: 'ryan', text: "...Tempting." },
+    ],
+  ],
+};
 
 // The boys in the cage, when you're up near it (one of these at a time)
 export const CAGE_TALK = [

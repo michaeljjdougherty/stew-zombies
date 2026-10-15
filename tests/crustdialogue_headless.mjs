@@ -141,6 +141,40 @@ const has = (said, text) => said.some((s) => s.text === text);
   check(L.CRUST_TALKS.zach.every((l) => has(g.said, l.text)), 'the crew see Zach come down');
 }
 
+// --- the map: somewhere new, the island you're on
+{
+  const g = game(8, 'rocco');
+  powerAllOn(g.sim);
+  g.step(150);
+  const go = (x, z, y) => { g.me.pos.x = x; g.me.pos.z = z; g.me.pos.y = y; g.me.region = null; g.me.launch = null; };
+  // up the lighthouse (the gallery), onto the galleon
+  for (const [zone, x, z, y] of [['lighthouseGallery', -37, -188, 9.3], ['galleon', 12, -157, 3.45], ['cavern', -152, 0, 1.0]]) {
+    go(x, z, y);
+    g.step(0.2);
+    const there = g.sim.zoneOf(g.me.pos, g.me.region);
+    g.step(14);
+    const line = L.CRUST_PLACES[zone].rocco;
+    check(there === zone && has(g.said, line), `${zone}: Rocco says "${line}" (in ${there})`);
+  }
+  // no school lines out here
+  const crustText = new Set();
+  const walk = (v) => { if (typeof v === 'string') crustText.add(v); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
+  for (const k of Object.keys(L)) walk(L[k]);
+  walk(CONFIG.crustFilms);
+  for (const k of ['PIT_FORGE', 'PIT_POWER']) walk((await import('../src/lore/crew.js'))[k]);
+  const stray = g.said.filter((s) => !crustText.has(s.text));
+  check(stray.length === 0, `every line said out here is a Crust line (${stray.map((s) => s.text).slice(0, 2).join(' | ')})`);
+  // a round starting with everyone on the Ship Graveyard: the Schnitz and the crew talk about it (sometimes)
+  go(0, -114, 0.8);
+  let heardIsland = false;
+  for (let r = 0; r < 14 && !heardIsland; r++) {
+    g.sim.emit('roundStart', { round: 40 + r });
+    g.step(25);
+    heardIsland = g.said.some((s) => L.SCHNITZ_PA.island.ship.includes(s.text) || Object.values(L.CRUST_ISLAND_REACT.ship).flat().includes(s.text));
+  }
+  check(heardIsland, 'a round on the Ship Graveyard: someone talks about the Graveyard');
+}
+
 // --- the school's the same as ever: Erik on the PA, the old check-in
 {
   const g = game(7, 'kearns', SCHOOL);
