@@ -293,7 +293,7 @@ export const CONFIG = {
     height: 1.8,
     stepHeight: 0.5,
     dropChance: 0.25,        // share of plain walkers that will jump down a ledge after you (runners always do)
-    deadEyeMask: [0.03, 0.2], // a dead zombie's eyes go black where its glow map is brighter than this (soft edge)
+    deadEyeMask: [0.004, 0.06], // a dead zombie's eyes go black where its glow map is brighter than this (soft edge)
 
     healthBase: 150,
     healthAddPerRound: 100,
