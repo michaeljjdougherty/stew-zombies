@@ -59,6 +59,7 @@ export function startLaunch(sim, p, from, to) {
     t: 0, time: L.time, apex: L.apex,
     toId: to.id,
   };
+  p.launchRev = (p.launchRev || 0) + 1;   // (online: tells a friend's browser to fly them)
   p.sprinting = false;
   sim.emit('playerLaunch', { playerId: p.id, from: { x: from.x, z: from.z }, to: { x: to.x, z: to.z }, time: L.time });
 }

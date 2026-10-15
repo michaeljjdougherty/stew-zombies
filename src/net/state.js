@@ -191,6 +191,11 @@ export function applyMirror(sim, M, localId) {
         p.loadout.adsAmount = Math.min(p.loadout.adsAmount, s.loadout.adsAmount);
         p.grenades = s.grenades; p.stewBombs = s.stewBombs; p.maisyDogs = s.maisyDogs || 0; p.lbds = s.lbds || 0;
       }
+      // the host launched you (you pressed F on a launcher): fly
+      if ((s.launchRev || 0) > (p.launchRev || 0)) {
+        p.launchRev = s.launchRev;
+        if (s.launch) { p.launch = structuredCopy(s.launch); p.sprinting = false; }
+      }
       // the host moved you (respawn)
       if ((s.tp || 0) > (p.tp || 0)) {
         p.tp = s.tp;

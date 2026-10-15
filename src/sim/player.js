@@ -308,6 +308,9 @@ function updateUseAndHealth(sim, p, cmd, dt) {
 // what they shot (src/net/host.js); here we only drink perks, use things and heal.
 export function updateRemotePlayer(sim, p, cmd, dt) {
   if (!p.alive) return;
+  // off a launcher: the host flies them too (so they land here, and the
+  // launcher's recharge starts here, where it's checked)
+  if (p.launch) { updateLaunch(sim, p, dt); p.prompt = null; p.useTarget = null; return; }
   updateDrinking(sim, p, dt);
   updateUseAndHealth(sim, p, cmd, dt);
 }
