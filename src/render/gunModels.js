@@ -61,6 +61,7 @@ export const REAL_GUNS = {
   deagle: { file: 'deagle', rot: [0, 180, 0], len: 1.12, rh: [0, 0.01, 0.005] },
   peacekeeper: { file: 'peacekeeper', rot: [0, -90, 0], center: 'sights', off: [0, 0.008, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
   scarh: { file: 'scar_h', rot: [0, 180, 0], rh: [0, 0, 0], lh: [0, 0, 0] },
+  flamer: { file: 'flamethrower', rot: [0, -90, 0], hide: /^(bondage|Vert)/, len: 1.0, off: [0, 0.02, -0.12], rh: [0, -0.02, 0.08], lh: [0, 0.01, 0] },
   m60: { file: 'm60', rot: [0, 90, 0], center: 'sights', off: [0.025, 0.033, 0], hide: /^polySurface(156|239|245|261|284|285|248|237)_/, rh: [0, 0, 0], lh: [0, -0.1, -0.22] },
 };
 export const realGunMaterials = new Set();   // the viewmodel dims these in the dark
@@ -1207,7 +1208,7 @@ const BUILDERS = {
   pistol, revolver, rifle, doubleBarrel, smg, carbine,
   cz76, pump, spaz, hs11, mp6k, mpk, pm64, ak75u, galill, rpkk, m17, spectur, famos, awg, g12, hk22, dragunoff, l97, chinapond, krossbow, bknife,
   // (the real models of these sit on the nearest built-in shape: hands, sights, size)
-  scav: l97, fucci2: pistol, deagle: pistol, peacekeeper: carbine, scarh: carbine, m60: hk22,
+  scav: l97, fucci2: pistol, deagle: pistol, peacekeeper: carbine, scarh: carbine, m60: hk22, flamer: hk22,
 };
 
 // ---------------------------------------------------------------------------

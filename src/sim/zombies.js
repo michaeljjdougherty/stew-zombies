@@ -561,7 +561,7 @@ export function damageZombie(sim, z, amount, info) {
       if (knife) player.knifeKills++;
     }
     killZombie(sim, z, { ...info, headshot });
-  } else if (player) {
+  } else if (player && !info.quiet) {
     sim.addPoints(player, pts.hit, 'hit');
   }
 }

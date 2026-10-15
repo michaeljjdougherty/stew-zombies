@@ -197,6 +197,17 @@ export class ZombieViews {
   }
 
   // A spirit zombie dies: it goes limp and floats up into the air, fading out.
+  // Burnt to death: blackened, and still smouldering as it falls.
+  char(v) {
+    const k = this.cfg.flameLook ? this.cfg.flameLook.char : 0.25;
+    v.root.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const one = (m) => { const c = m.clone(); if (c.color) c.color.multiplyScalar(k); if (c.emissive) c.emissive.setRGB(0, 0, 0); return c; };
+      o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material);
+    });
+    v.smolder = 1.8;
+  }
+
   // Swallowed by a Maisy Dog's black hole: spun in toward it and gone.
   suck(v, e) {
     if (v.mixer) {
@@ -543,6 +554,7 @@ export class ZombieViews {
   makeCorpse(v, e) {
     this.eyesOut(v);
     if (e.vortex) { this.suck(v, e); return; }
+    if (e.kind === 'fire') this.char(v);
     if (v.spirit) { this.ascend(v); return; }
     if (v.rig) { this.corpseRigged(v, e); return; }
     if (e.kind === 'explosive' && e.force > 0.55) { this.explodeBody(v, e); return; }
@@ -599,6 +611,8 @@ export class ZombieViews {
           this.effects.bloodDrip(_drip);
         }
       }
+      // alight (the flamethrower): flames off the whole body
+      if (z.burn && this.effects.flames) this.effects.flames.burn(v.root.position, z.crawler ? 0.6 : 1.7, dt, v.burnAcc || (v.burnAcc = {}));
     }
     for (const [id, v] of this.views) {
       if (!seen.has(id)) { this.scene.remove(v.root); this.views.delete(id); }
@@ -741,6 +755,7 @@ export class ZombieViews {
       const c = this.corpses[i];
       const v = c.v;
       c.t += dt;
+      if (v.smolder > 0 && this.effects.flames) { v.smolder -= dt; this.effects.flames.burn(v.root.position, 0.8, dt, v.burnAcc || (v.burnAcc = {}), v.smolder / 1.8); }
       if (c.vortex) {
         // pulled up and in, spinning faster and faster, shrinking to nothing
         if (v.mixer) v.mixer.update(dt);

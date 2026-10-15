@@ -13,6 +13,7 @@ import { buildMap, openDoorCollision } from '../map/build.js';
 import { createPlayer, updatePlayer, updateRemotePlayer, emptyCommand, damagePlayer } from './player.js';
 import { cancelReload } from './weapons.js';
 import { updateZombies, zombieHitboxes } from './zombies.js';
+import { updateBurning } from './flame.js';
 import { createRoundState, updateRounds } from './rounds.js';
 import { createWindows, WindowInteractable } from './interactables/windows.js';
 import { DoorInteractable, WallBuyInteractable, BoxInteractable, SaleBox } from './interactables/buyables.js';
@@ -345,6 +346,7 @@ export class GameSim {
     updateTraps(this, dt);
     updatePowerups(this, dt);
     updateZombies(this, dt);
+    if (!this.replica) updateBurning(this, dt);   // (zombies alight: src/sim/flame.js)
     if (this.mapData.space) updateVoid(this);
     if (this.shelling) updateShelling(this, dt);
     if (this.crustEgg) updateCrustEgg(this, dt);

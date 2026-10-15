@@ -11,6 +11,7 @@ import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
 import { windBlast } from './wind.js';
 import { hammerSlam } from './hammers.js';
+import { flameBurst, flameHeat } from './flame.js';
 import { perkMult, weaponLimit } from './perks.js';
 
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
@@ -133,6 +134,9 @@ export function updateWeapons(sim, p, cmd, dt) {
     wantsFire = w.burstLeft > 0;
   }
 
+  // the flamethrower: no ammo, but it heats up (and locks out when it's too hot)
+  if (def.flame && !flameHeat(sim, p, slot, def, wantsFire && !blocked, dt)) wantsFire = false;
+
   if (wantsFire && !blocked && w.fireCooldown <= 0) {
     p.fireBuffer = 0;
     if (slot.clip > 0) {
@@ -182,6 +186,10 @@ function fire(sim, p, slot, def, side) {
     // a War Hammer: smash what's in front of you, then its element (the host works it out)
     if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id });
     else hammerSlam(sim, p, eye, dir, def, slot.id);
+  } else if (def.flame) {
+    // the flamethrower: a burst of the jet (the host works out what catches)
+    if (sim.replica) netAct(sim, { k: 'flame', origin: eye, dir, weapon: slot.id });
+    else flameBurst(sim, p, eye, dir, def, slot.id);
   } else if (def.wind) {
     // The Chopper: a wall of wind (the host works out who it throws)
     if (sim.replica) netAct(sim, { k: 'wind', origin: eye, dir, weapon: slot.id });

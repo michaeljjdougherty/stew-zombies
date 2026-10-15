@@ -254,6 +254,7 @@ export class SoundDirector {
     switch (e.type) {
       case 'shot': {
         const def = this.cfg.weapons[e.weapon];
+        if (def.flame) { A.play(S.flameBurst, { upgraded: !!def.upgraded }, local ? { gain: 0.8, reverb: 0.15 } : { pos: e.origin, ref: 4, reverb: 0.3 }); break; }
         if (def.hammer) { A.play(S.hammerSwing, { upgraded: !!def.upgraded }, local ? { gain: 0.9, reverb: 0.2 } : { pos: e.origin, ref: 3, reverb: 0.3 }); break; }
         const voice = GUN_VOICES[baseWeaponId(e.weapon)];
         A.play(S.gunshot, { ...def.sound, voice, upgraded: !!def.upgraded }, local ? { reverb: voice?.reverb ?? 0.3, gain: 0.85 } : { pos: e.origin, reverb: voice?.reverb ?? 0.45, ref: 4 });
@@ -514,6 +515,8 @@ export class SoundDirector {
       case 'sawHit': A.play(S.sawCut, {}, { pos: e.pos, ref: 3 }); break;
       case 'sawRicochet': A.play(S.sawRicochet, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
       case 'sawStick': A.play(S.sawStick, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
+      case 'flameOverheat': if (local) A.play(S.flameOverheat, {}, { gain: 0.8, reverb: 0.1 }); break;
+      case 'zombieIgnite': A.play(S.ignite, {}, { pos: e.pos, ref: 3, reverb: 0.3, gain: 0.7 }); break;
       case 'maisyLand': A.play(S.maisyHowl, {}, { pos: e.pos, ref: 4, reverb: 0.4, gain: 1.1 }); break;
       case 'maisyOpen':
         A.play(S.vortexOpen, {}, { pos: e.pos, ref: 6, reverb: 0.5, gain: 1.2 });

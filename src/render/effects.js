@@ -2,6 +2,7 @@
 // Visual effects: blood, gibs, decals, impacts, muzzle light, tracers, dust.
 // =============================================================================
 import * as THREE from 'three';
+import { FlameFx } from './flameFx.js';
 import * as T from './textures.js';
 
 const _m = new THREE.Matrix4();
@@ -86,6 +87,9 @@ export class Effects {
     this.emitters = [];
     this.streams = [];
 
+    // --- fire (the flamethrower's jet, zombies alight)
+    this.flames = new FlameFx(scene);
+    this.flames.points.layers.set(FX_LAYER);
     // --- explosions: fireball sprites, a flash light, scorch marks
     this.fireTex = T.softDotTexture('rgba(255,240,200,1)', 'rgba(255,120,30,0)');
     this.fires = [];
@@ -608,6 +612,7 @@ export class Effects {
 
   // ---------------------------------------------------------------------------
   update(dt) {
+    this.flames.update(dt);
     this.time += dt;
     this.updateWaves(dt);
     // droplets
@@ -797,6 +802,7 @@ export class Effects {
     this.bloodDecals.length = 0; this.holes.length = 0; this.scorches.length = 0; this.pools.length = 0;
     this.streams.length = 0; this.heat = 0;
     for (const f of this.fires) f.s.visible = false;
+    this.flames.clear();
     this.blastLight.intensity = 0;
     for (const g of this.gibList) this.scene.remove(g.m);
     this.gibList.length = 0;

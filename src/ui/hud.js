@@ -538,14 +538,15 @@ export class HUD {
     const def = this.cfg.weapons[slot.id];
     this.set('wname', this.el.wname, def.name);
     this.set('wcolor', this.el.wname.style, def.view.camo || '', 'color');
-    this.set('clip', this.el.clip, def.infinite ? '∞' : String(slot.clip));
+    // (the flamethrower shows its heat instead: OVERHEAT when it's locked out)
+    this.set('clip', this.el.clip, def.flame ? (slot.overheat > 0 ? 'HOT' : Math.round((slot.heat || 0) * 100) + '°') : def.infinite ? '∞' : String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
     this.set('grenades', this.el.grenades, '<u></u>'.repeat(Math.max(0, p.lbds || 0)) + '<s></s>'.repeat(Math.max(0, p.maisyDogs || 0)) + '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('scopeThermal', this.el.scope, scoped && def.thermal ? 'thermal' : '', 'className');
     this.set('reserve', this.el.reserve, def.infinite ? '' : String(slot.reserve));
-    const low = !def.infinite && slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
+    const low = def.flame ? (slot.overheat > 0 || (slot.heat || 0) > 0.75) : !def.infinite && slot.clip < def.magSize && slot.clip <= Math.ceil(def.magSize * this.cfg.hud.lowAmmoFraction);
     this.set('lowclass', this.el.ammo, low ? 'low' : '', 'className');
 
     // crosshair gap from current spread

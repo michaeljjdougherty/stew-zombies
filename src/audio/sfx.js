@@ -2053,3 +2053,38 @@ export function lbdPop(A, out, t) {
   const g = A.gain(0); A.env(g, t, 0.005, 0.35, 0.3); o.connect(g); g.connect(out);
   return 0.6;
 }
+
+// --- the flamethrower ---------------------------------------------------------
+// One burst of the jet (ten a second, overlapping into a roar): a hiss of gas
+// and a low, rolling whump of fire.
+export function flameBurst(A, out, t, p = {}) {
+  const up = p.upgraded ? 1.25 : 1;
+  const n = A.noiseSource('pink', t, 0.24);
+  const bp = A.filter('bandpass', R(700, 1100) * up, 0.7);
+  const g = A.gain(0); A.env(g, t, 0.02, 0.2, 0.32);
+  n.connect(bp); bp.connect(g); g.connect(out);
+  const b = A.noiseSource('brown', t, 0.26);
+  const lp = A.filter('lowpass', 260, 1.2);
+  const bg = A.gain(0); A.env(bg, t, 0.03, 0.22, 0.55);
+  b.connect(lp); lp.connect(bg); bg.connect(out);
+  // the crackle in it
+  if (Math.random() < 0.6) click(A, out, t + R(0.02, 0.15), R(2200, 3600), 6, 0.02, 0.12, 0);
+  return 0.32;
+}
+// Too hot: a hiss of venting gas and a warning ping.
+export function flameOverheat(A, out, t) {
+  const n = A.noiseSource('white', t, 1.1);
+  const hp = A.filter('highpass', 3000, 0.7);
+  const g = A.gain(0); A.env(g, t, 0.02, 1.0, 0.3);
+  n.connect(hp); hp.connect(g); g.connect(out);
+  for (const k of [0, 0.18]) { const o = A.osc('square', 1320, t + k, 0.08); const og = A.gain(0); A.env(og, t + k, 0.004, 0.07, 0.07); o.connect(og); og.connect(out); }
+  return 1.2;
+}
+// A zombie catching: a whoomph.
+export function ignite(A, out, t) {
+  const n = A.noiseSource('brown', t, 0.5);
+  const lp = A.filter('lowpass', 500, 1); lp.frequency.exponentialRampToValueAtTime(1600, t + 0.15); lp.frequency.exponentialRampToValueAtTime(300, t + 0.45);
+  const g = A.gain(0); A.env(g, t, 0.03, 0.45, 0.4);
+  n.connect(lp); lp.connect(g); g.connect(out);
+  return 0.55;
+}

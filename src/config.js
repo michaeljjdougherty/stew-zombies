@@ -825,6 +825,32 @@ export const CONFIG = {
       view: { model: 'chopper', flash: 0 },
       upgrade: { name: 'The Meat Grinder', color: '#ff3b1f', magSize: 4, wind: { range: 14, angle: 27, near: 2.0, maxKills: 36 } },
     }),
+    // The M2 Flamethrower (from the box): a jet of fire, no ammo, it overheats.
+    // Whatever the stream touches catches and burns until it's dead
+    // (src/sim/flame.js); the flame itself barely hurts.
+    'M2 Flamethrower': gun('lmg', {
+      name: 'M2 Flamethrower', boxOnly: true, infinite: true, noAds: true, wonder: true,
+      fireMode: 'auto', rpm: 600, damage: 0, magSize: 1, reserve: 0, penetration: 1, drawTime: 0.9, moveSpeedMult: 0.9,
+      spread: { hipBase: 0, hipMax: 0, perShot: 0, recovery: 9, ads: 0, adsPerShot: 0, moving: 0, air: 0, crouchMult: 1 },
+      recoil: { pitch: 0.05, yaw: 0.05, recovery: 9, adsMult: 1, viewKick: 0.1 },
+      flame: {
+        range: 8.5,            // m the jet reaches
+        angle: 13,             // degrees either side of where you aim it catches
+        near: 1.5,             // m: anything this close catches whatever the angle
+        speed: 15,             // m/s the fire travels (how it looks)
+        damage: 30,            // each burst (10 a second) to everything it's on
+        maxTargets: 14,        // set alight in one burst
+        burnKill: 3.2,         // s for the fire to burn one down from full health
+      },
+      heat: { up: 0.17, cool: 0.4, lock: 2.2 },   // a share of full a second firing, cooling; s locked out once it's overheated
+      sound: { kind: 'flame', body: 0, thump: 0, crack: 0, tail: 0, pitch: 1 },
+      view: { model: 'flamer', flash: 0 },
+      upgrade: {
+        name: "Dragon's Breath", color: '#ff5a1a',
+        flame: { range: 11.5, angle: 17, near: 1.8, speed: 18, damage: 70, maxTargets: 22, burnKill: 1.8, look: 1.4 },
+        heat: { up: 0.11, cool: 0.5, lock: 1.6 },
+      },
+    }),
     // The four War Hammers (Pit tempers each into its "+" for a price)
     'Wind Hammer': warHammer('wind', { name: 'Wind Hammer', upgrade: { name: 'Tempest Hammer', color: '#bfffe0' } }),
     'Lightning Hammer': warHammer('lightning', { name: 'Lightning Hammer', upgrade: { name: 'Thunder Hammer', color: '#c79bff' } }),
@@ -886,7 +912,7 @@ export const CONFIG = {
       'SPAZ-13': 1, HS11: 0.9, HK22: 0.9, RPKK: 0.9, Dragunoff: 0.9, L97A1: 0.8, 'China Pond': 0.9,
       'Kross-Bow': 0.9, 'Ballistik Knife': 0.6,
       'Fucci Gun': 0.5, 'The Chopper': 0.45, stewBomb: 0.7, maisyDog: 0.55,
-      'Desert Eagle': 1, 'SCAR-H': 1, M60: 0.9, Scavenger: 0.4, 'Fucci Gun Mk 2': 0.45, Peacekeeper: 0.6,
+      'Desert Eagle': 1, 'SCAR-H': 1, M60: 0.9, Scavenger: 0.4, 'Fucci Gun Mk 2': 0.45, Peacekeeper: 0.6, 'M2 Flamethrower': 0.6,
     },
     // The box leaves after this many pulls (random in the range): the last pull
     // is Erik's bobblehead, you get your points back, and it flies off to
@@ -1246,6 +1272,15 @@ export const CONFIG = {
       { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
       { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },
     ],
+  },
+
+  // How fire looks (src/render/flameFx.js): the flamethrower's stream and
+  // anything alight
+  flameLook: {
+    maxPoints: 900,
+    stream: { perShot: 30, spread: 0.13, size: 0.85, lead: 0.1, rise: 1.6, drag: 1.2 },
+    burn: { rate: 55, size: 0.6, life: 0.6 },   // per burning zombie: points a second
+    char: 0.25,              // a zombie burnt to death: its color times this
   },
 
   // How the Maisy Dog and the LBD look (src/render/gadgetView.js)

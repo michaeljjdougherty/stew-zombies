@@ -244,6 +244,13 @@ export class GameRenderer {
       switch (e.type) {
         case 'shot': {
           let from;
+          const sdef = this.cfg.weapons[e.weapon];
+          if (sdef && sdef.flame) {
+            // the flamethrower: a jet of fire out of the nozzle (no flash, no tracer)
+            from = e.playerId === id ? this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), e.side) : (this.teammates.muzzle(e.playerId) || e.origin);
+            this.effects.flames.stream(from, e.dir, sdef.flame);
+            break;
+          }
           if (e.playerId === id) {
             from = this.viewmodel.muzzleWorldPosition(this.camera, this.tmp.clone(), e.side);
             this.effects.muzzle(from);
