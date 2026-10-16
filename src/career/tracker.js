@@ -29,6 +29,8 @@ export class CareerTracker {
       this.cheddarClean = null;
       this.counted = false;
       this.divinium = 0;         // vials of Liquid Divinium earned this game
+      this.crust = !!(sim.mapData && sim.mapData.id === 'crust');
+      this.launches = 0; this.flameKills = 0; this.hammerKills = 0;   // Call of the Crust, this game
     }
     if (!this.on) return;
     const C = this.career;
@@ -68,7 +70,10 @@ export class CareerTracker {
     const alive = !!(me && me.alive !== false);
     switch (e.type) {
       case 'zombieKilled':
-        if (e.playerId === localId) { C.add('kills'); if (e.headshot) C.add('headshots'); }
+        if (e.playerId === localId) {
+          C.add('kills'); if (e.headshot) C.add('headshots');
+          if (this.crust) this.crustKill(e, me);
+        }
         break;
       case 'playerRevived':
         if (e.by === localId && e.playerId !== localId && !e.self) C.add('revives');
@@ -76,11 +81,20 @@ export class CareerTracker {
       case 'playerDown':
         if (e.playerId === localId) { C.add('downs'); this.cheddarClean = false; }
         break;
+      // wall guns (and their ammo), wall grenades, doors and debris: all "Wall buys"
+      case 'wallBuy':
+        if (e.playerId === localId) C.add('wallBuys');
+        break;
+      case 'doorOpened':
+        if (e.playerId === localId) C.add('wallBuys');
+        break;
       case 'roundStart':
         if (!alive) break;
         C.max('bestRound', e.round);
         if (e.round >= 10) C.unlock('round10');
         if (e.round >= 25) C.unlock('round25');
+        if (this.crust && e.round >= 15) C.unlock('crustRound15');
+        if (this.crust && e.round >= 30) C.unlock('crustRound30');
         this.cheddarClean = e.cheddar ? !(me && me.downed) : null;
         break;
       case 'roundEnd':
@@ -101,9 +115,37 @@ export class CareerTracker {
         C.unlock('egg');
         if (this.hardcore) C.unlock('eggHardcore');
         break;
+      // Call of the Crust (the whole squad shares the quest steps, like the egg)
+      case 'islandPower':
+        if (this.crust && e.count >= e.total) C.unlock('crustPower');
+        break;
+      case 'playerLaunch':
+        if (this.crust && e.playerId === localId && ++this.launches >= 10) C.unlock('crustLaunch');
+        break;
+      case 'warHammerBuilt':
+        if (this.crust) C.unlock('crustWarHammer');
+        break;
+      case 'hammerForged':
+        if (this.crust && e.count >= 4) C.unlock('crustHammers');
+        break;
+      case 'titanDown':
+        if (this.crust) C.unlock('crustTitan');
+        break;
+      case 'crustVictory':
+        if (this.crust) C.unlock('crustVictory');
+        break;
       case 'gameOver':
         C.flush();
         break;
     }
+  }
+
+  // A kill of yours on the Crust: the M2 Flamethrower's fire, or a War Hammer
+  // (any element, tempered or not) in your hands.
+  crustKill(e, me) {
+    const s = me && me.loadout && me.loadout.slots[me.loadout.current];
+    const gun = s && s.id ? baseWeaponId(s.id) : '';
+    if (gun === 'M2 Flamethrower' && e.kind === 'fire' && ++this.flameKills >= 50) this.career.unlock('crustFlame');
+    if (/Hammer$/.test(gun) && ++this.hammerKills >= 100) this.career.unlock('crustHammerTime');
   }
 }

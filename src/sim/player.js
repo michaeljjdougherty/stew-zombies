@@ -2,7 +2,7 @@
 // Player simulation: movement, sprint, stamina, health, interaction.
 // Consumes an input command per tick. No rendering here.
 // =============================================================================
-import { moveBody, separateCircles } from './physics.js';
+import { moveBody, separateCircles, outOfWalls } from './physics.js';
 import { createLoadout, updateWeapons } from './weapons.js';
 import { clamp } from '../core/math.js';
 import { perkMult, updateDrinking } from './perks.js';
@@ -30,6 +30,8 @@ export function emptyCommand() {
     gumPressed: false,                          // [H] use your GobbleGum
     weaponSlot: -1,           // -1 = no change
     weaponCycle: 0,
+    away: false,              // in a menu or a cutscene (not standing there idle)
+    emote: null,              // an emote picked on the wheel (its id, src/career/emotes.js)
   };
 }
 
@@ -61,7 +63,7 @@ export function createPlayer(sim, id, name, spawn) {
     drinking: null,           // { perk, t } while chugging a perk
     reviving: null,           // { targetId, frac } while picking up a teammate
     points: cfg.startPoints,
-    kills: 0, headshots: 0, knifeKills: 0, downs: 0, revives: 0,
+    kills: 0, headshots: 0, knifeKills: 0, downs: 0, revives: 0, wallBuys: 0,
     boardPointsThisRound: 0,
     prompt: null,             // { text, cost } shown on HUD
     useTarget: null,
@@ -75,12 +77,16 @@ export function createPlayer(sim, id, name, spawn) {
     melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
     moveSpeed: 0,             // horizontal speed, for camera bob / audio
     distanceWalked: 0,
+    idleT: 0,                 // s standing completely still
+    idle: false,              // still long enough for your character's idle act (James dances...)
+    emote: null,              // doing an emote: its id (and emoteT: how long, emoteYaw: facing which way)
   };
 }
 
 export function updatePlayer(sim, p, cmd, dt) {
-  if (!p.alive) return;
+  if (!p.alive) { p.idleT = 0; p.idle = false; return; }
   const cfg = sim.cfg.player;
+  updateIdle(sim, p, cmd, dt);
   p.yaw = cmd.yaw;
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
   // flying between islands (a launcher): nothing else happens till you land
@@ -238,6 +244,7 @@ export function updatePlayer(sim, p, cmd, dt) {
       }
     }
     // zombies are solid: they body-block you
+    const shoved = { x: p.pos.x, z: p.pos.z };
     for (const z of sim.zombies) {
       if (z.state !== 'chase') continue;
       if (Math.abs(z.pos.y - p.pos.y) > 1.2) continue;
@@ -247,6 +254,8 @@ export function updatePlayer(sim, p, cmd, dt) {
     for (const o of sim.players) {
       if (o !== p && o.alive && Math.abs(o.pos.y - p.pos.y) < 1.6) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
     }
+    // a crowd can shove you into a wall or a cliff face: back out of it, or you'd fall through the ground
+    outOfWalls(p, shoved, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain]);
     // lying flat (prone, or skidding out of a dive): your head and feet are a body-length
     // apart either side of you, so keep both out of the walls and the rails
     if ((p.prone || (p.dive && p.dive.phase !== 'air')) && p.grounded) keepBodyClear(sim, p, cfg.prone);
@@ -317,6 +326,25 @@ function diveLand(sim, p) {
   const pos = { x: p.pos.x, y: p.pos.y + 0.3, z: p.pos.z };
   if (sim.replica) sim.netOut.push({ k: 'boom', pos, kind });
   else explode(sim, pos, kind, p.id);
+}
+
+// Standing completely still (no moving, shooting, aiming, reloading, buttons,
+// not crouched, not in a menu or a cutscene) for a few seconds: p.idle, and
+// whoever you play does their idle act. Looking around doesn't count as moving.
+// Emotes from the wheel (cmd.emote) end the same way.
+function updateIdle(sim, p, cmd, dt) {
+  const w = p.loadout;
+  const busy = cmd.away || cmd.moveX || cmd.moveY || cmd.fire || cmd.ads || cmd.grenade || cmd.tactical || cmd.minePressed
+    || cmd.jumpPressed || cmd.reloadPressed || cmd.meleePressed || cmd.use || cmd.gumPressed || cmd.crouch || cmd.sprint
+    || cmd.weaponSlot >= 0 || cmd.weaponCycle
+    || p.downed || p.launch || p.ride || p.dive || p.prone || p.crouching || !p.grounded || p.throwing || p.drinking
+    || (w && w.reloading) || (p.melee && p.melee.timer > 0) || Math.hypot(p.vel.x, p.vel.z) > 0.05;
+  // an emote: anything that would stop an idle stops it (and it runs out)
+  const E = sim.cfg.player.emote;
+  if (cmd.emote && typeof cmd.emote === 'string' && cmd.emote.length <= 24 && !busy) { p.emote = cmd.emote; p.emoteT = 0; p.emoteYaw = p.yaw; }
+  else if (p.emote) { p.emoteT = (p.emoteT || 0) + dt; if (busy || p.emoteT > E.maxTime) p.emote = null; }
+  p.idleT = busy || p.emote ? 0 : (p.idleT || 0) + dt;
+  p.idle = p.idleT >= sim.cfg.player.idleAfter;
 }
 
 // Interaction prompts and health regen. Online, the host runs only this part

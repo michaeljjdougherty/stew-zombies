@@ -36,7 +36,7 @@ export function clean(v, skip = null) {
 const byId = (list, fn) => { const o = {}; for (const x of list) o[x.id] = fn(x); return o; };
 
 // --- what the host sends ----------------------------------------------------
-const PLAYER_SKIP = new Set(['useTarget']);
+const PLAYER_SKIP = new Set(['useTarget', 'idleT', 'emoteT']);   // (idle and emote go; their timers stay home)
 const ZOMBIE_SKIP = new Set(['region', 'stuckT', 'avoidSign', 'sidestep', 'sideSign', 'speed', 'radius', 'stepHeight', 'height', 'targetId']);
 const PROJ_SKIP = new Set(['hitIds', 'gravity', 'bounce', 'friction', 'chill', 'hit']);
 const WINDOW_KEYS = ['boards', 'climbing', 'rebuild', 'queue'];
@@ -151,7 +151,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding',
+  'points', 'kills', 'headshots', 'downs', 'revives', 'wallBuys', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding',
   'gum', 'gumPack', 'gumStock', 'gumBuys', 'perkBonus',   // (GobbleGum: src/sim/gums.js)
   'shove', 'slowUntil', 'slowMult'];   // (a titan's breath or slam carrying you, its frost: src/sim/crustEgg.js)
 const INTERP = new Set(['pos', 'yaw', 'pitch']);

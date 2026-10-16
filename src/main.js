@@ -19,6 +19,9 @@ import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
 import { AudioEngine } from './audio/audio.js';
 import { SoundDirector } from './audio/director.js';
+import { IdleBeats } from './audio/idleBeat.js';
+import { EMOTES, EMOTE_BY_ID } from './career/emotes.js';
+import { EmoteWheel } from './ui/emoteWheel.js';
 import { sample } from './audio/sfx.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
@@ -46,6 +49,8 @@ import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
+import { ShopUI } from './ui/shopUI.js';
+import { applySkin } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
@@ -94,6 +99,10 @@ for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorde
 // the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
 if (CONFIG.cheddar.lineAudio) audio.preload({ cheddarLine: [CONFIG.cheddar.lineAudio] }, '', '');
 const sound = new SoundDirector(audio, sim, CONFIG);
+const idleBeats = new IdleBeats(audio, CONFIG);   // (James's bass beat while he twerks)
+const emoteWheel = new EmoteWheel();
+// the emotes on your wheel: the free ones and the ones you've bought (Skin Shop)
+const ownedEmotes = () => EMOTES.filter((e) => e.free || (career.ownsEmote ? career.ownsEmote(e.id) : true));
 sound.localId = localId;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
@@ -193,6 +202,14 @@ function playableCharacter() {
   return ok ? id : 'kearns';
 }
 
+// How you look: the character, wearing their skin from the Skin Shop (your
+// arms in first person; the character screens show it on the platform)
+function setLook(id) {
+  renderer.setCharacter(id, settings.shirt);
+  const skin = career.wornSkin(id);
+  if (skin && CHARACTERS[id] && renderer.viewmodel && renderer.viewmodel.setCharacter) renderer.viewmodel.setCharacter(applySkin(CHARACTERS[id], id, skin));
+}
+
 function makeSim(gameMode, mapId = 'lastbell') {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
   s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame() });
@@ -232,12 +249,12 @@ const menus = new Menus(settings, {
   bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
-  preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
+  preview: (id, shirt) => renderer.getShowcase().show(id, shirt, career.wornSkin(id)),
   questDone: () => !!progress.questDone,
   crustDone: () => !!progress.crustDone,
   done: (s) => {
     saveSettings(s); renderer.showcase.hide();
-    renderer.setCharacter(playableCharacter(), s.shirt);
+    setLook(playableCharacter());
     hud.localName = CHARACTERS[playableCharacter()].name;
     if (sim.mode === 'zombies') restart('zombies', TITLE_MAP);   // the next game starts as them
     mode = 'title'; menus.show('title');
@@ -371,7 +388,7 @@ function beginOnlineGame(st) {
   earlyState = null;
   // (who you are in this game: on the Crust, someone who picked Pit is someone else)
   const me = sim.playerById(localId);
-  renderer.setCharacter(me.character, settings.shirt);
+  setLook(me.character);
   hud.localName = CHARACTERS[me.character].name;
   startPlaying();
 }
@@ -407,7 +424,7 @@ function leaveOnline() {
   if (o) o.leave();
   if (localId !== 'p1') { localId = 'p1'; restart('zombies', TITLE_MAP); }
   hud.localName = CHARACTERS[playableCharacter()].name;
-  renderer.setCharacter(playableCharacter(), settings.shirt);
+  setLook(playableCharacter());
 }
 
 // the connection is gone (host left, kicked, network)
@@ -423,7 +440,7 @@ function onlineEnded(reason) {
     if (renderer.ending) { renderer.endEnding(); cutsceneUI.hide(); }
   }
   hud.localName = CHARACTERS[playableCharacter()].name;
-  renderer.setCharacter(playableCharacter(), settings.shirt);
+  setLook(playableCharacter());
   mode = 'online';
   menus.show('online');
   onlineUI.open();
@@ -460,7 +477,7 @@ setInterval(() => {
   if (soundHint && soundHint.hidden === show) soundHint.hidden = !show;
 }, 400);
 applySettings(settings);
-renderer.setCharacter(playableCharacter(), settings.shirt);
+setLook(playableCharacter());
 menus.show('title');
 
 function startPlaying() {
@@ -785,8 +802,9 @@ function installSim(s) {
   player = sim.playerById(localId);
   renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
   hud.localCharacter = sound.localCharacter = player.character;
+  career.playingAs = player.character;   // (kills as them count toward their Opal skin)
   // (Call of the Crust: Pit's at his forge, so whoever picked him is someone else there)
-  if (!renderer.character || renderer.character.id !== player.character) renderer.setCharacter(player.character, settings.shirt);
+  if (!renderer.character || renderer.character.id !== player.character) setLook(player.character);
   hud.localName = CHARACTERS[player.character] ? CHARACTERS[player.character].name : hud.localName;
   renderer.setSim(sim);
   if (mapChanged) {
@@ -979,7 +997,7 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { gums: 'btn-gums-back', factory: 'btn-mf-back', career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
+const BACK_BUTTON = { shop: 'btn-sh-back', gums: 'btn-gums-back', factory: 'btn-mf-back', career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 // --- careers: a username, its stats and achievements (src/career/; made up top) ---
 const achToast = new AchievementToast(() => sound.achievement());
@@ -1008,6 +1026,21 @@ function refreshGumBlade() {
   }
   document.getElementById('b-div').textContent = String(career.gums.divinium);
 }
+// The Skin Shop: Stew Bucks for outfits (from the Play blade)
+const shopUI = new ShopUI(career, {
+  characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
+  current: () => playableCharacter(),
+  preview: (id, skin) => renderer.getShowcase().show(id, settings.shirt, skin),
+  back: () => { renderer.showcase.hide(); setLook(playableCharacter()); mode = 'title'; menus.show('title'); },
+  sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
+});
+document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open(); });
+career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
+career.onBucks = (n, why) => {
+  const C = CONFIG.shop;
+  if (why === 'backpay') achToast.push({ head: 'Skin Shop', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
+  else hud.toast(`+${n} ${C.currency}`, 'Spend them in the Skin Shop', '#e8b13a', 2.6);
+};
 // Settings blade: switch username (then back to the title)
 document.getElementById('btn-title-signin').addEventListener('click', () => {
   signIn.h.done = () => { afterSignIn(); refreshGumBlade(); menus.show('title'); };
@@ -1020,6 +1053,7 @@ function afterSignIn() {
   // your username is your name online too
   if (career.signedIn && settings.name !== career.profile.name) { settings.name = career.profile.name; saveSettings(settings); }
   refreshProfileChip(career);
+  setLook(playableCharacter());   // (this username's skins)
 }
 $id('btn-career-back').addEventListener('click', () => menus.show('title'));
 $id('btn-career-switch').addEventListener('click', () => {
@@ -1052,10 +1086,11 @@ const nav = new MenuNav({
     else if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
     else if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
     else if (id === 'charselect') { const ids = Object.keys(SHIRT_COLORS); charSelect.shirt = ids[(ids.indexOf(charSelect.shirt) + dir + ids.length) % ids.length]; charSelect.refresh(); }
+    else if (id === 'shop') shopUI.cycleChar(dir);
     else if (id === 'lineup') { const L = renderer.getLineup(); const n = LINEUP.length + 1; L.setFocus(((L.focus + 1 + dir + n) % n) - 1); lineupUI.refresh(); }
   },
   rotate: (id, a) => {
-    if (id === 'charselect') renderer.showcase.turn(a);
+    if (id === 'charselect' || id === 'shop') renderer.showcase.turn(a);
     else if (id === 'lineup') renderer.getLineup().drag(a * 420);
   },
 });
@@ -1106,6 +1141,10 @@ function frame(now) {
   last = now;
   time += fdt;
   padFrame(fdt);
+  safely('emoteWheel', () => {
+    const pick = emoteWheel.update(input, ownedEmotes(), mode === 'play' && !!player && player.alive && !player.downed);
+    if (pick) input.pendingEmote = pick;
+  });
   if (mode === 'play') renderer.frameTime(fdt, cap > 0 ? Math.min(cap, 60) : 60);   // auto resolution
 
   // (online the game goes on while you're in the pause menu)
@@ -1115,7 +1154,7 @@ function frame(now) {
     let steps = 0;
     while (acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
       const cmd = input.buildCommand();
-      tick(mode === 'play' ? cmd : mode === 'dying' || mode === 'panel' ? { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0 } : { ...emptyCommand(), yaw: input.yaw, pitch: input.pitch });
+      tick(mode === 'play' ? cmd : mode === 'dying' || mode === 'panel' ? { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0, away: true } : { ...emptyCommand(), yaw: input.yaw, pitch: input.pitch, away: true });
       acc -= DT;
       steps++;
     }
@@ -1145,9 +1184,10 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
-  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
+  safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' || mode === 'shop' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
+  safely('idleBeat', () => idleBeats.update(sim, localId, (q) => (q.emote ? !!(EMOTE_BY_ID[q.emote] && EMOTE_BY_ID[q.emote].beat) : !!(q.idle && CHARACTERS[q.character] && CHARACTERS[q.character].idleBeat)), mode === 'play' || onlineLive));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
   rangeUI.update(fdt, sim, player, renderer.camera);
   if (menus.current === 'extras') extras.update();
@@ -1170,7 +1210,7 @@ if (pump) pump.onmessage = () => {
   time += fdt;
   acc += fdt;
   let steps = 0;
-  while (acc >= DT && steps < 20) { tick({ ...emptyCommand(), yaw: input.yaw, pitch: input.pitch }); acc -= DT; steps++; }
+  while (acc >= DT && steps < 20) { tick({ ...emptyCommand(), yaw: input.yaw, pitch: input.pitch, away: true }); acc -= DT; steps++; }
   if (steps >= 20) acc = 0;
   if (mode === 'dying') { dyingT += fdt; }
 };

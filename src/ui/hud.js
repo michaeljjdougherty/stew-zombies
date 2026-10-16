@@ -404,7 +404,7 @@ export class HUD {
   updateScoreboard(sim, CH) {
     if (!this.scoreboardOn) return;
     const rows = [...sim.players].sort((a, b) => b.points - a.points);
-    const key = sim.rounds.round + '|' + rows.map((q) => [q.id, q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0, q.downed ? 'd' : q.alive ? 'a' : 'x'].join(',')).join(';');
+    const key = sim.rounds.round + '|' + rows.map((q) => [q.id, q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0, q.wallBuys || 0, q.downed ? 'd' : q.alive ? 'a' : 'x'].join(',')).join(';');
     if (key === this.last.sb) return;
     this.last.sb = key;
     document.getElementById('sb-round').textContent = `Round ${Math.max(1, sim.rounds.round)}`;
@@ -420,7 +420,7 @@ export class HUD {
       sub.textContent = (CH && CH[q.character] ? CH[q.character].name : '') + (q.downed ? ' · down' : q.alive ? '' : ' · out');
       name.appendChild(sub);
       tr.appendChild(name);
-      for (const v of [q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0]) { const td = document.createElement('td'); td.textContent = String(v); tr.appendChild(td); }
+      for (const v of [q.points, q.kills, q.headshots, q.downs || 0, q.revives || 0, q.wallBuys || 0]) { const td = document.createElement('td'); td.textContent = String(v); tr.appendChild(td); }
       tb.appendChild(tr);
     }
     document.getElementById('sb-foot').textContent = sim.players.length > 1 ? 'Bleed out and you\'re back next round' : (sim.teamName || 'Stew') + ' · solo';

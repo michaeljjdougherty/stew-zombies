@@ -196,7 +196,7 @@ export function renderCareer(career) {
   const s = p ? p.stats : {};
   const stats = [
     ['Kills', s.kills], ['Revives', s.revives], ['Rounds survived', s.rounds], ['Best round', s.bestRound],
-    ['Headshots', s.headshots], ['Games', s.games], ['Times downed', s.downs],
+    ['Headshots', s.headshots], ['Games', s.games], ['Times downed', s.downs], ['Wall buys', s.wallBuys],
   ];
   $('cr-stats').innerHTML = stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${fmt(v)}</dd></div>`).join('');
   const got = ACHIEVEMENTS.filter((a) => career.has(a.id)).length;

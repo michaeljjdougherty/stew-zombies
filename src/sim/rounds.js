@@ -112,7 +112,10 @@ function pickSpawn(sim) {
     const close = cands.filter(near);
     if (close.length) cands.splice(0, cands.length, ...close);
   }
+  // BO1 picks any spawn point in the live zones at random; only the open
+  // battlefield leans towards the nearer ones
   const weights = cands.map((c) => {
+    if (!rad) return c.weight;
     let d = Infinity;
     for (const p of sim.players) if (p.alive) d = Math.min(d, dist2D(p.pos, c.pos));
     return c.weight / (4 + (isFinite(d) ? d : 20));
@@ -154,7 +157,7 @@ export function updateRounds(sim, dt) {
         z.recycle = true;
         R.toSpawn--;
       }
-      R.spawnTimer = R.spawnInterval * sim.rng.range(0.7, 1.3);
+      R.spawnTimer = R.spawnInterval * (1 + sim.rng.range(-1, 1) * (c.spawnJitter || 0));
     }
   }
   if (R.toSpawn <= 0 && sim.zombies.length === 0) {   // (count again: one may have just risen)

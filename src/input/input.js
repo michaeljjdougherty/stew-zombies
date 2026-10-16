@@ -29,6 +29,10 @@ export class Input {
     this.hasPrompt = () => false;   // is there something to buy/use right now?
     this.assist = () => null;       // aim assist target finder (set by main)
     this.onDevice = null;           // (device) => void, when keyboard/mouse is used
+    // the emote wheel (src/ui/emoteWheel.js): while it's open the mouse / right
+    // stick points at an emote instead of turning you; the pick goes in the next command
+    this.emoteWheel = { open: false, x: 0, y: 0 };
+    this.pendingEmote = null;
     this.bind();
   }
 
@@ -73,6 +77,13 @@ export class Input {
       if (performance.now() < this.ignoreMovesUntil) return; // browsers can send a jump right after locking
       const dx = e.movementX || 0, dy = e.movementY || 0;
       if (Math.abs(dx) > 400 || Math.abs(dy) > 400) return; // ignore spikes some browsers send
+      const W = this.emoteWheel;
+      if (W.open) {
+        W.x += dx; W.y += dy;
+        const r = Math.hypot(W.x, W.y), max = 120;
+        if (r > max) { W.x *= max / r; W.y *= max / r; }
+        return;
+      }
       const a = this.adsAmount();
       const ads = 1 + (this.settings.adsSensitivity - 1) * a;
       const k = this.cfg.input.radiansPerPixel * this.settings.sensitivity * ads * this.zoomScale();
@@ -111,6 +122,9 @@ export class Input {
 
   held(a) { return this.keys.has(a); }
 
+  // the emote button (B / D-pad up) is down
+  emoteHeld() { return this.keys.has('emote') || this.pad.keys.has('emote'); }
+
   // Called once per simulation tick.
   buildCommand() {
     const c = emptyCommand();
@@ -141,6 +155,7 @@ export class Input {
     c.gumPressed = e.has('gum');
     c.weaponSlot = e.has('weapon1') ? 0 : e.has('weapon2') ? 1 : e.has('weapon3') ? 2 : -1;
     c.weaponCycle = this.wheel !== 0 ? 1 : 0;
+    c.emote = this.pendingEmote; this.pendingEmote = null;
     this.wheel = 0;
     e.clear();
     return c;
@@ -193,6 +208,13 @@ export class Input {
     if (st.down(BTN.LB)) P.keys.add('tactical'); else P.keys.delete('tactical');
     if (st.pressed(BTN.LEFT)) this.edges.add('mine');
     if (st.pressed(BTN.DOWN)) this.edges.add('gum');   // (your GobbleGum)
+    if (st.down(BTN.UP)) P.keys.add('emote'); else P.keys.delete('emote');   // (hold: the emote wheel)
+    if (this.emoteWheel.open) {
+      // the right stick points at an emote (and doesn't turn you)
+      const W = this.emoteWheel, m = Math.hypot(st.rs.x, st.rs.y);
+      if (m > 0.35) { W.x = st.rs.x / m * 120; W.y = st.rs.y / m * 120; }
+      return;
+    }
 
     // --- look: right stick, with a response curve and a turn boost at full tilt
     const rx = st.rs.x, ry = st.rs.y;
