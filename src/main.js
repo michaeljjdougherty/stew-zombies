@@ -252,6 +252,7 @@ const extras = new Extras(CONFIG, {
   progress: () => progress,
   watchEnding: () => watchEnding(),
   watchIntro: () => startIntro('extras'),
+  watchFilm: (name) => startFilm(name, 'extras'),   // (Call of the Crust's intro and ending)
   playSong: () => { audio.init(); audio.applyVolumes(); titleMusic.stop(0.6); jukebox.start('music', 0.75); },
   stopSong: () => { jukebox.stop(0.5); startTitleMusic(); },
   songLyric: () => jukebox.lyric(),
@@ -693,6 +694,7 @@ function finishFilm() {
   trailerUI.hide();
   const then = filmThen; filmThen = null;
   if (then === 'victory') { showCrustVictory(); return; }
+  if (then === 'extras') { restart('zombies', TITLE_MAP); mode = 'title'; menus.show('extras'); extras.open('story'); startTitleMusic(); return; }
   if (!progress.crustIntroSeen) { progress.crustIntroSeen = true; saveProgress(progress); }
   if (then === 'play') { restart('zombies', 'crust'); startPlaying(); return; }
   restart('zombies', TITLE_MAP);
