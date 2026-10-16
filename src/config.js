@@ -1426,6 +1426,8 @@ export const CONFIG = {
       { key: 'trailerPerk1', name: 'PHD Gaylor', color: '#9b4dff', glyph: 'P' },
       { key: 'trailerPerk2', name: 'Milton Kick', color: '#3fdc5a', glyph: 'M' },
     ],
+    // the gums whose logos fly out of the machine in the GobbleGum shot
+    gums: ['perkaholic', 'anywhereButHere', 'killingTime', 'shoppingFree', 'idleEyes', 'headDrama', 'inPlainSight', 'wallPower'],
     // the guns in the "7 NEW GUNS" montage, and who fires each
     guns: [['Komando', 'ryan'], ['SPAZ-13', 'brian'], ['HK22', 'kearns'], ['Dragunoff', 'rocco'], ['Galill', 'rocco'], ['AK-75u', 'ryan'], ['L97A1', 'brian']],
     // everyone's gun when they're just fighting
@@ -1467,8 +1469,9 @@ export const CONFIG = {
       { id: 'hammers', beat: 35 },
       { id: 'zachStomp', beat: 39 },
       { id: 'kearnsHero', beat: 41 },
-      { id: 'brianHero', beat: 44 },
-      { id: 'zachSwing', beat: 47 },
+      { id: 'brianHero', beat: 43.5 },
+      { id: 'gums', beat: 45.5 },
+      { id: 'zachSwing', beat: 47.5 },
       { id: 'finale', beat: 49 },
       { id: 'black', beat: 55 },
     ],
@@ -1486,6 +1489,7 @@ export const CONFIG = {
       { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 25, beats: 2 },
       { text: '2 NEW EXPLOSIVES', sub: 'MAISY DOG · LBD', style: 'overlay', beat: 28.5, beats: 4.5 },
       { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 35, beats: 4 },
+      { text: '64 GOBBLEGUMS', sub: 'BUILD YOUR PACK', style: 'overlay', beat: 45.5, beats: 2 },
       { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
       { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },
     ],
@@ -1547,7 +1551,7 @@ export const CONFIG = {
         { text: 'Where they ended up, nobody knows.', style: 'card', at: 55.7, len: 3 },
         { text: 'TO BE CONTINUED', style: 'title', at: 58.9, len: 3 },
       ],
-      cues: [{ at: 2.2, name: 'tear' }, { at: 23.5, name: 'scream' }, { at: 37, name: 'chain' }, { at: 43, name: 'cageDoor' }],
+      cues: [{ at: 2.2, name: 'tear' }, { at: 23.5, name: 'scream' }, { at: 28.3, name: 'party' }, { at: 37, name: 'chain' }, { at: 43, name: 'cageDoor' }],
       lines: [
         { at: 1, who: 'schnitz', text: 'Fine. Keep him.', dur: 1.6 },
         { at: 4.8, who: 'zach', text: '...Guys? Why\'s everybody holding hammers?', dur: 2.6 },
@@ -1556,11 +1560,16 @@ export const CONFIG = {
         { at: 14.4, who: 'ryan', text: 'So... who\'s it gonna be?', dur: 1.8 },
         { at: 17.2, who: 'rocco', text: 'Well well well. It\'s a long way do—', dur: 2.6 },
         { at: 23.6, who: 'rocco', text: 'WAAAAAAAAH!', dur: 2.4 },
-        { at: 31.3, who: 'ryan', text: 'STRONG MAN!', dur: 1.2 },
-        { at: 32.6, who: 'pit', text: '(whinnies) ...sorry. Habit.', dur: 1.8 },
-        { at: 34.4, who: 'kearns', text: 'Problem solved.', dur: 1.3 },
-        { at: 36.4, who: 'schnitz', text: '...That works.', dur: 1.6 },
-        { at: 40.4, who: 'regs', text: 'We\'re coming down! We\'re coming down!', dur: 1.8 },
+        // (and nobody's sad about it. Not even a little)
+        { at: 26.4, who: 'kearns', text: '...Problem solved.', dur: 1.6 },
+        { at: 28.4, who: 'ryan', text: 'STRONG MAN! LET\'S GOOOOOO!', dur: 1.4 },
+        { at: 29.9, who: 'brian', text: 'KEARNS! You absolute legend!', dur: 1.8 },
+        { at: 31.9, who: 'pit', text: '(whinnies) YEAH, MAN! YEAH!', dur: 1.7 },
+        { at: 33.8, who: 'zach', text: 'I just got here and this is already the best day ever!', dur: 2.2 },
+        { at: 36.2, who: 'schnitz', text: '...Ha. Good shit.', dur: 1.6 },
+        { at: 38, who: 'schnitz', text: 'A deal\'s a deal, boys. Come and get \'em.', dur: 2.1 },
+        { at: 40.4, who: 'regs', text: 'We\'re coming down! WOOOO!', dur: 1.8 },
+        { at: 42.5, who: 'p', text: '...Sick.', dur: 1 },
         { at: 44.2, who: 'chops', text: 'Was that Rocco?', dur: 1.5 },
         { at: 45.8, who: 'kearns', text: 'Was who?', dur: 1 },
         { at: 47.2, who: 'zach', text: 'I\'m so happy to be here. Where\'s here?', dur: 2.2 },
@@ -1571,6 +1580,12 @@ export const CONFIG = {
       crew: ['kearns', 'ryan', 'rocco', 'brian', 'zach', 'pit', 'chops', 'regs', 'p'],
     },
   },
+
+  // Shooting Pit at his bench on the Crust (src/sim/pitShot.js): he doesn't get
+  // hurt, he just has words. His body for the bullets: a capsule `radius` m
+  // round him from his feet to `height` m up; a line at most every `gap` s;
+  // after `forgive` s without a shot he's over it. Lines: PIT_SHOT in crew.js.
+  pitShot: { radius: 0.42, height: 1.85, gap: 3.5, forgive: 90, againAfter: 2, lotsAfter: 6 },
 
   // How fire looks (src/render/flameFx.js): the flamethrower's stream and
   // anything alight

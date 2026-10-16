@@ -877,6 +877,54 @@ export const SHOTS = {
     },
   },
 
+  // GobbleGum: a machine (the one nearest the Anvil) churns out a gum, and its logos spray out
+  // at the camera, one after another (CONFIG.trailer.gums).
+  gums: {
+    enter(T) {
+      const GV = T.R.gumMachines, list = (GV && GV.list) || [];
+      // (the machine nearest the middle of the Anvil)
+      T.gumV = list.slice().sort((a, b) => Math.hypot(a.m.pos.x, a.m.pos.z) - Math.hypot(b.m.pos.x, b.m.pos.z))[0] || null;
+      T.gumFly = [];
+      if (!T.gumV) return;
+      const ids = T.C.gums || [];
+      for (let i = 0; i < 14; i++) {
+        const s = T.prop(new THREE.Sprite(new THREE.SpriteMaterial({ map: GV.iconTexture(ids[i % ids.length]), transparent: true, depthWrite: false, toneMapped: false, opacity: 0 })));
+        s.visible = false;
+        T.gumFly.push({ s, a: (i / 14) * Math.PI * 2 + (i % 2) * 0.3, t0: 0.3 + (i / 14) * 0.5, up: 0.4 + (i % 3) * 0.35 });
+      }
+    },
+    frame(T, u, d, k) {
+      const gv = T.gumV;
+      if (!gv) return;
+      const m = gv.m, n = m.normal, side = { x: -n.z, z: n.x };
+      const base = m.pos.y || 0, cx = m.pos.x, cz = m.pos.z;
+      // churning, then a gum in the tray: its logo flipping through the pack
+      const ids = T.C.gums || ['perkaholic'];
+      m.state = k < 0.28 ? 'dispensing' : 'offering';
+      m.gum = ids[Math.min(ids.length - 1, Math.floor(sm(0.28, 0.95, k) * ids.length))];
+      // Rocco beside it, arms up for his gum
+      const rx = cx + n.x * 0.8 - side.x * 0.85, rz = cz + n.z * 0.8 - side.z * 0.85;
+      T.pose('rocco', { x: rx, z: rz, unarmed: k > 0.3, gesture: k > 0.3 ? 'cheer' : null });   // (gun down for it)
+      T.face('rocco', cx, cz);
+      // the logos, out of the chute and past the camera
+      const chute = V(cx + n.x * 0.3, base + 1.15, cz + n.z * 0.3);
+      for (const f of T.gumFly) {
+        const q = (k - f.t0) / 0.4;
+        f.s.visible = q > 0 && q < 1;
+        if (!f.s.visible) continue;
+        const out = ease(q) * 3.2, sw = Math.cos(f.a) * out * 0.7;
+        f.s.position.set(chute.x + n.x * out + side.x * sw, chute.y + Math.sin(f.a) * out * 0.45 + f.up * q, chute.z + n.z * out + side.z * sw);
+        f.s.scale.setScalar(0.22 + q * 0.3);
+        f.s.material.opacity = sm(0, 0.15, q) * (1 - sm(0.75, 1, q));
+        f.s.material.rotation = q * 4 * (f.a > Math.PI ? 1 : -1);
+      }
+      T.light(0.9, '#ffb0e0', [cx + n.x * 3, base + 3.5, cz + n.z * 3]);
+      // pushing in on it, a little off to the side
+      const r = lerp(3.4, 2.6, ease(k)), o = lerp(-0.5, -0.2, k);
+      T.look(cx + n.x * r + side.x * o, base + lerp(1.25, 1.45, k), cz + n.z * r + side.z * o, cx - side.x * 0.35, base + 1.15, cz - side.z * 0.35, 48);
+    },
+  },
+
   // Zach brings his foot down; the ground jumps.
   zachStomp: {
     frame(T, u, d, k) {

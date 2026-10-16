@@ -681,7 +681,7 @@ function startFilm(name, then) {
   sim.power = true;
   if (name !== 'intro') powerAllOn(sim);   // (the Crust: every island lit, the launchers live; in the intro the power's still out)
   const T = renderer.startFilm(name);
-  T.onLine = (who, text, secs) => { if (settings.subtitles !== false) cutsceneUI.line(who, text, secs); sound.voiceLine(who, text, secs); };
+  T.onLine = (who, text, secs) => { if (settings.subtitles !== false) trailerUI.say(who, text, secs + 0.4, T.t); sound.voiceLine(who, text, secs); };   // (the subtitles go on the trailer's overlay: the cutscene one's hidden under it)
   T.onCue = (n) => sound.cue(n);
   cutsceneUI.show(`${glyph('skip')} skip`);
   cutsceneUI.root.classList.remove('on');   // (the trailer overlay draws the bars; this one's just the words)
