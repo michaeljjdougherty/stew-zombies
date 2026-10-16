@@ -228,7 +228,7 @@ export class ShopUI {
     this.detail(e);
     let blurb = e.blurb + ' Hold [B] in a game for the emote wheel.';
     if (C.ownsEmote(e.id)) this.button(e.free ? 'Free for everyone' : 'Owned: on your wheel', false);
-    else if (e.pass) { this.button(`Battle Pass tier ${e.pass}`, false); blurb += ` ${this.passHint(e.pass)}`; }
+    else if (e.pass) { this.button(`Battle Pass tier ${e.pass}`, false); blurb += ` ${this.passHint(e.pass, 'do it')}`; }
     else if (!C.signedIn) this.button('Sign in to buy', false);
     else {
       const price = C.emotePrice(e.id), short = price - C.bucks;
@@ -246,16 +246,16 @@ export class ShopUI {
     this.detail({ name: `${t.n} ${CONFIG.shop.currency}`, rarity: 'common' });
     const got = C.passTier >= t.tier;
     this.button(got ? 'Paid' : `Battle Pass tier ${t.tier}`, false);
-    $('sh-blurb').textContent = got ? `Tier ${t.tier} paid you ${t.n} ${CONFIG.shop.currency}.` : `${t.n} ${CONFIG.shop.currency}, paid the moment you reach tier ${t.tier}. ${this.passHint(t.tier)}`;
+    $('sh-blurb').textContent = got ? `Tier ${t.tier} paid you ${t.n} ${CONFIG.shop.currency}.` : `${t.n} ${CONFIG.shop.currency}, paid the moment you reach tier ${t.tier}. ${this.passHint(t.tier).replace(/ Every.*$/, '')}`;
     this.earn();
     this.h.preview(this.char, C.wornSkin(this.char), null);
   }
 
   // "Reach tier 9 of the Battle Pass: 3,200 more XP."
-  passHint(tier) {
+  passHint(tier, use = 'wear it') {
     const C = this.career, P = CONFIG.shop.pass, left = tier * P.xpPerTier - C.passXp;
-    return C.signedIn ? `Reach tier ${tier} of the Battle Pass: ${left.toLocaleString()} more XP. Every character can wear it.`
-      : `Reach tier ${tier} of the Battle Pass (sign in to earn XP). Every character can use it.`;
+    return C.signedIn ? `Reach tier ${tier} of the Battle Pass: ${left.toLocaleString()} more XP. Every character can ${use}.`
+      : `Reach tier ${tier} of the Battle Pass (sign in to earn XP). Every character can ${use}.`;
   }
 
   earn() {

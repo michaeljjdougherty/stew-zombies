@@ -161,7 +161,7 @@ export const SKINS = [
     look: { top: { type: 'suit', color: '#3a1458', shirt: '#0e0e10', tie: '#d8b84a' }, layer: null, pants: { color: '#2a0e40' }, shoes: 'dress', chain: { metal: 'gold', drop: 0.12 }, gear: [{ kind: 'shades', aviator: true, lens: '#2a0e40', frame: '#d4a93c' }] } },
   { id: 'burgerBros', name: 'Burger Bros', rarity: 'legendary', unlock: { kind: 'pass', tier: 20 },
     blurb: 'The top of the pass: the red Burger Bros uniform, the visor and the name tag. Would you like fries with that?',
-    look: { top: { type: 'tee', color: '#c8202a', text: { front: 'BURGER BROS', back: 'BURGER BROS', color: '#ffc72a', edge: '#5a1208', size: 30, v: 0.7 } }, layer: null, pants: { color: '#1a1a1e' }, shoes: 'sneaker', chain: null,
+    look: { top: { type: 'tee', color: '#c8202a', text: { front: 'BURGER BROS', back: 'BURGER BROS', color: '#ffc72a', edge: '#5a1208', size: 22, v: 0.7 } }, layer: null, pants: { color: '#1a1a1e' }, shoes: 'sneaker', chain: null,
       gear: [{ kind: 'visor', color: '#c8202a', text: 'BURGER BROS' }, { kind: 'nameTag', text: 'BURGER BROS' }] } },
 
   // --- not for sale: `unlock` says how you get them -----------------------------------
