@@ -2,7 +2,8 @@
 // Recorded gun sounds. Gunshots and gun mechanics from "The Free Firearm
 // Sound Library" by Still North Media (Ben Jaszczak, Brian Nelson, Kevin
 // Heras, Matthew Nanney), released CC0 (public domain). Each gunshot was cut
-// from the near-distance close-mic recordings; files live in assets/sfx/guns.
+// from the near-distance close-mic recordings; files live in sfx-src/guns,
+// packed into assets/sfx/guns_pack.mp3 for the game.
 // =============================================================================
 
 // sample key -> files (variants are picked at random)
@@ -137,4 +138,5 @@ export function mechSetFor(id, def) {
   return MECH_SETS.ar;
 }
 
-export const SAMPLE_BASE = 'assets/sfx/guns/';
+// (all of them in one download: tools/pack-sounds.mjs packs sfx-src/guns into it)
+export const SAMPLE_PACK = 'assets/sfx/guns_pack.mp3';

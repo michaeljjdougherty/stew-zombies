@@ -109,6 +109,27 @@ export class AudioEngine {
     }
   }
 
+  // Many short recordings packed in one download (tools/pack-sounds.mjs): a
+  // little header saying where each file's bytes are, then the files as they
+  // were. Each one's cut out and decoded on its own. manifest as in preload().
+  preloadPack(url, manifest) {
+    this.samples = this.samples || {};
+    this.pending = this.pending || [];
+    const jobs = [];
+    for (const [key, files] of Object.entries(manifest)) for (const f of files) { const job = { key, file: f, data: null }; jobs.push(job); this.pending.push(job); }
+    fetch(url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((ab) => {
+      if (!ab) { for (const j of jobs) j.failed = true; return; }
+      const n = new DataView(ab).getUint32(0, true);
+      const index = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, n)));
+      for (const j of jobs) {
+        const at = index[j.file];
+        if (!at) { j.failed = true; continue; }
+        j.data = ab.slice(4 + n + at[0], 4 + n + at[0] + at[1]);
+      }
+      this.decodePending();
+    }).catch(() => { for (const j of jobs) j.failed = true; });
+  }
+
   // One file holding many short sounds (a speaker's voice lines), cut up after
   // decoding. segs: { key: [startSeconds, seconds] }
   preloadSprite(url, segs) {

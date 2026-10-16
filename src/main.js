@@ -27,7 +27,7 @@ import { Extras } from './ui/extras.js';
 import { CharSelect } from './ui/charselect.js';
 import { LineupUI } from './ui/lineupui.js';
 import { TitleMusic, StewSong } from './audio/music.js';
-import { GUN_SAMPLES, SAMPLE_BASE } from './audio/gunSamples.js';
+import { GUN_SAMPLES, SAMPLE_PACK } from './audio/gunSamples.js';
 import { voiceSprites } from './lore/voice.js';
 import { ExploreUI } from './ui/explore.js';
 import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
@@ -81,7 +81,7 @@ input.zoomScale = () => {
 };
 input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
-audio.preload(GUN_SAMPLES, SAMPLE_BASE);
+audio.preloadPack(SAMPLE_PACK, GUN_SAMPLES);
 // Gear sounds (thunder gun, knife, launcher, blasts); each falls back to its built-in synth sound until loaded
 audio.preload({ g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
 audio.preload({ g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
