@@ -26,7 +26,7 @@ import { loadProgress, saveProgress } from './ui/progress.js';
 import { Extras } from './ui/extras.js';
 import { CharSelect } from './ui/charselect.js';
 import { LineupUI } from './ui/lineupui.js';
-import { TitleMusic, StewSong } from './audio/music.js';
+import { MenuMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_PACK } from './audio/gunSamples.js';
 import { voiceSprites } from './lore/voice.js';
 import { ExploreUI } from './ui/explore.js';
@@ -99,7 +99,7 @@ hud.localName = CHARACTERS[playableCharacter()].name;
 hud.onNoteRead = (id) => {
   if (!progress.notes.includes(id)) { progress.notes.push(id); saveProgress(progress); }
 };
-const titleMusic = new TitleMusic(audio);
+const titleMusic = new MenuMusic(audio, settings, CONFIG.audio.menuSong);   // (The Kettle Liturgy, or the original theme)
 const jukebox = new StewSong(audio);
 hud.lyricSource = () => (sound.song ? sound.song.lyric() : jukebox.playing ? jukebox.lyric() : null);
 let gameOverLine = '';
@@ -200,6 +200,7 @@ function applySettings(s) {
   audio.setVolume('master', s.master);
   audio.setVolume('music', s.music);
   audio.setVolume('voice', s.voice);
+  titleMusic.refresh();   // (the menu music picked in Settings)
   hud.subtitles = s.subtitles;
 }
 

@@ -458,3 +458,54 @@ export class FireSaleMusic extends Sequencer {
     }
   }
 }
+
+// A recorded song (an mp3 in assets/music), looping on the music bus: the menus'
+// The Kettle Liturgy, Big Evil Zach's fight. Same start/stop as the
+// synthesized pieces. It downloads the first time it's wanted, and starts once
+// it's in (if it's still wanted then).
+export class RecordedSong {
+  constructor(A, url, { loop = true } = {}) { this.A = A; this.url = url; this.loop = loop; this.buf = null; this.loading = null; this.src = null; this.want = null; }
+  get playing() { return !!this.want; }
+  load() {
+    if (!this.loading) this.loading = fetch(this.url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((ab) => (ab && this.A.ctx ? this.A.ctx.decodeAudioData(ab) : null)).then((b) => { this.buf = b; return b; }).catch(() => null);
+    return this.loading;
+  }
+  start(bus = 'music', gain = 0.9, fadeIn = 1.5) {
+    if (this.want || !this.A.ctx) return;
+    const want = this.want = { bus, gain };
+    this.load().then((buf) => {
+      if (this.want !== want || !buf || this.src) return;
+      const A = this.A, ctx = A.ctx, t = ctx.currentTime + 0.05;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + fadeIn);
+      const s = ctx.createBufferSource(); s.buffer = buf; s.loop = this.loop;
+      s.connect(g); g.connect(A.buses[bus] || A.master); s.start(t);
+      s.onended = () => { if (this.src && this.src.s === s) { this.src = null; if (!this.loop) this.want = null; } };
+      this.src = { s, g };
+    });
+  }
+  stop(fade = 0.6) {
+    this.want = null;
+    const S = this.src;
+    if (!S) return;
+    this.src = null;
+    const ctx = this.A.ctx, t = ctx.currentTime;
+    S.g.gain.cancelScheduledValues(t); S.g.gain.setValueAtTime(Math.max(0.0001, S.g.gain.value), t); S.g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.05, fade));
+    try { S.s.stop(t + Math.max(0.05, fade) + 0.05); } catch { /* already stopped */ }
+  }
+}
+
+// The menus' music: The Kettle Liturgy, or (Settings) the original synth theme.
+export class MenuMusic {
+  constructor(A, settings, url) { this.A = A; this.settings = settings; this.song = new RecordedSong(A, url); this.classic = new TitleMusic(A); this.cur = null; }
+  get playing() { return !!this.cur && this.cur.playing; }
+  pick() { return this.settings.menuMusic === 'classic' ? this.classic : this.song; }
+  start(bus = 'music', gain = 0.9) {
+    const want = this.pick();
+    if (this.cur && this.cur !== want) this.cur.stop(0.4);
+    this.cur = want;
+    want.start(bus, gain);
+  }
+  stop(fade) { if (this.cur) this.cur.stop(fade); this.cur = null; }
+  // (Settings changed it while it's playing: swap now)
+  refresh() { if (this.cur && this.cur !== this.pick()) this.start(); }
+}

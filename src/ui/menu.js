@@ -105,6 +105,7 @@ export class Menus {
     check('set-rumble', 'rumble');
 
     // --- graphics
+    cycle('set-menumusic', 'menuMusic', [['kettle', 'The Kettle Liturgy', 'The Stew Zombies 2.0 theme'], ['classic', 'Original', 'The first game\'s theme']]);
     cycle('set-fpscap', 'fpsCap', CONFIG.graphics.fpsCaps.map((c) => [c, c ? `${c} fps` : 'Off', c ? (c <= 30 ? 'Steadier and cooler on weak machines' : 'Saves power and heat') : 'As fast as your screen allows']));
     cycle('set-sharp', 'sharpness', [
       [1, 'Standard', 'Big boost on Retina / 4K screens'],

@@ -2094,6 +2094,11 @@ export const CONFIG = {
   // Audio
   // ---------------------------------------------------------------------------
   audio: {
+    // recorded songs: the menus' (Settings can bring back the original synth
+    // theme) and Big Evil Zach's fight on Call of the Crust
+    menuSong: 'assets/music/the_kettle_liturgy.mp3',
+    zachSong: 'assets/music/tank.mp3',
+    zachSongGain: 0.85,
     master: 0.8,
     sfx: 1.0,
     ambient: 0.7,

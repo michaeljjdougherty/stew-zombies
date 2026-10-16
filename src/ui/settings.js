@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   music: CONFIG.audio.music,
   voice: CONFIG.audio.voice,
   subtitles: true,
+  menuMusic: 'kettle',      // the menus' music: 'kettle' (The Kettle Liturgy) or 'classic' (the original theme)
   padSensitivity: 1.0,
   aimAssist: true,
   rumble: true,
