@@ -263,6 +263,8 @@ for (const id of all) {
 }
 
 // --- the career: Liquid Divinium, Megas and your pack, by username -----------------
+const GIFT = GG.gift;
+GG.gift = null;   // (the welcome gift is tested on its own, below)
 {
   const store = new Map();
   const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
@@ -295,6 +297,46 @@ for (const id of all) {
   await C3.flush();
   const body = sent.filter((s) => s.o.method === 'PATCH').map((s) => JSON.parse(s.o.body)).reduce((a, b) => ({ ...a, ...b }), {});
   check(body['gums/divinium'] && body['gums/megas/perkaholic'] && body['gums/megas/perkaholic']['.sv'].increment === 2 && Array.isArray(body['gums/pack']), 'online: Divinium and Megas go up as increments, the pack as it is');
+}
+
+// --- the welcome gift: once per username, while it lasts; and the list of names ----------
+{
+  const megaIds = Object.keys(GG.gums).filter((id) => !['classic', 'whimsical'].includes(GG.gums[id].tier));
+  const future = new Date(Date.now() + 864e5).toISOString(), past = new Date(Date.now() - 864e5).toISOString();
+  GG.gift = { ...GIFT, id: 'test-gift', until: future };
+  const store = new Map();
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const C = new Career({}, { storage, fetchFn: null });
+  let shown = null; C.onGift = (g) => { shown = g; };
+  await C.signIn('Gifted');
+  check(C.gums.divinium === GG.starter + GIFT.divinium && megaIds.every((id) => C.gums.megas[id] === GIFT.megas), `the gift: ${GIFT.divinium} vials and ${GIFT.megas} of each of the ${megaIds.length} Megas`);
+  check(shown && shown.divinium === GIFT.divinium && shown.megas === megaIds.length, 'and it says so');
+  C.saveLocal();
+  const C2 = new Career({}, { storage, fetchFn: null });
+  await C2.signIn('Gifted');
+  check(C2.gums.divinium === GG.starter + GIFT.divinium, 'only once per username');
+  GG.gift = { ...GIFT, id: 'test-gift-2', until: past };
+  const C3 = new Career({}, { storage: { getItem: () => null, setItem: () => {} }, fetchFn: null });
+  await C3.signIn('Too Late');
+  check(C3.gums.divinium === GG.starter && !Object.keys(C3.gums.megas).length, 'none once it has run out');
+  // online: the gift's increments and its mark go up, and a career that has it already gets nothing
+  GG.gift = { ...GIFT, id: 'test-gift', until: future };
+  const sent = [];
+  let cloud = null;
+  const fetchFn = async (url, o = {}) => { sent.push({ url, o }); return { ok: true, json: async () => (o.method === 'PATCH' ? {} : url.endsWith('/players.json') ? { gifted: { name: 'Gifted' }, zed: { name: 'Zed', achievements: {} } } : cloud) }; };
+  const C4 = new Career({ firebaseUrl: 'https://x.test' }, { storage: { getItem: () => null, setItem: () => {} }, fetchFn });
+  await C4.signIn('Online Gift');
+  const body = sent.filter((s) => s.o.method === 'PATCH').map((s) => JSON.parse(s.o.body)).reduce((a, b) => ({ ...a, ...b }), {});
+  check(body['gums/gifts/test-gift'] === true && body['gums/megas/' + megaIds[0]], 'online: the gift goes up with a mark so it isn\'t given twice');
+  cloud = { name: 'Had It', gums: { divinium: 4, started: true, gifts: { 'test-gift': true } } };
+  const C5 = new Career({ firebaseUrl: 'https://x.test' }, { storage: { getItem: () => null, setItem: () => {} }, fetchFn });
+  await C5.signIn('Had It');
+  check(C5.gums.divinium === 4, 'a username that got it on another device doesn\'t get it again');
+  const names = await C5.listNames();
+  check(names.map((n) => n.name).join(',') === 'Gifted,Had It,Zed', 'the sign-in list: every username, A to Z');
+  const C6 = new Career({ firebaseUrl: 'https://x.test' }, { storage, fetchFn: async () => { throw new Error('offline'); } });
+  check((await C6.listNames()).some((n) => n.name === 'Gifted'), 'offline: the names this device knows');
+  GG.gift = GIFT;
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

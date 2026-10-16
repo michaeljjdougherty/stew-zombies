@@ -43,7 +43,7 @@ import { PatchNotes } from './ui/patchNotes.js';
 import { Splash } from './ui/splash.js';
 import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
-import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI } from './ui/careerUI.js';
+import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -979,6 +979,7 @@ const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 // --- careers: a username, its stats and achievements (src/career/; made up top) ---
 const achToast = new AchievementToast(() => sound.achievement());
 career.onUnlock = (a) => achToast.push(a);
+career.onGift = (g) => achToast.push(giftToast(g));
 // GobbleGum: the pack you take into games, and Dr. Monty's Factory
 const gumsUI = new GumsUI(career, { back: () => menus.show('title') });
 document.getElementById('btn-gums').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); });

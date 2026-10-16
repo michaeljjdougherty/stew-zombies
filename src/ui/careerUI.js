@@ -40,7 +40,16 @@ export class SignInUI {
     this.pinForm.addEventListener('submit', (e) => { e.preventDefault(); this.goPin(); });
     $('btn-si-back').addEventListener('click', () => this.nameStep());
     $('btn-si-guest').addEventListener('click', () => this.guest());
-    this.input.addEventListener('input', () => { this.refreshButton(); clearTimeout(this.peekT); this.peekT = setTimeout(() => this.peek(), 450); });
+    this.input.addEventListener('input', () => { this.refreshButton(); this.renderAccounts(); clearTimeout(this.peekT); this.peekT = setTimeout(() => this.peek(), 450); });
+    // every username so far: pick yours (then its PIN), so nobody's a digit off
+    this.accounts = [];
+    $('si-acc-list').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-name]');
+      if (!b) return;
+      this.input.value = b.dataset.name;
+      this.refreshButton();
+      this.go();
+    });
     for (const el of [this.pin, this.pin2]) el.addEventListener('input', () => { el.value = el.value.replace(/\D/g, '').slice(0, 4); this.refreshPin(); });
   }
 
@@ -49,12 +58,31 @@ export class SignInUI {
     this.input.value = this.career.lastName || '';
     this.nameStep();
     this.peek();
+    this.loadAccounts();
+  }
+
+  async loadAccounts() {
+    this.accounts = await this.career.listNames();
+    this.renderAccounts();
+  }
+
+  // The names, closest to what's typed first (all of them when nothing is).
+  renderAccounts() {
+    const box = $('si-accounts');
+    box.hidden = !this.accounts.length || !this.pinForm.hidden;
+    if (box.hidden) return;
+    const q = cleanName(this.input.value).toLowerCase();
+    const near = (n) => { const l = n.toLowerCase(); return !q ? 0 : l === q ? 0 : l.startsWith(q) ? 1 : l.includes(q) ? 2 : q.startsWith(l) || l.startsWith(q.slice(0, -1)) ? 3 : 4; };
+    const list = this.accounts.map((a) => ({ ...a, d: near(a.name) })).sort((a, b) => a.d - b.d);
+    $('si-acc-head').textContent = q ? 'Or is it one of these?' : `Or pick your name (${this.accounts.length})`;
+    $('si-acc-list').innerHTML = list.map((a) => `<button type="button" data-name="${esc(a.name)}">${esc(a.name)}${a.g ? ` <small>${fmt(a.g)}G</small>` : ''}</button>`).join('');
   }
 
   // step 1: the username
   nameStep() {
     this.pinForm.hidden = true;
     $('si-form').hidden = false;
+    this.renderAccounts();
     this.input.disabled = false;
     this.refreshButton();
     this.say('');
@@ -104,6 +132,7 @@ export class SignInUI {
   pinStep(offline = false) {
     $('si-form').hidden = true;
     this.pinForm.hidden = false;
+    $('si-accounts').hidden = true;
     this.pin.value = ''; this.pin2.value = '';
     this.pin2.hidden = !this.create;
     $('si-pinhead').innerHTML = this.create
@@ -183,6 +212,12 @@ export function renderCareer(career) {
   }).join('');
 }
 
+// --- The welcome gift's pop-up (in the achievement toast) --------------------------
+export const giftToast = (g) => ({
+  head: 'Welcome gift', badge: `${g.divinium} Liquid Divinium`,
+  title: g.megas ? `${g.each === 1 ? '1' : g.each} of every Mega GobbleGum` : 'Spend it at Dr. Monty\'s Factory',
+});
+
 // --- "Achievement unlocked" ------------------------------------------------------
 const TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3v3a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V18h3v2H8v-2h3v-2.1A5 5 0 0 1 8.6 13 5 5 0 0 1 4 8V5h3V3zm0 4H6v1a3 3 0 0 0 1.2 2.4A6 6 0 0 1 7 9V7zm10 0v2c0 .5 0 .9-.2 1.4A3 3 0 0 0 18 8V7h-1z"/></svg>';
 
@@ -205,7 +240,8 @@ export class AchievementToast {
     this.busy = true;
     const el = this.el;
     el.querySelector('.at-icon').innerHTML = TROPHY;
-    el.querySelector('.at-g').textContent = `${a.g}G`;
+    el.querySelector('small').textContent = a.head || 'Achievement unlocked';
+    el.querySelector('.at-g').textContent = a.badge || `${a.g}G`;
     el.querySelector('.at-title').textContent = a.title;
     el.hidden = false;
     el.classList.remove('show', 'hide'); void el.offsetWidth;
