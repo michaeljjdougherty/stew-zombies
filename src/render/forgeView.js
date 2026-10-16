@@ -17,6 +17,7 @@ import { buildWarHammer, HAMMER_COLORS } from './warHammer.js';
 import { CORE_ELEMENT } from '../sim/forge.js';
 import { CrustCage } from './crustCage.js';
 import { CrustPowerView } from './crustPowerView.js';
+import { NameTag } from './nameTag.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const ELS = ['wind', 'lightning', 'ice', 'fire'];
@@ -122,6 +123,19 @@ export class ForgeView {
     k.armR.wrist.add(h);
     h.position.set(0, -0.08, 0.02);
     this.smithHammer = h;
+    // his name over his head (only while you can see him)
+    this.pitTag = new NameTag(this.group);
+    this.pitTag.set('Pit', this.cfg.hud.pitTagColor);
+    this.pitHead = V(); this.pitChest = V();
+  }
+
+  // camera: the player's view, or null to hide his name (the title, the cutscenes)
+  placePitTag(dt, camera) {
+    if (!camera) { this.pitTag.hide(); return; }
+    const k = this.pit;
+    this.pitHead.copy(k.root.position).y += 1.95 * (k.def.height || 1) + 0.28;
+    this.pitChest.copy(k.root.position).y += 1.2;
+    this.pitTag.place(this.pitHead, this.pitChest, camera, this.sim, dt);
   }
 
   animatePit(t, F) {
@@ -163,10 +177,11 @@ export class ForgeView {
   }
 
   // --- each frame ---------------------------------------------------------------
-  update(dt, time) {
+  update(dt, time, camera = null) {
     this.time += dt;
     const E = this.sim && this.sim.crustEgg, F = E && E.forge;
     this.animatePit(this.time, F);
+    this.placePitTag(dt, camera);
     // the coals breathe; brighter while he works
     const work = F && F.work;
     const heat = 0.75 + Math.sin(this.time * 3.1) * 0.12 + Math.sin(this.time * 7.3) * 0.06 + (work ? 0.35 : 0);

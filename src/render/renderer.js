@@ -521,6 +521,7 @@ export class GameRenderer {
     const sim = this.sim;
     // (a cutscene can slow the world down, and pick its own lens)
     const sdt = dt * (this.ending.slow ?? 1);
+    if (this.forge) this.forge.pitTag.hide();   // (no name tags in a cutscene)
     this.map.update(sdt, this.camera.position, { round: sim.rounds.round, kills: 0 });
     this.zombies.update(sim, sdt, 1, time);
     this.machines.update(sdt);
@@ -677,7 +678,7 @@ export class GameRenderer {
     this.lore.update(dt);
     this.quest.update(dt, this.camera);
     if (this.titans) this.titans.update(dt, time, this.camera);
-    if (this.forge) { this.forge.update(dt, time); this.zach.update(dt, time); }
+    if (this.forge) { this.forge.update(dt, time, mode === 'play' ? this.camera : null); this.zach.update(dt, time); }
     this.teammates.update(sim, this.localId, dt, alpha, time, this.camera);
     if (watch && watch.tag) watch.tag.visible = false;   // no name tag in your face while spectating
 
