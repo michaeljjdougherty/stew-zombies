@@ -182,6 +182,21 @@ const hubPads = CRUST.launchers.filter((L) => CRUST.relays.some((r) => r.pad ===
   check(Object.values(P(g).on).every(Boolean), 'every island lit');
 }
 
+// --- Second Helping (the Quick Revive) in the pit where you start: it needs no power
+{
+  const g = game(5);
+  const qr = g.sim.interactables.find((i) => i.kind === 'perk' && i.m.perk === 'secondHelping');
+  check(qr && islandAt(g.sim, qr.m.center) === 'hub' && qr.m.zone === 'pit', `Second Helping in the pit (${qr && qr.m.zone})`);
+  const sp = CRUST.playerSpawns[0];
+  check(qr && Math.hypot(qr.m.center.x - sp.x, qr.m.center.z - sp.z) < 10, '...a few steps from where you start');
+  check(!P(g).on.hub, '(the Anvil\'s power is still out)');
+  g.me.points = 9000;
+  g.at(qr.stand.x, qr.stand.z, qr.m.center.y, qr.pos.x, qr.pos.z);
+  check(g.me.prompt && /buy Second Helping/.test(g.me.prompt.text), `with the power still out: "${g.me.prompt && g.me.prompt.text}"`);
+  g.use(); g.step({}, 200);
+  check(g.me.perks.includes('secondHelping'), '...and it sells you one');
+}
+
 // --- exploring: everything's on from the start
 {
   const g = game(7, 'explore');
