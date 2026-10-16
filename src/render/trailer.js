@@ -572,7 +572,16 @@ export const SHOTS = {
     },
   },
   isleShip: INTRO_SHOTS.tour_ship,
-  isleResearch: INTRO_SHOTS.tour_research,
+  // Spark City (the Research Base): high up off its west edge, the whole island in view
+  isleResearch: {
+    frame(T, u, d, k) {
+      T.far = 600; T.cullD = 400; T.fogDensity = 0.001;
+      for (const id of CREW) T.hide(id);
+      const e = sm(0, 1, k);
+      T.light(1.2, '#e8f0ff', [120, 60, 40]);
+      T.look(lerp(62, 70, e), lerp(96, 88, e), lerp(88, 76, e), 153, 0, lerp(-4, 2, e), 50);
+    },
+  },
   isleTrench: INTRO_SHOTS.tour_trench,
   isleCaves: INTRO_SHOTS.tour_caves,
 
