@@ -3,7 +3,8 @@
 // single hard spotlight, in a dark school hallway haze. Drag to spin him.
 // =============================================================================
 import * as THREE from 'three';
-import { buildCharacter, idleCharacter } from './characters.js';
+import { buildCharacter, idleCharacter, CHARACTERS } from './characters.js';
+import { applySkin } from '../career/skins.js';
 
 export class Showcase {
   constructor(renderer) {
@@ -80,11 +81,12 @@ export class Showcase {
     window.addEventListener('pointerup', () => { this.dragging = false; });
   }
 
-  show(id = 'kearns', shirt = 'sage') {
-    const key = id + ':' + shirt;
+  // skin: one from the Skin Shop (src/career/skins.js), or null for their own clothes
+  show(id = 'kearns', shirt = 'sage', skin = null) {
+    const key = id + ':' + shirt + ':' + (skin || '');
     if (this.key !== key) {
       if (this.char) this.turntable.remove(this.char.root);
-      this.char = buildCharacter(id, { shirt });
+      this.char = buildCharacter(skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, skin) : id, { shirt });
       this.char.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       this.turntable.add(this.char.root);
       this.key = key;

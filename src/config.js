@@ -1401,6 +1401,24 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
+  // The Skin Shop (src/ui/shopUI.js, src/career/skins.js): Stew Bucks, earned
+  // by playing and from achievements, saved per username, spent on skins.
+  // ---------------------------------------------------------------------------
+  shop: {
+    currency: 'Stew Bucks',
+    // earning (signed in, real zombies games only):
+    perRound: 10,            // each round you survive
+    killsPerBuck: 5,         // 1 buck for every this many kills
+    perGamerscore: 4,        // an achievement pays its G times this (a 25G one: 100), new ones included;
+                             // achievements you already had are paid the first time you sign in
+    rarities: {
+      common: { name: 'Common', price: 300, color: '#9fb4c8' },
+      rare: { name: 'Rare', price: 750, color: '#5aa0ff' },
+      legendary: { name: 'Legendary', price: 1500, color: '#e8b13a' },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
   // Call of the Crust (Map 2): numbers for the battlefield
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------

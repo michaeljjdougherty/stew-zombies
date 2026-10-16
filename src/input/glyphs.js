@@ -72,6 +72,7 @@ const LEGEND = {
   charselect: [['confirm', 'Select'], ['prev', ''], ['next', 'T-shirt'], ['rotate', 'Turn'], ['back', 'Back']],
   lineup: [['confirm', 'Select'], ['prev', ''], ['next', 'Character'], ['rotate', 'Turn'], ['back', 'Back']],
   factory: [['confirm', 'Power up'], ['back', 'Back']],
+  shop: [['confirm', 'Pick'], ['prev', ''], ['next', 'Character'], ['rotate', 'Turn'], ['back', 'Back']],
   rangepanel: [['confirm', 'Select'], ['scroll', 'Scroll'], ['back', 'Close']],
   explorepanel: [['confirm', 'Select'], ['scroll', 'Scroll'], ['back', 'Close']],
 };

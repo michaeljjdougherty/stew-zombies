@@ -272,8 +272,9 @@ export class Viewmodel {
   setAspect(a) { this.camera.aspect = a; this.camera.updateProjectionMatrix(); }
 
   // Your arms are your character's arms: their skin, their sleeves.
+  // (id can be a whole definition: a character wearing a skin from the shop)
   setCharacter(id) {
-    const def = CHARACTERS[id] || CHARACTERS.kearns;
+    const def = id && typeof id === 'object' ? id : CHARACTERS[id] || CHARACTERS.kearns;
     const sk = (SKIN[def.skin] || SKIN.light).base;
     // the game's lighting is warmer than the showcase: deepen the tone a touch
     const skin = sk.map((v) => Math.round(v * 0.8));
