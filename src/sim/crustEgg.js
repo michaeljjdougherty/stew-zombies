@@ -303,6 +303,17 @@ function stride(sim, T, goalPos, goalRegion, speed, dt, { nav = true, turn = 2.2
   T.moveSpeed = moved;
   const far = Math.hypot(goalPos.x - T.pos.x, goalPos.z - T.pos.z) > 4;
   if ((sp > 0.3 && moved < sp * 0.3) || (sp === 0 && far)) T.stuckT += dt; else T.stuckT = Math.max(0, T.stuckT - dt);
+  // (and stuck shuffling back and forth on the spot: the Warden at the foot of a
+  // catwalk's stairs, one foot on and one off. Every couple of seconds: has it
+  // got anywhere?)
+  const W = sim.cfg.crust.egg.leap;
+  // (only while it's been walking all that time, not stopped to stomp or fire)
+  if (!T.chk || sim.time - T.chk.last > 0.1) T.chk = { x: T.pos.x, z: T.pos.z, t: sim.time };
+  T.chk.last = sim.time;
+  if (sim.time - T.chk.t >= W.checkEvery) {
+    if (far && Math.hypot(T.pos.x - T.chk.x, T.pos.z - T.chk.z) < W.checkDist) T.stuckT = Math.max(T.stuckT, W.stuck + 0.01);
+    T.chk = { x: T.pos.x, z: T.pos.z, t: sim.time, last: sim.time };
+  }
   return moved > 0.2;
 }
 
@@ -334,7 +345,7 @@ function leapToward(sim, T, target, airTime) {
   // (the Warden flies on its jump jets; the Golem and the Fiend sink into the ground and come up again)
   const burrow = T.id !== 'research';
   T.act = { kind: 'leap', burrow, t: 0, dur: airTime, from: { ...T.pos }, to: { x: best.x, y: best.y, z: best.z } };
-  T.stuckT = 0;
+  T.stuckT = 0; T.chk = null;
   sim.emit('titanLeap', { id: T.id, from: { ...T.pos }, to: { ...T.act.to }, dur: airTime, burrow });
   return true;
 }

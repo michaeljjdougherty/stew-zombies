@@ -193,6 +193,24 @@ check(CRUST.titans.length === 4 && ['ship', 'research', 'caves', 'trench'].every
   check(T.done === T.of && (T.state === 'dying' || T.state === 'dead'), `five shells put it down (${T.done})`);
 }
 
+// --- the Warden at the foot of the east catwalk's stairs (one foot on, one off,
+// shuffling on the spot): it gets itself out (a leap) and comes after you
+{
+  const g = game(6);
+  const { sim, me } = g;
+  const s = CRUST.titans.find((t) => t.id === 'research');
+  const T = sim.crustEgg.titans.research;
+  g.put(s.wake.x + 3.4, s.wake.z, null, Math.PI / 2); g.use();
+  g.secs(sim.cfg.crust.egg.wakeTime.research + 0.5);
+  T.next.laser = sim.time + 99; T.next.adds = sim.time + 99;
+  Object.assign(T.pos, { x: 167.87, y: 1.08, z: 19.96 }); T.region = null; T.act = null;
+  g.put(145, 32, null);
+  const d0 = Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z);
+  g.secs(12);
+  const d1 = Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z);
+  check(d1 < d0 - 8, `it doesn't stay stuck on the stairs (${d0.toFixed(0)} m -> ${d1.toFixed(0)} m${g.has('titanLeap') ? ', it leapt' : ''})`);
+}
+
 // --- walk away and it goes back to sleep
 {
   const g = game(51);

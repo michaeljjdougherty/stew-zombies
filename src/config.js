@@ -1645,7 +1645,8 @@ export const CONFIG = {
       dyingTime: 4.5,        // s it takes to go down
       leash: 20,             // s with nobody on its island before it goes back to sleep
       // stuck, or you're somewhere it can't walk to: it leaps (the Fiend burrows) to open ground near you
-      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8 },
+      // (checkEvery s: if it's got less than checkDist m in that time, it's stuck too)
+      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8, checkEvery: 2.5, checkDist: 1.2 },
       // where bullets spark off them: [height up its body, radius] (m)
       // how each one's drawn (src/render/titanView.js): its eyes' glow (m up, m forward),
       // which way its model faces, its walk, how far it sinks to wake and kneel
