@@ -1423,6 +1423,7 @@ export const CONFIG = {
     // earning (signed in, real zombies games only):
     perRound: 10,            // each round you survive
     killsPerBuck: 5,         // 1 buck for every this many kills
+    featured: 4,             // items in "Featured today" on the Stew Store blade (a new set each day)
     perGamerscore: 4,        // an achievement pays its G times this (a 25G one: 100), new ones included;
                              // achievements you already had are paid the first time you sign in
     rarities: {
@@ -1433,6 +1434,23 @@ export const CONFIG = {
     },
     // usernames (as database keys) that have the Pink Diamond Galaxy Opal skin on every character
     opalAccounts: ['phat_chops'],
+    // usernames (as database keys) with everything in the game unlocked, always: every skin
+    // that fits, every emote, the whole Battle Pass, every character, the song, and this many of every Mega
+    allAccess: ['phat_chops'],
+    allAccessMegas: 99,
+    // The Battle Pass (src/career/battlepass.js): free for everyone signed in.
+    // Pass XP comes from playing (real zombies games only); every tier's prize
+    // (a skin or emote any character can use, or Stew Bucks) is yours when you reach it.
+    pass: {
+      name: 'Season 1',
+      tiers: 20,
+      xpPerTier: 1000,       // XP from one tier to the next
+      perRound: 100,         // XP for each round you survive
+      perKill: 5,            // XP for each kill
+      perGame: 250,          // XP for each game you play (once round 1 starts)
+      // the tiers that pay Stew Bucks (the rest are the skins and emotes that say which tier they're on)
+      bucks: { 2: 100, 6: 150, 8: 150, 12: 200, 14: 200, 18: 300, 19: 500 },
+    },
   },
 
   // ---------------------------------------------------------------------------

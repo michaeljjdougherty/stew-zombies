@@ -8,13 +8,19 @@
 // team kit and the specials (src/career/skins.js); "Equip" puts one on them.
 // Emotes (src/career/emotes.js): buy one once and the whole crew can do it from
 // the wheel. The Bucks, skins and emotes are your career's (src/career/career.js).
+// Battle Pass (src/career/battlepass.js): its 20 tiers in order, how far you've
+// got, and what each one gives; its skins and emotes fit every character.
 // =============================================================================
 import { CONFIG } from '../config.js';
 import { SKIN_BY_ID, rarityOf, skinsFor } from '../career/skins.js';
 import { EMOTES, EMOTE_BY_ID } from '../career/emotes.js';
+import { passTiers, passProgress } from '../career/battlepass.js';
 
 const EM = 'emote:';   // (emote tiles' ids in the grid)
 const emoteOf = (sel) => (typeof sel === 'string' && sel.startsWith(EM) ? EMOTE_BY_ID[sel.slice(EM.length)] : null);
+const BK = 'bucks:';   // (a Battle Pass tier of Stew Bucks, by its tier)
+const bucksOf = (sel) => (typeof sel === 'string' && sel.startsWith(BK) ? passTiers().find((t) => t.tier === Number(sel.slice(BK.length))) : null);
+const passIdOf = (t) => (t.kind === 'emote' ? EM + t.id : t.kind === 'bucks' ? BK + t.tier : t.id);
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -34,19 +40,22 @@ export class ShopUI {
     for (const b of document.querySelectorAll('.st-tabs button')) b.addEventListener('click', () => this.setTab(b.dataset.tab));
   }
 
-  open(tab = 'skins') {
+  // pick: open on one item ({ kind: 'skin' | 'emote', id, char }: the blade's Featured today)
+  open(tab = 'skins', pick = null) {
     const list = this.h.characters();
+    if (pick && list.some((c) => c.id === pick.char)) this.char = pick.char;
     if (!list.some((c) => c.id === this.char)) this.char = this.h.current();
     if (!list.some((c) => c.id === this.char)) this.char = list[0] && list[0].id;
     this.buildChars(list);
-    this.setTab(tab, true);
+    this.setTab(tab, true, pick ? (pick.kind === 'emote' ? EM + pick.id : pick.id) : null);
   }
 
-  setTab(tab, force = false) {
+  setTab(tab, force = false, sel = null) {
     if (this.tab === tab && !force) return;
     this.tab = tab;
+    if (tab === 'pass') this.char = this.h.current();   // (its items are tried on whoever you play as)
     for (const b of document.querySelectorAll('.st-tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    this.sel = tab === 'emotes' ? EM + EMOTES[0].id : this.career.wornSkin(this.char) || '';
+    this.sel = sel != null ? sel : tab === 'emotes' ? EM + EMOTES[0].id : tab === 'pass' ? this.passStart() : this.career.wornSkin(this.char) || '';
     this.render();
     setTimeout(() => { const b = $('sh-grid').querySelector('[aria-selected="true"]'); if (b) b.focus({ preventScroll: true }); }, 30);
   }
@@ -73,7 +82,8 @@ export class ShopUI {
   render() {
     const C = this.career;
     $('sh-bucks').textContent = C.bucks.toLocaleString();
-    $('sh-chars').hidden = this.tab !== 'skins';
+    $('sh-chars').hidden = this.tab !== 'skins';   // (the pass is one for your account, not per character)
+    this.passBar();
     for (const b of $('sh-chars').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.id === this.char));
     const grid = $('sh-grid');
     grid.textContent = '';
@@ -82,22 +92,60 @@ export class ShopUI {
       const worn = C.wornSkin(this.char) || '';
       const all = skinsFor(this.char).filter((s) => !s.vault || C.ownsSkin(s.id, this.char));
       const theirs = all.filter((s) => s.only === this.char), team = all.filter((s) => s.team);
-      const special = all.filter((s) => !s.only && !s.team && !s.vault), vault = all.filter((s) => s.vault);
+      const pass = all.filter((s) => s.unlock && s.unlock.kind === 'pass');
+      const special = all.filter((s) => !s.only && !s.team && !s.vault && !pass.includes(s)), vault = all.filter((s) => s.vault);
       head(`${this.charName()}'s skins`);
       this.tile('', OWN, worn === '' ? { flag: 'Equipped', own: true } : { own: true });
       for (const s of theirs) this.skinTile(s, worn);
       head('The team');
       for (const s of team) this.skinTile(s, worn);
       if (special.length) { head('Specials'); for (const s of special) this.skinTile(s, worn); }
+      if (pass.length) { head('Battle Pass'); for (const s of pass) this.skinTile(s, worn); }
       if (vault.length) { head('From the vault'); for (const s of vault) this.skinTile(s, worn); }
+    } else if (this.tab === 'pass') {
+      for (const t of passTiers()) this.passTile(t, C.wornSkin(this.char) || '');
     } else {
       head('Emotes: every character can do them');
       for (const e of EMOTES) {
         const own = C.ownsEmote(e.id);
-        this.tile(EM + e.id, e, own ? { own: true, label: e.free ? 'Free' : 'Owned' } : { price: C.emotePrice(e.id) });
+        this.tile(EM + e.id, e, own ? { own: true, label: e.free ? 'Free' : e.pass ? 'Unlocked' : 'Owned' } : e.pass ? { lock: `Pass tier ${e.pass}` } : { price: C.emotePrice(e.id) });
       }
     }
     this.info();
+  }
+
+  // --- the Battle Pass ---------------------------------------------------------------
+  // Opens on the next prize you haven't got (or the top one)
+  passStart() {
+    const T = passTiers(), at = this.career.passTier;
+    const t = T.find((x) => x.tier === at + 1 && x.kind !== 'none') || T.filter((x) => x.kind !== 'none').pop();
+    return t ? passIdOf(t) : '';
+  }
+
+  // The bar over the tiers: your tier, and how far to the next
+  passBar() {
+    const box = $('sh-pass');
+    if (!box) return;
+    box.hidden = this.tab !== 'pass';
+    if (box.hidden) return;
+    const C = this.career, P = CONFIG.shop.pass, g = passProgress(C.allAccess ? Infinity : C.passXp);
+    $('sh-pass-tier').textContent = `Tier ${g.tier} of ${P.tiers}`;
+    $('sh-pass-xp').textContent = !C.signedIn ? 'Sign in to earn XP' : g.done ? 'Every tier unlocked' : `${g.into.toLocaleString()} / ${g.need.toLocaleString()} XP to tier ${g.tier + 1}`;
+    $('sh-pass-fill').style.width = `${Math.round((g.into / g.need) * 100)}%`;
+    box.setAttribute('aria-label', `Battle Pass ${P.name}: tier ${g.tier} of ${P.tiers}. ${$('sh-pass-xp').textContent}`);
+  }
+
+  passTile(t, worn) {
+    if (t.kind === 'none') return;
+    const got = this.career.passTier >= t.tier;
+    const flag = `Tier ${t.tier}`;
+    if (t.kind === 'bucks') {
+      const item = { name: `${t.n} ${CONFIG.shop.currency}`, rarity: 'common' };
+      this.tile(BK + t.tier, item, got ? { own: true, label: 'Paid', flag } : { lock: 'Locked', flag }, false);
+      return;
+    }
+    const label = t.kind === 'skin' && t.id === worn ? 'Equipped' : 'Unlocked';
+    this.tile(passIdOf(t), t.item, got ? { own: true, label, flag } : { lock: 'Locked', flag });
   }
 
   skinTile(s, worn) {
@@ -108,7 +156,8 @@ export class ShopUI {
   }
 
   // one tile: the rarity's colour, a picture of it (drawn when it's ready), the name and price
-  tile(id, item, st) {
+  // (art false: no picture, a big coin: the pass's Stew Bucks)
+  tile(id, item, st, art = true) {
     const R = CONFIG.shop.rarities[item.rarity] || CONFIG.shop.rarities.common;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'st-tile'; b.setAttribute('role', 'option'); b.dataset.id = id;
@@ -122,9 +171,10 @@ export class ShopUI {
     b.addEventListener('focus', () => this.select(id));
     b.addEventListener('dblclick', () => this.act());
     $('sh-grid').appendChild(b);
-    const e = emoteOf(id), art = b.querySelector('.st-art');
+    const e = emoteOf(id), pic = b.querySelector('.st-art');
+    if (!art) { pic.classList.add('ready', 'st-bucks'); pic.innerHTML = '<i class="sh-coin" aria-hidden="true">$</i>'; return; }
     const spec = e ? { char: this.char, skin: this.career.wornSkin(this.char), act: e.act, color: R.color } : { char: this.char, skin: id || null, color: R.color };
-    if (this.h.thumb) this.h.thumb(spec, (url) => { art.style.backgroundImage = `url(${url})`; art.classList.add('ready'); });
+    if (this.h.thumb) this.h.thumb(spec, (url) => { pic.style.backgroundImage = `url(${url})`; pic.classList.add('ready'); });
   }
 
   // Looking at something: it goes on the character, and the button says what it'll do
@@ -151,6 +201,7 @@ export class ShopUI {
 
   info() {
     if (emoteOf(this.sel)) { this.emoteInfo(emoteOf(this.sel)); return; }
+    if (bucksOf(this.sel)) { this.bucksInfo(bucksOf(this.sel)); return; }
     const C = this.career, S = CONFIG.shop, worn = C.wornSkin(this.char) || '';
     const skin = SKIN_BY_ID[this.sel], name = this.charName();
     this.detail(skin || OWN);
@@ -161,6 +212,7 @@ export class ShopUI {
     else if (skin.unlock) {
       this.button(this.unlockTag(skin), false);
       if (skin.unlock.kind === 'kills') blurb += ` Unlock it for ${name} with ${skin.unlock.need} kills as ${name}: ${Math.min(C.charKills(this.char), skin.unlock.need)} so far.`;
+      if (skin.unlock.kind === 'pass') blurb += ` ${this.passHint(skin.unlock.tier)}`;
     } else {
       const price = rarityOf(skin).price, short = price - C.bucks;
       this.button(`Purchase · ${price.toLocaleString()}`, short <= 0);
@@ -177,6 +229,7 @@ export class ShopUI {
     this.detail(e);
     let blurb = e.blurb + ' Hold [B] in a game for the emote wheel.';
     if (C.ownsEmote(e.id)) this.button(e.free ? 'Free for everyone' : 'Owned: on your wheel', false);
+    else if (e.pass) { this.button(`Battle Pass tier ${e.pass}`, false); blurb += ` ${this.passHint(e.pass, 'do it')}`; }
     else if (!C.signedIn) this.button('Sign in to buy', false);
     else {
       const price = C.emotePrice(e.id), short = price - C.bucks;
@@ -188,8 +241,31 @@ export class ShopUI {
     this.h.preview(this.char, C.wornSkin(this.char), e.act);
   }
 
+  // A pass tier's Stew Bucks
+  bucksInfo(t) {
+    const C = this.career;
+    this.detail({ name: `${t.n} ${CONFIG.shop.currency}`, rarity: 'common' });
+    const got = C.passTier >= t.tier;
+    this.button(got ? 'Paid' : `Battle Pass tier ${t.tier}`, false);
+    $('sh-blurb').textContent = got ? `Tier ${t.tier} paid you ${t.n} ${CONFIG.shop.currency}.` : `${t.n} ${CONFIG.shop.currency}, paid the moment you reach tier ${t.tier}. ${this.passHint(t.tier).replace(/ Every.*$/, '')}`;
+    this.earn();
+    this.h.preview(this.char, C.wornSkin(this.char), null);
+  }
+
+  // "Reach tier 9 of the Battle Pass: 3,200 more XP."
+  passHint(tier, use = 'wear it') {
+    const C = this.career, P = CONFIG.shop.pass, left = tier * P.xpPerTier - C.passXp;
+    return C.signedIn ? `Reach tier ${tier} of the Battle Pass: ${left.toLocaleString()} more XP. Every character can ${use}.`
+      : `Reach tier ${tier} of the Battle Pass (sign in to earn XP). Every character can ${use}.`;
+  }
+
   earn() {
     const C = this.career, S = CONFIG.shop;
+    if (this.tab === 'pass') {
+      const P = S.pass;
+      $('sh-earn').textContent = `Battle Pass XP: ${P.perRound} for every round you survive, ${P.perKill} a kill, and ${P.perGame} a game. Every ${P.xpPerTier.toLocaleString()} XP is a tier, and its prize is yours straight away. It's free.`;
+      return;
+    }
     $('sh-earn').textContent = C.signedIn
       ? `Earn ${S.currency} by playing: ${S.perRound} for every round you survive, 1 for every ${S.killsPerBuck} kills, and ${S.perGamerscore} for every point of gamerscore an achievement is worth.`
       : `Playing as a guest: you can try everything on, but you need a username to earn ${S.currency} and buy (Settings › Switch username).`;
@@ -203,13 +279,13 @@ export class ShopUI {
   }
 
   // how a skin that isn't for sale is unlocked
-  unlockTag(s) { return s.unlock.kind === 'kills' ? `${s.unlock.need} kills as ${this.charName()}` : 'Free'; }
+  unlockTag(s) { return s.unlock.kind === 'kills' ? `${s.unlock.need} kills as ${this.charName()}` : s.unlock.kind === 'pass' ? `Pass tier ${s.unlock.tier}` : 'Free'; }
 
   charName() { const c = this.h.characters().find((x) => x.id === this.char); return c ? c.name : 'them'; }
 
   act() {
     const C = this.career, skin = SKIN_BY_ID[this.sel], emote = emoteOf(this.sel);
-    if (!C.signedIn) { this.h.sound('deny'); return; }
+    if (!C.signedIn || bucksOf(this.sel)) { this.h.sound('deny'); return; }
     if (emote) {
       if (C.ownsEmote(emote.id)) return;
       const r = C.buyEmote(emote.id);

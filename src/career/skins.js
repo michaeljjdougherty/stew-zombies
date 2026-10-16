@@ -131,11 +131,45 @@ export const SKINS = [
     look: { top: { type: 'suit', color: '#5a0e12', shirt: '#121214', tie: '#050506' }, layer: null, pants: 'suit', shoes: 'dress', hairColor: [26, 14, 12] } },
   { vault: true, id: 'golden', name: 'Golden Ladle', rarity: 'legendary', blurb: 'A gold suit and bleached hair. Everyone will know you can afford it.',
     look: { top: { type: 'suit', color: '#b28a2c', shirt: '#141416', tie: '#d8b84a' }, layer: null, pants: 'suit', shoes: 'dress', hairColor: [214, 186, 120] } },
+  // --- the Battle Pass (src/career/battlepass.js): everyone, a tier each -------------
+  { id: 'warmUp', name: 'Warm Up', rarity: 'common', unlock: { kind: 'pass', tier: 1 },
+    blurb: 'A teal tracksuit with the stripes down the legs. Stretch first. Nobody ever stretches first.',
+    look: { top: { type: 'tee', color: '#f2f0ea' }, layer: { type: 'zip', color: '#11807a', stripes: [{ v: 0.5, h: 0.04, color: '#f2f0ea' }] }, pants: { color: '#11807a', stripe: '#f2f0ea' }, shoes: 'whiteSneaker', gear: [{ kind: 'cap', color: '#0c5c58', backwards: true }] } },
+  { id: 'nightShift', name: 'Night Shift', rarity: 'common', unlock: { kind: 'pass', tier: 3 },
+    blurb: 'Hall monitor after dark: navy uniform, SECURITY on the back, shades indoors.',
+    look: { top: { type: 'tee', color: '#1c2a48', text: { back: 'SECURITY', color: '#e8e4d6', size: 34 } }, layer: null, pants: { color: '#141a2a' }, shoes: 'dress', gear: [{ kind: 'cap', color: '#141c30' }, { kind: 'shades' }, { kind: 'earpiece' }] } },
+  { id: 'skiLodge', name: 'Ski Lodge', rarity: 'common', unlock: { kind: 'pass', tier: 5 },
+    blurb: 'A cream fleece, a red beanie and a scarf to match. Never once went skiing.',
+    look: { top: { type: 'tee', color: '#a8261e' }, layer: { type: 'sherpa', color: '#efe6d2' }, pants: 'darkJeans', shoes: 'sneaker', gear: [{ kind: 'beanie', color: '#a8261e', pom: '#f2f0ea' }, { kind: 'bandana', color: '#a8261e' }] } },
+  { id: 'lifeguard', name: 'Lifeguard', rarity: 'common', unlock: { kind: 'pass', tier: 7 },
+    blurb: 'Red tank, red shorts, GUARD on the front. Nobody\'s drowning on their watch.',
+    look: { top: { type: 'tank', color: '#d0202a', text: { front: 'GUARD', color: '#f2f0ea', edge: '#7a0e12', size: 40 } }, layer: null, shorts: { color: '#d0202a', stripe: '#f2f0ea' }, shoes: 'whiteSneaker', gear: [{ kind: 'bucketHat', color: '#f2f0ea' }, { kind: 'shades' }] } },
+  { id: 'grillMaster', name: 'Grill Master', rarity: 'rare', unlock: { kind: 'pass', tier: 9 },
+    blurb: 'Apron on, toque up, tongs somewhere. The backyard is a kitchen now.',
+    look: { top: { type: 'tee', color: '#2a5a8a', apron: '#f2f0ea' }, layer: null, pants: 'chinos', shoes: 'sneaker', gear: [{ kind: 'toque' }, { kind: 'mustache' }] } },
+  { id: 'leopardLounge', name: 'Leopard Lounge', rarity: 'rare', unlock: { kind: 'pass', tier: 11 },
+    blurb: 'Leopard print, an open camp shirt and a gold medallion. The lounge opens at nine.',
+    look: { top: { type: 'tee', color: '#d8a24a', print: 'leopard' }, layer: { type: 'camp', color: '#141416', short: true }, pants: { color: '#141416' }, shoes: 'dress', chain: { metal: 'gold', drop: 0.15 }, gear: [{ kind: 'shades', aviator: true, lens: '#3a2410', frame: '#d4a93c' }, { kind: 'medallion' }] } },
+  { id: 'hotSauce', name: 'Hot Sauce', rarity: 'rare', unlock: { kind: 'pass', tier: 13 },
+    blurb: 'Flame orange, HOT across the back and two little horns. Handle with gloves.',
+    look: { top: { type: 'tee', color: '#2a0e0a', text: { front: 'HOT', back: 'HOT', color: '#ffb02a', edge: '#7a1a08' } }, layer: { type: 'zip', color: '#e8501a', stripes: [{ v: 0.3, h: 0.05, color: '#ffb02a' }] }, pants: { color: '#2a0e0a', stripe: '#e8501a' }, shoes: 'whiteSneaker', gear: [{ kind: 'horns', color: '#ff7a1a' }] } },
+  { id: 'neonRave', name: 'Neon Rave', rarity: 'legendary', unlock: { kind: 'pass', tier: 15 },
+    blurb: 'All black, RAVE in acid green, a glowing headset. The bass is louder than the zombies.',
+    look: { top: { type: 'tee', color: '#0c0c10', print: 'confetti', text: { front: 'RAVE', back: 'RAVE', color: '#9bff2a', edge: '#0c0c10' } }, layer: null, pants: { color: '#0c0c10', stripe: '#9bff2a' }, shoes: 'whiteSneaker', gear: [{ kind: 'headset', glow: '#9bff2a' }, { kind: 'shades', lens: '#1a3a08' }] } },
+  { id: 'velvetNight', name: 'Velvet Night', rarity: 'legendary', unlock: { kind: 'pass', tier: 17 },
+    blurb: 'A deep purple velvet suit, gold on the tie and round the neck. Dressed for the after-party.',
+    look: { top: { type: 'suit', color: '#3a1458', shirt: '#0e0e10', tie: '#d8b84a' }, layer: null, pants: { color: '#2a0e40' }, shoes: 'dress', chain: { metal: 'gold', drop: 0.12 }, gear: [{ kind: 'shades', aviator: true, lens: '#2a0e40', frame: '#d4a93c' }] } },
+  { id: 'burgerBros', name: 'Burger Bros', rarity: 'legendary', unlock: { kind: 'pass', tier: 20 },
+    blurb: 'The top of the pass: the red Burger Bros uniform, the visor and the name tag. Would you like fries with that?',
+    look: { top: { type: 'tee', color: '#c8202a', text: { front: 'BURGER BROS', back: 'BURGER BROS', color: '#ffc72a', edge: '#5a1208', size: 22, v: 0.7 } }, layer: null, pants: { color: '#1a1a1e' }, shoes: 'sneaker', chain: null,
+      gear: [{ kind: 'visor', color: '#c8202a', text: 'BURGER BROS' }, { kind: 'nameTag', text: 'BURGER BROS' }] } },
+
   // --- not for sale: `unlock` says how you get them -----------------------------------
   // free: every username has it. kills: `need` kills while playing as that
   // character unlocks it for them (and CONFIG.shop.opalAccounts have it on everyone).
   // fx: a finish applied after the character's built (src/render/skinFx.js).
   // only: the one character it's for (nobody else can wear it).
+  // pass: the Battle Pass tier that unlocks it (above).
   { id: 'sexyFucci', name: 'Sexy Fucci', rarity: 'exclusive', unlock: { kind: 'free' }, fx: 'bikini', only: 'rocco',
     blurb: 'A Fucci bikini in black lacquer and gold, for Rocco and Rocco only. Free for playing Stew Zombies 2.0.',
     look: { top: { type: 'tank', color: '#111113' }, layer: null, pants: 'chinos', shoes: 'whiteSneaker' } },

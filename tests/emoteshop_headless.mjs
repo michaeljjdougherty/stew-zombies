@@ -25,7 +25,7 @@ const R = CONFIG.shop.rarities;
 const wheel = (c) => EMOTES.filter((e) => e.free || c.ownsEmote(e.id)).map((e) => e.id);
 
 check(EMOTES.every((e) => R[e.rarity] && e.name && e.blurb && e.act), 'every emote has a rarity, a name, a blurb and an animation');
-const paid = EMOTES.filter((e) => !e.free);
+const paid = EMOTES.filter((e) => !e.free && !e.pass);   // (the Battle Pass's aren't sold)
 check(paid.length === 4 && EMOTE_BY_ID.jimmyShimmy.rarity === 'legendary', `four emotes for sale, the Jimmy Shimmy legendary (${R.legendary.price})`);
 
 // a guest: the free ones only, can't buy

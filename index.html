@@ -421,6 +421,16 @@
   .st-tile:hover { filter: brightness(1.1); transform: translateY(-2px); }
   .st-tile[aria-selected="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 0 0 3px #fff, 0 0 18px color-mix(in srgb, var(--rc) 70%, #fff); transform: translateY(-2px) scale(1.02); }
   .st-tile:focus-visible { outline: 3px solid #ffe32b; outline-offset: 2px; }
+  /* the Battle Pass tab: your tier and the bar to the next */
+  .st-pass { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; margin-right: 16px; padding: 10px 14px; border-radius: 6px; background: rgba(4,10,40,.65); box-shadow: inset 0 0 0 2px rgba(255,227,43,.45); }
+  .st-pass[hidden] { display: none; }
+  .st-pass b { font: italic 400 24px/1 Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: #ffe32b; }
+  .st-pass-bar { height: 12px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
+  .st-pass-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ffb02a, #ffe32b); box-shadow: 0 0 10px rgba(255,227,43,.6); }
+  .st-pass span { grid-column: 1 / -1; font-size: 12px; letter-spacing: .5px; color: #cfe0ff; }
+  .st-art.st-bucks { display: grid; place-items: center; }
+  .st-art.st-bucks .sh-coin { width: 46%; height: auto; aspect-ratio: 1; font-size: clamp(28px, 3vw, 44px); }
+  .st-tile:has(.st-lock) .st-art { filter: grayscale(.55) brightness(.75); }
   .st-earn { margin: 0; padding-right: 16px; font-size: 12px; line-height: 1.45; color: #a9c0f0; max-width: 70ch; }
   .st-detail { position: absolute; right: max(16px, 3vw); bottom: max(18px, 4vh); width: min(330px, 32vw); display: grid; gap: 10px; justify-items: start; cursor: default; }
   .st-rarity { padding: 3px 10px 2px; border-radius: 3px; background: var(--rc, #9fb4c8); color: #0a0a10; font: italic 400 14px Anton, var(--display); letter-spacing: 1.5px; text-transform: uppercase; }
@@ -530,6 +540,15 @@
   .ms-item.locked::after { content: "🔒"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: .6; }
   .ms-moderow { display: grid; gap: 6px; font-size: 13px; color: var(--ink); }
   .ms-moderow[hidden] { display: none; }
+  /* "Playing as": character and skin chips (src/ui/loadoutPicker.js) */
+  .ms-who { display: grid; gap: 5px; margin: 0 0 12px; }
+  .ms-who > span { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .ms-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ms-chip { all: unset; cursor: pointer; padding: 4px 9px 3px; border: 1px solid var(--line); font-family: var(--display); font-size: 15px; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,.02); }
+  .ms-chip[aria-checked="true"] { border-color: var(--blood-hi); background: rgba(156,14,11,.16); }
+  .ms-chip:focus-visible { outline: 1px dashed var(--muted); outline-offset: 2px; }
+  .ms-who small { font-size: 11px; color: var(--muted); }
+  .ms-who small:empty { display: none; }
   .ms-moderow .ms-modes { display: flex; gap: 6px; }
   .ms-moderow label { flex: 1; display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); cursor: pointer; background: rgba(255,255,255,.02); }
   .ms-moderow label:has(input:checked) { border-color: var(--blood-hi); background: rgba(156,14,11,.16); }
@@ -845,6 +864,14 @@
   .blade.open .blade-tab::before { filter: url(#burn) drop-shadow(0 0 3px var(--glow)) drop-shadow(0 0 14px color-mix(in srgb, var(--glow) 70%, transparent)) drop-shadow(0 22px 22px rgba(0,0,0,.6)); }
   .b-bucks { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: #4a3520; font: 13px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; }
   .b-bucks b { font: 400 26px var(--display); color: #8a5a08; letter-spacing: 1px; }
+  /* the Stew Store blade: the way in on the left, Featured today on the right (src/ui/storeBlade.js) */
+  .blade.open .blade-body.b-store { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.35fr); gap: clamp(16px, 2.6vw, 36px); align-items: start; }
+  .b-featured-wrap { min-width: 0; }
+  .b-featured-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 6px 0 10px; border-bottom: 1px solid rgba(35,22,11,.3); padding-bottom: 6px; }
+  .b-featured-head span { font: 400 clamp(20px, 2vw, 26px) var(--display); letter-spacing: 2px; text-transform: uppercase; color: var(--ink-r); }
+  .b-featured-head small { font: 12px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; color: #5a4630; }
+  .b-featured { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: min(100%, 40vh, 340px); }
+  @media (max-width: 900px) { .blade.open .blade-body.b-store { grid-template-columns: 1fr; } .b-featured { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: none; } }
   .blade:first-child .blade-tab { margin-left: 0; }
   .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 25px; letter-spacing: 4px; text-transform: uppercase; color: var(--ink-d); opacity: .85; text-shadow: 0 0 1px rgba(35,22,11,.7); }
   .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.12); outline: none; }
@@ -1054,6 +1081,9 @@
   .page .ms-card li, .page .ms-moderow label { border-color: rgba(35,22,11,.3); }
   .page .ms-coderow input { background: rgba(60,35,12,.1); border-color: rgba(35,22,11,.4); color: var(--ink-d); }
   .page .ms-coderow small { color: var(--ink-r); }
+  .page .ms-who > span, .page .ms-who small { font-family: "American Typewriter", "Courier New", Courier, monospace; color: var(--ink-m); }
+  .page .ms-chip { color: var(--ink-d); border-color: rgba(35,22,11,.3); background: rgba(60,35,12,.08); }
+  .page .ms-chip[aria-checked="true"] { border-color: var(--ink-r); background: rgba(126,20,14,.14); color: var(--ink-r); }
   .page .ms-actions button { color: #f1e2c4; background: radial-gradient(ellipse at 30% 30%, #a3221a, #5e0e09 70%, #3a0805); box-shadow: inset 0 0 0 2px rgba(241,226,196,.3); }
   .page .ms-actions button:hover, .page .ms-actions button:focus-visible { background: radial-gradient(ellipse at 30% 30%, #c22c20, #7a130c 70%, #4a0a06); outline-color: rgba(35,22,11,.5); }
   .page .ms-actions button[disabled] { background: rgba(60,35,12,.2); color: #8a7656; box-shadow: none; }
@@ -1236,6 +1266,13 @@
   <div class="ms-side page">
     <span class="eyebrow">Choose a world</span>
     <h2 class="ms-title">Map select</h2>
+    <div class="ms-who" id="ms-who">
+      <span>Playing as</span>
+      <div class="ms-chips" id="ms-who-chars" role="radiogroup" aria-label="Character"></div>
+      <span>Wearing</span>
+      <div class="ms-chips" id="ms-who-skins" role="radiogroup" aria-label="Skin"></div>
+      <small id="ms-who-hint"></small>
+    </div>
     <div class="ms-list" id="ms-list"></div>
     <div class="ms-card" id="ms-card">
       <span class="ms-tag" id="ms-tag"></span>
@@ -1315,14 +1352,21 @@
     </section>
     <section class="blade" data-blade="store">
       <button class="blade-tab" type="button" data-blade-tab="store"><span>Stew Store</span></button>
-      <div class="blade-body">
-        <h2 class="b-title">Stew Store</h2>
-        <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks.</p>
-        <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
-        <nav class="menu b-menu">
-          <button id="btn-shop" type="button">Skins</button>
-          <button id="btn-shop-emotes" type="button">Emotes</button>
-        </nav>
+      <div class="blade-body b-store">
+        <div class="b-store-main">
+          <h2 class="b-title">Stew Store</h2>
+          <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks, or free in the Battle Pass.</p>
+          <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
+          <nav class="menu b-menu">
+            <button id="btn-shop" type="button">Skins</button>
+            <button id="btn-shop-emotes" type="button">Emotes</button>
+            <button id="btn-shop-pass" type="button">Battle Pass</button>
+          </nav>
+        </div>
+        <section class="b-featured-wrap" aria-label="Featured today">
+          <div class="b-featured-head"><span>Featured today</span><small id="b-featured-when"></small></div>
+          <div class="b-featured" id="b-featured"></div>
+        </section>
       </div>
     </section>
     <section class="blade" data-blade="extras">
@@ -1569,10 +1613,16 @@
       <nav class="st-tabs" role="tablist" aria-label="Store">
         <button type="button" role="tab" data-tab="skins" id="st-tab-skins">Skins</button>
         <button type="button" role="tab" data-tab="emotes" id="st-tab-emotes">Emotes</button>
+        <button type="button" role="tab" data-tab="pass" id="st-tab-pass">Battle Pass</button>
       </nav>
       <p class="st-wallet" aria-label="Your Stew Bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b></p>
     </header>
     <div class="st-chars" id="sh-chars" role="tablist" aria-label="Whose skins"></div>
+    <div class="st-pass" id="sh-pass" role="status" hidden>
+      <b id="sh-pass-tier">Tier 0 of 20</b>
+      <div class="st-pass-bar" aria-hidden="true"><i id="sh-pass-fill"></i></div>
+      <span id="sh-pass-xp"></span>
+    </div>
     <div class="st-grid" id="sh-grid" role="listbox" aria-label="Items"></div>
     <p class="st-earn" id="sh-earn"></p>
   </div>

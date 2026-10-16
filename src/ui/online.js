@@ -145,7 +145,7 @@ export class OnlineUI {
 
     // your skin: the ones you have that fit who you're playing
     const skins = $('on-skins'), list2 = me && me.character && this.h.skins ? this.h.skins(me.character) : [];
-    $('on-skinrow').hidden = list2.length < 2;
+    $('on-skinrow').hidden = !list2.length;   // (just their own clothes: still shown, so you know where skins go)
     const key = (me && me.character) + ':' + list2.map((x) => x.id).join();
     if (skins.dataset.key !== key) {
       skins.dataset.key = key;

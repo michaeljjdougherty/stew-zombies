@@ -50,6 +50,8 @@ import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
+import { StoreBlade } from './ui/storeBlade.js';
+import { LoadoutPicker } from './ui/loadoutPicker.js';
 import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -196,10 +198,15 @@ let endingAt = null;          // when the ending cutscene starts (after Erik's b
 const cutsceneUI = new CutsceneUI();
 
 // Who you're playing (Brian only once The Final Whistle is done).
+// Can you play as them? (Brian after The Final Whistle, Zach after Call of the Crust;
+// CONFIG.shop.allAccess usernames: everyone, always)
+function charOpen(id) {
+  const c = CHARACTERS[id], all = career.allAccess;
+  return !!c && (c.playable || (c.unlock === 'quest' && (progress.questDone || all)) || (c.rescue === 'crust' && (progress.crustDone || all)));
+}
 function playableCharacter() {
   const id = settings.character;
-  const ok = CHARACTERS[id] && (CHARACTERS[id].playable || (CHARACTERS[id].unlock === 'quest' && progress.questDone) || (CHARACTERS[id].rescue === 'crust' && progress.crustDone));
-  return ok ? id : 'kearns';
+  return charOpen(id) ? id : 'kearns';
 }
 
 // How you look: the character, wearing their skin from the Skin Shop (your
@@ -250,8 +257,8 @@ const menus = new Menus(settings, {
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.setStyle(null); S.show(id, shirt, career.wornSkin(id)); },
-  questDone: () => !!progress.questDone,
-  crustDone: () => !!progress.crustDone,
+  questDone: () => !!progress.questDone || career.allAccess,
+  crustDone: () => !!progress.crustDone || career.allAccess,
   done: (s) => {
     saveSettings(s); renderer.showcase.hide();
     setLook(playableCharacter());
@@ -267,7 +274,7 @@ const lineupUI = new LineupUI({
   back: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
 });
 const extras = new Extras(CONFIG, {
-  progress: () => progress,
+  progress: () => (career.allAccess ? { ...progress, song: true } : progress),   // (all access: the song too)
   watchEnding: () => watchEnding(),
   watchIntro: () => startIntro('extras'),
   watchFilm: (name) => startFilm(name, 'extras'),   // (Call of the Crust's intro and ending)
@@ -293,7 +300,7 @@ const onlineUI = new OnlineUI(settings, {
   },
   pick: (ch) => { if (online) online.pick(ch, career.wornSkin(ch)); },
   // your skin in the lobby: the ones you have that fit who you're playing (it's what you wear on them from now on)
-  skins: (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))],
+  skins: (ch) => ownedSkins(ch),
   setSkin: (ch, id) => { if (career.wearSkin(ch, id || null) && online) online.setSkin(id || null); },
   setMap: (id) => { if (online) online.setMap(id); },
   setIntro: (on) => { if (online) online.setIntro(on); },
@@ -305,7 +312,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -549,6 +556,7 @@ const mapSelect = new MapSelect({
 function openMapSelect() {
   menus.show('mapselect');
   mapSelect.open();
+  loadout.render();
 }
 
 // The intro: Erik getting cut, the bargain, tip-off. Then the game starts
@@ -1031,18 +1039,34 @@ function refreshGumBlade() {
 }
 // The Stew Store: Stew Bucks for skins and emotes (its own blade on the title)
 const shopUI = new ShopUI(career, {
-  characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
+  characters: () => Object.keys(CHARACTERS).filter(charOpen).map((id) => ({ id, name: CHARACTERS[id].name })),
   current: () => playableCharacter(),
   preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.setStyle('store'); S.show(id, settings.shirt, skin); S.setEmote(act); },
   thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),
   back: () => { const S = renderer.showcase; S.hide(); S.setEmote(null); S.setStyle(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); refreshStoreBlade(); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
-document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('skins'); });
-document.getElementById('btn-shop-emotes').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('emotes'); });
-// (the Stew Store blade shows your Bucks)
-function refreshStoreBlade() { document.getElementById('b-bucks').textContent = career.bucks.toLocaleString(); }
+const openShop = (tab, pick = null) => { mode = 'shop'; menus.show('shop'); shopUI.open(tab, pick); };
+document.getElementById('btn-shop').addEventListener('click', () => openShop('skins'));
+document.getElementById('btn-shop-emotes').addEventListener('click', () => openShop('emotes'));
+document.getElementById('btn-shop-pass').addEventListener('click', () => openShop('pass'));
+// "Playing as" on the map screen: who you are and what they're wearing (the same
+// choices as Characters and the Stew Store)
+const ownedSkins = (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))];
+const loadout = new LoadoutPicker({
+  characters: shopUI.h.characters,
+  current: () => playableCharacter(),
+  pickChar: (id) => { settings.character = id; saveSettings(settings); setLook(playableCharacter()); hud.localName = CHARACTERS[playableCharacter()].name; },
+  skins: ownedSkins,
+  worn: (ch) => career.wornSkin(ch) || '',
+  pickSkin: (ch, id) => { career.wearSkin(ch, id || null); setLook(playableCharacter()); },
+});
+// (the Stew Store blade: your Bucks, and Featured today)
+const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
+function refreshStoreBlade() { storeBlade.refresh(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
+// a Battle Pass tier: what it gave you
+career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
   if (why === 'backpay') achToast.push({ head: 'Stew Store', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
@@ -1191,6 +1215,8 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
+  // (the Stew Store blade's pictures are drawn by the store's platform, one a frame, before the title's own frame)
+  if (mode === 'title' && menus.blade === 'store' && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' || mode === 'shop' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
