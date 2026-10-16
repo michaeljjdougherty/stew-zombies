@@ -755,19 +755,18 @@
   .t-embers i { position: absolute; bottom: -12px; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: #ffb050; box-shadow: 0 0 6px 2px rgba(255,110,20,.8), 0 0 14px rgba(255,60,0,.5);
     opacity: 0; animation: tEmber var(--t) linear var(--d) infinite; }
   @keyframes tEmber { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: .95; } 60% { opacity: .7; } 100% { transform: translate(var(--w, 40px), -92vh); opacity: 0; } }
-  .blades { display: flex; align-items: stretch; gap: 0; min-height: 0; height: min(64vh, 560px); align-self: center; max-width: 1180px; width: 100%; position: relative; z-index: 1;
-    filter: drop-shadow(0 22px 28px rgba(0,0,0,.75)); }
-  .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; isolation: isolate; transition: flex .35s cubic-bezier(.2,.8,.2,1); }
+  .blades { display: flex; align-items: stretch; gap: 0; min-height: 0; height: min(64vh, 560px); align-self: center; max-width: 1180px; width: 100%; position: relative; z-index: 1; }
+  .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; isolation: isolate; }
   .blade.open { flex: 1 1 auto; min-width: 0; }
   /* the paper: the tabs and the open sheet share it; #burn tears and singes its edge */
-  .blade-tab::before, .blade.open::after { content: ""; position: absolute; z-index: -1; pointer-events: none; filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35));
+  .blade-tab::before, .blade.open::after, .blades::before { content: ""; position: absolute; z-index: -1; pointer-events: none; filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35)) drop-shadow(0 22px 22px rgba(0,0,0,.6));
     background:
       radial-gradient(ellipse 40% 30% at 28% 22%, rgba(255,244,214,.35), transparent 70%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .07 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
       linear-gradient(170deg, var(--paper), var(--paper-lo));
     box-shadow: inset 0 0 0 2px var(--char), inset 0 0 14px 7px rgba(22,12,5,.92), inset 0 0 46px 20px rgba(80,42,14,.55), inset 0 0 110px rgba(110,62,22,.35); }
-  .blade-tab { all: unset; box-sizing: border-box; cursor: pointer; width: var(--tabw); display: grid; place-items: center; position: relative; isolation: isolate; margin-left: -8px; transition: transform .2s, filter .2s; }
+  .blade-tab { all: unset; box-sizing: border-box; cursor: pointer; width: var(--tabw); display: grid; place-items: center; position: relative; isolation: isolate; margin-left: -8px; transition: transform .2s, filter .2s, translate .34s cubic-bezier(.2,.8,.2,1); will-change: translate; }
   .blade-tab::before { inset: 0; border-radius: 3px; --paper: #c9b183; --paper-lo: #a98d5a; }
   .blade:nth-child(1) .blade-tab { transform: rotate(-.5deg); } .blade:nth-child(2) .blade-tab { transform: rotate(.6deg); }
   .blade:nth-child(3) .blade-tab { transform: rotate(-.3deg); } .blade:nth-child(4) .blade-tab { transform: rotate(.4deg); }
@@ -776,7 +775,13 @@
   .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.12); outline: none; }
   .blade-tab:focus-visible span, .blade.open .blade-tab span { color: var(--ink-r); opacity: 1; }
   .blade.open .blade-tab::before { --paper: #dcc9a0; --paper-lo: #c6aa78; }
-  .blade.open::after { top: 0; bottom: 0; left: calc(var(--tabw) - 6px); right: 0;
+  /* the open sheet: one page that slides between the tabs (a moved layer, not
+     re-drawn, so flipping stays smooth); src/ui/menu.js sets where it goes */
+  .blade.open::after { display: none; }
+  .blades::before, .blade.open::after { top: 0; bottom: 0; left: calc(var(--tabw) - 6px); right: 0; }
+  .blades::before { left: 0; right: auto; width: var(--sheet-w, 0px); transform: translateX(var(--sheet-x, 0px)); transition: transform .34s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+  .blades:not([data-sheet])::before { display: none; }
+  .blades::before, .blade.open::after {
     background:
       radial-gradient(ellipse 70px 20px at 90% 10%, rgba(120,14,10,.32), transparent 70%), radial-gradient(circle at 86% 15%, rgba(110,12,8,.45) 0 3px, transparent 4px), radial-gradient(circle at 93% 6%, rgba(110,12,8,.4) 0 2px, transparent 3px),
       radial-gradient(circle at 80% 82%, transparent 0 44px, rgba(110,66,26,.22) 45px 49px, transparent 51px),
@@ -786,7 +791,7 @@
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
       linear-gradient(170deg, var(--paper), var(--paper-lo)); }
   .blade-body { display: none; min-width: 0; flex: 1; overflow-y: auto; position: relative; z-index: 1; color: var(--ink-d); padding: clamp(22px, 3.4vh, 34px) clamp(22px, 3.4vw, 46px);
-    scrollbar-width: thin; scrollbar-color: #8a6a3a transparent; animation: bladeIn .35s cubic-bezier(.2,.8,.2,1);
+    scrollbar-width: thin; scrollbar-color: #8a6a3a transparent; animation: bladeIn .3s cubic-bezier(.2,.8,.2,1) .1s backwards;
     -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent); }
   .blade.open .blade-body { display: block; }
   @keyframes bladeIn { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
@@ -817,8 +822,10 @@
     .blade-tab { width: 100%; height: 46px; margin: -6px 0 0; }
     .blade:first-child .blade-tab { margin-top: 0; }
     .blade-tab span { writing-mode: horizontal-tb; transform: none; font-size: 20px; }
-    .blade.open::after { left: 0; top: 40px; }
+    .blades::before { display: none; }
+    .blade.open::after { display: block; left: 0; right: 0; top: 40px; }
   }
+  @media (prefers-reduced-motion: reduce) { .blades::before, .blade-tab { transition: none; } .blade-body { animation: none; } }
   /* ---------------- Menus ---------------- */
   .screen { position: fixed; inset: 0; display: grid; align-content: safe center; padding-inline: max(16px, 7vw); padding-block: 32px;
     background: linear-gradient(90deg, rgba(6,5,4,.94) 0%, rgba(6,5,4,.78) 38%, rgba(6,5,4,.25) 75%, rgba(6,5,4,.1) 100%); overflow-y: auto; }

@@ -19,6 +19,7 @@ import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
 import { AudioEngine } from './audio/audio.js';
 import { SoundDirector } from './audio/director.js';
+import { sample } from './audio/sfx.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
@@ -87,6 +88,7 @@ audio.preloadPack(SAMPLE_PACK, GUN_SAMPLES);
 // Gear sounds (thunder gun, knife, launcher, blasts); each falls back to its built-in synth sound until loaded
 audio.preload({ g_laser: ['g_laser'], g_launch: ['g_launch'], g_land: ['g_land'], g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
 audio.preload({ g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
+audio.preload({ pageTurn: ['page_turn'] }, 'assets/sfx/ui/');   // (the title's blades turning, like pages)
 audio.preloadSprite(CONFIG.crust.hammers.sound.url, CONFIG.crust.hammers.sound.segs);   // the War Hammers
 for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)
 // the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
@@ -226,7 +228,7 @@ const menus = new Menus(settings, {
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
-  bladeOpened: (id) => { if (id === 'gums') refreshGumBlade(); },
+  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
@@ -996,7 +998,11 @@ document.getElementById('btn-gm-factory').addEventListener('click', () => openFa
 function refreshGumBlade() {
   const el = document.getElementById('b-pack');
   if (!el) return;
-  el.innerHTML = career.gums.pack.map((id) => `<img alt="${CONFIG.gobblegum.gums[id].name}" title="${CONFIG.gobblegum.gums[id].name}" src="${gumIconURL(id, 116)}">`).join('');
+  const pack = career.gums.pack.join();
+  if (el.dataset.pack !== pack) {   // (only when it's changed: no re-decoding the logos on every flip)
+    el.dataset.pack = pack;
+    el.innerHTML = career.gums.pack.map((id) => `<img alt="${CONFIG.gobblegum.gums[id].name}" title="${CONFIG.gobblegum.gums[id].name}" src="${gumIconURL(id, 116)}">`).join('');
+  }
   document.getElementById('b-div').textContent = String(career.gums.divinium);
 }
 // Settings blade: switch username (then back to the title)
