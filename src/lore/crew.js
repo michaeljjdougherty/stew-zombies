@@ -134,6 +134,34 @@ export const PIT_FORGE = {
   freed: "Zach! Zach, buddy. Welcome back, man.",
 };
 
+// Shoot Pit at his bench (src/sim/pitShot.js) and he lets you know about it:
+// the more you do it, the less he likes it. `working`: shot mid-hammer.
+export const PIT_SHOT = {
+  first: [
+    "Ow! Man! I'm working here!",
+    "Hey. HEY. That's my good arm, man.",
+    "Did you just shoot me? You just shot me, man.",
+  ],
+  again: [
+    "Again?! I make your hammers, man!",
+    "Okay, that one went right through my apron.",
+    "I'm a blacksmith, man, not a target. Look it up.",
+    "Stop shooting the guy who fixes your stuff!",
+  ],
+  lots: [
+    "You know I can make a hammer that only hits YOU, right?",
+    "That's it. I'm telling Zach. Big Zach.",
+    "(whinnies angrily) ...I'm not even sorry this time.",
+    "Zombies have shot me less than you, man. Zombies don't even have guns.",
+    "I'm putting this on your tab. Five thousand points. Each.",
+    "Okay. Okay. I'm wearing the anvil now. Try it. Go on.",
+  ],
+  working: [
+    "Not while I'm forging, man! You'll mess up the hammer!",
+    "I've got a hot hammer in my hand, man. Think about that.",
+  ],
+};
+
 // Pit and the power (src/sim/crustPower.js): the Anvil's four burnt relays, the
 // other islands' switches.
 export const PIT_POWER = {

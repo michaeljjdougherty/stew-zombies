@@ -1572,6 +1572,12 @@ export const CONFIG = {
     },
   },
 
+  // Shooting Pit at his bench on the Crust (src/sim/pitShot.js): he doesn't get
+  // hurt, he just has words. His body for the bullets: a capsule `radius` m
+  // round him from his feet to `height` m up; a line at most every `gap` s;
+  // after `forgive` s without a shot he's over it. Lines: PIT_SHOT in crew.js.
+  pitShot: { radius: 0.42, height: 1.85, gap: 3.5, forgive: 90, againAfter: 2, lotsAfter: 6 },
+
   // How fire looks (src/render/flameFx.js): the flamethrower's stream and
   // anything alight
   flameLook: {

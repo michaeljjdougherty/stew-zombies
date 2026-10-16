@@ -161,7 +161,7 @@ const has = (said, text) => said.some((s) => s.text === text);
   const walk = (v) => { if (typeof v === 'string') crustText.add(v); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
   for (const k of Object.keys(L)) walk(L[k]);
   walk(CONFIG.crustFilms);
-  for (const k of ['PIT_FORGE', 'PIT_POWER']) walk((await import('../src/lore/crew.js'))[k]);
+  for (const k of ['PIT_FORGE', 'PIT_POWER', 'PIT_SHOT']) walk((await import('../src/lore/crew.js'))[k]);
   const stray = g.said.filter((s) => !crustText.has(s.text));
   check(stray.length === 0, `every line said out here is a Crust line (${stray.map((s) => s.text).slice(0, 2).join(' | ')})`);
   // a round starting with everyone on the Ship Graveyard: the Schnitz and the crew talk about it (sometimes)
