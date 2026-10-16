@@ -129,6 +129,7 @@ export function feelTitans(sim, p, dt) {
   if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
   if (!p.alive || p.launch) return;
   let pushed = false;
+  const from = { x: p.pos.x, z: p.pos.z };
   const out = (x, z, r) => {
     const dx = p.pos.x - x, dz = p.pos.z - z, dd = Math.hypot(dx, dz), rr = r + p.radius;
     if (dd < rr && dd > 1e-4) { p.pos.x = x + (dx / dd) * rr; p.pos.z = z + (dz / dd) * rr; pushed = true; }
@@ -141,7 +142,7 @@ export function feelTitans(sim, p, dt) {
   if (F && F.state !== 'off' && F.state !== 'done' && F.state !== 'freed' && Math.abs(p.pos.y - F.pos.y) <= ZACH_H * F.scale) out(F.pos.x, F.pos.z, f.bulk * F.scale / f.scale[0]);
   // (never through a wall: up against one, the wall wins. Pinned in a cave
   // passage by the Golem, you used to be shoved out through the rock)
-  if (pushed) outOfWalls(p, [sim.world.solids, sim.world.terrain]);
+  if (pushed) outOfWalls(p, from, [sim.world.solids, sim.world.terrain]);
 }
 
 // damage everyone within r of (x,z) (and near enough in height), falling off to `edge` at the rim

@@ -2,7 +2,7 @@
 // Player simulation: movement, sprint, stamina, health, interaction.
 // Consumes an input command per tick. No rendering here.
 // =============================================================================
-import { moveBody, separateCircles } from './physics.js';
+import { moveBody, separateCircles, outOfWalls } from './physics.js';
 import { createLoadout, updateWeapons } from './weapons.js';
 import { clamp } from '../core/math.js';
 import { perkMult, updateDrinking } from './perks.js';
@@ -238,6 +238,7 @@ export function updatePlayer(sim, p, cmd, dt) {
       }
     }
     // zombies are solid: they body-block you
+    const shoved = { x: p.pos.x, z: p.pos.z };
     for (const z of sim.zombies) {
       if (z.state !== 'chase') continue;
       if (Math.abs(z.pos.y - p.pos.y) > 1.2) continue;
@@ -247,6 +248,8 @@ export function updatePlayer(sim, p, cmd, dt) {
     for (const o of sim.players) {
       if (o !== p && o.alive && Math.abs(o.pos.y - p.pos.y) < 1.6) separateCircles(p.pos, p.radius, o.pos, o.radius, 0.5);
     }
+    // a crowd can shove you into a wall or a cliff face: back out of it, or you'd fall through the ground
+    outOfWalls(p, shoved, [sim.world.solids, sim.world.playerBlockers, sim.world.terrain]);
     // lying flat (prone, or skidding out of a dive): your head and feet are a body-length
     // apart either side of you, so keep both out of the walls and the rails
     if ((p.prone || (p.dive && p.dive.phase !== 'air')) && p.grounded) keepBodyClear(sim, p, cfg.prone);
