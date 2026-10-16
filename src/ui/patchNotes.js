@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-16b',
+  version: '2026-10-16c',
   date: 'October 16, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -19,6 +19,19 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'New crew: James and Kyle are playable. Stand still for about 3 seconds and James turns around and twerks to a little bass beat, while Kyle crosses his arms and judges you. Kyle\'s stink lines and flies follow him everywhere. Friends see it all online.',
+      'Brian is about Rocco\'s height now, a touch taller.',
+      'Emotes: hold B (D-pad up) for the emote wheel. The camera pulls back so you can watch, and friends see it online. Finger Guns and Big Wave are free; Slow Clap, The Floss, The Judge and James\'s Jimmy Shimmy are bought once in the Stew Store.',
+      'The Stew Store: its own blade on the title, laid out like Fortnite\'s Item Shop. Earn Stew Bucks by playing (every round you survive, every few kills) and from achievements (ones you already have pay out once when you sign in), then spend them on skins and emotes. Try anything on before you buy it.',
+      'Every character has three costume skins from their story, like Kearns\'s Carrot Farmer, Pit\'s Giddy Up horse, James\'s Jurassic Jimmy dinosaur and Zach\'s milk carton. Everyone gets the Stew Leonard High basketball kit with their own number, Rocco gets Sexy Fucci, and 1000 kills as a character unlocks their Pink Diamond Galaxy Opal Drippy Face Build Skin. Pick your skin in the lobby and friends see it online. Every blade on the title glows its own colour now.',
+      'Rounds play like Black Ops 1: the same zombie counts (solo round 30 is 105, down from 147), up to 24 on the map at once, slower spawns early and faster ones later. The fastest sprinters are a touch slower than you walking, so you can always stay ahead, and zombies come out of any window or dirt spot near you instead of mostly the closest one.',
+      'Ten new Call of the Crust achievements.',
+      'Online, each player has their own colour (white, blue, yellow, green) on the scoreboard, the team list and the name over their head. Names over teammates only show while you can see them, but a downed teammate\'s red tag still shows through walls. On Call of the Crust, Pit\'s name floats over him at the forge.',
+      'Wall buys: the scoreboard (Tab) has a Wall buys column, and your career keeps a lifetime count. Guns, ammo and grenades off the wall, doors and debris all count.',
+      'Call of the Crust: a crowd of zombies can\'t push you through the Anvil\'s floor any more.',
+      'The trailer opens the islands with "ONE MAP. FIVE ISLANDS", gives each island its own name card, and ends with "Coming soon".',
+    ] },
+    { title: 'War Hammers, crouching and the Crust\'s ending', items: [
       'War Hammers have two attacks now. Right click is a quick sweep, the same on every hammer. Left click is the charged slam, each hammer\'s own special, and it takes longer to come back.',
       'The Lightning Hammer\'s slam is a Wunderwaffe: a bolt down your aim, then a ball of lightning that jumps from zombie to zombie and kills each one at any round (10 zombies once it\'s forged, 24 once it\'s tempered).',
       'Whatever a tempered War Hammer leaves behind really kills now. The Mad Dog won\'t take a War Hammer any more.',
