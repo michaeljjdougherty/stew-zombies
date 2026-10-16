@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-16a',
+  version: '2026-10-16b',
   date: 'October 16, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -18,6 +18,21 @@ export const PATCH = {
     from: 'Michael & James',
   },
   sections: [
+    { title: 'This update', items: [
+      'War Hammers have two attacks now. Right click is a quick sweep, the same on every hammer. Left click is the charged slam, each hammer\'s own special, and it takes longer to come back.',
+      'The Lightning Hammer\'s slam is a Wunderwaffe: a bolt down your aim, then a ball of lightning that jumps from zombie to zombie and kills each one at any round (10 zombies once it\'s forged, 24 once it\'s tempered).',
+      'Whatever a tempered War Hammer leaves behind really kills now. The Mad Dog won\'t take a War Hammer any more.',
+      'Dive into a Maisy Dog\'s hole to teleport.',
+      'Crouch works like Black Ops: tap it to crouch and tap again to stand. Hold it to go prone. Dolphin dive only comes out of a sprint.',
+      'PhD Flopper works off any ledge: no fall damage from any height, and a dive from up high sets off the blast.',
+      'Call of the Crust: the intro and ending cutscenes have their subtitles back.',
+      'Call of the Crust: a much happier ending. Everybody\'s thrilled when Kearns pushes Rocco off, and even the Schnitz is into it.',
+      'Call of the Crust: shoot Pit at his workbench and he\'ll have a few words for you.',
+      'Call of the Crust: the perk machines stand on their floors instead of sinking through them, and Second Helping waits for you in the starting pit.',
+      'Extras covers Call of the Crust now: its story, its intro and ending to rewatch, and how to play it.',
+      'Explore\'s menu has a Grenades row: Frag Grenades, Stew Bombs, Maisy Dogs and LBDs.',
+      'The trailer shows off GobbleGums.',
+    ] },
     { title: 'Coming soon', items: [
       'Something crusty is coming…',
     ] },
