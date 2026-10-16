@@ -7,6 +7,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as TX from './textures.js';
+import { captainMouth } from '../sim/crustEgg.js';
 
 const v3 = (p) => new THREE.Vector3(p.x, p.y, p.z);
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -130,18 +131,19 @@ export class TitanView {
       v.holder.visible = true;
       const a = T.act;
       const k = Math.min(1, dt * 10);
-      // where it is (the ship's head stays put; it rises when it wakes)
+      // where it is (the ship's head rises when it wakes, then follows you through the air)
       if (T.id === 'ship') {
         const c = this.cfg.crust.egg.ship;
         const up = T.state === 'waking' ? sm(0, this.cfg.crust.egg.wakeTime.ship, T.t) * c.rise : T.state === 'dying' ? c.rise - sm(0, this.cfg.crust.egg.dyingTime, T.t) * (c.rise + 18) : c.rise;
-        v.pos.set(v.home.x, v.home.y + up, v.home.z);
+        v.pos.set(T.pos.x, T.pos.y + up, T.pos.z);
+        const turned = T.yaw - (T.home.yaw - (L.face || 0));
         let tilt = Math.sin(time * 0.6) * 0.02;
         if (a && a.kind === 'inhaleWarn') tilt -= sm(0, c.inhaleWarn, a.t) * 0.16;
         else if (a && a.kind === 'inhale') tilt -= 0.16 - Math.sin(time * 20) * 0.01;
         else if (a && a.kind === 'exhale') tilt += 0.1 * (1 - sm(0, c.exhaleTime, a.t));
         v.holder.position.copy(v.pos);
         v.holder.position.x += (Math.random() - 0.5) * (T.state === 'waking' || T.state === 'dying' ? 0.12 : 0);
-        v.holder.rotation.set(v.rot.x + tilt, v.rot.y + Math.sin(time * 0.4) * 0.03, v.rot.z + (T.state === 'dying' ? T.t * 0.08 : 0), 'YXZ');
+        v.holder.rotation.set(v.rot.x + tilt, v.rot.y + turned + Math.sin(time * 0.4) * 0.03, v.rot.z + (T.state === 'dying' ? T.t * 0.08 : 0), 'YXZ');
       } else {
         v.pos.x += (T.pos.x - v.pos.x) * k; v.pos.y += (T.pos.y - v.pos.y) * k; v.pos.z += (T.pos.z - v.pos.z) * k;
         if (a && a.kind === 'leap') v.pos.set(T.pos.x, T.pos.y, T.pos.z);
@@ -583,10 +585,8 @@ export class TitanView {
       }
       case 'titanBreath': {
         if (e.phase === 'warn') break;
-        const s = this.sim.mapData.titans.find((q) => q.id === 'ship');
-        const c = this.cfg.crust.egg.ship;
-        const M = new THREE.Vector3(s.home.x + c.mouth[0], s.home.y + c.rise + c.mouth[1], s.home.z + c.mouth[2]);
-        this.breath = { phase: e.phase, t: 0, dur: e.dur, M };
+        const m = captainMouth(this.sim, E.titans.ship);
+        this.breath = { phase: e.phase, t: 0, dur: e.dur, M: new THREE.Vector3(m.x, m.y, m.z) };
         break;
       }
       case 'titanDown': {

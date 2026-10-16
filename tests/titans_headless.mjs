@@ -6,6 +6,7 @@ import { CRUST } from '../src/map/crust.js';
 import { emptyCommand } from '../src/sim/player.js';
 import { killZombie } from '../src/sim/zombies.js';
 import { groundHeight } from '../src/sim/physics.js';
+import { captainMouth } from '../src/sim/crustEgg.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
@@ -60,6 +61,28 @@ check(CRUST.titans.length === 4 && ['ship', 'research', 'caves', 'trench'].every
   g.secs(sim.cfg.crust.egg.dyingTime + 0.5);
   check(T.state === 'dead' && sim.crustEgg.cores.ship && !sim.crustEgg.active && g.has('titanCore'), 'beaten: its core, and the rounds go on');
   check(g.has('points', (e) => e.reason === 'titan' && e.amount >= sim.cfg.crust.egg.reward), 'everyone gets the reward');
+}
+
+// --- it hangs in the air where you can see it, and follows you round the island
+{
+  const g = game(13);
+  const { sim, me } = g;
+  const s = CRUST.titans.find((t) => t.id === 'ship');
+  g.put(s.wake.x, s.wake.z + 1); g.use();
+  const T = sim.crustEgg.titans.ship, c = sim.cfg.crust.egg.ship;
+  g.secs(sim.cfg.crust.egg.wakeTime.ship + 6);
+  let M = captainMouth(sim, T);
+  check(M.y > me.pos.y + 10, `its mouth's up over the shore, where you can see it (${(M.y - me.pos.y).toFixed(1)} m up)`);
+  g.put(0, -160);
+  g.secs(10);
+  const d = Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z);
+  M = captainMouth(sim, T);
+  check(Math.abs(d - c.follow.dist) < 4 && M.y > me.pos.y + 8, `it follows you through the air (${d.toFixed(1)} m off, mouth ${(M.y - me.pos.y).toFixed(1)} m up)`);
+  const toYou = Math.atan2(me.pos.x - T.pos.x, me.pos.z - T.pos.z);
+  check(Math.abs(Math.atan2(Math.sin(toYou - T.yaw), Math.cos(toYou - T.yaw))) < 0.3, 'it looks at you');
+  g.secs(8);
+  const crew = sim.zombies.filter((z) => z.titan === 'ship' && z.state === 'chase');
+  check(crew.length > 0 && crew.every((z) => sim.nav.regionAt(z.pos) != null), `its crew land on the island near you (${crew.length})`);
 }
 
 // --- its breath pulls you toward it, then blows you back

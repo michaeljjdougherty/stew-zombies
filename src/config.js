@@ -1673,6 +1673,10 @@ export const CONFIG = {
         exhaleTime: 1.0, push: 9, // and the gust back out
         rise: 7,                // m it comes up out of the dark when it wakes
         mouth: [0, 4.0, 9.5],   // its mouth, from where it sits (m: x, up, z)
+        // once it's up it follows you through the air: dist m off, its base height m
+        // over the ground (or you; never more than maxUp m over you), at up to
+        // speed m/s, turning turn rad/s
+        follow: { dist: 26, height: 3, maxUp: 9, clear: 7, speed: 6, ease: 0.8, turn: 0.9 },
         landReach: 70,          // m from it its crew can land
         landMin: 3,             // m from you, at the closest
       },

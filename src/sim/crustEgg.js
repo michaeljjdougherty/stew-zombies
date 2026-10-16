@@ -391,14 +391,43 @@ function smash(sim, T, dt, range, warn, dmg, push) {
 // ---------------------------------------------------------------------------
 // The Drowned Captain
 // ---------------------------------------------------------------------------
-function mouthOf(sim, T) {
+// Its mouth: where its crew come out (and where its breath pulls you), turned
+// as it's turned. (T.pos is where it sits, before it rises.)
+export function captainMouth(sim, T) {
   const c = sim.cfg.crust.egg.ship;
-  return { x: T.home.x + c.mouth[0], y: T.home.y + c.rise + c.mouth[1], z: T.home.z + c.mouth[2] };
+  const d = T.yaw - (T.home.yaw - (sim.cfg.crust.egg.look.ship.face || 0)), cs = Math.cos(d), sn = Math.sin(d);
+  const [mx, my, mz] = c.mouth;
+  return { x: T.pos.x + mx * cs + mz * sn, y: T.pos.y + c.rise + my, z: T.pos.z - mx * sn + mz * cs };
+}
+const mouthOf = captainMouth;
+
+// It hangs in the air and follows you round the island, keeping its distance,
+// high enough to see over the ground (and to see its crew come out).
+function hover(sim, T, dt, here) {
+  const c = sim.cfg.crust.egg.ship, F = c.follow;
+  // (the one it's after: whoever's nearest)
+  let who = null, bd = Infinity;
+  for (const p of here) { const d = d2(p.pos, T.pos); if (d < bd) { bd = d; who = p; } }
+  if (!who) return;
+  let dx = T.pos.x - who.pos.x, dz = T.pos.z - who.pos.z;
+  const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+  const tx = who.pos.x + dx * F.dist, tz = who.pos.z + dz * F.dist;
+  // (clear of the ground under it: it's a big head)
+  const g = groundHeight(tx, tz, F.clear, 200, [sim.world.solids, sim.world.terrain]);
+  const ty = Math.min(who.pos.y + F.maxUp, Math.max(who.pos.y, Number.isFinite(g) ? g : -1e9) + F.height);
+  const k = Math.min(1, dt * F.ease);
+  const mx = (tx - T.pos.x) * k, my = (ty - T.pos.y) * k, mz = (tz - T.pos.z) * k, m = Math.hypot(mx, mz), cap = F.speed * dt;
+  T.pos.x += m > cap ? mx / m * cap : mx; T.pos.z += m > cap ? mz / m * cap : mz;
+  T.pos.y += Math.max(-cap, Math.min(cap, my));
+  // and looks at you
+  const want = Math.atan2(who.pos.x - T.pos.x, who.pos.z - T.pos.z);
+  T.yaw = angleWrap(T.yaw + Math.max(-F.turn * dt, Math.min(F.turn * dt, angleWrap(want - T.yaw))));
 }
 
 function updateCaptain(sim, T, dt, here) {
   const c = sim.cfg.crust.egg.ship, E = sim.crustEgg, now = sim.time;
   T.crew = T.crew.filter((id) => sim.zombieById(id));
+  hover(sim, T, dt, here);
   // its breath: rear back, pull everyone toward the edge, then blow them back
   if (T.act) {
     const a = T.act;
@@ -454,7 +483,10 @@ function updateCaptain(sim, T, dt, here) {
     z.cast = 'skeleton';
     z.titan = T.id;
     z.canDrop = true;
-    z.fling = { from: { ...M }, to: { x: land.x + sim.rng.range(-0.8, 0.8), y: land.y, z: land.z + sim.rng.range(-0.8, 0.8) }, t: 0, dur: c.flight };
+    // (a little off the spot, unless that's off the edge of something)
+    let to = { x: land.x + sim.rng.range(-0.8, 0.8), y: land.y, z: land.z + sim.rng.range(-0.8, 0.8) };
+    if (sim.nav.regionAt(to) == null) to = { x: land.x, y: land.y, z: land.z };
+    z.fling = { from: { ...M }, to, t: 0, dur: c.flight };
     sim.zombies.push(z);
     T.crew.push(z.id);
     T.toSpit--;
@@ -776,7 +808,7 @@ export function crustEggTargets(sim) {
   if (T.state === 'fight' || T.state === 'waking') {
     if (T.id === 'ship') {
       const c = sim.cfg.crust.egg.ship;
-      out.push({ id: 'titan', c: { x: T.home.x, y: T.home.y + c.rise + 9, z: T.home.z }, r: 8.5, surface: 'rock' });
+      out.push({ id: 'titan', c: { x: T.pos.x, y: T.pos.y + c.rise + 9, z: T.pos.z }, r: 8.5, surface: 'rock' });
     } else {
       const s = sim.cfg.crust.egg.hitSpheres[T.id];
       for (const [y, r] of s) out.push({ id: 'titan', c: { x: T.pos.x, y: T.pos.y + y, z: T.pos.z }, r, surface: T.id === 'research' ? 'metal' : 'rock' });
