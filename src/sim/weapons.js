@@ -33,7 +33,7 @@ const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult')
 export function makeSlot(sim, id) {
   const def = sim.cfg.weapons[id];
   // (a Mad Dog'd gun has a bite: its alternate ammo, src/sim/gums.js)
-  return { id, clip: def.magSize, clipL: def.dual ? def.magSize : 0, reserve: def.reserve, upgraded: !!def.upgraded, aat: def.upgraded ? rollAat(sim) : null };
+  return { id, clip: def.magSize, clipL: def.dual ? def.magSize : 0, reserve: def.reserve, upgraded: !!def.upgraded, aat: def.upgraded && !def.hammer ? rollAat(sim) : null };
 }
 
 export function createLoadout(sim, weaponId) {

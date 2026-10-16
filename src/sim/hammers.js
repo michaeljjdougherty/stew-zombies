@@ -4,9 +4,9 @@
 // swing smashes everything just in front of you. Pit tempers it (its "+") and
 // its element comes out, Origins-staff style: a burst where its head lands,
 // and something left behind (src/sim/gadgets.js runs those):
-//   Fire       a burst of flame, and a pool of fire: anything that walks in catches
-//   Ice        everything round you frozen solid, and a blizzard that freezes more
-//   Wind       a gale down the line you swung along, and a tornado carrying on down it
+//   Fire       a burst of flame, and a pool of fire that burns down anything in it
+//   Ice        everything round you frozen solid, and a blizzard that freezes and shatters more
+//   Wind       a gale down the line you swung along, and a whirlwind where it lands
 //   Lightning  a bolt jumping zombie to zombie, and a ball of lightning drifting on
 // They're also the only thing that gets through The Schnitz's hold on Big
 // Evil Zach (zachBoss.js); which hammer it is counts there, tempered or not.
