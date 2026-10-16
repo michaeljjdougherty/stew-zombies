@@ -127,7 +127,9 @@ export class Extras {
       <p>The Cheddars: Skinless Hound by <b>Pigcraft</b> on Sketchfab (CC BY 4.0), recolored, thinned out and rigged for the game.</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>
-      <p>Story, "Out of Bounds" and "The Final Whistle": <b>James Amarante</b>.</p>
+      <p>Story: Stew Leonard High ("Out of Bounds" and "The Final Whistle") by <b>James Amarante</b>; Call of the Crust by <b>Michael Dougherty</b>.</p>
+      <p>Music: "The Kettle Liturgy" (the Stew Zombies 2.0 menu theme); "Tank" by Mike Morasky from the <i>Left 4 Dead</i> soundtrack (Valve), for Big Evil Zach's fight.</p>
+      <p>Gumball machine: "Gumball Machine (low poly)" from <b>Sketchfab</b>, by its creator. Launch, landing and laser sounds from the Pixabay / Freesound community.</p>
       <p>A fan-made game for friends. Stew Leonard High is a fictional school; this game isn't affiliated with or endorsed by any real business. All events are fictional.</p>`;
   }
 }

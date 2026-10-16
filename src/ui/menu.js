@@ -44,6 +44,40 @@ export class Menus {
     $('btn-win-title').addEventListener('click', () => this.h.quit());
 
     this.bindSettings();
+    this.bindBlades();
+  }
+
+  // --- the title's blades (Play, GobbleGum, Extras, Settings) ----------------------
+  // One open at a time; the others stand as tabs either side. Clicking or focusing
+  // a tab opens its blade; left/right (keyboard) and the bumpers (controller) flip.
+  bindBlades() {
+    this.blades = [...document.querySelectorAll('#blades .blade')];
+    for (const b of this.blades) {
+      const tab = b.querySelector('.blade-tab');
+      tab.addEventListener('click', () => this.openBlade(b.dataset.blade, true));
+      tab.addEventListener('focus', () => this.openBlade(b.dataset.blade));
+    }
+    window.addEventListener('keydown', (e) => {
+      if (this.current !== 'title' || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+      if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      e.preventDefault();
+      this.flipBlade(e.key === 'ArrowLeft' ? -1 : 1);
+    });
+    this.openBlade(this.blades[0].dataset.blade);
+  }
+
+  openBlade(id, focusIn = false) {
+    if (this.blade === id && !focusIn) return;
+    this.blade = id;
+    for (const b of this.blades) b.classList.toggle('open', b.dataset.blade === id);
+    if (this.h.bladeOpened) this.h.bladeOpened(id);
+    if (focusIn) { const first = document.querySelector(`#blades .blade[data-blade="${id}"] .blade-body button`); if (first) first.focus({ preventScroll: true }); }
+  }
+
+  flipBlade(dir) {
+    const ids = this.blades.map((b) => b.dataset.blade);
+    const i = ids.indexOf(this.blade);
+    this.openBlade(ids[(i + dir + ids.length) % ids.length], true);
   }
 
   show(id) {

@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-15a',
-  date: 'October 15, 2026',
+  version: '2026-10-16a',
+  date: 'October 16, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -20,6 +20,15 @@ export const PATCH = {
   sections: [
     { title: 'Coming soon', items: [
       'Something crusty is coming…',
+    ] },
+    { title: 'Stew Zombies 2.0', items: [
+      'A whole new main menu: four blades, side by side. Play (every way to play), GobbleGum (your pack and your Liquid Divinium), Extras (your career, the trailer, the story) and Settings. Flip between them with the arrow keys, the bumpers, or a click.',
+      'Two maps, two writers: Stew Leonard High by James Amarante, Call of the Crust by Michael Dougherty.',
+      'New menu music: The Kettle Liturgy. Miss the old theme? Settings › Menu music brings it back.',
+      'Big Evil Zach\'s fight on Call of the Crust has a soundtrack now.',
+      'GobbleGum machines are real gumball machines, and every gum has its own logo (in the menu, on your HUD, and over the machine when your gum comes out).',
+      'New sounds: the launch pads\' launch and landing, and the Fucci Gun Mk 2\'s laser.',
+      'The game draws a lot less every frame (far-off specks, still scenery, the crew), so it should run smoother.',
     ] },
     { title: 'Just added', items: [
       'GobbleGum: all 64 gums. Build a pack of 5 on the GobbleGum screen (title menu), then buy one from the GobbleGum machines next to the perk machines (500, 1000, then 2000 points, 3 a round). Activated gums go off with H (D-pad down on a controller). Classics never run out; Megas are used up as they come out of the machine.',

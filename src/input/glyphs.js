@@ -8,17 +8,17 @@
 export const LABELS = {
   kbm: {
     use: 'F', reload: 'R', jump: 'Space', crouch: 'C', sprint: 'Shift', melee: 'V · E', fire: 'Left click', ads: 'Right click',
-    grenade: 'G', tactical: 'Q', swap: '1 · 2', pause: 'Esc', panel: 'B', zombies: 'Z', scores: 'Tab (hold)', move: 'W A S D', look: 'Mouse',
+    grenade: 'G', tactical: 'Q', gum: 'H', swap: '1 · 2', pause: 'Esc', panel: 'B', zombies: 'Z', scores: 'Tab (hold)', move: 'W A S D', look: 'Mouse',
     confirm: 'Enter', back: 'Esc', skip: 'Esc', rotate: 'Drag', prev: '←', next: '→', adjust: '← →', scroll: 'Wheel',
   },
   xbox: {
     use: 'X', reload: 'X', jump: 'A', crouch: 'B', sprint: 'LS', melee: 'RS', fire: 'RT', ads: 'LT',
-    grenade: 'RB', tactical: 'LB', swap: 'Y', pause: 'Menu', panel: 'View', zombies: 'View', scores: 'View (hold)', move: 'L-stick', look: 'R-stick',
+    grenade: 'RB', tactical: 'LB', gum: 'D-pad ↓', swap: 'Y', pause: 'Menu', panel: 'View', zombies: 'View', scores: 'View (hold)', move: 'L-stick', look: 'R-stick',
     confirm: 'A', back: 'B', skip: 'A', rotate: 'R-stick', prev: 'LB', next: 'RB', adjust: 'D-pad ← →', scroll: 'R-stick',
   },
   ps: {
     use: '□', reload: '□', jump: '✕', crouch: '○', sprint: 'L3', melee: 'R3', fire: 'R2', ads: 'L2',
-    grenade: 'R1', tactical: 'L1', swap: '△', pause: 'Options', panel: 'Create', zombies: 'Create', scores: 'Create (hold)', move: 'L-stick', look: 'R-stick',
+    grenade: 'R1', tactical: 'L1', gum: 'D-pad ↓', swap: '△', pause: 'Options', panel: 'Create', zombies: 'Create', scores: 'Create (hold)', move: 'L-stick', look: 'R-stick',
     confirm: '✕', back: '○', skip: '✕', rotate: 'R-stick', prev: 'L1', next: 'R1', adjust: 'D-pad ← →', scroll: 'R-stick',
   },
 };
@@ -49,7 +49,7 @@ export const label = (action, dev = device) => (LABELS[dev] || LABELS.kbm)[actio
 
 // The sim and older UI text name keyboard keys in brackets ("Press [F] to
 // open door"). Swap each one for the right glyph.
-const KEY_TO_ACTION = { F: 'use', R: 'reload', B: 'panel', Z: 'zombies', G: 'grenade', Q: 'tactical', C: 'crouch', V: 'melee', Esc: 'pause' };
+const KEY_TO_ACTION = { H: 'gum', F: 'use', R: 'reload', B: 'panel', Z: 'zombies', G: 'grenade', Q: 'tactical', C: 'crouch', V: 'melee', Esc: 'pause' };
 export function glyphify(text, dev = device) {
   return esc(text).replace(/\[(F|R|B|Z|G|Q|C|V|Esc)\]/g, (m, k) => glyph(KEY_TO_ACTION[k], dev));
 }
@@ -84,12 +84,12 @@ export function legend(screen, dev = device) {
 export function controlsList(dev = device) {
   const rows = dev === 'kbm' ? [
     ['move', 'Move'], ['look', 'Look · left click fires · right click aims'], ['sprint', 'Sprint (hold)'], ['jump', 'Jump'], ['crouch', 'Crouch'],
-    ['reload', 'Reload (sprint to cancel)'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'], ['tactical', 'Stew Bomb'],
+    ['reload', 'Reload (sprint to cancel)'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'], ['tactical', 'Stew Bomb'], ['gum', 'Use your GobbleGum'],
     ['use', 'Buy and use things · hold to rebuild barriers'], ['swap', 'Switch weapons (or the wheel)'], ['zombies', 'Explore mode: zombies on / off (B: the menu)'], ['scores', 'Scoreboard'], ['pause', 'Pause'],
   ] : [
     ['move', 'Move'], ['look', 'Look'], ['fire', 'Fire'], ['ads', 'Aim down sights'], ['sprint', 'Sprint (click)'], ['jump', 'Jump'], ['crouch', 'Crouch (toggle)'],
     ['use', 'Buy and use things · reload when there\'s nothing to buy · hold to rebuild'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'],
-    ['tactical', 'Stew Bomb'], ['swap', 'Switch weapons'], ['zombies', 'Explore mode: the menu · Firing range: weapons panel'], ['scores', 'Scoreboard (zombies)'], ['pause', 'Pause'],
+    ['tactical', 'Stew Bomb'], ['gum', 'Use your GobbleGum'], ['swap', 'Switch weapons'], ['zombies', 'Explore mode: the menu · Firing range: weapons panel'], ['scores', 'Scoreboard (zombies)'], ['pause', 'Pause'],
   ];
   return rows.map(([a, t]) => `<dt>${glyph(a, dev)}</dt><dd>${esc(t)}</dd>`).join('');
 }

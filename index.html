@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Stew Zombies</title>
+<title>Stew Zombies 2.0</title>
 <style>
   /* Layout: full-bleed WebGL canvas; HUD pinned to corners; menus as a left-hand column over a darkened scene. */
   :root {
@@ -617,6 +617,52 @@
   .pn-thanks .pn-sign { font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; font-size: 18px; color: #f0dfb4; margin-top: 4px; }
   @media (max-width: 560px) { .pn-thanks { grid-template-columns: 1fr; } .pn-thanks img { max-width: 260px; } }
 
+
+  /* ---------------- Title: Stew Zombies 2.0, the blades ---------------- */
+  .screen.titlescreen { display: grid; grid-template-rows: auto 1fr auto; align-content: stretch; gap: 18px; padding-block: max(20px, 4vh) max(16px, 3vh); padding-inline: max(16px, 4vw);
+    background: radial-gradient(ellipse at 70% 40%, rgba(6,5,10,0) 0%, rgba(6,5,10,.35) 55%, rgba(4,3,8,.85) 100%), linear-gradient(90deg, rgba(4,3,8,.75), rgba(4,3,8,.1) 70%); }
+  .t-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .t-logo { margin: 0; font-family: var(--display); font-size: clamp(40px, 6.4vw, 84px); line-height: .9; letter-spacing: 2px; text-transform: uppercase; color: #f4f1ea;
+    text-shadow: 0 3px 0 #000, 0 0 28px rgba(120, 200, 90, .35); display: flex; align-items: flex-start; gap: .18em; }
+  .t-logo b { font-size: .46em; line-height: 1; padding: .12em .32em .08em; margin-top: .12em; color: #0b120a; letter-spacing: 1px; border-radius: 6px;
+    background: linear-gradient(180deg, #b6ff7a, #46c02e 55%, #2a8a1a); box-shadow: 0 0 18px rgba(110, 230, 70, .55), inset 0 1px 0 rgba(255,255,255,.6); text-shadow: none; }
+  .t-by { margin: 6px 0 0; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .t-chip { margin: 6px 0 0; padding: 8px 14px; border-radius: 22px; background: rgba(10,12,14,.65); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px); }
+  .blades { display: flex; align-items: stretch; gap: 0; min-height: 0; height: min(64vh, 560px); align-self: center; max-width: 1180px; width: 100%; perspective: 1400px; }
+  .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; transition: flex .35s cubic-bezier(.2,.8,.2,1); }
+  .blade.open { flex: 1 1 auto; min-width: 0; }
+  .blade-tab { all: unset; box-sizing: border-box; cursor: pointer; width: 54px; display: grid; place-items: center; position: relative;
+    background: linear-gradient(90deg, var(--bc2), var(--bc) 60%, color-mix(in srgb, var(--bc) 70%, #fff)); border-radius: 10px 0 0 10px; margin-left: -6px;
+    box-shadow: -6px 0 18px rgba(0,0,0,.55), inset 1px 0 0 rgba(255,255,255,.35), inset 0 1px 0 rgba(255,255,255,.25); transition: filter .2s, width .3s; }
+  .blade:first-child .blade-tab { margin-left: 0; }
+  .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 24px; letter-spacing: 3px; text-transform: uppercase; color: #fff; text-shadow: 0 2px 2px rgba(0,0,0,.5); }
+  .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.25); outline: none; }
+  .blade-tab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 40%); pointer-events: none; }
+  .blade-body { display: none; min-width: 0; flex: 1; overflow-y: auto; padding: clamp(18px, 3vh, 30px) clamp(18px, 3vw, 40px);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--bc) 34%, rgba(8,10,12,.9)), rgba(8,10,14,.86) 55%, rgba(6,8,10,.8));
+    border-top: 2px solid color-mix(in srgb, var(--bc) 80%, #fff); border-bottom: 1px solid rgba(255,255,255,.08); box-shadow: 0 18px 40px rgba(0,0,0,.6); backdrop-filter: blur(4px); animation: bladeIn .35s cubic-bezier(.2,.8,.2,1); }
+  .blade.open .blade-body { display: block; }
+  .blade.open .blade-tab { width: 60px; filter: brightness(1.15); }
+  @keyframes bladeIn { from { opacity: 0; transform: translateX(-24px) rotateY(8deg); } to { opacity: 1; transform: none; } }
+  .b-title { margin: 0; font-family: var(--display); font-size: clamp(34px, 4.4vw, 54px); letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 #000, 0 0 22px color-mix(in srgb, var(--bc) 60%, transparent); }
+  .b-sub { margin: 4px 0 18px; color: var(--muted); font-size: 14px; max-width: 46ch; }
+  .b-menu { gap: 2px; }
+  .b-menu button { font-size: clamp(22px, 2.6vw, 30px); }
+  .b-menu button::after { background: var(--bc); }
+  .b-pack { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+  .b-pack img { width: 58px; height: 58px; filter: drop-shadow(0 2px 4px #000); }
+  .b-div { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+  .b-div b { font-family: var(--display); font-size: 24px; color: #5ad1e8; letter-spacing: 1px; }
+  .blade .keys { font-size: 13px; }
+  .blade .set-head { margin: 22px 0 12px; }
+  .t-hint { margin: 0; justify-self: center; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  @media (max-width: 720px) {
+    .blades { flex-direction: column; height: auto; }
+    .blade { flex-direction: column; }
+    .blade-tab { width: 100%; height: 46px; margin: -4px 0 0; border-radius: 10px 10px 0 0; }
+    .blade-tab span { writing-mode: horizontal-tb; transform: none; font-size: 20px; }
+    .blade.open .blade-tab { width: 100%; }
+  }
   /* ---------------- Menus ---------------- */
   .screen { position: fixed; inset: 0; display: grid; align-content: safe center; padding-inline: max(16px, 7vw); padding-block: 32px;
     background: linear-gradient(90deg, rgba(6,5,4,.94) 0%, rgba(6,5,4,.78) 38%, rgba(6,5,4,.25) 75%, rgba(6,5,4,.1) 100%); overflow-y: auto; }
@@ -911,46 +957,77 @@
   </div>
 </section>
 
-<section id="title" class="screen">
-  <div class="stack">
-    <span class="eyebrow">Out of Bounds · story by James Amarante</span>
-    <h1 class="logo">Stew Zombies<small>Stew Leonard High</small></h1>
-    <p id="profile-chip" class="profile-chip"></p>
-    <nav class="menu">
-      <button id="btn-play" type="button">Play</button>
-      <button id="btn-online" type="button">Play Online</button>
-      <button id="btn-range" type="button">Firing Range</button>
-      <button id="btn-explore" type="button">Explore</button>
-      <button id="btn-chars" type="button">Characters</button>
-      <button id="btn-career" type="button">Career &amp; Achievements</button>
-      <button id="btn-gums" type="button">GobbleGum</button>
-      <button id="btn-trailer" type="button">Watch Trailer</button>
-      <div id="trailer-pick" class="trailer-pick" hidden>
-        <span>Graphics</span>
-        <button type="button" data-q="low">Low</button><button type="button" data-q="medium">Medium</button><button type="button" data-q="high">High</button><button type="button" data-q="ultra">Ultra</button>
-        <small>Lower plays smoother</small>
+<section id="title" class="screen titlescreen">
+  <!-- Stew Zombies 2.0: the "blades" (after the Xbox 360's): Play, GobbleGum,
+       Extras, Settings side by side; the open one shows what's in it, the rest
+       stand as tabs either side. Left/right (or the bumpers) to flip between. -->
+  <header class="t-head">
+    <div class="t-brand">
+      <h1 class="t-logo">Stew Zombies<b>2.0</b></h1>
+      <p class="t-by">Story by James Amarante &amp; Michael Dougherty</p>
+    </div>
+    <p id="profile-chip" class="profile-chip t-chip"></p>
+  </header>
+  <div class="blades" id="blades">
+    <section class="blade" data-blade="play" style="--bc:#3fae3a;--bc2:#1d5e1a">
+      <button class="blade-tab" type="button" data-blade-tab="play"><span>Play</span></button>
+      <div class="blade-body">
+        <h2 class="b-title">Play</h2>
+        <p class="b-sub">Pick a map and fight, alone or with up to three friends.</p>
+        <nav class="menu b-menu">
+          <button id="btn-play" type="button" data-nav-first>Play</button>
+          <button id="btn-online" type="button">Play Online</button>
+          <button id="btn-range" type="button">Firing Range</button>
+          <button id="btn-explore" type="button">Explore</button>
+          <button id="btn-chars" type="button">Characters</button>
+        </nav>
       </div>
-      <button id="btn-extras" type="button">Extras</button>
-      <button id="btn-title-settings" type="button">Settings</button>
-    </nav>
-    <p class="note">The undefeated Stew Leonards cut Erik Madsen right before the championship. He sold his soul to The Schnitz for revenge. At tip-off, he struck.</p>
-    <dl class="keys" id="keys-list">
-      <dt>W A S D</dt><dd>Move</dd>
-      <dt>Mouse</dt><dd>Look · left click fires · right click aims (fires the left gun when dual wielding)</dd>
-      <dt>Shift</dt><dd>Sprint (hold)</dd>
-      <dt>Space · C</dt><dd>Jump · crouch</dd>
-      <dt>R</dt><dd>Reload (sprint to cancel)</dd>
-      <dt>V or E</dt><dd>Knife</dd>
-      <dt>G</dt><dd>Frag grenade (hold to cook, release to throw)</dd>
-      <dt>Q</dt><dd>Stew Bomb or Maisy Dog, if the box gave you some</dd>
-      <dt>X</dt><dd>Set down an LBD (wall buy): it goes off when zombies come near</dd>
-      <dt>H</dt><dd>Use your GobbleGum (the ones you set off yourself)</dd>
-      <dt>F</dt><dd>Buy and use things · read notes · hold to rebuild barriers</dd>
-      <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
-      <dt>Z</dt><dd>Explore mode: zombies on / off</dd>
-      <dt>Esc</dt><dd>Pause</dd>
-    </dl>
+    </section>
+    <section class="blade" data-blade="gums" style="--bc:#c83ea8;--bc2:#5a1a52">
+      <button class="blade-tab" type="button" data-blade-tab="gums"><span>GobbleGum</span></button>
+      <div class="blade-body">
+        <h2 class="b-title">GobbleGum</h2>
+        <p class="b-sub">Your pack of five goes into every game. Earn Liquid Divinium by playing and trade it for Megas.</p>
+        <div class="b-pack" id="b-pack"></div>
+        <p class="b-div"><span class="gm-vial"></span><b id="b-div">0</b> Liquid Divinium</p>
+        <nav class="menu b-menu">
+          <button id="btn-gums" type="button">Build your pack</button>
+          <button id="btn-gums-factory" type="button">Dr. Monty's Factory</button>
+        </nav>
+      </div>
+    </section>
+    <section class="blade" data-blade="extras" style="--bc:#e8862a;--bc2:#6a3410">
+      <button class="blade-tab" type="button" data-blade-tab="extras"><span>Extras</span></button>
+      <div class="blade-body">
+        <h2 class="b-title">Extras</h2>
+        <p class="b-sub">Your career, the story so far, the trailer and the rest.</p>
+        <nav class="menu b-menu">
+          <button id="btn-career" type="button">Career &amp; Achievements</button>
+          <button id="btn-trailer" type="button">Watch Trailer</button>
+          <div id="trailer-pick" class="trailer-pick" hidden>
+            <span>Graphics</span>
+            <button type="button" data-q="low">Low</button><button type="button" data-q="medium">Medium</button><button type="button" data-q="high">High</button><button type="button" data-q="ultra">Ultra</button>
+            <small>Lower plays smoother</small>
+          </div>
+          <button id="btn-extras" type="button">Story, Notes &amp; More</button>
+        </nav>
+      </div>
+    </section>
+    <section class="blade" data-blade="settings" style="--bc:#4a8fd8;--bc2:#1a3a66">
+      <button class="blade-tab" type="button" data-blade-tab="settings"><span>Settings</span></button>
+      <div class="blade-body">
+        <h2 class="b-title">Settings</h2>
+        <p class="b-sub">Controls, sound, graphics, and who's playing.</p>
+        <nav class="menu b-menu">
+          <button id="btn-title-settings" type="button">Settings</button>
+          <button id="btn-title-signin" type="button">Switch username</button>
+        </nav>
+        <h3 class="set-head">Controls</h3>
+        <dl class="keys" id="keys-list"></dl>
+      </div>
+    </section>
   </div>
+  <p class="t-hint" id="t-hint">← → to flip between blades</p>
 </section>
 
 <section id="pause" class="screen" hidden>
@@ -968,7 +1045,7 @@
 
 <section id="signin" class="screen" hidden>
   <div class="stack signin">
-    <span class="eyebrow">Stew Zombies · Out of Bounds</span>
+    <span class="eyebrow">Stew Zombies 2.0</span>
     <h2>Who's playing?</h2>
     <form id="si-form" class="si-form" autocomplete="off">
       <input id="si-name" data-nav-first type="text" maxlength="16" placeholder="Username" spellcheck="false" autocapitalize="off" aria-label="Username">

@@ -25,7 +25,7 @@ export const MAPS = [
   {
     id: 'crust', name: 'Call of the Crust', tag: 'Map 2 · in development', ready: true, locked: true, at: [820, -430], r: 170,
     blurb: 'Five islands adrift in space. You crash down into the Anvil\'s ancient forge pit, where Pit has become a blacksmith, and Chops, Regs and P hang in the Schnitz\'s cage out over the void. The power\'s dead: pull the launchers\' burnt relays for Pit to fix, and the launchers on the rim fling you to the windswept Ship Graveyard, the storm-wracked Research Base, the molten Trench Front and the Ice Caves (each with its own power switch). Bring back the War Hammer\'s four pieces, then the titans\' cores, and Pit will make the hammers that can free Zach. The cage only opens for one price. The season isn\'t over.',
-    facts: ['Map 2 · early build', 'Solo for now', 'Developers only'],
+    facts: ['Map 2 · early build', 'Story by Michael Dougherty', 'Developers only'],
   },
   {
     id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,

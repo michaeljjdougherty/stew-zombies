@@ -28,6 +28,7 @@ import { CharSelect } from './ui/charselect.js';
 import { LineupUI } from './ui/lineupui.js';
 import { MenuMusic, StewSong } from './audio/music.js';
 import { GUN_SAMPLES, SAMPLE_PACK } from './audio/gunSamples.js';
+import { gumIconURL } from './render/gumIcons.js';
 import { voiceSprites } from './lore/voice.js';
 import { ExploreUI } from './ui/explore.js';
 import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
@@ -223,6 +224,8 @@ const menus = new Menus(settings, {
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
+  // (the GobbleGum blade shows your pack and your Divinium)
+  bladeOpened: (id) => { if (id === 'gums') refreshGumBlade(); },
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
@@ -978,8 +981,21 @@ career.onUnlock = (a) => achToast.push(a);
 // GobbleGum: the pack you take into games, and Dr. Monty's Factory
 const gumsUI = new GumsUI(career, { back: () => menus.show('title') });
 document.getElementById('btn-gums').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); });
+document.getElementById('btn-gums-factory').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); const f = document.getElementById('gm-factory'); if (f) f.scrollIntoView({ block: 'start' }); const b = document.getElementById('btn-gm-single'); if (b && !b.disabled) b.focus({ preventScroll: true }); });
+// The GobbleGum blade on the title: your five, and your vials
+function refreshGumBlade() {
+  const el = document.getElementById('b-pack');
+  if (!el) return;
+  el.innerHTML = career.gums.pack.map((id) => `<img alt="${CONFIG.gobblegum.gums[id].name}" title="${CONFIG.gobblegum.gums[id].name}" src="${gumIconURL(id, 116)}">`).join('');
+  document.getElementById('b-div').textContent = String(career.gums.divinium);
+}
+// Settings blade: switch username (then back to the title)
+document.getElementById('btn-title-signin').addEventListener('click', () => {
+  signIn.h.done = () => { afterSignIn(); refreshGumBlade(); menus.show('title'); };
+  menus.show('signin'); signIn.open();
+});
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
-career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); };
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
   // your username is your name online too
@@ -1013,7 +1029,8 @@ const nav = new MenuNav({
   start: (id) => { if (id === 'splash') splash.press(); else if (id === 'patchnotes') patchNotes.close(); else if (id === 'pause' || id === 'rangepanel' || id === 'explorepanel') $id(BACK_BUTTON[id]).click(); },
   view: (id) => { if (id === 'rangepanel') closeRangePanel(); else if (id === 'explorepanel') closeExplorePanel(); },
   bumper: (id, dir) => {
-    if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
+    if (id === 'title') menus.flipBlade(dir);
+    else if (id === 'mapselect') { const ids = MAPS.map((m) => m.id); mapSelect.select(ids[(ids.indexOf(mapSelect.sel) + dir + ids.length) % ids.length]); }
     else if (id === 'extras') { const i = EXTRA_TABS.indexOf(extras.tab); extras.open(EXTRA_TABS[(i + dir + EXTRA_TABS.length) % EXTRA_TABS.length]); }
     else if (id === 'charselect') { const ids = Object.keys(SHIRT_COLORS); charSelect.shirt = ids[(ids.indexOf(charSelect.shirt) + dir + ids.length) % ids.length]; charSelect.refresh(); }
     else if (id === 'lineup') { const L = renderer.getLineup(); const n = LINEUP.length + 1; L.setFocus(((L.focus + 1 + dir + n) % n) - 1); lineupUI.refresh(); }
