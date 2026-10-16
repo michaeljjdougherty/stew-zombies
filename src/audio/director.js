@@ -575,6 +575,7 @@ export class SoundDirector {
         A.play(S.vortexHum, { duration: e.time }, { pos: e.pos, ref: 6, reverb: 0.4, gain: 1.0 });
         break;
       case 'maisyClose': A.play(S.vortexClose, {}, { pos: e.pos, ref: 6, reverb: 0.5, gain: 1.2 }); break;
+      case 'maisyWarp': A.play(S.vortexClose, {}, { pos: e.to, ref: 6, reverb: 0.5, gain: 1.2 }); break;   // (dived through her hole: out the other side)
       case 'lbdPlant': A.play(S.lbdPlant, {}, { pos: e.pos, ref: 2, reverb: 0.2 }); break;
       case 'lbdArmed': A.play(S.lbdArmed, {}, { pos: e.pos, ref: 2, reverb: 0.1, gain: 0.5 }); break;
       case 'lbdPop': A.play(S.lbdPop, {}, { pos: e.pos, ref: 4, reverb: 0.3, gain: 1.1 }); break;

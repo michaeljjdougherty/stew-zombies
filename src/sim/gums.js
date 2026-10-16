@@ -441,14 +441,15 @@ function drop(sim, p, type) {
   return d;
 }
 // Somewhere else to be: open ground on the map, away from the zombies.
-function teleport(sim, p, spot) {
+// (also the Maisy Dog's black hole, dived into: src/sim/gadgets.js)
+export function teleport(sim, p, spot) {
   p.pos.x = spot.x; p.pos.y = spot.y || 0; p.pos.z = spot.z;
   p.vel.x = p.vel.y = p.vel.z = 0;
   p.region = sim.nav.regionAt(p.pos);
   p.tp = (p.tp || 0) + 1;
   sim.emit('gumTeleport', { playerId: p.id, pos: { ...p.pos } });
 }
-function randomSpot(sim, p) {
+export function randomSpot(sim, p) {
   const D = GC(sim).gums.anywhereButHere;
   const W = sim.world, open = (r) => {
     const room = W.roomById.get(r.room);
@@ -571,7 +572,7 @@ const ACT = {
   ephemeralEnhancement: (sim, p, d) => {
     const s = p.loadout.slots[p.loadout.current];
     const def = s && sim.cfg.weapons[s.id];
-    if (!s || s.away || !def || def.upgraded || !sim.cfg.weapons[s.id + '+']) return false;
+    if (!s || s.away || !def || def.upgraded || def.hammer || !sim.cfg.weapons[s.id + '+']) return false;   // (not a War Hammer: only Pit tempers those)
     const up2 = sim.cfg.weapons[s.id + '+'];
     s.ephemeral = { until: sim.time + d.window, id: s.id, clip: s.clip, clipL: s.clipL, reserve: s.reserve };
     s.id = s.id + '+'; s.upgraded = true; s.clip = up2.magSize; s.clipL = up2.dual ? up2.magSize : 0; s.reserve = up2.reserve;
@@ -580,7 +581,7 @@ const ACT = {
   },
   bulletBoost: (sim, p) => {
     const s = p.loadout.slots[p.loadout.current];
-    if (!s || !sim.cfg.weapons[s.id] || !sim.cfg.weapons[s.id].upgraded) return false;
+    if (!s || !sim.cfg.weapons[s.id] || !sim.cfg.weapons[s.id].upgraded || sim.cfg.weapons[s.id].hammer) return false;
     s.aat = rollAat(sim, s.aat);
     sim.emit('aatChanged', { playerId: p.id, weapon: s.id, aat: s.aat });
   },

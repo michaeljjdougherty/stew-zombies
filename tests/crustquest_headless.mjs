@@ -191,22 +191,24 @@ const forgeAll = (g) => {
     }
     if (el === 'ice') {
       check(mid.frozen > 0 && far.frozen > 0, '  ice: everything round you frozen');
-      const x = mid.pos.x;
-      g.step({}, 30);
-      check(mid.pos.x === x && mid.state !== 'dead', '  ...frozen solid');
+      g.step({}, 60 * 1.5);
+      check(mid.state === 'dead' && far.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'zombieShatter'), '  ...and the blizzard shatters what\'s in it');
       const walker = addZ(g, left.pos.x + 9, left.pos.z); g.step({}, 5); walker.frozen = 0; walker.pos.x = left.pos.x + 2; g.step({}, 5);
       check(walker.frozen > 0, '  ...one that comes into the blizzard freezes too');
       giveWeapon(g.sim, g.me, 'M1912'); g.step({}, 40);
+      const ice = addZ(g, 1.5, 15); ice.frozen = 3; g.step({}, 1);   // (one frozen by the swing, away from the blizzard)
+      g.sim.projectiles.length = 0;
       g.at(0, 11, 1.5, 15); g.me.pitch = -0.12;
+      const n1 = g.log.length;
       g.step({ fire: true, firePressed: true }); g.step({}, 3);
-      check(mid.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'zombieShatter'), '  ...and one pistol round shatters one');
+      check(ice.state === 'dead' && g.log.slice(n1).some((e) => e.type === 'zombieShatter'), '  ...and one pistol round shatters one');
     }
     if (el === 'wind') {
       check(L.some((e) => e.type === 'windBlast') && mid.state === 'dead', '  wind: a gale down the line');
       const z0 = L.find((e) => e.type === 'hammerSlam').pos.z;
       const side = addZ(g, left.pos.x + 3.5, left.pos.z - 1);
       g.step({}, 60 * 2);
-      check(left.pos.z > z0 + 3 && side.state === 'dead', `  ...and a tornado carries on (${(left.pos.z - z0).toFixed(1)} m), dragging one in`);
+      check(Math.abs(left.pos.z - z0) < 0.5 && side.state === 'dead', `  ...and a whirlwind stays where it landed (${(left.pos.z - z0).toFixed(1)} m), dragging one in`);
     }
     if (el === 'lightning') {
       check(L.some((e) => e.type === 'hammerChain' && e.points.length >= 3) && far.state === 'dead', '  lightning: a bolt jumping zombie to zombie');
