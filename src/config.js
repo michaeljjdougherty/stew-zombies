@@ -1488,6 +1488,7 @@ export const CONFIG = {
       { text: 'The Schnitz has taken possession of Crust.', style: 'card', at: 5.4, len: 2.2 },
       { text: 'To save him, and everyone else...', style: 'card', at: 11.3, len: 1.6 },
       { text: '...someone will have to make the ultimate sacrifice.', style: 'card', at: 15.5, len: 1.45 },
+      { text: 'ONE MAP. FIVE ISLANDS.', style: 'overlay', beat: 1.6, beats: 2.4 },
       { text: 'THE IRON HEART', sub: 'THE ANVIL', style: 'overlay', beat: 4, beats: 2.4 },
       { text: 'DEAD MAN\'S MOORING', sub: 'THE SHIP GRAVEYARD', style: 'overlay', beat: 6.4, beats: 2.4 },
       { text: 'SPARK CITY', sub: 'THE RESEARCH BASE', style: 'overlay', beat: 8.8, beats: 2.4 },
