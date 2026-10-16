@@ -30,7 +30,7 @@ import { spawnPowerup } from './powerups.js';
 import { angleWrap, lookDir } from '../core/math.js';
 import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
 import { createCrustPower, updateCrustPower, powerObjective, crustPowerInteractables } from './crustPower.js';
-import { updateZach, zachTargets, zachObjective, finaleOn } from './zachBoss.js';
+import { updateZach, zachTargets, zachObjective, finaleOn, ZACH_H } from './zachBoss.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // radius: what it moves as (a zombie's size, so it fits the paths you do; it's
@@ -104,8 +104,38 @@ function hazard(sim, h) { const E = sim.crustEgg; h.id = E.hid++; E.hazards.push
 function shove(sim, p, fromX, fromZ, speed) {
   const dx = p.pos.x - fromX, dz = p.pos.z - fromZ, l = Math.hypot(dx, dz) || 1;
   p.shove = { x: (dx / l) * speed, z: (dz / l) * speed };
-  p.vel.y = Math.max(p.vel.y, speed * 0.35);
+  kickUp(p, speed * 0.35);
+}
+
+// Thrown up off your feet. (kicks counts them, so an online friend's browser,
+// which moves them, knows a new one came: src/net/state.js)
+export function kickUp(p, up) {
+  p.vel.y = Math.max(p.vel.y, up);
   p.grounded = false;
+  p.kicks = (p.kicks || 0) + 1; p.kickUp = up;
+}
+
+// What the titans and Big Evil Zach do to you every step: a shove dies away, a
+// frost slow wears off, and you can't walk through them. The host does this for
+// everyone; an online friend's browser does it for them too (src/net/client.js),
+// since that's where they're moved.
+export function feelTitans(sim, p, dt) {
+  const E = sim.crustEgg;
+  if (!E) return;
+  const c = sim.cfg.crust.egg;
+  if (p.shove) { const k = Math.exp(-c.pushDecay * dt); p.shove.x *= k; p.shove.z *= k; if (Math.abs(p.shove.x) + Math.abs(p.shove.z) < 0.05) p.shove = null; }
+  if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
+  if (!p.alive || p.launch) return;
+  const out = (x, z, r) => {
+    const dx = p.pos.x - x, dz = p.pos.z - z, dd = Math.hypot(dx, dz), rr = r + p.radius;
+    if (dd < rr && dd > 1e-4) { p.pos.x = x + (dx / dd) * rr; p.pos.z = z + (dz / dd) * rr; }
+  };
+  for (const T of Object.values(E.titans)) {
+    // (it's solid, asleep or awake)
+    if (T.bulk && T.state !== 'dead' && Math.abs(p.pos.y - T.pos.y) <= T.height) out(T.pos.x, T.pos.z, T.bulk);
+  }
+  const F = E.finale, f = sim.cfg.crust.finale;
+  if (F && F.state !== 'off' && F.state !== 'done' && F.state !== 'freed' && Math.abs(p.pos.y - F.pos.y) <= ZACH_H * F.scale) out(F.pos.x, F.pos.z, f.bulk * F.scale / f.scale[0]);
 }
 
 // damage everyone within r of (x,z) (and near enough in height), falling off to `edge` at the rim
@@ -160,23 +190,11 @@ export function updateCrustEgg(sim, dt) {
   const E = sim.crustEgg;
   if (!E) return;
   const c = sim.cfg.crust.egg;
-  for (const p of sim.players) {
-    // shoves (a gust, a slam) die away; a frost slow wears off
-    if (p.shove) { const k = Math.exp(-c.pushDecay * dt); p.shove.x *= k; p.shove.z *= k; if (Math.abs(p.shove.x) + Math.abs(p.shove.z) < 0.05) p.shove = null; }
-    if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
-  }
+  for (const p of sim.players) feelTitans(sim, p, dt);
   updateFlung(sim, dt);
   updateClusters(sim, dt);
   updateShells(sim);
   for (const T of Object.values(E.titans)) {
-    if (T.bulk && T.state !== 'dead') {
-      // (it's solid, asleep or awake: you can't walk through it)
-      for (const p of sim.players) {
-        if (!p.alive || p.launch || Math.abs(p.pos.y - T.pos.y) > T.height) continue;
-        const dx = p.pos.x - T.pos.x, dz = p.pos.z - T.pos.z, dd = Math.hypot(dx, dz), rr = T.bulk + p.radius;
-        if (dd < rr && dd > 1e-4) { p.pos.x = T.pos.x + (dx / dd) * rr; p.pos.z = T.pos.z + (dz / dd) * rr; }
-      }
-    }
     if (T.state === 'asleep' || T.state === 'dead') continue;
     T.t += dt;
     if (T.state === 'waking') {

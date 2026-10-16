@@ -23,9 +23,11 @@ import { paSay } from './pa.js';
 import { lineDuration } from '../lore/erik.js';
 import { angleWrap } from '../core/math.js';
 import { pitSay } from './forge.js';
+import { kickUp } from './crustEgg.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const H = 1.78;   // a person's height: he's this x his scale
+export const ZACH_H = H;
 
 export function startFinale(sim) {
   const E = sim.crustEgg;
@@ -58,15 +60,7 @@ export function updateZach(sim, dt) {
   if (!F || F.state === 'off' || F.state === 'done') return;
   const c = sim.cfg.crust.finale;
   F.t += dt;
-  // he's solid: you can't walk through him
-  if (F.state !== 'freed') {
-    const bulk = c.bulk * F.scale / c.scale[0];
-    for (const p of sim.players) {
-      if (!p.alive || Math.abs(p.pos.y - F.pos.y) > H * F.scale) continue;
-      const dx = p.pos.x - F.pos.x, dz = p.pos.z - F.pos.z, dd = Math.hypot(dx, dz), rr = bulk + p.radius;
-      if (dd < rr && dd > 1e-4) { p.pos.x = F.pos.x + (dx / dd) * rr; p.pos.z = F.pos.z + (dz / dd) * rr; }
-    }
-  }
+  // (he's solid: you can't walk through him. feelTitans, crustEgg.js)
   if (F.state === 'descend') {
     if (F.t >= c.descendTime) {
       F.state = 'fight'; F.t = 0;
@@ -186,8 +180,7 @@ function updateAct(sim, F, dt, c) {
 function shove(p, from, speed) {
   const dx = p.pos.x - from.x, dz = p.pos.z - from.z, l = Math.hypot(dx, dz) || 1;
   p.shove = { x: (dx / l) * speed, z: (dz / l) * speed };
-  p.vel.y = Math.max(p.vel.y, speed * 0.35);
-  p.grounded = false;
+  kickUp(p, speed * 0.35);
 }
 function blast(sim, pos, r, dmg, push) {
   for (const p of sim.players) {
