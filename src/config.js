@@ -2044,6 +2044,12 @@ export const CONFIG = {
     sharpen: 0.35,
     ao: true,                // screen-space ambient occlusion (Settings can turn it off)
     aoIntensity: 0.9,
+    // Far detail (src/render/renderer.js farCull): anything so small at its distance
+    // that it'd only be a speck isn't drawn. Culled once it's more than `ratio`
+    // times its own radius away (about 3 pixels tall at 1080p and a `refFov`°
+    // view; a scope's zoom brings it back), and never nearer than `minDist` m.
+    // Glowing things (`glow`: how bright counts) are always drawn.
+    farCull: { ratio: 750, refFov: 70, minDist: 25, glow: 0.6, rescan: 2 },
     dustCount: 700,
     maxBloodDecals: 70,
     maxBulletHoles: 90,

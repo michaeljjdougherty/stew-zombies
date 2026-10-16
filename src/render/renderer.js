@@ -502,7 +502,61 @@ export class GameRenderer {
     this.flash = Math.max(0, (this.flash || 0) - dt * 2.2);
     if (this.noDraw) return;
     this.updateBakedLive();
+    this.farCull(this.camera);
     this.post.render(dt, { damage: 0, lowHealth: 0, flash: this.flash || 0, tint: 0 });
+  }
+
+  // Far detail (CONFIG.graphics.farCull): anything so small at its distance that
+  // it would only be a speck of a few pixels isn't drawn at all (taken off every
+  // camera layer; put back the moment it's big enough to see). Glowing things
+  // and anything on a layer of its own (particles) are left alone.
+  farCull(cam) {
+    const F = this.cfg.graphics.farCull;
+    if (!F || !F.ratio) { if (this.cull) { for (const E of this.cull.list) E.o.layers.mask = 1; this.cull = null; } return; }
+    const C = this.cull || (this.cull = { list: [], scene: null, next: 0, culled: 0 });
+    const now = performance.now();
+    if (C.scene !== this.scene || now >= C.next) this.farScan(C, F, now);
+    const DEG = Math.PI / 180;
+    // a zoomed view (a scope) shows small things bigger: cull less
+    const ratio = F.ratio * Math.tan((F.refFov / 2) * DEG) / Math.tan((cam.fov / 2) * DEG);
+    const cx = cam.position.x, cy = cam.position.y, cz = cam.position.z, min2 = F.minDist * F.minDist;
+    let n = 0;
+    for (const E of C.list) {
+      const o = E.o, e = o.matrixWorld.elements, c = E.c;
+      const wx = e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12] - cx;
+      const wy = e[1] * c.x + e[5] * c.y + e[9] * c.z + e[13] - cy;
+      const wz = e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14] - cz;
+      const d2 = wx * wx + wy * wy + wz * wz;
+      const r = E.r * Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10]));
+      const far = d2 > min2 && d2 > r * r * ratio * ratio;
+      o.layers.mask = far ? 0 : 1;
+      if (far) n++;
+    }
+    C.culled = n;
+  }
+
+  // (what can be culled: everything drawn on the ordinary layer that isn't a glow)
+  farScan(C, F, now) {
+    for (const E of C.list) E.o.layers.mask = 1;   // (put everything back first)
+    C.list.length = 0;
+    C.scene = this.scene;
+    C.next = now + F.rescan * 1000;
+    const bright = (m) => {
+      if (!m || m.blending === THREE.AdditiveBlending || m.fog === false || m.toneMapped === false) return true;
+      if (!m.emissive) return false;
+      const k = (m.emissiveIntensity ?? 1) * Math.max(m.emissive.r, m.emissive.g, m.emissive.b);
+      return k > F.glow;
+    };
+    this.scene.traverse((o) => {
+      // (frustumCulled off: its bounds don't say where it's drawn, e.g. moved in its shader)
+      if (!(o.isMesh || o.isSprite) || o.isSkinnedMesh || o.frustumCulled === false || o.layers.mask !== 1 || o.userData.noCull || !o.geometry) return;
+      if (Array.isArray(o.material) ? o.material.some(bright) : bright(o.material)) return;
+      let bs;
+      if (o.isInstancedMesh) { if (!o.boundingSphere) o.computeBoundingSphere(); bs = o.boundingSphere; }
+      else { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); bs = o.geometry.boundingSphere; }
+      if (!bs || !(bs.radius > 0)) return;
+      C.list.push({ o, c: bs.center.clone(), r: bs.radius });
+    });
   }
 
   render(dt, alpha, look, p, time, mode = 'play') {
@@ -628,6 +682,7 @@ export class GameRenderer {
     const brink = p && p.alive && !p.downed && p.health <= hit + 0.01 ? 1 : 0;
     this.brink = (this.brink || 0) + (brink - (this.brink || 0)) * Math.min(1, dt * 6);
     this.updateBakedLive();
+    this.farCull(this.camera);
     this.post.render(dt, { damage: this.damage, lowHealth, brink: this.brink, flash: this.flash || 0, tint: (this.haze || 0) * this.cfg.cheddar.haze });
     this.scoped = !!(p && p.alive && this.viewmodel.scoped);
   }

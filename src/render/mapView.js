@@ -5,7 +5,8 @@
 // a fixed pool of real lights so shader cost stays flat as the map grows.
 // =============================================================================
 import * as THREE from 'three';
-import { BoxBatch, bx } from './geometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { BoxBatch, bx, mergeStatic } from './geometry.js';
 import * as T from './textures.js';
 import { applySurface } from './surfaces.js';
 import { Occluders, Baker, applyBake, bakeUniforms, setLightLevel, MAX_CHANNELS } from './bake.js';
@@ -74,7 +75,11 @@ export class MapView {
     if (this.map.id === 'lastbell') this.story = buildStoryProps(this);
     this.tameGloss();
     const occ = this.collectOccluders();
+    // scenery that never moves, one draw per material per patch of the map
+    // (after the light-blocking boxes are taken from it one piece at a time)
+    this.merged = mergeStatic(this.group);
     this.buildLights();
+    this.merged += mergeStatic(this.group);   // (the light fittings' housings)
     // the bake starts on the first update, once the machines and the box have
     // added their lights too
     this.occ = occ;
@@ -510,6 +515,7 @@ export class MapView {
       const chair = foldingChair(this.mats.metal);
       chair.position.set(15.6 - (i % 2) * 0.6, i === 2 || i === 4 ? 0.2 : 0, -10.5 + i * 0.7);
       chair.rotation.set(i === 2 ? Math.PI / 2 : 0, Math.random() * 6, i === 4 ? Math.PI / 2 : 0);
+      chair.userData.static = true;
       this.group.add(chair);
     }
   }
@@ -933,26 +939,33 @@ export class MapView {
     this.flag = flag;
   }
 
-  // Dirt patches the ground spawns claw out of.
+  // Dirt patches the ground spawns claw out of: one mesh for all the patches and
+  // one for all the clods (they never move), not hundreds of little ones.
   buildDirt() {
     const M = this.mats;
+    const patches = [], clods = [];
     for (const gs of this.world.groundSpawns || []) {
       if (gs.bare) continue;   // (Call of the Crust's Anvil: no patch on the paving)
+      // (a spawn up on higher ground than the floor: its patch would only be buried under it)
+      if ((gs.y || 0) > 0.1) continue;
       const geo = new THREE.CircleGeometry(1.4, 18).rotateX(-Math.PI / 2);
       const pos = geo.attributes.position;
       for (let i = 1; i < pos.count; i++) { const k = 0.75 + Math.random() * 0.4; pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }
-      // (the crust's battlefield is lit live, not baked: churned black mud)
-      const dug = this.map.customRender ? (M.dugMud ||= new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: 0.75 })) : this.map.snow ? (M.dugSnow ||= applyBake(new THREE.MeshStandardMaterial({ color: '#9aa3b0', roughness: 1 }))) : M.soil;
-      const dirt = new THREE.Mesh(geo, dug);
-      dirt.position.set(gs.x, 0.02, gs.z); this.group.add(dirt);
-      if (this.map.snow && !this.map.customRender) this.bakeReceivers.push(dirt);   // (unbaked, it showed up as a black hole in the moonlit snow)
+      patches.push(geo.translate(gs.x, 0.02, gs.z));
       for (let i = 0; i < 7; i++) {
-        const clod = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.1), M.soil);
         const a = Math.random() * 6.28, r = 0.5 + Math.random() * 0.9;
-        if (this.map.snow) clod.material = this.map.customRender ? dug : M.dugSnow;
-        clod.position.set(gs.x + Math.cos(a) * r, 0.04, gs.z + Math.sin(a) * r); this.group.add(clod);
+        const clod = new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.1).toNonIndexed();
+        clods.push(clod.translate(gs.x + Math.cos(a) * r, 0.04, gs.z + Math.sin(a) * r));
       }
     }
+    if (!patches.length) return;
+    // (the crust's battlefield is lit live, not baked: churned black mud)
+    const dug = this.map.customRender ? (M.dugMud ||= new THREE.MeshStandardMaterial({ color: '#2a2018', roughness: 0.75 })) : this.map.snow ? (M.dugSnow ||= applyBake(new THREE.MeshStandardMaterial({ color: '#9aa3b0', roughness: 1 }))) : M.soil;
+    const dirt = new THREE.Mesh(mergeGeometries(patches.map((g) => g.toNonIndexed())), dug);
+    this.group.add(dirt);
+    if (this.map.snow && !this.map.customRender) this.bakeReceivers.push(dirt);   // (unbaked, it showed up as a black hole in the moonlit snow)
+    const clodMat = this.map.snow ? (this.map.customRender ? dug : M.dugSnow) : M.soil;
+    this.group.add(new THREE.Mesh(mergeGeometries(clods), clodMat));
   }
 
   // Firing range: painted floor lines and wall signs every so many metres.
@@ -1213,6 +1226,7 @@ export class MapView {
       for (let t = 0; t <= len; t += 3) {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.4, 6), this.mats.rustMetal);
         post.position.set(x0 + (x1 - x0) * t / len, 1.7, z0 + (z1 - z0) * t / len);
+        post.userData.static = true;   // (merged with the rest: geometry.js mergeStatic)
         this.group.add(post);
       }
     };
@@ -1300,6 +1314,7 @@ export class MapView {
           // a few dead panels dangle from one corner
           if (!f.lit && Math.random() < 0.12) { grp.position.y -= 0.35; grp.rotation.set(0.5, 0, 0.3); }
         }
+        grp.userData.static = true;   // (its housing never moves: merged; its tube glows on its own, so it stays)
         this.group.add(grp);
         // every fixture gets a light; the ones not on the emergency circuit stay
         // dark until the power is on
@@ -1670,6 +1685,7 @@ function deadTree(x, z, mat) {
     grp.add(br);
   }
   grp.rotation.z = (Math.random() - 0.5) * 0.15;
+  grp.userData.static = true;
   return grp;
 }
 

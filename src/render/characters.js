@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { buildHead, torsoSections, loft, neckGeometry, limb, shoeGeometry, SKIN, rng } from './human.js';
 import { buildHand } from './hands.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export { idleCharacter, idleKearns, setGesture } from './characterAnim.js';
 
 export const SHIRT_COLORS = {
@@ -696,6 +697,58 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
   root.scale.setScalar(def.height || 1);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10 };
+}
+
+// One draw per material instead of one per part. A person is ~80 little meshes
+// (fingers, lids, sleeves...), each hung on its joint; this folds every material's
+// parts into a single skinned mesh whose bones are those parts themselves, so
+// whatever moves a part (a joint, a blink, a finger curling) still moves it.
+// The parts stay where they were, just not drawn (off every camera layer). For people that stay in the
+// world (the crew in the cage, Pit, teammates); not for ones whose parts are
+// changed one by one afterwards (evil Zach's veins).
+export function rigidSkin(k) {
+  const root = k.root;
+  root.updateMatrixWorld(true);
+  const byMat = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || Array.isArray(o.material) || !o.visible) return;
+    const g = o.geometry;
+    if (!g || !g.attributes.position || Object.keys(g.morphAttributes || {}).length) return;
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(o);
+  });
+  const parts = [];
+  for (const [mat, list] of byMat) {
+    if (list.length < 2) continue;
+    const geos = list.map((o, bone) => {
+      let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+      if (!g.attributes.normal) g.computeVertexNormals();
+      const n = g.attributes.position.count;
+      if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+      const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { si[i * 4] = bone; sw[i * 4] = 1; }
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+      g.morphAttributes = {};
+      return g;
+    });
+    const merged = mergeGeometries(geos);
+    if (!merged) continue;
+    // (the part itself is the bone: its own transform, in the world, every frame)
+    const skel = new THREE.Skeleton(list, list.map(() => new THREE.Matrix4()));
+    const sm = new THREE.SkinnedMesh(merged, mat);
+    sm.name = 'skin';
+    // (where it can be, roughly: a person-sized ball round the root, moved with it)
+    sm.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.5);
+    sm.castShadow = list.some((o) => o.castShadow);
+    root.add(sm);
+    sm.bind(skel, new THREE.Matrix4());
+    for (const o of list) o.layers.mask = 0;   // (not drawn; still moves, and its children still show)
+    parts.push(sm);
+  }
+  k.skins = parts;
+  return k;
 }
 
 // Kept for older callers.

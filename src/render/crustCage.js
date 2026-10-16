@@ -10,7 +10,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as T from './textures.js';
-import { buildCharacter, idleCharacter } from './characters.js';
+import { buildCharacter, rigidSkin, idleCharacter } from './characters.js';
 import { CONFIG } from '../config.js';
 
 const C = () => CONFIG.crust.cage;
@@ -81,7 +81,7 @@ export class CrustCage {
     }
     // who's inside
     this.boys = occupants.map((id, i) => {
-      const k = buildCharacter(id, { detail: L.detail });
+      const k = rigidSkin(buildCharacter(id, { detail: L.detail }));   // (one draw per material)
       k.root.scale.multiplyScalar(L.boyScale);
       k.root.position.set((i - (occupants.length - 1) / 2) * (W / occupants.length) * 0.9, 0.12, -0.15 + (i % 2) * 0.3);
       k.root.rotation.y = (i - 1) * 0.25;

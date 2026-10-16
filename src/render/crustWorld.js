@@ -981,6 +981,7 @@ function buildPad(out, group, L, map, mats, mv) {
   (out.pads || (out.pads = [])).push({ id: L.id, ring, inner, arrow, light, color: new THREE.Color(el.color) });
 }
 // --- the props (collision comes from the map data) -------------------------------------------
+const STATIC_PROPS = new Set(['truck', 'crate', 'rock', 'pine', 'sign', 'iceberg', 'boat', 'rack', 'tent', 'telescope', 'shelves', 'boiler', 'dish', 'generator', 'labbench', 'servers', 'fueltank', 'snowcat', 'ruinwall', 'fieldgun', 'tank', 'cots', 'standing', 'crystal', 'icefall', 'minecart', 'shed']);
 function buildProps(out, root, world, r, mats, mv0) {
   const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   for (const b of world.propBoxes) {
@@ -989,6 +990,8 @@ function buildProps(out, root, world, r, mats, mv0) {
     // its foot, lifted there
     const base = b.minY;
     const group = new THREE.Group(); group.position.y = base; root.add(group);
+    // (props with nothing moving in them are merged with the rest: geometry.js mergeStatic)
+    if (STATIC_PROPS.has(p.kind)) group.userData.static = true;
     const mv = base ? { addVirtualLight: (q, ...a) => mv0.addVirtualLight({ ...q, y: q.y + base }, ...a) } : mv0;
     const add = (geo, mat, x, y, z, ry = 0, parent = group) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m; };
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2, w = b.maxX - b.minX, d = b.maxZ - b.minZ, h = b.maxY - b.minY;

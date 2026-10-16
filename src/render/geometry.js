@@ -1,5 +1,6 @@
 // Geometry helpers: batched world-space boxes with meter-based UVs.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Faces: [normal, corner builder]. UVs come from world coordinates so textures
 // line up across pieces (u,v in meters; set texture.repeat to scale).
@@ -79,3 +80,60 @@ export function boxMesh(b, material, opts) {
 export const bx = (x, y, z, w, h, d) => ({
   minX: x - w / 2, maxX: x + w / 2, minY: y - h / 2, maxY: y + h / 2, minZ: z - d / 2, maxZ: z + d / 2,
 });
+
+// Static scenery, merged: meshes that never move, show or hide on their own and
+// share a material (fence posts, dead trees, crates, rocks...) are drawn as one
+// mesh per material in each `cell`-metre square of the map, not one each. Only
+// what's marked: userData.static on the mesh or on a group it's in. Run once the
+// map's built (and its light-blocking boxes are collected). Each merged copy
+// keeps its material, so anything that changes the material still shows.
+const KEEP = ['position', 'normal', 'uv'];
+export function mergeStatic(root, { cell = 24 } = {}) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const buckets = new Map();
+  const m4 = new THREE.Matrix4();
+  root.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || o.children.length || o.layers.mask !== 1) return;
+    let marked = false;
+    for (let q = o; q && q !== root; q = q.parent) { if (!q.visible) return; if (q.userData.static) marked = true; }
+    const mat = o.material, g = o.geometry;
+    if (!marked || !g || !g.attributes.position || Object.keys(g.morphAttributes || {}).length) return;
+    // (see-through things are drawn in order, back to front: leave them be)
+    if (mat.transparent || mat.blending !== THREE.NormalBlending) return;
+    const attrs = KEEP.filter((a) => g.attributes[a]);
+    if (!attrs.includes('normal')) return;
+    m4.multiplyMatrices(inv, o.matrixWorld);
+    const e = o.matrixWorld.elements;
+    const flip = m4.determinant() < 0;
+    const key = mat.uuid + '|' + attrs.join(',') + '|' + Math.floor(e[12] / cell) + ',' + Math.floor(e[14] / cell) + (flip ? '|f' : '') + (o.castShadow ? '|s' : '') + (o.receiveShadow ? '|r' : '');
+    if (!buckets.has(key)) buckets.set(key, { mat, attrs, flip, cast: o.castShadow, recv: o.receiveShadow, list: [] });
+    buckets.get(key).list.push({ o, m: m4.clone() });
+  });
+  let merged = 0;
+  for (const B of buckets.values()) {
+    if (B.list.length < 2) continue;
+    const geos = B.list.map(({ o, m }) => {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      for (const a of Object.keys(g.attributes)) if (!B.attrs.includes(a)) g.deleteAttribute(a);
+      g.morphAttributes = {};
+      g.applyMatrix4(m);
+      // (a mirrored copy turns its triangles inside out: turn them back)
+      if (B.flip) for (const a of B.attrs) {
+        const at = g.attributes[a], n = at.itemSize, arr = at.array;
+        for (let t = 0; t < at.count; t += 3) for (let k = 0; k < n; k++) { const i1 = (t + 1) * n + k, i2 = (t + 2) * n + k, x = arr[i1]; arr[i1] = arr[i2]; arr[i2] = x; }
+      }
+      return g;
+    });
+    const geo = mergeGeometries(geos);
+    if (!geo) continue;
+    geo.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geo, B.mat);
+    mesh.castShadow = B.cast; mesh.receiveShadow = B.recv;
+    mesh.userData.noBake = true;
+    root.add(mesh);
+    for (const { o } of B.list) o.parent.remove(o);
+    merged += B.list.length - 1;
+  }
+  return merged;
+}

@@ -7,7 +7,7 @@
 // and turns red while they need a revive.
 // =============================================================================
 import * as THREE from 'three';
-import { buildCharacter } from './characters.js';
+import { buildCharacter, rigidSkin } from './characters.js';
 import { proneLevel } from '../sim/player.js';
 import { idleCharacter, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
@@ -42,7 +42,7 @@ export class Teammate {
     this.cfg = cfg;
     this.id = p.id;
     this.character = p.character;
-    this.k = buildCharacter(p.character, { detail: 0.6 });
+    this.k = rigidSkin(buildCharacter(p.character, { detail: 0.6 }));   // (one draw per material)
     this.root = this.k.root;
     scene.add(this.root);
     this.handHome = [this.k.armL, this.k.armR].map((a) => a.handGroup.quaternion.clone());

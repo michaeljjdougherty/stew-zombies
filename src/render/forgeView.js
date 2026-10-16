@@ -12,7 +12,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as TX from './textures.js';
-import { buildCharacter, idleCharacter } from './characters.js';
+import { buildCharacter, rigidSkin, idleCharacter } from './characters.js';
 import { buildWarHammer, HAMMER_COLORS } from './warHammer.js';
 import { CORE_ELEMENT } from '../sim/forge.js';
 import { CrustCage } from './crustCage.js';
@@ -107,7 +107,7 @@ export class ForgeView {
   // --- Pit --------------------------------------------------------------------
   buildPit() {
     const s = this.spec.pit;
-    const k = buildCharacter('pit', { detail: 0.85 });
+    const k = rigidSkin(buildCharacter('pit', { detail: 0.85 }));   // (one draw per material)
     k.root.position.set(s.x, s.y, s.z);
     k.root.rotation.y = s.yaw + Math.PI;
     this.group.add(k.root);
