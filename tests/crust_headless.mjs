@@ -102,8 +102,16 @@ const at = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.P
   for (let a = 210; a <= 258; a += 4) walk(...at(a, 18.6), 6);
   walk(...at(266, 24.5), 6); walk(3, -28, 6);
   check(Math.abs(me.pos.y - 9) < 0.3 && sim.zoneOf(me.pos) === 'rim', `and on up to the rim (y ${me.pos.y.toFixed(2)}, ${sim.zoneOf(me.pos)})`);
-  // round the rim, and jump off it onto the east terrace
-  for (let a = 280; a <= 360; a += 10) walk(...at(a, 27), 6);
+  // round the rim (through the Supply Depot: rubble blocks the way round it),
+  // and jump off it onto the east terrace
+  for (let a = 280; a <= 300; a += 10) walk(...at(a, 27), 6);
+  check(!sim.doorOpen('door_hub_depot'), "the depot's door is still shut");
+  walk(15, -22.5, 6); walk(19, -22.5, 4); walk(21.5, -20.2, 4);
+  const dd = sim.world.doors.find((x) => x.id === 'door_hub_depot');
+  face(dd.center); use();
+  check(sim.doorOpen('door_hub_depot'), "open the Supply Depot's door (750)");
+  walk(21.5, -16.5, 4);
+  for (let a = 330; a <= 360; a += 10) walk(...at(a, 27), 6);
   for (let i = 0; i < 120 && me.pos.y > 5; i++) { face({ x: 0, z: 0 }); step({ moveY: 1, yaw: me.yaw }); }
   step({}, 40);
   check(Math.abs(me.pos.y - 4.5) < 0.3, `jumped off the rim, down onto the terrace (y ${me.pos.y.toFixed(2)})`);
