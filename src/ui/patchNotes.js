@@ -21,6 +21,10 @@ export const PATCH = {
     { title: 'Coming soon', items: [
       'Something crusty is coming…',
     ] },
+    { title: 'Call of the Crust: the War Hammer trials', items: [
+      'Pit doesn\'t take points to upgrade a War Hammer any more. Like the staffs in Origins, each hammer earns it on its own island, and then Pit does it for free.',
+      'Wind: hit the three buoys floating off the Ship Graveyard\'s north shore. Lightning: charge every tesla coil at the Research Base inside a minute, then slam the hammer down by one. Ice: freeze 20 zombies in the Ice Caves, then smash the shrine where the Golem slept. Fire: carry it through three burning craters on the Trench Front without going down.',
+    ] },
     { title: 'Call of the Crust: the titans', items: [
       'The Drowned Captain rises higher and follows you through the air, so you can see his skeletons fly out of his mouth, and they always land on the island.',
       'The Molten Fiend no longer freezes the game when his magma sets the ground on fire.',
