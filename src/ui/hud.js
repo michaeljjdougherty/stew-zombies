@@ -2,6 +2,7 @@
 // HUD: round tally, points (+popups), ammo, crosshair, hitmarker, prompts.
 // Reads sim state; never changes it.
 // =============================================================================
+import { gumIconURL } from '../render/gumIcons.js';
 import { TallyCounter } from './tally.js';
 import { glyphify, glyph } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
@@ -559,6 +560,7 @@ export class HUD {
     this.last.gum = key;
     el.hidden = false;
     el.style.setProperty('--c', G.tiers[d.tier].color);
+    if (el.dataset.gum !== g.id) { el.dataset.gum = g.id; el.style.setProperty('--icon', `url(${gumIconURL(g.id, 96)})`); }
     el.style.setProperty('--f', Math.max(0, Math.min(1, f)).toFixed(3));
     el.classList.toggle('ready', g.kind === 'activated' && !(g.on && g.onUntil));
     el.querySelector('.nm').textContent = d.name;

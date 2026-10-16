@@ -972,7 +972,9 @@ export const CONFIG = {
     machine: { range: 1.7, uses: [3, 5], awayTime: 25, offset: 1.5, half: 0.4, perMap: 6 },
     // the machine (src/render/machinesView.js GumView): globe and gumball radius (m), how many
     // balls in it, its paint and its light
-    look: { globe: 0.3, ball: 0.035, balls: 70, body: '#c8246e', light: '#ff7ad0', lightI: 6 },
+    // model: the gumball machine (stood `height` m tall; its chute `chute` of the way up),
+    // badge: the size (m) of the gum's logo floating over the chute, `badgeUp` m above it
+    look: { globe: 0.3, ball: 0.035, balls: 70, body: '#c8246e', light: '#ff7ad0', lightI: 6, model: 'assets/props/gumball.glb', height: 1.7, chute: 0.655, badge: 0.2, badgeUp: 0.22 },
     defaultPack: ['alwaysDoneSwiftly', 'stockOption', 'swordFlay', 'inPlainSight', 'coagulant'],
     // Liquid Divinium, at the end of a game you played (rounds you survived):
     // each round past `fromRound` a chance at a vial, one for sure every

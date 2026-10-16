@@ -8,6 +8,8 @@ import * as T from './textures.js';
 import { BoxBatch, bx } from './geometry.js';
 import { perkMachineModel, perkBottleModel, madDogModel } from './propModels.js';
 import { buildGun } from './gunModels.js';
+import { loadModel } from './gltfLite.js';
+import { gumIconCanvas } from './gumIcons.js';
 
 const yawOf = (n) => Math.atan2(n.x, n.z);
 
@@ -544,12 +546,51 @@ export class GumView {
     // the sign on top
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.155), M.sign); sign.position.set(0, gy + L.globe + 0.22, 0); g.add(sign);
     const back = sign.clone(); back.rotation.y = Math.PI; g.add(back);
-    // the gum you bought, in the tray
+    // the gum you bought, in the tray, its logo glowing over it
     const offer = new THREE.Mesh(new THREE.SphereGeometry(L.ball * 1.5, 14, 10), this.tierMats.classic);
     offer.position.set(0, 1.0, 0.27); offer.visible = false; g.add(offer);
+    const badge = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+    badge.scale.setScalar(L.badge); badge.visible = false; g.add(badge);
     const lp = { x: m.pos.x + m.normal.x * 0.9, y: (m.pos.y || 0) + 1.7, z: m.pos.z + m.normal.z * 0.9 };
     const v = this.mapView.addVirtualLight(lp, new THREE.Color(L.light).getHex(), L.lightI, 5, 1.6);
-    this.list.push({ m, g, balls, crankG, offer, v, level: 1, spin: 0 });
+    // (everything above is the stand-in, till the real machine's model is in)
+    const proc = new THREE.Group();
+    for (const o of [...g.children]) if (o !== sign && o !== back && o !== offer && o !== badge) proc.add(o);
+    g.add(proc);
+    const gv = { m, g, proc, balls, crankG, offer, badge, sign, back, v, level: 1, spin: 0, chute: { y: 1.0, z: 0.27 }, model: null };
+    this.list.push(gv);
+    this.loadModel(gv);
+  }
+
+  // The gumball machine's model (assets/props/gumball.glb): stood up to
+  // CONFIG.gobblegum.look.height, facing out; the sign above it, the gum in its chute.
+  loadModel(gv) {
+    const L = this.cfg.gobblegum.look;
+    (this.modelJob ||= loadModel(L.model).then((gltf) => {
+      if (!gltf) return null;
+      const s = gltf.scene; s.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(s), size = box.getSize(new THREE.Vector3());
+      const k = L.height / size.y;
+      const holder = new THREE.Group(); holder.add(s);
+      s.scale.multiplyScalar(k); s.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+      s.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.side = THREE.DoubleSide; } });
+      return { holder, top: L.height, r: Math.max(size.x, size.z) * k / 2 };
+    })).then((M) => {
+      if (!M) return;
+      const model = M.holder.clone(true);
+      gv.g.add(model); gv.model = model;
+      gv.proc.visible = false;
+      gv.sign.position.y = gv.back.position.y = M.top + 0.2;
+      gv.chute = { y: M.top * L.chute, z: M.r * 0.62 };
+      gv.offer.position.set(0, gv.chute.y, gv.chute.z);
+    });
+  }
+
+  // a gum's logo as a texture (cached)
+  iconTexture(id) {
+    this.icons ||= new Map();
+    if (!this.icons.has(id)) { const t = new THREE.CanvasTexture(gumIconCanvas(id, 128)); t.colorSpace = THREE.SRGBColorSpace; this.icons.set(id, t); }
+    return this.icons.get(id);
   }
 
   onEvent(e, effects) {
@@ -582,13 +623,18 @@ export class GumView {
         else b.position.copy(h);
       });
       if (churn) gv.crankG.rotation.z -= dt * 6;
-      // your gum in the tray (its tier's colour), bobbing
+      // (the real machine rattles while it churns)
+      if (gv.model) { gv.model.rotation.z = churn ? Math.sin(t * 38) * 0.012 : 0; gv.model.position.y = churn ? Math.abs(Math.sin(t * 19)) * 0.008 : 0; }
+      // your gum in the tray (its tier's colour), its logo over it
       const offer = m.state === 'offering' && m.gum && G.gums[m.gum];
       gv.offer.visible = !!offer;
+      gv.badge.visible = !!offer;
       if (offer) {
         gv.offer.material = this.tierMats[G.gums[m.gum].tier] || this.tierMats.classic;
-        gv.offer.position.y = 1.0 + Math.sin(t * 4) * 0.01;
+        gv.offer.position.y = gv.chute.y + Math.sin(t * 4) * 0.01;
         gv.offer.rotation.y += dt * 2;
+        if (gv.badgeGum !== m.gum) { gv.badgeGum = m.gum; gv.badge.material.map = this.iconTexture(m.gum); gv.badge.material.needsUpdate = true; }
+        gv.badge.position.set(0, gv.chute.y + G.look.badgeUp + Math.sin(t * 2.2) * 0.02, gv.chute.z + 0.08);
       }
     }
   }

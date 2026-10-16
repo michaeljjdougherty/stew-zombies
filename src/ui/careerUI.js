@@ -9,6 +9,7 @@ import { ACHIEVEMENTS, TOTAL_G } from '../career/achievements.js';
 import { cleanName } from '../career/career.js';
 import { pinOk } from '../career/auth.js';
 import { CONFIG } from '../config.js';
+import { gumIconURL } from '../render/gumIcons.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -251,7 +252,7 @@ export class GumsUI {
 
   ball(id, extra = '') {
     const d = G().gums[id];
-    return `<span class="gm-ball" style="--c:${G().tiers[d.tier].color}"></span><span>${d.name}</span>${extra}`;
+    return `<img class="gm-ball" alt="" src="${gumIconURL(id, 104)}" style="--c:${G().tiers[d.tier].color}"><span>${d.name}</span>${extra}`;
   }
 
   count(id) {

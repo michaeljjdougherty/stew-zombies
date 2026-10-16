@@ -70,8 +70,8 @@
   .gm-slot[aria-pressed="true"], .gm-gum[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 0 18px color-mix(in srgb, var(--c) 50%, transparent); }
   .gm-gum[disabled] { opacity: .35; cursor: default; }
   .gm-gum.inpack { outline: 2px dashed color-mix(in srgb, var(--c) 70%, transparent); outline-offset: -5px; }
-  .gm-ball { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--c) 42%, color-mix(in srgb, var(--c) 45%, #000)); box-shadow: 0 0 10px var(--c), 0 2px 3px #000; }
-  .gm-slot .gm-ball { width: 52px; height: 52px; }
+  .gm-ball { width: 46px; height: 46px; border-radius: 50%; filter: drop-shadow(0 0 6px var(--c)) drop-shadow(0 2px 3px #000); }
+  .gm-slot .gm-ball { width: 64px; height: 64px; }
   .gm-n { font: 700 11px var(--mono); color: var(--c); letter-spacing: 1px; }
   .gm-detail { min-height: 64px; padding: 10px 14px; border-left: 3px solid var(--c, var(--line)); background: rgba(0,0,0,.35); }
   .gm-detail b { font-family: var(--display); font-size: 20px; color: var(--c); letter-spacing: 1px; }
@@ -242,8 +242,8 @@
   /* your GobbleGum: the ball (its tier's colour), its name, what's left of it */
   #gum { position: absolute; left: max(16px, 2.2vw); bottom: calc(max(12px, 2vh) + min(130px, 17vw) + 50px); display: flex; align-items: center; gap: 9px; animation: perkIn .45s ease-out; }
   #gum[hidden] { display: none; }
-  #gum .ball { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--c) 40%, color-mix(in srgb, var(--c) 45%, #000)); box-shadow: 0 0 12px var(--c), 0 2px 4px #000; position: relative; }
-  #gum .ball::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--f, 1) * 360deg), transparent 0); mask: radial-gradient(circle, transparent 18px, #000 19px); -webkit-mask: radial-gradient(circle, transparent 18px, #000 19px); }
+  #gum .ball { width: 40px; height: 40px; border-radius: 50%; background: var(--icon) center / cover no-repeat; box-shadow: 0 0 12px var(--c), 0 2px 4px #000; position: relative; }
+  #gum .ball::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--f, 1) * 360deg), transparent 0); mask: radial-gradient(circle, transparent 21px, #000 22px); -webkit-mask: radial-gradient(circle, transparent 21px, #000 22px); }
   #gum .nm { font-family: var(--display); font-size: 17px; letter-spacing: 1px; color: #fff; text-shadow: 0 1px 2px #000; }
   #gum .st { font: 700 11px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--c); text-shadow: 0 1px 2px #000; }
   #gum.ready .st { animation: puBlink .9s steps(2) infinite; }
