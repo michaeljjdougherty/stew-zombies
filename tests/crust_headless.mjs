@@ -9,6 +9,7 @@ import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
 import { islandAt } from '../src/sim/crustPower.js';
 import { emptyCommand } from '../src/sim/player.js';
+import { givePerk } from '../src/sim/perks.js';
 import { makeZombie } from '../src/sim/zombies.js';
 import { powerAllOn } from '../src/sim/crustPower.js';
 
@@ -195,21 +196,39 @@ chase('caves: from the summit down to the mine', { x: -170, z: -30, y: 10 }, { x
   for (const [name, x, z, y] of spots) { put(x, z, y + 0.4); step({}, 60); check(Math.abs(me.pos.y - y) < 0.15, `standing on ${name} (y ${me.pos.y.toFixed(2)})`); }
 }
 
-// --- guard rails: you can't walk off a ledge, but for the gaps left to dive off
+// --- guard rails round the rims and the decks; the ledges inside are open (dive off any of them)
 {
   const { me, put, walk, step } = game();
-  check(CRUST.rails.length > 100, `${CRUST.rails.length} stretches of guard rail round the ledges and decks`);
-  for (const isl of CRUST.islands) {
-    const ds = CRUST.dives.filter((d) => d.island === isl.id);
-    const ok = ds.filter((d) => CRUST.portals.some((p) => p.drop && Math.hypot(p.x - d.x, p.z - d.z) < 3));
-    check(ds.length >= 2 && ok.length === ds.length, `${isl.name}: ${ds.length} places to dive off (${ds.map((d) => d.y.toFixed(1) + ' m').join(', ')})`);
+  check(CRUST.rails.length > 50, `${CRUST.rails.length} stretches of guard rail round the rims and decks`);
+  // no rail on any ledge inside an island: only round the rims
+  let ledgeRails = 0;
+  for (const T of CRUST.terrains) for (let iz = 0; iz < T.nz; iz++) for (let ix = 0; ix < T.nx; ix++) {
+    const c = T.i(ix, iz);
+    for (const [dx, dz, bit] of [[1, 0, 1], [-1, 0, 2], [0, 1, 4], [0, -1, 8]]) {
+      const jx = ix + dx, jz = iz + dz;
+      if ((T.rail[c] & bit) && jx >= 0 && jz >= 0 && jx < T.nx && jz < T.nz && T.walkable(T.i(jx, jz))) ledgeRails++;
+    }
   }
-  // the west terrace's lip, away from the dive: the rail holds you
-  put(-19.5, 6, 4.5); walk(0, 6, 4); step({}, 30);
-  check(Math.abs(me.pos.y - 4.5) < 0.3, `the rail along the terrace's lip stops you (y ${me.pos.y.toFixed(2)})`);
-  // ...and at the dive spot you go over
+  check(ledgeRails === 0, `no guard rails on the ledges inside the islands (${ledgeRails} cells)`);
+  // the west terrace's lip, well away from its marked dive spot: you go over it too
+  put(-19.5, 6, 4.5); walk(0, 6, 4); step({}, 60);
+  check(me.pos.y < 0.5, `off the terrace's lip anywhere, down into the pit (y ${me.pos.y.toFixed(2)})`);
+  // PHD Gaylor: sprint off that same lip (nowhere marked) and dive as you go over: the blast
+  {
+    const g = game();
+    givePerk(g.sim, g.me, 'phdGaylor');
+    g.put(-19.5, 6, 4.5, -Math.PI / 2);
+    let n = 0;
+    while (g.me.grounded && n++ < 300) g.step({ moveY: 1, sprint: true });
+    g.step({ moveY: 1, sprint: true, crouch: true });
+    const dove = !!g.me.dive;
+    g.step({ crouch: true }, 120);
+    const boom = g.log.find((e) => e.type === 'explosion' && (e.etype === 'phd' || e.etype === 'phdHigh'));
+    check(dove && !!boom && g.me.health === g.me.maxHealth, `PHD Gaylor: a dive off any ledge lands with the blast (${boom ? boom.etype : 'none'}), and no fall damage`);
+  }
+  // ...as at the dive spot
   put(-19.5, -3.5, 4.5); walk(-8, -3.5, 4); step({}, 60);
-  check(me.pos.y < 0.5, `at the gap you dive into the pit (y ${me.pos.y.toFixed(2)})`);
+  check(me.pos.y < 0.5, `at the marked spot you dive into the pit (y ${me.pos.y.toFixed(2)})`);
   // the galleon's bulwark, the lighthouse's walls
   put(17, -158, 3.7); walk(17, -148, 4); step({}, 30);
   check(Math.abs(me.pos.y - 3.7) < 0.3 && me.pos.z < -156, `the galleon's side keeps you on the deck (${me.pos.z.toFixed(1)}, y ${me.pos.y.toFixed(2)})`);

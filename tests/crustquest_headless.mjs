@@ -234,9 +234,18 @@ const forgeAll = (g) => {
   check(g.me.loadout.slots[g.me.loadout.current].id === 'Fire Hammer', 'take the Fire Hammer');
   g.me.points = 6000;
   g.bench();
-  check(g.me.prompt && /temper the Fire Hammer/.test(g.me.prompt.text) && g.me.prompt.cost === CONFIG.crust.forge.temperCost, `"${g.me.prompt && g.me.prompt.text}" (${g.me.prompt && g.me.prompt.cost})`);
+  check(g.me.prompt && /isn't ready/.test(g.me.prompt.text) && /craters/.test(g.me.prompt.sub || ''), `before its trial: "${g.me.prompt && g.me.prompt.text}" (${g.me.prompt && g.me.prompt.sub})`);
   g.use();
-  check(g.me.points === 1000 && E(g).forge.work && E(g).forge.work.kind === 'temper', 'Pit takes it to temper');
+  check(!E(g).forge.work, '...Pit won\'t take it yet');
+  // its trial (hammerTrials.js has its own test): the craters on the Trench Front
+  for (const k of E(g).trials.fire.craters.slice(0, CONFIG.crust.trials.fire.craters)) {
+    g.me.pos.x = k.x; g.me.pos.z = k.z; g.me.pos.y = k.y + 0.05; g.step({}, 3);
+  }
+  check(E(g).trials.fire.state === 'done', 'the Fire Hammer\'s been through the craters');
+  g.bench();
+  check(g.me.prompt && /temper the Fire Hammer/.test(g.me.prompt.text) && g.me.prompt.cost === null, `"${g.me.prompt && g.me.prompt.text}" (free)`);
+  g.use();
+  check(g.me.points === 6000 && E(g).forge.work && E(g).forge.work.kind === 'temper', 'Pit takes it to temper, for nothing');
   g.step({}, 60 * (CONFIG.crust.forge.temperTime + 1));
   check(g.me.loadout.slots.some((s) => s.id === 'Fire Hammer+'), `it comes back the ${CONFIG.weapons['Fire Hammer+'].name}`);
   // lose it: two more guns on top (and no Milton Kick) push it out

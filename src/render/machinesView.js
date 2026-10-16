@@ -377,7 +377,9 @@ export class MachinesView {
       if (pv.bottle) pv.bottle.rotation.y += dt * 0.6;
       pv.bottleMat.emissiveIntensity = lv * 1.2;
       pv.v.level = lv;
-      if (pv.shake > 0) { pv.shake -= dt; pv.g.position.y = Math.sin(t * 60) * 0.01 * pv.shake; } else pv.g.position.y = 0;
+      // (shake about its floor: a machine up on a deck or in the Fort stands at m.center.y, not 0)
+      const baseY = pv.m.center.y || 0;
+      if (pv.shake > 0) { pv.shake -= dt; pv.g.position.y = baseY + Math.sin(t * 60) * 0.01 * pv.shake; } else pv.g.position.y = baseY;
     }
     // power switch
     if (this.power) {

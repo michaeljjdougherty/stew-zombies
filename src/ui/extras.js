@@ -30,10 +30,16 @@ export class Extras {
     if (eb) eb.addEventListener('click', () => this.h.watchEnding());
     const ib = $('x-intro');
     if (ib) ib.addEventListener('click', () => this.h.watchIntro());
+    // Call of the Crust's films
+    const ci = $('x-crust-intro');
+    if (ci) ci.addEventListener('click', () => this.h.watchFilm('intro'));
+    const ce = $('x-crust-ending');
+    if (ce) ce.addEventListener('click', () => this.h.watchFilm('ending'));
   }
 
   story() {
-    return `<h3>Stew Leonard High: Out of Bounds</h3>
+    const crustDone = !!this.h.progress().crustDone;
+    return `<h3>Map 1 · Stew Leonard High: Out of Bounds</h3>
       <p class="note">Story by James Amarante.</p>
       <p>The <b>Stew Leonards</b> were an unstoppable high school basketball team heading into the championship game off an undefeated season. But behind closed doors, friction brewed. Right before the final stretch, the team made a unanimous decision: they cut <b>Erik Madsen</b>. Number 8.</p>
       <p>Driven by resentment, Erik went looking for the power to take revenge on his former teammates. He found a dark entity known as <b>The Schnitz</b>. In exchange for his soul, The Schnitz gave him powers.</p>
@@ -44,7 +50,18 @@ export class Extras {
       <p>He'll talk to you the whole night. There's a PA handset in the teachers' lounge if you want to talk back.</p>
       <h4>The ending</h4>
       <p>Spoilers: this plays the "Out of Bounds" cutscene from the end of The Final Whistle.</p>
-      <p><button class="sm" id="x-intro" type="button">Watch the intro</button> <button class="sm" id="x-ending" type="button">Watch the ending</button></p>`;
+      <p><button class="sm" id="x-intro" type="button">Watch the intro</button> <button class="sm" id="x-ending" type="button">Watch the ending</button></p>
+      <h3 class="x-map2">Map 2 · Call of the Crust</h3>
+      <p class="note">Story by Michael Dougherty.</p>
+      <p>Erik is beaten, but the season isn't over. A portal throws the crew somewhere past the edge of everything: five islands floating in space, and every one of them belongs to <b>The Schnitz</b>.</p>
+      <p>The hub is <b>the Anvil</b>, an ancient forge where <b>Pit</b> got to first. He's a blacksmith now. Over the void hangs the Schnitz's cage, with <b>Chops</b>, <b>Regs</b> and <b>P</b> inside it. And the Schnitz has taken <b>Zach</b>.</p>
+      <h4>The islands</h4>
+      <p>Launchers on the Anvil's rim fling you to the other four: the <b>Ship Graveyard</b> (wrecks, a lighthouse, and the Captain asleep past the cliffs), the <b>Research Base</b> (everything sparks, and there's a big robot), the <b>Trench Front</b> (always on fire) and the <b>Ice Caves</b> (a cold golem up top).</p>
+      <h4>The plan</h4>
+      <p>The power's dead: every launcher blew a relay. Pull them for Pit to fix, bring back the four pieces of the <b>War Hammer</b>, then the titans' cores, and Pit will forge hammers that can take on the Schnitz and free Zach. The cage only opens for one price.</p>
+      <h4>The ending</h4>
+      <p>${crustDone ? 'Spoilers: this plays the ending of Call of the Crust.' : 'Free Zach to unlock the ending here.'}</p>
+      <p><button class="sm" id="x-crust-intro" type="button">Watch the intro</button> <button class="sm" id="x-crust-ending" type="button" ${crustDone ? '' : 'disabled'}>Watch the ending</button></p>`;
   }
 
   notes() {
@@ -77,7 +94,12 @@ export class Extras {
       <h4>Cheddar Rounds</h4><p>Every few rounds Erik lets his dogs out. The whole pack comes for you; the last one drops Full Pantry.</p>
       <h4>Last stand</h4><p>When you go down you can still shoot with your pistol. In solo, Second Helping gets you back up.</p>
       <h4>The Final Whistle</h4><p>Erik is sealed in the Press Box above center court. Follow the objective in the top corner to take back what he stole and drag him out of there.</p>
-      <h4>Secrets</h4><p>The night he was cut, Erik confiscated the team's ${STEW_ITEMS.length} good-luck charms and hid them around the school. Find them all.</p>`;
+      <h4>Secrets</h4><p>The night he was cut, Erik confiscated the team's ${STEW_ITEMS.length} good-luck charms and hid them around the school. Find them all.</p>
+      <h3 class="x-map2">Call of the Crust</h3>
+      <h4>Getting around</h4><p>Launch pads on the Anvil's rim fling you to the other islands once their relay's fixed (each one needs a moment to recharge). Ziplines and ice slides take you back. Dive and go prone to get out of trouble.</p>
+      <h4>Power</h4><p>It starts dead. Pull each launcher's blown relay and bring it to Pit. Every island has its own power switch and its own perk machine.</p>
+      <h4>The War Hammer</h4><p>Four pieces wait at shrines, one on each island. Build the hammer at the Anvil, give it the titans' elemental cores, and let Pit temper it.</p>
+      <h4>GobbleGum</h4><p>Gum machines stand next to the perk machines. Build your pack of five from the title screen's GobbleGum blade, and press ${this.glyph('gum')} to use a gum that waits for you.</p>`;
   }
 
   jukebox() {

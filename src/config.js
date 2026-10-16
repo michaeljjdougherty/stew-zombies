@@ -121,12 +121,14 @@ export const CONFIG = {
     landSlowdownTime: 0.22,  // brief speed penalty after landing
     landSlowdownMult: 0.6,
 
-    // dolphin dive: sprint, then crouch. You launch up and out (about 0.7 m up,
+    // dolphin dive: sprint, then crouch (or crouch just as you run off a ledge:
+    // up to lipTime s after). You launch up and out (about 0.7 m up,
     // 4 m through the air), come down belly first with a thud, skid a short way,
     // then you're crouched. (A low hop and a long skid read as a slide.)
-    dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6 },
-    // prone: flat on your belly. A dive ends in it (you have to get up); hold
-    // crouch to go down on purpose. Jump, crouch or sprint gets you up again
+    dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6, lipTime: 0.2 },
+    // crouch as in Black Ops: tap it to crouch, tap again to stand; hold it
+    // (holdTime) to go prone. Prone: flat on your belly, and a dive ends in it.
+    // Tap crouch to get up to a crouch, hold it (or jump, or sprint) to stand
     // (it takes getUpTime). You crawl at speedMult, and hold your aim steadier.
     prone: { height: 0.6, eyeHeight: 0.42, speedMult: 0.22, holdTime: 0.4, getUpTime: 0.4, minTime: 0.2, spreadMult: 0.6, swayMult: 0.5,
       reach: 0.95,           // m lying flat, your head's ahead of you (and your feet behind): kept out of walls and rails
@@ -981,6 +983,9 @@ export const CONFIG = {
     // `every` rounds, never more than `max` a game
     divinium: { fromRound: 2, chance: 0.1, every: 10, max: 5 },
     starter: 3,                  // vials a new career starts with
+    // a welcome gift, once per username, for signing in before `until`: `divinium`
+    // vials and `megas` of every Mega (Classics and Whimsicals never run out anyway)
+    gift: { id: 'welcome-2026-10', until: '2026-10-30T23:59:59-04:00', divinium: 30, megas: 1 },
     // Dr. Monty's Factory (src/ui/factoryUI.js), as in Black Ops 3: three vats and
     // three buttons. Button n powers up n vats for vats[n-1].cost vials and they
     // brew vats[n-1].gums Megas between them (each one's tier by `odds`).
@@ -1266,7 +1271,7 @@ export const CONFIG = {
       phdGaylor: {
         name: 'PHD Gaylor', cost: 2000, color: '#9b4dff', power: true, glyph: 'P',
         desc: 'Your own explosions and falls can\'t hurt you, and a dolphin dive off a ledge lands with a purple blast (the higher, the bigger).',
-        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', minDrop: 1.2, highDrop: 2.5,
+        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', minDrop: 0.7, highDrop: 2.5,
       },
       marathonMinestrone: {
         name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',
@@ -1624,12 +1629,13 @@ export const CONFIG = {
       near: [5, 20],         // m: puffs fade out closer than this to you (no fog in your face)
       drift: 2.2,            // m a puff wanders
     },
-    // guard rails along the ledges (src/map/terrain.js), but for the marked places to dive off
+    // guard rails (src/map/terrain.js) round each island's rim, over nothing
     rails: {
-      drop: 1.3,             // m: a ledge higher than this gets a rail
+      rimOnly: true,         // the ledges on an island are open: dive off any of them (false: railed, but for the marked dive spots)
+      drop: 1.3,             // m: a ledge higher than this gets a rail (with rimOnly: false)
       h: 1.1,                // m: the rail's height (more than you can jump)
       t: 0.14,               // m: its thickness, on the high side of the edge
-      diveR: 2.2,            // m: the gap left in the rail at a dive spot (radius)
+      diveR: 2.2,            // m: the gap left in the rail at a dive spot (radius, with rimOnly: false)
     },
     mudSpeed: 0.6,           // walking speed in deep mud (x); duckboards don't slow you
     spawnRadius: 42,         // zombies only rise this close to someone...
@@ -1663,7 +1669,8 @@ export const CONFIG = {
       dyingTime: 4.5,        // s it takes to go down
       leash: 20,             // s with nobody on its island before it goes back to sleep
       // stuck, or you're somewhere it can't walk to: it leaps (the Fiend burrows) to open ground near you
-      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8 },
+      // (checkEvery s: if it's got less than checkDist m in that time, it's stuck too)
+      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8, checkEvery: 2.5, checkDist: 1.2 },
       // where bullets spark off them: [height up its body, radius] (m)
       // how each one's drawn (src/render/titanView.js): its eyes' glow (m up, m forward),
       // which way its model faces, its walk, how far it sinks to wake and kneel
@@ -1690,6 +1697,10 @@ export const CONFIG = {
         exhaleTime: 1.0, push: 9, // and the gust back out
         rise: 7,                // m it comes up out of the dark when it wakes
         mouth: [0, 4.0, 9.5],   // its mouth, from where it sits (m: x, up, z)
+        // once it's up it follows you through the air: dist m off, its base height m
+        // over the ground (or you; never more than maxUp m over you), at up to
+        // speed m/s, turning turn rad/s
+        follow: { dist: 26, height: 3, maxUp: 9, clear: 7, speed: 6, ease: 0.8, turn: 0.9 },
         landReach: 70,          // m from it its crew can land
         landMin: 3,             // m from you, at the closest
       },
@@ -1807,12 +1818,24 @@ export const CONFIG = {
       socketRange: 2.1,      // m from a socket on the Anvil to take or put back its hammer
       forgeTime: 22,         // s Pit takes over each War Hammer
       strikeEvery: 0.85,     // s between his hammer blows while he works (the sparks)
-      temperCost: 5000,      // points for Pit to temper a War Hammer (its elemental upgrade)
       temperTime: 9,         // s he takes over that
       introDelay: 9,         // s into the game before he says hello (after the Schnitz's welcome)
       idleEvery: 45,         // s at least between his "bring me a core" nudges
       nearPit: 30,           // m: further than this from him and you hear him on the walkie
       lineGap: 0.5,          // s between one of his lines and the next
+    },
+    // The War Hammers' trials (src/sim/hammerTrials.js): each element earns its "+"
+    // on its own island, then Pit tempers it for free.
+    trials: {
+      // buoys: out m off the north shore, height m up; a gale reaches them within the
+      // hammer's reach + its gale's range (+ slack m), angle degrees either side, reachUp m up or down
+      wind: { out: 6, height: 2.2, slack: 1.5, angle: 40, reachUp: 6 },
+      // charge every coil within time s of the first; then slam within near m of one
+      lightning: { time: 60, near: 5 },
+      // count zombies frozen or smashed in the Ice Caves; then slam within near m of the shrine
+      ice: { count: 20, near: 5 },
+      // craters to walk the Fire Hammer through (within margin m of the rim)
+      fire: { craters: 3, margin: 0.6 },
     },
     // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of
     // you. The War Hammer is plain iron; a titan's core makes it elemental (its

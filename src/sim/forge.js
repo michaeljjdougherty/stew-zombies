@@ -13,8 +13,9 @@
 //      socket on the Anvil: N wind, E lightning, S fire, W ice.
 //   3. Take a hammer from its socket [F] with your War Hammer in hand: yours
 //      takes on that element (one person per element; put it back and yours is
-//      plain again; lose it and it goes back to its socket). Hand Pit an
-//      elemental hammer you're holding and he tempers it, for a price: its "+".
+//      plain again; lose it and it goes back to its socket). Do that element's
+//      trial on its island (hammerTrials.js), then hand Pit the hammer and he
+//      tempers it, free: its "+".
 //   4. All four forged: ring the Anvil [F] and Big Evil Zach comes down into
 //      the pit (zachBoss.js).
 //
@@ -30,6 +31,7 @@ import { startFinale } from './zachBoss.js';
 import { giveRelays, relaysCarriedBy, relaysFixed, hubPowered } from './crustPower.js';
 import { paSay } from './pa.js';
 import { RNG } from '../core/rng.js';
+import { trialDone, trialHint, trialObjective } from './hammerTrials.js';
 
 // which titan guards which element
 export const CORE_ELEMENT = { ship: 'wind', research: 'lightning', caves: 'ice', trench: 'fire' };
@@ -236,6 +238,8 @@ export function forgeObjective(sim, pid) {
   if (F.work) return F.work.kind === 'forge' ? `Pit is forging the ${HAMMER_IDS[F.work.element]}` : `Pit is tempering the ${HAMMER_IDS[F.work.element]}`;
   const lying = Object.values(E.cores).find((k) => k.state === 'dropped');
   if (lying) return `Pick up the ${ELEMENT_NAMES[lying.element]} core`;
+  const trial = me && me.alive ? trialObjective(sim, me) : null;
+  if (trial) return trial;
   const n = hammersForged(E);
   if (n === 4 && !F.rung) return 'Ring the Anvil';
   if (n > 0 && n < 4) return `War Hammers forged · ${n} of 4`;
@@ -275,7 +279,9 @@ class BenchInteractable {
     }
     if (!hubPowered(sim)) return { text: 'Pit needs the launchers\' burnt relays', cost: null, sub: 'One in the box beside each launcher, up on the rim' };
     const el = this.heldHammer(sim, p);
-    if (el && !F.queue.length) return { text: `Press [F] to have Pit temper the ${HAMMER_IDS[el]}`, cost: c.temperCost, sub: `It comes back as the ${sim.cfg.weapons[HAMMER_IDS[el] + '+'].name}` };
+    // (it earns its temper on its own island first: hammerTrials.js)
+    if (el && !F.queue.length && !trialDone(sim, el)) return { text: `Pit: "The ${HAMMER_IDS[el]} isn't ready, man."`, cost: null, sub: trialHint(sim, el) };
+    if (el && !F.queue.length) return { text: `Press [F] to have Pit temper the ${HAMMER_IDS[el]}`, cost: null, sub: `It comes back as the ${sim.cfg.weapons[HAMMER_IDS[el] + '+'].name}` };
     if (hammersForged(E) === 4) return { text: F.rung ? 'Pit' : 'Pit: "Ring the Anvil, man."', cost: null };
     return { text: 'Pit needs the titans\' War Hammer cores', cost: null };
   }
@@ -296,8 +302,7 @@ class BenchInteractable {
     if (F.work || F.queue.length) { sim.emit('useDenied', { playerId: p.id }); return; }
     const el = this.heldHammer(sim, p);
     if (!el) return;
-    if (p.points < c.temperCost) { sim.emit('cantAfford', { playerId: p.id, cost: c.temperCost }); return; }
-    sim.spendPoints(p, c.temperCost);
+    if (!trialDone(sim, el)) { sim.emit('useDenied', { playerId: p.id }); return; }
     const w = p.loadout, slot = w.slots[w.current];
     if (w.reloading) cancelReload(sim, p);
     slot.away = true;

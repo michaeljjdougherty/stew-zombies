@@ -122,7 +122,7 @@ export class Input {
     c.yaw = this.yaw;
     c.pitch = this.pitch;
     c.sprint = k.has('sprint') || P.sprint;
-    c.crouch = k.has('crouch') || P.crouch;
+    c.crouch = k.has('crouch') || P.crouch || this.edges.has('crouch');   // (a tap quicker than a tick still counts)
     c.fire = this.mouse.left || P.fire;
     c.ads = this.mouse.right || P.ads;
     c.adsPressed = this.edges.has('ads');
@@ -163,11 +163,13 @@ export class Input {
     // movement: left stick (up is forward)
     P.move.x = st.ls.x; P.move.y = -st.ls.y;
     // sprint: click the left stick; stops when you stop pushing forward or aim
-    if (st.pressed(BTN.LS)) { P.sprint = !P.sprint; if (P.sprint) P.crouch = false; }
+    if (st.pressed(BTN.LS)) P.sprint = !P.sprint;
     if (P.move.y < 0.3 || st.lt > 0.35) P.sprint = false;
-    // crouch toggle; jumping stands you up
-    if (st.pressed(BTN.B)) { P.crouch = !P.crouch; P.sprint = false; }
-    if (st.pressed(BTN.A)) { this.edges.add('jump'); P.crouch = false; }
+    // crouch: B as it's held (the game works out tap to crouch, hold for prone,
+    // and on the run a dive); it ends a sprint
+    P.crouch = st.down(BTN.B);
+    if (st.pressed(BTN.B)) { P.sprint = false; this.edges.add('crouch'); }
+    if (st.pressed(BTN.A)) this.edges.add('jump');
     // triggers
     const fireWas = P.fire, adsWas = P.ads;
     P.fire = st.rt > 0.35;

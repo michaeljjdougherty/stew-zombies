@@ -1,8 +1,8 @@
 # Stew Zombies: handoff for a new Claude thread
 
-Read this first, then the README (it covers Phases 1–9 and the code layout in
-detail). This file covers everything since, plus the way of working that only
-lived in the old chat. Last updated October 16, 2026 (commit after `d68ccf2`).
+Read this first, then the README (it covers every map and system, including
+2.0, and the code layout). This file covers the way of working that only lived
+in the old chat. Last updated October 16, 2026 (commit after `d68ccf2`).
 
 ## What it is
 
@@ -33,7 +33,7 @@ build step), by **Michael Dougherty** and **James Amarante** (GitHub
 - **Weapons and items:** the M2 Flamethrower, Maisy Dog, LBD, Milton Kick (a third weapon slot), and seven newer guns.
 - **Locked for now:** the Crust is behind a **developer code** that only Michael and James have (`DEV_CODE` in `src/ui/mapselect.js`; online, the host needs it to pick the map). Online it's labelled **beta**.
 
-**Systems added since the README was written:**
+**Systems added in 2.0:**
 
 - **Careers:** usernames with 4-digit PINs, stats, and Xbox-style achievements. The code is in `src/career/` and uses Firebase Realtime DB + Auth over REST, with no SDK. The DB is `stew-zombies-default-rtdb`, and its rules only let the career's own auth uid write. The web API key in `config.js` is public by design.
 - **GobbleGum:** all 64 Black Ops 3 gums.
@@ -68,7 +68,6 @@ build step), by **Michael Dougherty** and **James Amarante** (GitHub
 ## Known quirks
 
 - **Headless screenshots are very slow.** SwiftShader takes about 4 seconds a frame, so CSS transitions look frozen in screenshots. That's the test environment, not a bug.
-- **The README is out of date.** It stops at Phase 9 and doesn't cover the Crust, careers, GobbleGum or the 2.0 menu.
 - **Hotspot files** that most work touches: `index.html` (all markup and CSS), `src/config.js`, `src/main.js`, `src/audio/director.js`, `src/sim/sim.js` and `src/ui/patchNotes.js`. Parallel threads will conflict here, so keep each one's edits small and pull often.
 
 ## Threads that can run side by side
@@ -94,4 +93,3 @@ lines will.
 
 - Releasing the Crust publicly (removing the dev-code lock), and taking its online play out of beta.
 - Giving the other menus (pause, settings, map select, the pack screen, game over) the same charred-book look as the title.
-- Bringing the README up to date for 2.0.

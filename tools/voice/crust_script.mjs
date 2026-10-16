@@ -31,7 +31,8 @@ each(PIT_FORGE, 'pit'); each(PIT_POWER, 'pit');
 each(L.CRUST_TALKS); each(L.CRUST_BANTER); each(L.CRUST_ISLAND_BANTER); each(L.CAGE_TALK);
 each(L.CRUST_REACT); each(L.CRUST_ISLAND_REACT); each(L.CRUST_RADIO); each(L.CRUST_FELL);
 for (const P of Object.values(L.CRUST_PLACES)) { for (const [who, t] of Object.entries(P)) if (who !== 'reply') add(who, t); if (P.reply) add(P.reply.who, P.reply.text); }
-each(L.SCHNITZ_ROASTS, 'schnitz'); each(L.ZACH_TAUNTS, 'schnitz');
+// (the roasts are keyed by who they're aimed at, but the Schnitz says them all)
+Object.values(L.SCHNITZ_ROASTS).forEach((v) => each(v, 'schnitz')); each(L.ZACH_TAUNTS, 'schnitz');
 // the finale: the Schnitz through Zach, then Zach himself
 each(ZACH_FINALE.descend, 'schnitz'); each(ZACH_FINALE.phase, 'schnitz'); each(ZACH_FINALE.freed, 'schnitz'); each(ZACH_FINALE.zach, 'zach');
 

@@ -152,7 +152,8 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
   'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding',
-  'gum', 'gumPack', 'gumStock', 'gumBuys', 'perkBonus'];   // (GobbleGum: src/sim/gums.js)
+  'gum', 'gumPack', 'gumStock', 'gumBuys', 'perkBonus',   // (GobbleGum: src/sim/gums.js)
+  'shove', 'slowUntil', 'slowMult'];   // (a titan's breath or slam carrying you, its frost: src/sim/crustEgg.js)
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {
@@ -200,6 +201,11 @@ export function applyMirror(sim, M, localId) {
       if ((s.launchRev || 0) > (p.launchRev || 0)) {
         p.launchRev = s.launchRev;
         if (s.launch) { p.launch = structuredCopy(s.launch); p.sprinting = false; }
+      }
+      // a titan (or Zach) threw you up off your feet
+      if ((s.kicks || 0) > (p.kicks || 0)) {
+        p.kicks = s.kicks;
+        p.vel.y = Math.max(p.vel.y, s.kickUp || 0); p.grounded = false;
       }
       // the host put you on a zipline (you pressed F at the top): ride it
       if ((s.rideRev || 0) > (p.rideRev || 0)) {

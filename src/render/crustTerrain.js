@@ -404,7 +404,7 @@ export function buildRails(out, group, map) {
   // (one set of meshes per island, so each can be culled on its own)
   const islands = [...new Set(map.rails.map((r) => r.island))];
   for (const isl of islands) buildRailSet(group, map.rails.filter((r) => r.island === isl), mats);
-  buildDives(out, group, map);
+  if (!CONFIG.crust.rails.rimOnly) buildDives(out, group, map);   // (every ledge is a place to dive: no marks)
 }
 
 function buildRailSet(group, rails, mats) {

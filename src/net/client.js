@@ -6,6 +6,7 @@
 // =============================================================================
 import { updatePlayer, proneLevel } from '../sim/player.js';
 import { applyPatch, applyMirror, positionFrame, clean } from './state.js';
+import { feelTitans } from '../sim/crustEgg.js';
 
 const lerp = (a, b, k) => a + (b - a) * k;
 function lerpAngle(a, b, k) {
@@ -67,6 +68,7 @@ export class NetClient {
     if (sim.netTeleport) { cmd = { ...cmd, yaw: sim.netTeleport.yaw ?? cmd.yaw }; }
     sim.setInput(me.id, cmd);
     updatePlayer(sim, me, cmd, dt);
+    feelTitans(sim, me, dt);   // (the Crust: shoves die away; you can't walk through a titan)
     me.region = sim.nav.regionAt(me.pos, me.region);
     const mine = sim.drainEvents();
     for (const e of mine) out.push(e);

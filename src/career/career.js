@@ -29,7 +29,7 @@ const blankPending = () => ({ inc: {}, max: {}, ach: {}, gums: {} });
 // GobbleGum: Liquid Divinium, the Megas you own, and the pack of 5 you take into a game
 const GG = () => CONFIG.gobblegum;
 const isMegaId = (id) => { const d = GG().gums[id]; return !!d && d.tier !== 'classic' && d.tier !== 'whimsical'; };
-const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], started: false });
+const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], started: false, gifts: {} });
 
 export class Career {
   constructor(cfg = {}, { fetchFn = typeof fetch === 'function' ? fetch.bind(globalThis) : null, storage = (() => { try { return globalThis.localStorage; } catch { return null; } })() } = {}) {
@@ -44,6 +44,7 @@ export class Career {
     this.status = this.url ? 'connecting' : 'local';   // local | online | offline
     this.onUnlock = null;       // (achievement) => toast
     this.onChange = null;       // () => refresh the title chip / career screen
+    this.onGift = null;         // ({ divinium, megas, each }) => the welcome gift's pop-up
     this.flushing = false;
   }
 
@@ -97,6 +98,21 @@ export class Career {
     let p = this.db.profiles[key] || null;
     if (this.url) { try { const c = await this.request('GET', key); if (c) p = normalize(c, name); } catch { /* offline: the local copy will do */ } }
     return p ? { name: p.name, kills: p.stats.kills, rounds: p.stats.rounds, g: scoreOf(p) } : null;
+  }
+
+  // Every username so far (the database's, and this device's), A to Z, for the
+  // sign-in screen: [{ name, g }]. Offline: just the ones this device knows.
+  async listNames() {
+    const all = new Map();
+    for (const [key, p] of Object.entries(this.db.profiles)) all.set(key, { name: (p && p.name) || key, g: p ? scoreOf(p) : 0 });
+    if (this.url && this.fetch) {
+      try {
+        const r = await this.fetch(`${this.url}/players.json`);
+        const j = r.ok ? await r.json() : null;
+        for (const [key, p] of Object.entries(j && typeof j === 'object' ? j : {})) if (p && typeof p === 'object') all.set(key, { name: cleanName(p.name) || key, g: scoreOf(p) });
+      } catch { /* offline: this device's will do */ }
+    }
+    return [...all.values()].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
   }
 
   // Is this username taken (does it have a PIN)? { exists, claimed, offline }
@@ -158,6 +174,7 @@ export class Career {
           for (const [id, n] of Object.entries(pg.megas || {})) c.gums.megas[id] = Math.max(0, (c.gums.megas[id] || 0) + n);
           if (pg.pack) c.gums.pack = [...pg.pack];
           if (pg.started) c.gums.started = true;
+          for (const id of Object.keys(pg.gifts || {})) c.gums.gifts[id] = true;
           c.name = name;
           this.profile = c;
         } else {
@@ -168,12 +185,13 @@ export class Career {
           }
           pend.ach = { ...this.profile.achievements };
           const G = this.profile.gums;
-          pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started };
+          pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started, gifts: { ...G.gifts } };
           pend.fresh = true;
         }
         if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
         this.status = 'online';
         this.giveStarter();
+        this.giveGift();
         this.saveLocal();
         this.changed();
         await this.flush();
@@ -181,7 +199,7 @@ export class Career {
         this.status = 'offline';
         this.changed();
       }
-    } else this.giveStarter();
+    } else { this.giveStarter(); this.giveGift(); }
     return { ok: true };
   }
 
@@ -244,6 +262,7 @@ export class Career {
     for (const [id, n] of Object.entries(pg.megas || {})) if (n) body['gums/megas/' + id] = { '.sv': { increment: n } };
     if (pg.pack) body['gums/pack'] = pg.pack;
     if (pg.started) body['gums/started'] = true;
+    for (const id of Object.keys(pg.gifts || {})) body['gums/gifts/' + id] = true;
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
@@ -262,6 +281,7 @@ export class Career {
       for (const [id, n] of Object.entries(sg.megas || {})) { if (!ng.megas) break; ng.megas[id] = (ng.megas[id] || 0) - n; if (!ng.megas[id]) delete ng.megas[id]; }
       if (sg.pack && JSON.stringify(ng.pack) === JSON.stringify(sg.pack)) delete ng.pack;
       if (sg.started) delete ng.started;
+      for (const id of Object.keys(sg.gifts || {})) if (ng.gifts) delete ng.gifts[id];
       delete now.fresh;
       this.status = 'online';
       this.saveLocal();
@@ -352,6 +372,23 @@ export class Career {
     this.addDivinium(GG().starter || 0);
   }
 
+  // A welcome gift (CONFIG.gobblegum.gift), once per username, to anyone who
+  // signs in before it runs out. Returns what was given, or null.
+  giveGift(now = Date.now()) {
+    const g = GG().gift;
+    if (!this.profile || !g || !g.id || now > Date.parse(g.until) || this.profile.gums.gifts[g.id]) return null;
+    this.profile.gums.gifts[g.id] = true;
+    const pg = this.pending().gums;
+    pg.gifts = { ...(pg.gifts || {}), [g.id]: true };
+    if (g.divinium) this.addDivinium(g.divinium);
+    let megas = 0;
+    if (g.megas) for (const id of Object.keys(GG().gums)) if (isMegaId(id)) { this.addMega(id, g.megas); megas++; }
+    this.saveLocal(); this.changed();
+    const got = { divinium: g.divinium || 0, megas, each: g.megas || 0 };
+    if (this.onGift) try { this.onGift(got); } catch (e) { console.warn('career', e); }
+    return got;
+  }
+
   changed() { if (this.onChange) try { this.onChange(); } catch (e) { console.warn('career', e); } }
 }
 
@@ -375,6 +412,7 @@ function normalize(p, name) {
     for (const [id, n] of Object.entries(p.gums.megas || {})) if (isMegaId(id) && Number(n) > 0) out.gums.megas[id] = Math.floor(Number(n));
     out.gums.pack = cleanPack(p.gums.pack, out.gums.megas);
     out.gums.started = !!p.gums.started;
+    for (const [id, v] of Object.entries(p.gums.gifts || {})) if (v) out.gums.gifts[id] = true;
   }
   if (p && p.stats) for (const k of STAT_KEYS) out.stats[k] = Number(p.stats[k]) || 0;
   if (p && p.achievements) for (const [id, t] of Object.entries(p.achievements)) if (ACH_BY_ID[id]) out.achievements[id] = t;
