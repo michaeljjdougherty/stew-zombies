@@ -64,6 +64,17 @@ export class SoundDirector {
     A.play(S.achievementChime, {}, { gain: 1.1, reverb: 0.25, bus: 'music' });
   }
 
+  // Dr. Monty's Factory (src/ui/factoryUI.js): the vats power up, a vat opens, or no.
+  factory(stage, n = 1) {
+    const A = this.A;
+    if (!A.ready) return;
+    if (stage === 'power') {
+      A.play(S.gumChurn, { duration: this.cfg.gobblegum.factory.brew }, { gain: 0.75 + 0.1 * n, reverb: 0.45 });
+      A.play(S.sample, { key: 'g_ray', gain: 0.35, vary: false }, { gain: 1, reverb: 0.3 });
+    } else if (stage === 'open') A.play(S.gumPop, {}, { gain: 0.9, reverb: 0.3, delay: 0.05 * n });
+    else if (stage === 'deny') A.play(S.denied, {}, { gain: 0.7 });
+  }
+
   // The boot splash: the Tiger Fish logo flickers on while the dead moan.
   splash(moans) {
     const A = this.A;

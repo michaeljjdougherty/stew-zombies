@@ -44,6 +44,7 @@ import { Splash } from './ui/splash.js';
 import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI } from './ui/careerUI.js';
+import { FactoryUI } from './ui/factoryUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
@@ -973,7 +974,7 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { gums: 'btn-gums-back', career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
+const BACK_BUTTON = { gums: 'btn-gums-back', factory: 'btn-mf-back', career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 // --- careers: a username, its stats and achievements (src/career/; made up top) ---
 const achToast = new AchievementToast(() => sound.achievement());
@@ -981,7 +982,15 @@ career.onUnlock = (a) => achToast.push(a);
 // GobbleGum: the pack you take into games, and Dr. Monty's Factory
 const gumsUI = new GumsUI(career, { back: () => menus.show('title') });
 document.getElementById('btn-gums').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); });
-document.getElementById('btn-gums-factory').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); const f = document.getElementById('gm-factory'); if (f) f.scrollIntoView({ block: 'start' }); const b = document.getElementById('btn-gm-single'); if (b && !b.disabled) b.focus({ preventScroll: true }); });
+// Dr. Monty's Factory: its own screen (back goes to wherever you came from)
+let factoryFrom = 'title';
+const factoryUI = new FactoryUI(career, {
+  back: () => { if (factoryFrom === 'gums') gumsUI.open(); menus.show(factoryFrom); if (factoryFrom === 'title') refreshGumBlade(); },
+  sound: (stage, n) => sound.factory(stage, n),
+});
+const openFactory = (from) => { factoryFrom = from; menus.show('factory'); factoryUI.open(); };
+document.getElementById('btn-gums-factory').addEventListener('click', () => openFactory('title'));
+document.getElementById('btn-gm-factory').addEventListener('click', () => openFactory('gums'));
 // The GobbleGum blade on the title: your five, and your vials
 function refreshGumBlade() {
   const el = document.getElementById('b-pack');

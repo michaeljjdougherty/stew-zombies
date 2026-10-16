@@ -272,8 +272,8 @@ for (const id of all) {
   check(!C.gums.pack.includes('perkaholic'), '...a guest can\'t put a Mega in');
   await C.signIn('Gumball');
   check(C.gums.divinium === GG.starter, `a new career starts with ${GG.starter} vials`);
-  const got = C.openFactory('single', (() => { let i = 0; return () => [0.1, 0.2, 0.95, 0.5][i++ % 4]; })());
-  check(got && got.length === GG.factory.single.gums && C.gums.divinium === GG.starter - GG.factory.single.cost, `Dr. Monty's Factory: ${GG.factory.single.cost} vial → ${got && got.join(', ')}`);
+  const got = C.openFactory(1, (() => { let i = 0; return () => [0.1, 0.2, 0.95, 0.5][i++ % 4]; })());
+  check(got && got.length === GG.factory.vats[0].gums && C.gums.divinium === GG.starter - GG.factory.vats[0].cost, `Dr. Monty's Factory: ${GG.factory.vats[0].cost} vial → ${got && got.join(', ')}`);
   C.setPack([got[0], 'stockOption', 'swordFlay', 'coagulant', 'inPlainSight']);
   const pk = C.packForGame();
   check(pk.pack[0] === got[0] && pk.stock[got[0]] >= 1, 'your pack goes into the game with how many of each Mega');

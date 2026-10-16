@@ -981,8 +981,15 @@ export const CONFIG = {
     // `every` rounds, never more than `max` a game
     divinium: { fromRound: 2, chance: 0.1, every: 10, max: 5 },
     starter: 3,                  // vials a new career starts with
-    // Dr. Monty's Factory: vials in, Megas out (each one's tier by `odds`)
-    factory: { single: { cost: 1, gums: 2 }, bundle: { cost: 3, gums: 7 }, odds: { mega: 0.7, rare: 0.25, ultra: 0.05 } },
+    // Dr. Monty's Factory (src/ui/factoryUI.js), as in Black Ops 3: three vats and
+    // three buttons. Button n powers up n vats for vats[n-1].cost vials and they
+    // brew vats[n-1].gums Megas between them (each one's tier by `odds`).
+    // brew: s the vats bubble before their doors open; pop: s between gums coming out
+    factory: {
+      vats: [{ cost: 1, gums: 2 }, { cost: 2, gums: 4 }, { cost: 3, gums: 7 }],
+      odds: { mega: 0.7, rare: 0.25, ultra: 0.05 },
+      brew: 2.4, pop: 0.16,
+    },
     tiers: {
       classic: { name: 'Classic', color: '#3a8de8' },
       whimsical: { name: 'Whimsical', color: '#e85ab4' },

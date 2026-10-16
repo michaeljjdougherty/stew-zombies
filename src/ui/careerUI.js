@@ -223,7 +223,7 @@ export class AchievementToast {
 // The GobbleGum screen (from the title): build your pack of 5, see every gum
 // and how many of each Mega you own, and spend Liquid Divinium at Dr. Monty's
 // Factory. Pick a slot in your pack, then a gum to put in it (one already in
-// the pack swaps places). It all lives on your career (src/career/career.js):
+// the pack swaps places). (The factory has its own screen: factoryUI.js.) It all lives on your career (src/career/career.js):
 // signed in, it follows your username; as a guest, Classics only.
 // =============================================================================
 const $g = (id) => document.getElementById(id);
@@ -237,14 +237,11 @@ export class GumsUI {
     this.slot = 0;          // the pack slot being filled
     this.focus = null;      // the gum whose details are showing
     $g('btn-gums-back').addEventListener('click', () => back());
-    $g('btn-gm-single').addEventListener('click', () => this.factory('single'));
-    $g('btn-gm-bundle').addEventListener('click', () => this.factory('bundle'));
   }
 
   open() {
     this.slot = 0;
     this.focus = this.career.gums.pack[0];
-    $g('gm-reveal').textContent = '';
     this.render();
     const first = $g('gm-pack').querySelector('button');
     if (first) first.focus();
@@ -304,15 +301,6 @@ export class GumsUI {
       }
       list.append(h, grid);
     }
-    // the factory
-    const F = cfg.factory, pct = (x) => Math.round(x * 100) + '%';
-    $g('gm-odds').textContent = `${pct(F.odds.mega)} Mega, ${pct(F.odds.rare)} Rare, ${pct(F.odds.ultra)} Ultra-Rare`;
-    const sb = $g('btn-gm-single'), bb = $g('btn-gm-bundle');
-    sb.textContent = `${F.single.cost} vial → ${F.single.gums} Megas`;
-    bb.textContent = `${F.bundle.cost} vials → ${F.bundle.gums} Megas`;
-    sb.disabled = !C.signedIn || gums.divinium < F.single.cost;
-    bb.disabled = !C.signedIn || gums.divinium < F.bundle.cost;
-    $g('gm-factory').hidden = false;
     this.detail(this.focus || gums.pack[this.slot]);
   }
 
@@ -336,22 +324,5 @@ export class GumsUI {
     this.focus = id;
     this.slot = (this.slot + 1) % G().packSize;
     this.render();
-  }
-
-  factory(kind) {
-    const got = this.career.openFactory(kind);
-    if (!got) return;
-    this.render();
-    const box = $g('gm-reveal');
-    box.textContent = '';
-    got.forEach((id, i) => {
-      const d = G().gums[id];
-      const el = document.createElement('div');
-      el.className = 'gm-gum';
-      el.style.setProperty('--c', G().tiers[d.tier].color);
-      el.style.animationDelay = (i * 0.18) + 's';
-      el.innerHTML = this.ball(id, `<span class="gm-n">${G().tiers[d.tier].name}</span>`);
-      box.appendChild(el);
-    });
   }
 }

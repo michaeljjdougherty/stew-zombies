@@ -318,9 +318,10 @@ export class Career {
     this.addMega(id, -1);
     this.saveLocal(); this.changed();
   }
-  // Dr. Monty's Factory: Divinium in, Megas out. kind 'single' | 'bundle'. Returns the gums you got (or null).
-  openFactory(kind, rand = Math.random) {
-    const F = GG().factory, deal = F[kind];
+  // Dr. Monty's Factory: Divinium in, Megas out. vats: how many vats to power up
+  // (1-3). Returns the gums you got (or null).
+  openFactory(vats, rand = Math.random) {
+    const F = GG().factory, deal = F.vats[vats - 1];
     if (!this.profile || !deal || this.profile.gums.divinium < deal.cost) return null;
     this.addDivinium(-deal.cost);
     const byTier = {};

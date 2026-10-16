@@ -79,10 +79,6 @@
   .gm-detail small { color: var(--muted); font: 11px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
   .gm-tier { margin: 6px 0 8px; font: 700 12px var(--mono); letter-spacing: 3px; text-transform: uppercase; color: var(--c); }
   .gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-  .gm-fbtns { display: flex; gap: 10px; flex-wrap: wrap; }
-  .gm-fbtns button { flex: 1 1 200px; }
-  .gm-reveal { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .gm-reveal .gm-gum { animation: gmPop .45s ease-out backwards; cursor: default; width: 104px; }
   @keyframes gmPop { from { transform: scale(.3) rotate(-30deg); } to { transform: none; } }
   .over-div { margin: 0; font-family: var(--display); font-size: 22px; color: #5ad1e8; letter-spacing: 1px; }
   @media (max-width: 560px) { .gm-pack { grid-template-columns: repeat(3, 1fr); } }
@@ -618,6 +614,120 @@
   @media (max-width: 560px) { .pn-thanks { grid-template-columns: 1fr; } .pn-thanks img { max-width: 260px; } }
 
 
+  /* ---------------- Dr. Monty's Factory (src/ui/factoryUI.js), after Black Ops 3's ---------------- */
+  .screen.mf { --brass: #b8913f; --brass-hi: #f0d27a; --brass-lo: #4a3510; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto auto; align-content: stretch; gap: clamp(8px, 1.4vh, 14px);
+    padding: max(14px, 2.4vh) max(16px, 3vw);
+    background: radial-gradient(ellipse 55% 45% at 50% 58%, rgba(255,160,70,.18), transparent 70%),
+      radial-gradient(ellipse 30% 70% at 92% 35%, rgba(150,210,255,.16), transparent 70%),
+      radial-gradient(ellipse 25% 50% at 6% 30%, rgba(80,170,255,.12), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(160,190,230,.035) 0 3px, transparent 3px 140px),
+      linear-gradient(180deg, #0d1828 0%, #0a1322 55%, #06080d 100%); }
+  .mf-head { display: flex; align-items: center; gap: 16px; padding-bottom: 8px; border-bottom: 1px solid rgba(170,195,230,.35); }
+  .mf-head::before { content: ""; align-self: stretch; width: 5px; background: linear-gradient(#a9c0e2, #4a5d7a); box-shadow: 9px 0 0 -1px rgba(169,192,226,.45); margin-right: 8px; }
+  .mf-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 4.4vw, 60px); letter-spacing: 2px; text-transform: uppercase; color: #eef3fa; text-shadow: 0 2px 0 #000, 0 0 20px rgba(140,190,255,.3); }
+  .mf-floor { display: flex; align-items: flex-end; justify-content: center; gap: clamp(10px, 2.4vw, 34px); min-height: 0; }
+  .mf-ld { display: grid; justify-items: center; gap: 6px; align-self: center; flex: 0 0 auto; }
+  .mf-sign { width: clamp(120px, 13vw, 190px); overflow: visible; margin-bottom: -4px; }
+  .mf-sign text { font: 400 23px var(--display); letter-spacing: 1px; fill: #c9f3ff; stroke: #1f5a7a; stroke-width: .8px; paint-order: stroke; filter: drop-shadow(0 0 4px #4cc8ff) drop-shadow(0 0 10px rgba(76,200,255,.6)); }
+  .mf-vialbox { width: clamp(84px, 9.5vw, 140px); aspect-ratio: .86; display: grid; place-items: center; border-radius: 12px; overflow: hidden;
+    background: radial-gradient(circle at 50% 55%, rgba(70,190,255,.32), rgba(8,22,40,.95) 72%); border: 7px solid var(--brass); outline: 2px dotted var(--brass-hi); outline-offset: -6px;
+    box-shadow: 0 0 0 2px var(--brass-lo), inset 0 0 22px rgba(0,0,0,.85), 0 8px 18px rgba(0,0,0,.6); }
+  .mf-vial { width: 20%; height: 74%; transform: rotate(-26deg); border-radius: 5px 5px 50% 50% / 5px 5px 16% 16%;
+    background: linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,0) 38%), linear-gradient(#eaf9ff 0 11%, #c9a64a 11% 17%, #8fe4ff 17% 22%, #2fb4ff 22% 100%);
+    box-shadow: 0 0 16px #3fb8ff, 0 0 40px rgba(63,184,255,.55); animation: mfVial 2.8s ease-in-out infinite; }
+  @keyframes mfVial { 50% { box-shadow: 0 0 24px #6fd0ff, 0 0 56px rgba(63,184,255,.75); } }
+  .mf-count { display: flex; gap: 4px; padding: 6px 7px; border-radius: 8px; background: #110c05; border: 5px solid var(--brass); outline: 2px dotted var(--brass-hi); outline-offset: -4px; box-shadow: 0 0 0 2px var(--brass-lo), 0 6px 14px rgba(0,0,0,.6); }
+  .mf-count i { font: 400 clamp(26px, 3.2vw, 42px)/1 var(--display); font-style: normal; width: .9em; padding: 5px 0 3px; text-align: center; color: #d2fbff;
+    text-shadow: 0 0 5px #49d6ff, 0 0 14px #1aa8ff, 0 0 26px rgba(26,168,255,.6); background: radial-gradient(ellipse at 50% 35%, rgba(70,160,210,.28), rgba(0,0,0,.92) 75%);
+    border: 1px solid rgba(170,225,255,.25); border-radius: 40% 40% 10px 10px / 18% 18% 10px 10px; }
+  .mf-ldnote { font: 700 10px var(--mono); letter-spacing: 2px; text-transform: uppercase; color: #8fb6d2; }
+  .mf-vats { display: flex; align-items: flex-end; justify-content: center; gap: clamp(6px, 1.4vw, 22px); min-width: 0; height: 100%; }
+  .mf-vat { --h: clamp(220px, 50vh, 470px); height: min(var(--h), 100%); width: calc(var(--h) * .56); max-width: 27vw; display: grid; grid-template-rows: 14% 9% 1fr 5%; position: relative;
+    filter: brightness(.7) saturate(.85); transition: filter .35s; }
+  .mf-vat.armed { filter: brightness(.95); }
+  .mf-vat.lit, .mf-vat.open { filter: brightness(1.1) saturate(1.05); }
+  .mf-top { position: relative; margin: 0 13%; border-radius: 50% 50% 6px 6px / 100% 100% 6px 6px;
+    background: radial-gradient(ellipse 55% 85% at 50% 100%, #e2c270, #9a7428 55%, #3a2a0c 100%); box-shadow: inset 0 3px 6px rgba(255,240,190,.35), inset 0 -6px 10px rgba(0,0,0,.5); }
+  .mf-coil { position: absolute; bottom: 72%; width: 7%; height: 48%; border-radius: 3px; background: repeating-linear-gradient(180deg, #e8dab4 0 3px, #5e4f30 3px 6px); }
+  .mf-coil:nth-child(1) { left: 24%; } .mf-coil:nth-child(2) { left: 46.5%; height: 70%; } .mf-coil:nth-child(3) { left: 69%; }
+  .mf-coil::after { content: ""; position: absolute; left: 50%; top: -9px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle, #fff, #8fd8ff 35%, transparent 70%); opacity: 0; }
+  .mf-vat.lit:not(.open) .mf-coil::after { animation: mfSpark .22s steps(2, jump-none) infinite; }
+  .mf-vat.lit:not(.open) .mf-coil:nth-child(2)::after { animation-duration: .17s; }
+  @keyframes mfSpark { 0% { opacity: 0; } 100% { opacity: 1; } }
+  .mf-label { position: relative; z-index: 1; margin: -2px 5% 0; display: grid; place-items: center; padding: 0 8px; overflow: hidden; border-radius: 40px / 50%;
+    background: linear-gradient(#f6e8c2, #d8bf88); border: 3px solid var(--brass); box-shadow: inset 0 0 10px rgba(120,80,20,.5), 0 3px 5px rgba(0,0,0,.6);
+    font: 400 clamp(11px, 1.15vw, 16px) var(--display); letter-spacing: 1.5px; text-transform: uppercase; color: #4a3518; text-align: center; white-space: nowrap; }
+  .mf-vat.open .mf-label { color: color-mix(in srgb, var(--tc, #4a3518) 60%, #1a1008); box-shadow: inset 0 0 10px rgba(120,80,20,.5), 0 0 16px color-mix(in srgb, var(--tc, #fff) 60%, transparent); }
+  .mf-tank { position: relative; display: grid; place-items: center; border-radius: 6px; box-shadow: 0 12px 26px rgba(0,0,0,.65);
+    background: linear-gradient(90deg, rgba(0,0,0,.6), rgba(255,255,255,.14) 28%, rgba(255,255,255,.04) 44%, rgba(0,0,0,.3) 74%, rgba(0,0,0,.72)),
+      linear-gradient(180deg, var(--brass) 0 3%, var(--brass-lo) 3% 4%, #42706a 4% 50%, var(--brass) 50% 52%, #3a6460 52% 95%, var(--brass-lo) 95% 96%, var(--brass) 96%); }
+  .mf-vat.lit:not(.open) .mf-tank { animation: mfShake .11s linear infinite; }
+  @keyframes mfShake { 0%, 100% { transform: translate(0, 0); } 33% { transform: translate(-1px, .5px); } 66% { transform: translate(1px, -.5px); } }
+  .mf-gauge { position: absolute; z-index: 1; width: 13%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #f6efd8 52%, var(--brass) 56%, var(--brass-lo) 72%); box-shadow: 0 2px 4px rgba(0,0,0,.6); }
+  .mf-gauge.g1 { right: 2%; top: 9%; } .mf-gauge.g2 { left: 2%; bottom: 6%; }
+  .mf-gauge::after { content: ""; position: absolute; left: 50%; top: 18%; width: 2px; height: 34%; margin-left: -1px; background: #8a1a0f; transform-origin: 50% 100%; transform: rotate(-60deg); transition: transform .6s; }
+  .mf-vat.lit .mf-gauge::after { transform: rotate(70deg); animation: mfNeedle .5s ease-in-out infinite alternate; }
+  @keyframes mfNeedle { to { transform: rotate(48deg); } }
+  .mf-port { position: relative; width: 72%; height: 80%; border-radius: 24% / 16%; overflow: hidden; border: 9px solid var(--brass); outline: 2px dotted var(--brass-hi); outline-offset: -6px;
+    background: radial-gradient(ellipse at 50% 70%, #1d3c4c, #04080d 80%); box-shadow: 0 0 0 2px var(--brass-lo), inset 0 0 24px #000; }
+  .mf-brew { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(ellipse 90% 70% at 50% 100%, rgba(255,170,90,.6), rgba(170,80,255,.28) 50%, transparent 78%); }
+  .mf-vat.lit .mf-brew, .mf-vat.open .mf-brew { opacity: 1; }
+  .mf-brew i { position: absolute; bottom: -10%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.8), rgba(255,200,140,.25) 45%, transparent 70%); opacity: 0; }
+  .mf-vat.lit .mf-brew i { animation: mfBubble 1.4s ease-in infinite; }
+  .mf-brew i:nth-child(1) { left: 12%; animation-delay: 0s; } .mf-brew i:nth-child(2) { left: 30%; animation-delay: .5s; width: 6%; } .mf-brew i:nth-child(3) { left: 48%; animation-delay: .2s; }
+  .mf-brew i:nth-child(4) { left: 64%; animation-delay: .9s; width: 12%; } .mf-brew i:nth-child(5) { left: 80%; animation-delay: .35s; width: 7%; } .mf-brew i:nth-child(6) { left: 40%; animation-delay: 1.1s; width: 5%; }
+  @keyframes mfBubble { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-1100%); opacity: 0; } }
+  .mf-gums { position: absolute; inset: 6%; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 4%; }
+  .mf-gums img { width: 44%; max-width: 92px; aspect-ratio: 1; filter: drop-shadow(0 0 8px rgba(255,220,160,.6)) drop-shadow(0 3px 3px #000); animation: mfGum .5s cubic-bezier(.2,1.6,.4,1) backwards; }
+  @keyframes mfGum { from { transform: translateY(60%) scale(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+  .mf-door { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 2; overflow: hidden; transition: transform .75s cubic-bezier(.6,0,.2,1);
+    background: linear-gradient(90deg, rgba(0,0,0,.28), rgba(255,215,170,.2) 42%, rgba(0,0,0,.22)),
+      repeating-linear-gradient(118deg, transparent 0 16px, rgba(255,225,185,.13) 16px 18px),
+      linear-gradient(180deg, #cf9260, #a8603a 50%, #73391d); }
+  .mf-door.l { left: 0; border-right: 1px solid #2a1206; } .mf-door.r { right: 0; border-left: 1px solid #e8b080; }
+  .mf-door::after { content: ""; position: absolute; top: 50%; width: 120%; aspect-ratio: 1; border: 2px solid rgba(255,220,180,.28); border-radius: 50%; transform: translateY(-50%); }
+  .mf-door.l::after { right: -60%; } .mf-door.r::after { left: -60%; }
+  .mf-port::after { content: ""; position: absolute; z-index: 3; left: 50%; top: 4%; bottom: 4%; width: 3px; margin-left: -1.5px; background: #ffd9a0; box-shadow: 0 0 10px 3px #ff9a3a, 0 0 30px 8px rgba(255,140,40,.5); opacity: 0; transition: opacity .3s; }
+  .mf-vat.lit:not(.open) .mf-port::after { opacity: 1; animation: mfSeam .3s steps(3, jump-none) infinite alternate; }
+  @keyframes mfSeam { from { opacity: .55; } to { opacity: 1; } }
+  .mf-vat.open .mf-door.l { transform: translateX(-104%); } .mf-vat.open .mf-door.r { transform: translateX(104%); }
+  .mf-base { margin: 0 3%; border-radius: 0 0 6px 6px; background: linear-gradient(#6a5220, #2a1f0a); box-shadow: 0 8px 14px rgba(0,0,0,.7); }
+  .mf-deck { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 44px); flex-wrap: wrap; }
+  .mf-plaquebox { display: grid; justify-items: center; gap: 6px; }
+  .mf-plaque { box-sizing: border-box; width: min(86vw, 470px); padding: 13px 30px; text-align: center; font: 700 clamp(15px, 1.7vw, 23px) Georgia, "Times New Roman", serif; letter-spacing: 2px; text-transform: uppercase; color: #2a1d0c;
+    background: radial-gradient(ellipse at 50% 40%, #fbf1d2, #e3cd96 68%, #b8995a); border: 5px solid var(--brass); border-radius: 46px / 50%; outline: 2px dotted var(--brass-hi); outline-offset: -4px;
+    box-shadow: 0 0 0 2px var(--brass-lo), inset 0 0 16px rgba(120,80,20,.45), 0 5px 12px rgba(0,0,0,.6); }
+  .mf-plaque.bad { color: #8a1a0f; animation: mfNo .4s; }
+  @keyframes mfNo { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+  .mf-deal { font: 700 11px var(--mono); letter-spacing: 1.5px; text-transform: uppercase; color: #c9b07a; }
+  .mf-btns { display: flex; gap: clamp(8px, 1.4vw, 16px); }
+  .mf-btn { all: unset; box-sizing: border-box; cursor: pointer; display: grid; justify-items: center; gap: 6px; width: clamp(66px, 6.6vw, 94px); padding: 10px 8px 8px; border-radius: 10px;
+    background: linear-gradient(#2c2518, #110d07); border: 3px solid #8a6a2a; box-shadow: inset 0 0 0 2px #3a2c10, 0 6px 12px rgba(0,0,0,.6); }
+  .mf-lamp { width: 74%; aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--brass);
+    background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--lamp) 35%, #fff) 0 9%, var(--lamp) 32%, color-mix(in srgb, var(--lamp) 35%, #000) 78%);
+    box-shadow: inset 0 0 8px rgba(0,0,0,.6); filter: brightness(.5) saturate(.7); transition: filter .15s, box-shadow .15s; }
+  .mf-num { width: 62%; aspect-ratio: 1.1; display: grid; place-items: center; font: 400 clamp(20px, 2.2vw, 30px) var(--display); color: #ffd27a; text-shadow: 0 1px 0 #000;
+    background: radial-gradient(#e2571a, #7a2406); border: 2px solid #3a1a08; border-radius: 4px; filter: brightness(.6); transition: filter .15s, box-shadow .15s; }
+  .mf-btn small { font: 700 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: #c9b07a; white-space: nowrap; }
+  .mf-btn:hover .mf-lamp, .mf-btn:focus-visible .mf-lamp, .mf-btn.sel .mf-lamp { filter: none; box-shadow: inset 0 0 8px rgba(0,0,0,.35), 0 0 16px var(--lamp), 0 0 34px color-mix(in srgb, var(--lamp) 55%, transparent); }
+  .mf-btn:hover .mf-num, .mf-btn:focus-visible .mf-num, .mf-btn.sel .mf-num { filter: none; box-shadow: 0 0 14px #ff8a2a; }
+  .mf-btn:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 3px; }
+  .mf-btn[aria-disabled="true"] { opacity: .5; }
+  .mf.busy .mf-btn { cursor: progress; }
+  .mf-got { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 8px; min-height: 96px; }
+  .mf-chip { display: flex; align-items: center; gap: 8px; padding: 3px 14px 3px 3px; border-radius: 30px; background: rgba(0,0,0,.55); border: 1px solid var(--c); font: 600 13px/1.2 var(--body); color: #f2e8d2; animation: gmPop .45s ease-out backwards; }
+  .mf-chip img { width: 36px; height: 36px; }
+  .mf-chip small { display: block; color: var(--c); font: 700 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  .mf-note { margin: 0; text-align: center; color: #9fb0c8; font-size: 12px; letter-spacing: .5px; }
+  .mf-menu { justify-items: center; }
+  @media (max-width: 720px) {
+    .mf-floor { flex-direction: column; align-items: center; }
+    .mf-ld { grid-template-columns: auto auto; align-items: center; column-gap: 12px; }
+    .mf-sign { grid-column: 1 / -1; width: 150px; }
+    .mf-ldnote { grid-column: 1 / -1; }
+    .mf-vat { --h: clamp(200px, 38vh, 320px); max-width: 30vw; }
+  }
+
   /* ---------------- Title: Stew Zombies 2.0, the blades ---------------- */
   .screen.titlescreen { display: grid; grid-template-rows: auto 1fr auto; align-content: stretch; gap: 18px; padding-block: max(20px, 4vh) max(16px, 3vh); padding-inline: max(16px, 4vw);
     background: radial-gradient(ellipse at 70% 40%, rgba(6,5,10,0) 0%, rgba(6,5,10,.35) 55%, rgba(4,3,8,.85) 100%), linear-gradient(90deg, rgba(4,3,8,.75), rgba(4,3,8,.1) 70%); }
@@ -1078,15 +1188,30 @@
     <p class="note gm-tip" id="gm-tip"></p>
     <div class="gm-pack" id="gm-pack"></div>
     <div class="gm-detail" id="gm-detail"></div>
-    <div class="gm-factory" id="gm-factory">
-      <h3 class="set-head">Dr. Monty's Factory</h3>
-      <p class="note">Liquid Divinium in, Mega GobbleGums out: <span id="gm-odds"></span>. Earn vials by playing (the longer you last, the more).</p>
-      <div class="gm-fbtns"><button id="btn-gm-single" type="button"></button><button id="btn-gm-bundle" type="button"></button></div>
-      <div class="gm-reveal" id="gm-reveal" aria-live="polite"></div>
-    </div>
     <div id="gm-list"></div>
-    <nav class="menu"><button id="btn-gums-back" type="button">Back</button></nav>
+    <nav class="menu"><button id="btn-gm-factory" type="button">Dr. Monty's Factory</button><button id="btn-gums-back" type="button">Back</button></nav>
   </div>
+</section>
+
+<!-- Dr. Monty's Factory (src/ui/factoryUI.js): Liquid Divinium in, Megas out, after Black Ops 3's -->
+<section id="factory" class="screen mf" hidden>
+  <header class="mf-head"><h2>Dr. Monty's Factory</h2></header>
+  <div class="mf-floor">
+    <div class="mf-ld">
+      <svg class="mf-sign" viewBox="0 0 200 74" aria-hidden="true"><path id="mf-arc" d="M14 70 Q100 -14 186 70" fill="none"/><text><textPath href="#mf-arc" startOffset="50%" text-anchor="middle" textLength="168" lengthAdjust="spacingAndGlyphs">LIQUID DIVINIUM</textPath></text></svg>
+      <div class="mf-vialbox"><span class="mf-vial"></span></div>
+      <div class="mf-count" id="mf-count" aria-label="Liquid Divinium"></div>
+      <small class="mf-ldnote">Earned by playing</small>
+    </div>
+    <div class="mf-vats" id="mf-vats"></div>
+  </div>
+  <div class="mf-deck">
+    <div class="mf-plaquebox"><div class="mf-plaque" id="mf-plaque" aria-live="polite">Power up 1 vat.</div><small class="mf-deal" id="mf-deal"></small></div>
+    <div class="mf-btns" id="mf-btns"></div>
+  </div>
+  <div class="mf-got" id="mf-got" aria-live="polite"></div>
+  <p class="mf-note" id="mf-note"></p>
+  <nav class="menu mf-menu"><button id="btn-mf-back" type="button">Back</button></nav>
 </section>
 
 <section id="career" class="screen" hidden>
