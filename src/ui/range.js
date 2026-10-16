@@ -6,6 +6,12 @@
 import * as THREE from 'three';
 import { zombieHealthForRound } from '../config.js';
 
+// The "Mad Dog'd" box gives a gun's upgraded twin, but never a War Hammer's:
+// only Pit tempers those (they're their own buttons). And the button a held
+// weapon lights up.
+const pick = (cfg, id, upgraded) => (upgraded && cfg.weapons[id + '+'] && !cfg.weapons[id].hammer ? id + '+' : id);
+const button = (cfg, id) => (cfg.weapons[id] && cfg.weapons[id].hammer ? id : id.replace(/\+$/, ''));
+
 const $ = (id) => document.getElementById(id);
 
 export const GROUPS = [
@@ -59,7 +65,7 @@ export class RangeUI {
   buildPanel() {
     const list = $('rp-weapons');
     list.textContent = '';
-    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => !id.endsWith('+') && !d.gumOnly);
+    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => (!id.endsWith('+') || d.hammer) && !d.gumOnly);   // (a tempered War Hammer is its own button: Pit's, not the Mad Dog's)
     for (const [title, test] of GROUPS) {
       const ids = entries.filter(([, d]) => test(d)).map(([id]) => id);
       if (!ids.length) continue;
@@ -73,12 +79,12 @@ export class RangeUI {
         const b = document.createElement('button');
         b.type = 'button';
         b.dataset.id = id;
-        const where = d.boxOnly ? 'Box' : d.cost ? `Wall ${d.cost}` : 'Start';
+        const where = d.hammer ? (d.upgraded ? 'Pit' : 'Anvil') : d.boxOnly ? 'Box' : d.cost ? `Wall ${d.cost}` : 'Start';
         b.innerHTML = `<span class="n"></span><span class="w"></span><span class="s"></span>`;
         b.querySelector('.n').textContent = d.name;
         b.querySelector('.w').textContent = where;
         b.querySelector('.s').textContent = weaponStatLine(d, this.cfg);
-        b.addEventListener('click', () => { this.h.give(this.upgraded && this.cfg.weapons[id + '+'] ? id + '+' : id); this.refresh(); });
+        b.addEventListener('click', () => { this.h.give(pick(this.cfg, id, this.upgraded)); this.refresh(); });
         g.appendChild(b);
       }
       list.appendChild(g);
@@ -134,12 +140,12 @@ export class RangeUI {
     $('rp-hp').textContent = `${zombieHealthForRound(this.round, this.cfg.zombie).toLocaleString()} health`;
     $('rp-ammo').checked = sim.range.infiniteAmmo;
     $('rp-moving').checked = sim.range.moving;
-    const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
-    const cur = p.loadout.slots[p.loadout.current].id.replace(/\+$/, '');
+    const held = new Set(p.loadout.slots.map((s) => button(this.cfg, s.id)));
+    const cur = button(this.cfg, p.loadout.slots[p.loadout.current].id);
     for (const b of $('rp-weapons').querySelectorAll('button')) {
       b.classList.toggle('held', held.has(b.dataset.id));
       b.classList.toggle('current', b.dataset.id === cur);
-      const d = this.cfg.weapons[this.upgraded && this.cfg.weapons[b.dataset.id + '+'] ? b.dataset.id + '+' : b.dataset.id];
+      const d = this.cfg.weapons[pick(this.cfg, b.dataset.id, this.upgraded)];
       b.querySelector('.n').textContent = d.name;
       b.querySelector('.n').style.color = d.view.camo || '';
       b.querySelector('.s').textContent = weaponStatLine(d, this.cfg);

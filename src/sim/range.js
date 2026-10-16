@@ -123,3 +123,7 @@ export function rangeCheddars(sim, count = 6) {
 export function rangeStewBombs(sim, p) { p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; p.maisyDogs = 0; }
 export function rangeMaisyDogs(sim, p) { p.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase; p.stewBombs = 0; }
 export function rangeLbds(sim, p) { const L = sim.cfg.equipment.lbd; p.lbds = L.perPurchase; p.lbdMax = Math.max(p.lbdMax || 0, L.perPurchase); }
+export function rangeFrags(sim, p) { const F = sim.cfg.equipment.frag; p.grenades = F.perPurchase; p.grenadeMax = Math.max(p.grenadeMax || 0, F.perPurchase); }
+// Any of them by its CONFIG.equipment id (the Explore menu's Grenades row)
+export const RANGE_GEAR = { frag: rangeFrags, stewBomb: rangeStewBombs, maisyDog: rangeMaisyDogs, lbd: rangeLbds };
+export function rangeGear(sim, p, id) { if (RANGE_GEAR[id]) RANGE_GEAR[id](sim, p); }

@@ -6,12 +6,25 @@
 import { GROUPS, weaponStatLine } from './range.js';
 import { QUEST_SKIPS, QUEST_STEPS } from '../sim/quest.js';
 
+// The "Mad Dog'd" box gives a gun's upgraded twin, but never a War Hammer's:
+// only Pit tempers those (they're their own buttons). And the button a held
+// weapon lights up.
+const pick = (cfg, id, upgraded) => (upgraded && cfg.weapons[id + '+'] && !cfg.weapons[id].hammer ? id + '+' : id);
+const button = (cfg, id) => (cfg.weapons[id] && cfg.weapons[id].hammer ? id : id.replace(/\+$/, ''));
+// The Grenades row: the equipment, where it goes, and the player's count of it.
+const GEAR = {
+  frag: { slot: 'Lethal', have: 'grenades' },
+  stewBomb: { slot: 'Tactical', have: 'stewBombs' },
+  maisyDog: { slot: 'Tactical', have: 'maisyDogs' },
+  lbd: { slot: 'Placed', have: 'lbds' },
+};
+
 const $ = (id) => document.getElementById(id);
 
 export class ExploreUI {
   constructor(cfg, handlers) {
     this.cfg = cfg;
-    this.h = handlers;   // { give(id), round(n), zombies(on), skip(id), close() }
+    this.h = handlers;   // { give(id), gear(id), round(n), zombies(on), skip(id), close() }
     this.panel = $('explorepanel');
     this.upgraded = false;
     this.round = 1;
@@ -21,7 +34,7 @@ export class ExploreUI {
   build() {
     const list = $('ep-weapons');
     list.textContent = '';
-    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => !id.endsWith('+') && !d.gumOnly);
+    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => (!id.endsWith('+') || d.hammer) && !d.gumOnly);   // (a tempered War Hammer is its own button: Pit's, not the Mad Dog's)
     for (const [title, test] of GROUPS) {
       const ids = entries.filter(([, d]) => test(d)).map(([id]) => id);
       if (!ids.length) continue;
@@ -32,7 +45,27 @@ export class ExploreUI {
         const b = document.createElement('button');
         b.type = 'button'; b.dataset.id = id;
         b.innerHTML = '<span class="n"></span><span class="w"></span><span class="s"></span>';
-        b.addEventListener('click', () => { this.h.give(this.upgraded && this.cfg.weapons[id + '+'] ? id + '+' : id); this.refresh(); });
+        b.addEventListener('click', () => { this.h.give(pick(this.cfg, id, this.upgraded)); this.refresh(); });
+        g.appendChild(b);
+      }
+      list.appendChild(g);
+    }
+    // the grenades: a full stack of whichever you pick (a Stew Bomb or a Maisy Dog
+    // takes the [Q] slot from the other)
+    const gear = Object.keys(GEAR).filter((k) => this.cfg.equipment[k]);
+    if (gear.length && this.h.gear) {
+      const g = document.createElement('div');
+      g.className = 'rp-group';
+      const h = document.createElement('h3'); h.textContent = 'Grenades'; g.appendChild(h);
+      for (const k of gear) {
+        const E = this.cfg.equipment[k];
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.gear = k;
+        b.innerHTML = '<span class="n"></span><span class="w"></span><span class="s"></span>';
+        b.querySelector('.n').textContent = E.name;
+        b.querySelector('.w').textContent = GEAR[k].slot;
+        b.querySelector('.s').textContent = `${E.perPurchase} of them`;
+        b.addEventListener('click', () => { this.h.gear(k); this.refresh(); });
         g.appendChild(b);
       }
       list.appendChild(g);
@@ -97,11 +130,12 @@ export class ExploreUI {
   refresh() {
     const sim = this.sim, p = this.p;
     if (!sim || !p) return;
-    const held = new Set(p.loadout.slots.map((s) => s.id.replace(/\+$/, '')));
-    const cur = p.loadout.slots[p.loadout.current].id.replace(/\+$/, '');
-    for (const b of $('ep-weapons').querySelectorAll('button')) {
+    const held = new Set(p.loadout.slots.map((s) => button(this.cfg, s.id)));
+    const cur = button(this.cfg, p.loadout.slots[p.loadout.current].id);
+    for (const b of $('ep-weapons').querySelectorAll('button[data-gear]')) b.classList.toggle('held', (p[GEAR[b.dataset.gear].have] || 0) > 0);
+    for (const b of $('ep-weapons').querySelectorAll('button[data-id]')) {
       const id = b.dataset.id;
-      const d = this.cfg.weapons[this.upgraded && this.cfg.weapons[id + '+'] ? id + '+' : id];
+      const d = this.cfg.weapons[pick(this.cfg, id, this.upgraded)];
       b.classList.toggle('held', held.has(id));
       b.classList.toggle('current', id === cur);
       b.querySelector('.n').textContent = d.name;

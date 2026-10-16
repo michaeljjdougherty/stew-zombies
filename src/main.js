@@ -12,7 +12,7 @@ import { CRUST } from './map/crust.js';
 // zombies maps by id (the map screen's ids). The firing range is its own mode.
 const ZOMBIE_MAPS = { lastbell: SCHOOL, crust: CRUST };
 import { RANGE } from './map/range.js';
-import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs, rangeMaisyDogs, rangeLbds } from './sim/range.js';
+import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs, rangeMaisyDogs, rangeLbds, rangeGear } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
 import { GameSim } from './sim/sim.js';
 import { GameRenderer } from './render/renderer.js';
@@ -131,6 +131,7 @@ rangeUI.localId = localId;
 // Explore: the menu (B / View): any gun, any round, any part of the Easter egg
 const exploreUI = new ExploreUI(CONFIG, {
   give: (id) => rangeGive(sim, player, id),
+  gear: (id) => rangeGear(sim, player, id),
   round: (n) => { exploreJumpToRound(sim, n); updateExploreHud(); },
   zombies: (on) => { sim.setExploreZombies(on); updateExploreHud(); exploreUI.refresh(); },
   skip: (id) => exploreSkip(id),
