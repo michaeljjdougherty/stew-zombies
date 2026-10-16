@@ -8,7 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { CONFIG } from '../../src/config.js';
-import { PIT_FORGE, PIT_POWER, ZACH_FINALE } from '../../src/lore/crew.js';
+import * as CREW from '../../src/lore/crew.js';
+const { PIT_FORGE, PIT_POWER, ZACH_FINALE } = CREW;
 import * as L from '../../src/lore/crustCrew.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -27,7 +28,7 @@ const each = (v, who) => {
 // the cutscenes first, then the game in roughly the order it happens
 for (const f of ['intro', 'ending']) for (const l of CONFIG.crustFilms[f].lines) add(l.who, l.text);
 each(L.SCHNITZ_PA, 'schnitz');
-each(PIT_FORGE, 'pit'); each(PIT_POWER, 'pit');
+each(PIT_FORGE, 'pit'); each(PIT_POWER, 'pit'); each(CREW.PIT_SHOT, 'pit');
 each(L.CRUST_TALKS); each(L.CRUST_BANTER); each(L.CRUST_ISLAND_BANTER); each(L.CAGE_TALK);
 each(L.CRUST_REACT); each(L.CRUST_ISLAND_REACT); each(L.CRUST_RADIO); each(L.CRUST_FELL);
 for (const P of Object.values(L.CRUST_PLACES)) { for (const [who, t] of Object.entries(P)) if (who !== 'reply') add(who, t); if (P.reply) add(P.reply.who, P.reply.text); }
