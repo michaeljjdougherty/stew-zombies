@@ -435,6 +435,7 @@ export class Career {
   ownsSkin(id, charId = null) {
     const s = SKIN_BY_ID[id];
     if (!this.profile || !s) return false;
+    if (s.only && charId && s.only !== charId) return false;   // (Sexy Fucci: Rocco's alone)
     if (!s.unlock) return !!this.profile.shop.owned[id];
     if (s.unlock.kind === 'free') return true;
     if (s.unlock.kind === 'kills') return SHOP().opalAccounts.includes(this.key) || (!!charId && this.charKills(charId) >= s.unlock.need);

@@ -119,7 +119,9 @@ const OP = SKIN_BY_ID.opal;
 check(OP.name === 'Pink Diamond Galaxy Opal Drippy Face Build Skin', 'the Opal skin has its full name');
 const F = new Career({}, { fetchFn: null, storage: store() });
 await F.signIn('Fresh');
-check(F.ownsSkin('sexyFucci', 'kearns') && F.wearSkin('ryan', 'sexyFucci') && F.wornSkin('ryan') === 'sexyFucci', 'everyone has Sexy Fucci, on anyone, for free');
+check(F.ownsSkin('sexyFucci', 'rocco') && F.wearSkin('rocco', 'sexyFucci') && F.wornSkin('rocco') === 'sexyFucci', 'everyone has Sexy Fucci for Rocco, for free');
+check(!F.ownsSkin('sexyFucci', 'ryan') && !F.wearSkin('ryan', 'sexyFucci') && F.wornSkin('ryan') === null, 'but only Rocco can wear it');
+check(applySkin(kearns, 'kearns', 'sexyFucci') === kearns, 'on anyone else it does nothing');
 check(!F.buySkin('sexyFucci').ok && !F.buySkin('opal').ok, 'neither is for sale');
 check(!F.ownsSkin('opal', 'ryan') && !F.wearSkin('ryan', 'opal'), 'no Opal before the kills');
 const unlockedSkins = [];
@@ -137,4 +139,4 @@ const K = new Career({ firebaseUrl: 'https://x.firebaseio.com' }, { fetchFn: fak
 await K.signIn('Killer'); K.playingAs = 'pit'; K.add('kills', 40); await settle(K);
 check(db.killer.shop.kills.pit === 40, 'kills as each character go up to the database');
 const op = applySkin(kearns, 'kearns', 'opal');
-check(op.skinFx === 'opal' && op.armSkin && applySkin(kearns, 'kearns', 'sexyFucci').skinFx === 'bikini', 'the special skins carry their finish');
+check(op.skinFx === 'opal' && op.armSkin && applySkin(kearns, 'rocco', 'sexyFucci').skinFx === 'bikini', 'the special skins carry their finish');

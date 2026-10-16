@@ -50,7 +50,7 @@ import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
-import { applySkin } from './career/skins.js';
+import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
@@ -212,7 +212,7 @@ function setLook(id) {
 
 function makeSim(gameMode, mapId = 'lastbell') {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame() });
+  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame(), skin: career.wornSkin(playableCharacter()) });
   return s;
 }
 
@@ -291,7 +291,10 @@ const onlineUI = new OnlineUI(settings, {
     saveSettings(settings); newSession(name);
     try { await online.join(code); } catch (e) { const o = online; online = null; if (o) o.leave(); throw e; }
   },
-  pick: (ch) => { if (online) online.pick(ch); },
+  pick: (ch) => { if (online) online.pick(ch, career.wornSkin(ch)); },
+  // your skin in the lobby: the ones you have that fit who you're playing (it's what you wear on them from now on)
+  skins: (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))],
+  setSkin: (ch, id) => { if (career.wearSkin(ch, id || null) && online) online.setSkin(id || null); },
   setMap: (id) => { if (online) online.setMap(id); },
   setIntro: (on) => { if (online) online.setIntro(on); },
   start: () => { if (online) online.start(); },
@@ -302,7 +305,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -375,7 +378,7 @@ function beginOnlineGame(st) {
   localId = st.you;
   // (the map the host picked: an older host never says, and that was always the school)
   const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
-  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null });
   stopOnlineGame();
   installSim(s);
   if (online.isHost) {

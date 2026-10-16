@@ -31,7 +31,7 @@ import { INTRO_SHOTS, ENDING_SHOTS, restoreCage } from './crustFilms.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 import { applyQuality, AutoRes } from './quality.js';
-import { TeammateViews, Teammate } from './teammates.js';
+import { TeammateViews, Teammate, lookOf } from './teammates.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -400,7 +400,7 @@ export class GameRenderer {
     this.emoteW = Math.max(0, Math.min(1, (this.emoteW || 0) + (on ? dt : -dt * 1.6) / E.camIn));
     const v = this.selfView;
     if (this.emoteW <= 0) { if (v) { v.root.visible = false; v.tag.visible = false; } return; }
-    if (!v || v.character !== p.character || this.selfScene !== this.scene) {
+    if (!v || v.look !== lookOf(p) || this.selfScene !== this.scene) {
       if (v) v.dispose(this.selfScene);
       this.selfView = new Teammate(this.scene, p, this.cfg);
       this.selfScene = this.scene;

@@ -4,6 +4,7 @@
 // src/net/online.js; this just draws it and passes clicks along.
 // =============================================================================
 import { CHARACTERS } from '../render/characters.js';
+import { SKIN_BY_ID } from '../career/skins.js';
 import { LAUNCH, MAX_PLAYERS, cleanCode, mapInfo } from '../net/online.js';
 import { CONFIG } from '../config.js';
 import { DEV_CODE } from './mapselect.js';
@@ -11,7 +12,7 @@ import { DEV_CODE } from './mapselect.js';
 const $ = (id) => document.getElementById(id);
 
 export class OnlineUI {
-  // h: { host(name), join(name, code), pick(ch), setMap(id), setIntro(on), start(), leave(), back(), questDone() }
+  // h: { host(name), join(name, code), pick(ch), skins(ch) -> [{ id, name }], setSkin(ch, id), setMap(id), setIntro(on), start(), leave(), back(), questDone() }
   constructor(settings, h) {
     this.settings = settings;
     this.h = h;
@@ -115,7 +116,7 @@ export class OnlineUI {
       const b = document.createElement('b');
       b.textContent = m.name + (m.id === 'p1' ? ' (host)' : '') + (m.id === lobby.you ? ' (you)' : '');
       const sp = document.createElement('span');
-      sp.textContent = m.character ? CHARACTERS[m.character].name : 'picking';
+      sp.textContent = m.character ? CHARACTERS[m.character].name + (m.skin && SKIN_BY_ID[m.skin] ? ` · ${SKIN_BY_ID[m.skin].name}` : '') : 'picking';
       li.append(b, sp);
       list.appendChild(li);
     }
@@ -141,6 +142,24 @@ export class OnlineUI {
       c.disabled = !!who && !mine;
       c.querySelector('span').textContent = mine ? 'You' : who ? who.name : 'Open';
     }
+
+    // your skin: the ones you have that fit who you're playing
+    const skins = $('on-skins'), list2 = me && me.character && this.h.skins ? this.h.skins(me.character) : [];
+    $('on-skinrow').hidden = list2.length < 2;
+    const key = (me && me.character) + ':' + list2.map((x) => x.id).join();
+    if (skins.dataset.key !== key) {
+      skins.dataset.key = key;
+      skins.textContent = '';
+      for (const sk of list2) {
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'cs-card'; c.dataset.id = sk.id; c.setAttribute('role', 'option');
+        c.innerHTML = '<b></b>';
+        c.querySelector('b').textContent = sk.name;
+        c.addEventListener('click', () => this.h.setSkin(me.character, sk.id));
+        skins.appendChild(c);
+      }
+    }
+    for (const c of skins.children) c.setAttribute('aria-selected', String(c.dataset.id === ((me && me.skin) || '')));
 
     // the map
     this.isHost = isHost;

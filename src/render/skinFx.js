@@ -12,9 +12,11 @@ import { SKIN } from './human.js';
 function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
 function tex(c) { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
 
-export function applySkinFx(k, fx) {
+// o.light: false leaves out the Opal's glow light (a teammate: a new light would
+// rebuild every material's shader mid-game)
+export function applySkinFx(k, fx, o = {}) {
   if (fx === 'bikini') bikini(k);
-  else if (fx === 'opal') opal(k);
+  else if (fx === 'opal') opal(k, o.light !== false);
   return k;
 }
 
@@ -51,7 +53,7 @@ function bikini(k) {
 // --- Pink Diamond Galaxy Opal Drippy Face Build Skin ----------------------------------
 const OPAL = { tint: new THREE.Color('#ffc4ee'), glow: new THREE.Color('#ff3fcf') };
 
-function opal(k) {
+function opal(k, light = true) {
   const made = new Map();
   const convert = (m) => {
     if (!m || !m.isMeshStandardMaterial) return m;
@@ -85,9 +87,8 @@ function opal(k) {
   const stars = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.018, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
   stars.raycast = () => {};
   k.root.add(stars);
-  const glow = new THREE.PointLight('#ff4fd0', 1.2, 2.2, 2);
-  glow.position.set(0, 1.2, 0.5);
-  k.root.add(glow);
+  const glow = light ? new THREE.PointLight('#ff4fd0', 1.2, 2.2, 2) : null;
+  if (glow) { glow.position.set(0, 1.2, 0.5); k.root.add(glow); }
   let t = 0;
   const mats = [...made.values()];
   k.fxUpdate = (dt) => {
@@ -95,6 +96,6 @@ function opal(k) {
     stars.rotation.y += dt * 0.5;
     const pulse = 0.45 + Math.sin(t * 2.2) * 0.12;
     for (const m of mats) { m.emissiveIntensity = pulse; m.iridescenceThicknessRange[1] = 700 + Math.sin(t * 0.9) * 180; }
-    glow.intensity = 1 + Math.sin(t * 2.2) * 0.4;
+    if (glow) glow.intensity = 1 + Math.sin(t * 2.2) * 0.4;
   };
 }

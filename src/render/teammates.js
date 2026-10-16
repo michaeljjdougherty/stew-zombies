@@ -7,7 +7,9 @@
 // and turns red while they need a revive.
 // =============================================================================
 import * as THREE from 'three';
-import { buildCharacter, rigidSkin } from './characters.js';
+import { buildCharacter, rigidSkin, CHARACTERS } from './characters.js';
+import { applySkin } from '../career/skins.js';
+import { applySkinFx } from './skinFx.js';
 import { proneLevel } from '../sim/player.js';
 import { idleCharacter, idleAct, IDLE_ACTS, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
@@ -39,12 +41,19 @@ function tagTexture(text, color) {
   return t;
 }
 
+// who they look like: the character and their skin (a change rebuilds them)
+export const lookOf = (p) => p.character + ':' + (p.skin || '');
+
 export class Teammate {
   constructor(scene, p, cfg) {
     this.cfg = cfg;
     this.id = p.id;
     this.character = p.character;
-    this.k = rigidSkin(buildCharacter(p.character, { detail: 0.6 }));   // (one draw per material)
+    this.look = lookOf(p);   // (in the skin they picked: src/career/skins.js)
+    const def = p.skin && CHARACTERS[p.character] ? applySkin(CHARACTERS[p.character], p.character, p.skin) : null;
+    const k = buildCharacter(def || p.character, { detail: 0.6 });
+    if (def && def.skinFx) applySkinFx(k, def.skinFx, { light: false });
+    this.k = rigidSkin(k);   // (one draw per material)
     this.root = this.k.root;
     scene.add(this.root);
     this.handHome = [this.k.armL, this.k.armR].map((a) => a.handGroup.quaternion.clone());
@@ -240,6 +249,7 @@ export class Teammate {
 
     // look up and down with the head too
     k.head.rotation.x = -pt * 0.45;
+    if (this.k.fxUpdate) this.k.fxUpdate(dt);   // (the Opal skin's shimmer)
 
     // an emote from the wheel, or standing still a while: their character's
     // idle act (James dances, Kyle crosses his arms). Snaps off the moment
@@ -314,7 +324,7 @@ export class TeammateViews {
       if (p.id === localId) continue;
       seen.add(p.id);
       let v = this.views.get(p.id);
-      if (!v || v.character !== p.character) {
+      if (!v || v.look !== lookOf(p)) {
         if (v) v.dispose(this.scene);
         v = new Teammate(this.scene, p, this.cfg);
         this.views.set(p.id, v);

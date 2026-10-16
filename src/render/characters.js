@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { buildHead, torsoSections, loft, neckGeometry, limb, shoeGeometry, SKIN, rng } from './human.js';
 import { buildHand } from './hands.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { dressGear } from './costumes.js';
 export { idleCharacter, idleKearns, setGesture, idleAct } from './characterAnim.js';
 
 export const SHIRT_COLORS = {
@@ -251,6 +252,47 @@ const PANTS = {
   chinos: { color: '#b4b3ae' },
   suit: { color: '#131315' },
 };
+// (a skin's costume can bring its own: { color, stripe })
+const pantsOf = (kind) => (kind && typeof kind === 'object' ? kind : PANTS[kind] || PANTS.jeans);
+
+// A costume's extras on the torso (the Skin Shop's skins, src/career/skins.js):
+// belly: a patch down the front; stripes: [{ v, h, color }] bands round it;
+// backStripe: a band up the back (the skunk); overalls / apron: a bib over the
+// front; print: 'leopard' | 'confetti'; text: { front, back, color }.
+function costumeTop(g, top, W, H, cx, vy, R) {
+  if (top.print === 'leopard') {
+    for (let i = 0; i < 220; i++) {
+      const x = R() * W, y = R() * H, rr = 5 + R() * 7;
+      g.fillStyle = '#3a2410'; g.beginPath(); g.ellipse(x, y, rr, rr * 0.8, R() * 3, 0, 7); g.fill();
+      g.fillStyle = top.color; g.beginPath(); g.ellipse(x + 1, y, rr * 0.5, rr * 0.38, R() * 3, 0, 7); g.fill();
+    }
+  }
+  if (top.print === 'confetti') {
+    const C = ['#ff4f7a', '#ffd23a', '#3ad0ff', '#7dff5a', '#b78cff'];
+    for (let i = 0; i < 260; i++) { g.save(); g.translate(R() * W, R() * H); g.rotate(R() * 3); g.fillStyle = C[i % C.length]; g.fillRect(-5, -2, 10, 4); g.restore(); }
+  }
+  if (top.belly) { g.fillStyle = top.belly; g.beginPath(); g.ellipse(cx, vy(0.42), 70, H * 0.3, 0, 0, 7); g.fill(); }
+  if (top.backStripe) { g.fillStyle = top.backStripe; g.fillRect(0, 0, 40, H); g.fillRect(W - 40, 0, 40, H); }
+  for (const b of top.stripes || []) { g.fillStyle = b.color; g.fillRect(0, vy(b.v + b.h / 2), W, b.h * H); }
+  const bib = top.overalls || top.apron;
+  if (bib) {
+    // the bib up the front, straps over the shoulders (to the back)
+    g.fillStyle = bib;
+    const w = top.apron ? 92 : 74, v1 = top.apron ? 0.86 : 0.74;
+    g.fillRect(cx - w, vy(v1), w * 2, vy(0.1) - vy(v1));
+    for (const s of [-1, 1]) { g.save(); g.translate(cx + s * (w - 12), vy(v1)); g.fillRect(-9, -(vy(v1) - vy(1)), 18, vy(v1) - vy(1)); g.restore(); }
+    for (const x of [W * 0.2, W * 0.8]) g.fillRect(x - 10, 0, 20, vy(0.3));
+    g.strokeStyle = shade(bib, 0.7); g.setLineDash([5, 4]); g.lineWidth = 2; g.strokeRect(cx - w + 6, vy(v1) + 6, w * 2 - 12, vy(0.1) - vy(v1) - 12); g.setLineDash([]);
+    if (top.overalls) { g.fillStyle = '#c9a24a'; for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * (w - 12), vy(v1) + 10, 6, 0, 7); g.fill(); } g.fillStyle = shade(bib, 0.85); g.fillRect(cx - 34, vy(0.62), 68, 46); }
+  }
+  if (top.text) {
+    const T = top.text;
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    const write = (str, x, y, size) => { g.font = `900 ${size}px Impact, "Arial Black", sans-serif`; g.lineWidth = size * 0.12; g.strokeStyle = T.edge || 'rgba(0,0,0,0.5)'; g.strokeText(str, x, y); g.fillStyle = T.color || '#f2ead6'; g.fillText(str, x, y); };
+    if (T.front) { g.save(); g.translate(W, 0); g.scale(-1, 1); write(T.front, cx, vy(T.v || 0.66), T.size || 46); g.restore(); }
+    if (T.back) for (const x of [0, W]) { g.save(); g.translate(x, 0); g.scale(-1, 1); write(T.back, 0, vy(0.62), T.size || 46); g.restore(); }
+  }
+}
 
 // Varsity block letters across the chest (Regs).
 function varsityPrint(g, cx, cy, W) {
@@ -316,6 +358,7 @@ function torsoTexture(def, shirtHex, seed = 4) {
   } else if (top.type === 'tank') {
     g.fillStyle = color; g.fillRect(0, 0, W, H);
     fabricNoise(g, W, H, R, 0.05);
+    costumeTop(g, { ...top, text: null }, W, H, cx, vy, R);
     // skin: scoop neck at the front, arms holes at the sides, straps over the shoulders
     g.fillStyle = skinCol;
     g.beginPath(); g.ellipse(cx, vy(1.0), 56, H * 0.12, 0, 0, 7); g.fill();
@@ -352,6 +395,7 @@ function torsoTexture(def, shirtHex, seed = 4) {
     if (top.print === 'varsity') varsityPrint(g, cx, vy(0.68), W);
     if (top.print === 'vintage') vintagePrint(g, cx, vy(0.66), W, R);
     g.restore();
+    costumeTop(g, top, W, H, cx, vy, R);
     g.fillStyle = shade(color, 0.82); g.fillRect(0, vy(0.985), W, vy(0.93) - vy(0.985));
     g.strokeStyle = shade(color, 0.65);
     for (let x = 0; x < W; x += 3) { g.beginPath(); g.moveTo(x, vy(0.985)); g.lineTo(x, vy(0.93)); g.stroke(); }
@@ -362,7 +406,7 @@ function torsoTexture(def, shirtHex, seed = 4) {
   if (top.type === 'suit') { g.fillStyle = top.shirt; g.fillRect(0, 0, W, vy(0.975)); g.fillStyle = skinCol; g.fillRect(0, 0, W, vy(0.995)); }
   sideShade(g, W, H, 0.25);
   // hem and pants
-  const P = PANTS[def.pants] || PANTS.jeans;
+  const P = pantsOf(def.shorts || def.pants);
   const hem = 0.13;
   if (top.type !== 'suit') { g.fillStyle = shade(color, 0.75); g.fillRect(0, vy(hem + 0.012), W, 4); }
   g.fillStyle = P.color; g.fillRect(0, vy(hem - 0.002), W, H - vy(hem - 0.002));
@@ -428,6 +472,8 @@ function layerTexture(L, seed = 21) {
     fabricNoise(g, W, H, R, 0.05);
     folds(g, W, H, R, 10, 1.4);
   }
+  // reflective bands (a firefighter's coat, a hi-vis vest)
+  for (const b of L.stripes || []) { g.fillStyle = b.color; g.fillRect(0, H * (1 - b.v) - b.h * H / 2, W, b.h * H); }
   return tex(c, true);
 }
 
@@ -439,7 +485,7 @@ function skinTexture(skin, seed = 3) {
 }
 
 function pantsTexture(kind, seed = 12) {
-  const P = PANTS[kind] || PANTS.jeans;
+  const P = pantsOf(kind);
   const [c, g] = canvas(256, 512); const R = rng(seed);
   g.fillStyle = P.color; g.fillRect(0, 0, 256, 512);
   if (P.denim) {
@@ -457,6 +503,8 @@ function pantsTexture(kind, seed = 12) {
     g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(126, 0, 3, 512);
   }
   for (const u of [64, 192]) { g.beginPath(); g.moveTo(u, 0); g.lineTo(u, 512); g.stroke(); }
+  if (P.stripe) { g.fillStyle = P.stripe; for (const u of [64, 192]) g.fillRect(u - 7, 0, 14, 512); }
+  for (const b of P.bands || []) { g.fillStyle = b.color; g.fillRect(0, 512 * (1 - b.v) - b.h * 256, 256, b.h * 512); }
   for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(70 + R() * 110, 512 * (0.42 + R() * 0.12), 40, 3); }
   return tex(c);
 }
@@ -637,7 +685,7 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
     skin: new THREE.MeshStandardMaterial({ map: skinTexture(skin), roughness: 0.62 }),
     torso: new THREE.MeshStandardMaterial({ map: torsoTexture(def, shirtHex, id.length * 7), roughness: suit ? 0.7 : 0.92 }),
     sleeve: new THREE.MeshStandardMaterial({ map: def.layer ? layerTexture(def.layer, 31) : sleeveTexture(sleeveHex, 9, { cuff: suit ? top.shirt : null }), roughness: 0.9, side: THREE.DoubleSide }),
-    pants: new THREE.MeshStandardMaterial({ map: pantsTexture(def.pants, 12), roughness: 0.9 }),
+    pants: new THREE.MeshStandardMaterial({ map: pantsTexture(def.shorts || def.pants, 12), roughness: 0.9 }),
     shoe: new THREE.MeshStandardMaterial({ map: shoeTexture(def.shoes), roughness: def.shoes === 'dress' ? 0.35 : 0.75 }),
   };
   if (suit) mats.sleeve.map = sleeveTexture(top.color, 9, { cuff: top.shirt });
@@ -781,9 +829,10 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
   const leg = (side) => {
     const hip = new THREE.Group(); hip.position.set(side * secs[1].rx * 0.56, -0.03, 0); hips.add(hip);
     hip.rotation.z = side * 0.025;
-    mesh(limb(0.45, 0.083 * Lk, 0.055 * Lk, { bulge: 0.06, bulgeAt: 0.3, flat: 0.95 }), mats.pants, hip);
+    // (shorts: baggy to the knee, bare shins)
+    mesh(limb(0.45, (def.shorts ? 0.092 : 0.083) * Lk, (def.shorts ? 0.07 : 0.055) * Lk, { bulge: 0.06, bulgeAt: 0.3, flat: 0.95 }), mats.pants, hip);
     const knee = new THREE.Group(); knee.position.y = -0.45; hip.add(knee);
-    mesh(limb(0.44, 0.056 * Lk, 0.046 * Math.max(1, Lk * 0.95), { bulge: 0.04, bulgeAt: 0.3, flat: 0.95 }), mats.pants, knee);
+    mesh(limb(0.44, 0.056 * Lk, 0.046 * Math.max(1, Lk * 0.95), { bulge: 0.04, bulgeAt: 0.3, flat: 0.95 }), def.shorts ? mats.skin : mats.pants, knee);
     const ankle = new THREE.Group(); ankle.position.y = -0.44; knee.add(ankle);
     mesh(shoeGeometry({ length: 0.27 + 0.02 * (Lk - 1), width: 0.1 * Math.max(0.95, Lk * 0.95) }), mats.shoe, ankle, 0, -0.06, 0.005);
     return { hip, knee, ankle };
@@ -792,8 +841,9 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
 
   root.scale.setScalar(def.height || 1);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  const k = { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10 };
+  const k = { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10, secs, neckY };
   if (def.stink) k.stink = stinkCloud(root);
+  if (def.gear) dressGear(k, def.gear);   // (a skin's hats, helmets, tails: src/render/costumes.js)
   return k;
 }
 
