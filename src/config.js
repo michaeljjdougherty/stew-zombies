@@ -265,15 +265,24 @@ export const CONFIG = {
   rounds: {
     firstRoundDelay: 4.0,
     intermission: 10.0,      // break between rounds
-    earlyCounts: [5, 7, 11, 15, 20], // solo zombie counts, rounds 1-5
-    baseCount: 21,           // used from round 6 on
-    hordePerPlayer: 5,
-    lateRoundScale: 0.14,    // round >= 10 multiplier per round
-    extraPlayerMult: 0.3,    // each extra player adds this fraction of base (4 players: x1.9)
-    maxAlive: 20,            // cap of zombies on the map at once
+    // How many zombies a round has, and how fast they come: Black Ops 1's own
+    // numbers (its round_spawning script). maxAi + aiPerPlayer x players x a round
+    // multiplier (round/5, at least 1; from round 10 also x round x 0.15). Solo
+    // counts half a player. Rounds 1-5 then take a share of that (earlyShare).
+    // Solo: 6, 8, 13, 18, 24, 27, 28, 28, 29, 33 ... 60 on round 20, 105 on 30.
+    maxAi: 24,
+    aiPerPlayer: 6,
+    soloShare: 0.5,
+    lateRound: 10,           // from this round...
+    lateRoundScale: 0.15,    // ...the multiplier is also x round x this
+    earlyShare: [0.25, 0.3, 0.5, 0.7, 0.9], // rounds 1-5
+    maxAlive: 24,            // cap of zombies on the map at once (BO1: 24, any number of players)
+    // BO1: 2 s between spawns on round 1, x0.95 each round after (0.75 s on 20,
+    // 0.45 s on 30), never under about 0.1 s
     spawnIntervalStart: 2.0,
     spawnIntervalDecay: 0.95, // multiplied each round
-    spawnIntervalMin: 0.35,
+    spawnIntervalMin: 0.1,
+    spawnJitter: 0,          // +- this share of random wobble on each wait (BO1: none)
     firstSpawnDelay: 0.8,
     // zombies left far from everyone (another island, the far end of the map)
     // are pulled and come back up near the players, so a round never ends in a hunt
@@ -307,14 +316,16 @@ export const CONFIG = {
     healthMultAfter: 1.1,    // per round after healthAddUntilRound
 
     walkSpeed: [0.85, 1.25],
-    runSpeed: [2.4, 2.9],
-    sprintSpeed: [3.9, 4.5],
-    runnerStartRound: 3,
-    runnerPerRound: 0.13,
-    runnerMax: 0.85,
-    sprinterStartRound: 7,
-    sprinterPerRound: 0.1,
-    sprinterMax: 0.9,
+    runSpeed: [2.2, 2.6],
+    sprintSpeed: [3.3, 3.7],  // a little under your walk (4.1): like BO1, a walking player just stays ahead
+    // Walker, runner or sprinter, BO1's way: a roll from moveSpeed to moveSpeed+35,
+    // where moveSpeed is 1 on round 1 and round x moveSpeedPerRound after that.
+    // Up to 35 walks, up to 70 runs, over 70 sprints. So round 1 all walk, round 2
+    // about 4 in 10 run, the first sprinters on round 5, and all sprint from round 9.
+    moveSpeedPerRound: 8,
+    moveSpeedRoll: 35,
+    walkUpTo: 35,
+    runUpTo: 70,
 
     turnRate: 6,             // radians/sec
     accel: 10,
@@ -2283,24 +2294,21 @@ export const baseWeaponId = (id) => (id && id.endsWith('+') ? id.slice(0, -1) : 
 
 // Helper: zombie health for a given round (classic curve).
 export function zombieHealthForRound(round, cfg = CONFIG.zombie) {
+  // BO1: whole numbers each round (+100 a round, then +10% rounded down)
   let hp = cfg.healthBase;
   for (let r = 2; r <= round; r++) {
     if (r <= cfg.healthAddUntilRound) hp += cfg.healthAddPerRound;
-    else hp *= cfg.healthMultAfter;
+    else hp += Math.floor(hp * (cfg.healthMultAfter - 1) + 1e-9);
   }
-  return Math.round(hp);
+  return hp;
 }
 
 // Helper: how many zombies spawn in a round.
 export function zombieCountForRound(round, players = 1, cfg = CONFIG.rounds) {
-  let count;
-  if (round <= cfg.earlyCounts.length) {
-    count = cfg.earlyCounts[round - 1];
-  } else {
-    let mult = Math.max(1, round / 5);
-    if (round >= 10) mult *= round * cfg.lateRoundScale;
-    count = cfg.baseCount + cfg.hordePerPlayer * mult;
-  }
-  count *= 1 + (players - 1) * cfg.extraPlayerMult;
-  return Math.floor(count);
+  let mult = Math.max(1, round / 5);
+  if (round >= cfg.lateRound) mult *= round * cfg.lateRoundScale;
+  const share = players <= 1 ? cfg.soloShare : players - 1;
+  let count = cfg.maxAi + Math.floor(share * cfg.aiPerPlayer * mult + 1e-9);
+  if (round <= cfg.earlyShare.length) count = Math.floor(count * cfg.earlyShare[round - 1] + 1e-9);
+  return count;
 }
