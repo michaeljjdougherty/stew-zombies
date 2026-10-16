@@ -10,7 +10,7 @@
 //   hfire  a pool of fire: anything in it burns down where it stands
 //   hice   a blizzard: anything that comes in freezes solid, then shatters
 //   hwind  a whirlwind where the head came down, dragging zombies in
-//   hbolt  a ball of lightning drifting on, striking anything near it
+//   hbolt  the Lightning Hammer's Wunderwaffe: a ball of lightning jumping zombie to zombie
 // =============================================================================
 import { damageZombie } from './zombies.js';
 import { explode } from './projectiles.js';
@@ -49,7 +49,7 @@ function within(sim, pr, r, dy = 2.5) {
 }
 function updateHammerFx(sim, pr, dt) {
   const T = sim.cfg.crust.hammers.tempered;
-  const C = { hfire: T.fire.pool, hice: T.ice.storm, hwind: T.wind.tornado, hbolt: T.lightning.orb }[pr.type];
+  const C = { hfire: T.fire.pool, hice: T.ice.storm, hwind: T.wind.tornado, hbolt: { ...T.lightning.waffe, time: T.lightning.orb.time, max: pr.chains } }[pr.type];
   pr.kills = pr.kills || 0;
   if (pr.age >= C.time || pr.kills >= C.max) {
     pr.done = true;
@@ -100,21 +100,23 @@ function updateHammerFx(sim, pr, dt) {
       z.pull = { x: pr.pos.x, z: pr.pos.z, speed: C.pullSpeed[0] + (C.pullSpeed[1] - C.pullSpeed[0]) * k, ttl: 0.15 };
     }
   } else if (pr.type === 'hbolt') {
-    // the ball drifts on, and strikes the nearest thing to it every so often
-    const step = C.speed * dt;
-    const ahead = sim.raycastWorld(pr.pos, { x: pr.dir.x, y: 0, z: pr.dir.z }, step + 0.5);
-    if (!ahead) { pr.pos.x += pr.dir.x * step; pr.pos.z += pr.dir.z * step; }
+    // the Wunderwaffe's ball of lightning: every `every` s it jumps to the nearest
+    // zombie it hasn't had yet (within hop m) and kills it; nobody near, it's gone
     pr.zap = (pr.zap ?? 0) - dt;
-    if (pr.zap <= 0) {
-      let best = null, bd = C.reach;
-      for (const z of within(sim, pr, C.reach, 5)) { const d = Math.hypot(z.pos.x - pr.pos.x, z.pos.z - pr.pos.z); if (d < bd) { bd = d; best = z; } }
-      if (best) {
-        pr.zap = C.every; pr.kills++;
-        const c = { x: best.pos.x, y: best.pos.y + (best.crawler ? 0.3 : 1.0), z: best.pos.z };
-        damageZombie(sim, best, 1e6, { playerId: pr.ownerId, part: 'torso', kind: 'electric', dir: { x: 0, y: 1, z: 0 }, point: c, force: 1, weapon: pr.weapon });
-        sim.emit('hammerZap', { id: pr.id, points: [{ ...pr.pos }, c] });
-      }
+    if (pr.zap > 0) return;
+    pr.hit = pr.hit || [];
+    let best = null, bd = C.hop;
+    for (const z of within(sim, pr, C.hop, 4)) {
+      if (pr.hit.includes(z.id)) continue;
+      const d = Math.hypot(z.pos.x - pr.pos.x, z.pos.z - pr.pos.z);
+      if (d < bd) { bd = d; best = z; }
     }
+    if (!best) { pr.done = true; sim.emit('projectileGone', { id: pr.id, hammerFx: pr.type, pos: { ...pr.pos } }); return; }
+    pr.zap = C.every; pr.kills++; pr.hit.push(best.id);
+    const c = { x: best.pos.x, y: best.pos.y + (best.crawler ? 0.3 : 1.0), z: best.pos.z };
+    damageZombie(sim, best, 1e6, { playerId: pr.ownerId, part: 'torso', kind: 'electric', dir: { x: 0, y: 1, z: 0 }, point: c, force: 1, weapon: pr.weapon });
+    sim.emit('hammerZap', { id: pr.id, points: [{ ...pr.pos }, c] });
+    pr.pos = { ...c };
   }
 }
 

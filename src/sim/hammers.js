@@ -7,7 +7,8 @@
 //   Fire       a burst of flame, and a pool of fire that burns down anything in it
 //   Ice        everything round you frozen solid, and a blizzard that freezes and shatters more
 //   Wind       a gale down the line you swung along, and a whirlwind where it lands
-//   Lightning  a bolt jumping zombie to zombie, and a ball of lightning drifting on
+//   Lightning  the Wunderwaffe: a bolt into the first one in line, then a ball of
+//              lightning jumping zombie to zombie, killing each (from its forging on)
 // They're also the only thing that gets through The Schnitz's hold on Big
 // Evil Zach (zachBoss.js); which hammer it is counts there, tempered or not.
 // Numbers: CONFIG.crust.hammers.
@@ -81,25 +82,38 @@ export function hammerSlam(sim, p, eye, dir, def, weapon, quick = false) {
     leave('hice');
   } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: { ...E, range: E.range * k, maxKills: Math.round(E.maxKills * k) } }, weapon); leave('hwind'); }
   else if (el === 'lightning') {
-    const pts = [{ x: land.x, y: land.y + 0.2, z: land.z }];
-    const hit = new Set();
-    let from = land, reach = E.reach * k;
-    for (let i = 0; i < Math.round(E.chains * k); i++) {
-      let best = null, bd = reach;
-      for (const z of sim.zombies) {
-        if (!alive(z) || hit.has(z.id)) continue;
-        const d = Math.hypot(z.pos.x - from.x, z.pos.z - from.z);
-        if (d < bd && Math.abs(z.pos.y - from.y) < 4) { bd = d; best = z; }
-      }
-      if (!best) break;
-      hit.add(best.id);
-      const c = center(best);
-      pts.push(c);
-      damageZombie(sim, best, 1e6, { playerId: p.id, part: 'torso', kind: 'electric', dir: { x: 0, y: 1, z: 0 }, point: c, force: 1, weapon });
-      from = best.pos; reach = E.hop * k;
+    // the Wunderwaffe: a bolt down your aim into the first zombie in line, then a
+    // ball of lightning jumping zombie to zombie, killing every one (gadgets.js);
+    // `forged` of them before Pit tempers it, `chains` after
+    const W = E.waffe, chains = up ? W.chains : W.forged;
+    const from = { x: eye.x + dir.x * 0.8, y: eye.y + dir.y * 0.8 - 0.2, z: eye.z + dir.z * 0.8 };
+    let first = null, bt = W.range;
+    for (const z of sim.zombies) {
+      if (!alive(z)) continue;
+      const c = center(z);
+      const vx = c.x - eye.x, vy = c.y - eye.y, vz = c.z - eye.z;
+      const t = vx * dir.x + vy * dir.y + vz * dir.z;
+      if (t < 0.3 || t > bt) continue;
+      const off = Math.hypot(vx - dir.x * t, vy - dir.y * t, vz - dir.z * t);
+      if (off > W.aim * Math.min(1, 0.4 + t / 10)) continue;   // (a fat bolt: it'll catch one a little off your aim)
+      const el2 = Math.hypot(vx, vy, vz);
+      if (sim.raycastWorld(eye, { x: vx / el2, y: vy / el2, z: vz / el2 }, el2 - 0.4, true)) continue;
+      bt = t; first = z;
     }
-    sim.emit('hammerChain', { playerId: p.id, points: pts });
-    leave('hbolt', { pos: { x: land.x, y: land.y + E.orb.height, z: land.z } });
+    if (!first) {
+      // nothing in line: it cracks off into whatever you're looking at
+      const wall = sim.raycastWorld(eye, dir, W.range, true);
+      const end = wall ? wall.point : { x: eye.x + dir.x * W.range, y: eye.y + dir.y * W.range, z: eye.z + dir.z * W.range };
+      sim.emit('hammerChain', { playerId: p.id, points: [from, { ...end }] });
+    } else {
+      const c = center(first);
+      damageZombie(sim, first, 1e6, { playerId: p.id, part: 'torso', kind: 'electric', dir: { x: 0, y: 1, z: 0 }, point: c, force: 1, weapon });
+      sim.emit('hammerChain', { playerId: p.id, points: [from, c] });
+      if (chains > 1) {
+        const pr = spawnProjectile(sim, 'hbolt', c, { x: 0, y: 0, z: 0 }, p.id, { gravity: 0, weapon });
+        Object.assign(pr, { resting: true, dir: { x: fx, z: fz }, chains, kills: 1, hit: [first.id], zap: W.every });
+      }
+    }
   }
 
   // Big Evil Zach (the finale): the only thing that gets through

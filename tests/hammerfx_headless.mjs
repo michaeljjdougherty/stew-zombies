@@ -32,7 +32,7 @@ const ring = (sim, at, r, n = 6) => Array.from({ length: n }, (_, i) => {
 });
 
 // --- each tempered hammer's leftover effect, with zombies brought to it after the swing
-for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hice', 2.5], ['Wind Hammer+', 'hwind', 4.5], ['Lightning Hammer+', 'hbolt', 4]]) {
+for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hice', 2.5], ['Wind Hammer+', 'hwind', 4.5]]) {
   const g = game(CRUST);
   g.step(30); giveWeapon(g.sim, g.me, id); g.step(60);
   g.step(1, { fire: true, firePressed: true }); g.step(40);
@@ -43,6 +43,26 @@ for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hi
   g.step(4 * 60);
   const dead = zs.filter((z) => z.state === 'dead').length;
   check(dead === zs.length, `${id}: it kills what comes into it, high round or not (${dead}/${zs.length} in 4 s)`);
+}
+
+// --- the Lightning Hammer is the Wunderwaffe: a bolt down your aim, then a ball of
+// lightning jumping zombie to zombie, killing each (10 forged, 24 tempered)
+for (const id of ['Lightning Hammer', 'Lightning Hammer+']) {
+  const g = game(CRUST);
+  g.step(30); giveWeapon(g.sim, g.me, id); g.step(60);
+  const fx = -Math.sin(g.me.yaw), fz = -Math.cos(g.me.yaw);
+  const zs = [];
+  for (let i = 0; i < 30; i++) {
+    const f = 7 + (i % 6) * 1.2, s = ((i / 6 | 0) - 2) * 1.5;
+    const z = ring(g.sim, { x: g.me.pos.x + fx * f - fz * s, y: g.me.pos.y, z: g.me.pos.z + fz * f + fx * s }, 0, 1)[0];
+    z.speed = 0.01; zs.push(z);   // (stood still, so none walks out of its reach)
+  }
+  const n0 = g.log.length;
+  g.step(1, { fire: true, firePressed: true }); g.step(4 * 60);
+  const W = CONFIG.crust.hammers.tempered.lightning.waffe, want = id.endsWith('+') ? W.chains : W.forged;
+  const dead = zs.filter((z) => z.state === 'dead').length;
+  check(dead === want && g.log.slice(n0).some((e) => e.type === 'hammerChain'), `${id}: the Wunderwaffe kills ${dead} of 30 at round-30 health (wants ${want})`);
+  check(!g.sim.projectiles.length, '...and then the ball\'s gone');
 }
 
 // --- the quick swing (right click): a sweep in front of you, the same on every

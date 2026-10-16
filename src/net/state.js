@@ -38,7 +38,7 @@ const byId = (list, fn) => { const o = {}; for (const x of list) o[x.id] = fn(x)
 // --- what the host sends ----------------------------------------------------
 const PLAYER_SKIP = new Set(['useTarget']);
 const ZOMBIE_SKIP = new Set(['region', 'stuckT', 'avoidSign', 'sidestep', 'sideSign', 'speed', 'radius', 'stepHeight', 'height', 'targetId']);
-const PROJ_SKIP = new Set(['hitIds', 'gravity', 'bounce', 'friction', 'chill']);
+const PROJ_SKIP = new Set(['hitIds', 'gravity', 'bounce', 'friction', 'chill', 'hit']);
 const WINDOW_KEYS = ['boards', 'climbing', 'rebuild', 'queue'];
 const QUEST_SKIP = new Set(['standBox', 'need']);
 const EGG_SKIP = new Set(['shipLand']);

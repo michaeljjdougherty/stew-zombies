@@ -1862,9 +1862,12 @@ export const CONFIG = {
         // down (like the Origins wind staff's: it stays put, speed 0) dragging zombies
         // in and throwing them; one caught on something on the way is torn apart in grind s
         wind: { range: 16, angle: 36, near: 2.2, maxKills: 30, tornado: { speed: 0, time: 5, pull: 8, pullSpeed: [3, 9], catch: 1.5, grind: 2.5, max: 30 } },
-        // a bolt jumping zombie to zombie, and a ball of lightning that drifts on,
-        // striking anything near it
-        lightning: { chains: 14, hop: 7.5, reach: 12, orb: { time: 6, speed: 1.8, height: 1.6, every: 0.3, reach: 7, max: 24 } },
+        // the Wunderwaffe DG-2: a bolt down your aim into the first zombie within range m
+        // and aim m of the line, then a ball of lightning jumping on to the nearest one it
+        // hasn't had (within hop m) every `every` s, killing each: `forged` in all before
+        // Pit tempers it, `chains` after (the DG-3 JZ). (orb: the ball's look, and how
+        // long it can last)
+        lightning: { waffe: { range: 40, aim: 1.4, hop: 10, every: 0.1, forged: 10, chains: 24 }, orb: { time: 4, height: 0 } },
       },
       // how they look (src/render/warHammer.js): the downloaded hammer, sized so the
       // haft's butt sits at z `butt` and the head's centre at z `headAt` (metres),
