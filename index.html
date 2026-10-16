@@ -728,50 +728,89 @@
     .mf-vat { --h: clamp(200px, 38vh, 320px); max-width: 30vw; }
   }
 
-  /* ---------------- Title: Stew Zombies 2.0, the blades ---------------- */
-  .screen.titlescreen { display: grid; grid-template-rows: auto 1fr auto; align-content: stretch; gap: 18px; padding-block: max(20px, 4vh) max(16px, 3vh); padding-inline: max(16px, 4vw);
-    background: radial-gradient(ellipse at 70% 40%, rgba(6,5,10,0) 0%, rgba(6,5,10,.35) 55%, rgba(4,3,8,.85) 100%), linear-gradient(90deg, rgba(4,3,8,.75), rgba(4,3,8,.1) 70%); }
-  .t-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-  .t-logo { margin: 0; font-family: var(--display); font-size: clamp(40px, 6.4vw, 84px); line-height: .9; letter-spacing: 2px; text-transform: uppercase; color: #f4f1ea;
-    text-shadow: 0 3px 0 #000, 0 0 28px rgba(120, 200, 90, .35); display: flex; align-items: flex-start; gap: .18em; }
-  .t-logo b { font-size: .46em; line-height: 1; padding: .12em .32em .08em; margin-top: .12em; color: #0b120a; letter-spacing: 1px; border-radius: 6px;
-    background: linear-gradient(180deg, #b6ff7a, #46c02e 55%, #2a8a1a); box-shadow: 0 0 18px rgba(110, 230, 70, .55), inset 0 1px 0 rgba(255,255,255,.6); text-shadow: none; }
-  .t-by { margin: 6px 0 0; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
-  .t-chip { margin: 6px 0 0; padding: 8px 14px; border-radius: 22px; background: rgba(10,12,14,.65); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px); }
-  .blades { display: flex; align-items: stretch; gap: 0; min-height: 0; height: min(64vh, 560px); align-self: center; max-width: 1180px; width: 100%; perspective: 1400px; }
-  .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; transition: flex .35s cubic-bezier(.2,.8,.2,1); }
+  /* ---------------- Title: Stew Zombies 2.0, the blades ----------------
+     The Xbox 360's blades, as the burnt pages of an old book: each closed blade
+     is a page edge, the open one a whole charred sheet (its ragged, smouldering
+     edge is the #burn filter in the title's markup). */
+  .screen.titlescreen { --paper: #d9c59b; --paper-lo: #c2a673; --char: #160c05; --ink-d: #23160b; --ink-r: #7e140e; --tabw: 56px;
+    display: grid; grid-template-rows: auto 1fr auto; align-content: stretch; gap: 18px; padding-block: max(20px, 4vh) max(16px, 3vh); padding-inline: max(16px, 4vw);
+    background: radial-gradient(ellipse 70% 40% at 50% 105%, rgba(255,90,20,.22), transparent 70%),
+      radial-gradient(ellipse at 70% 40%, rgba(6,4,3,0) 0%, rgba(6,4,3,.45) 55%, rgba(3,2,1,.9) 100%), linear-gradient(90deg, rgba(4,3,2,.8), rgba(4,3,2,.15) 70%); }
+  .t-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
+  .t-logo { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(40px, 6.4vw, 84px); line-height: .9; letter-spacing: 2px; text-transform: uppercase; color: #e6d8ba;
+    text-shadow: 0 3px 0 #000, 0 0 2px #000, 0 0 30px rgba(200,40,15,.45); display: flex; align-items: flex-start; gap: .2em; }
+  .t-logo b { font-weight: 400; font-size: .46em; line-height: 1; padding: .14em .3em .08em; margin-top: .14em; color: #f1e2c4; letter-spacing: 1px; transform: rotate(-5deg);
+    background: radial-gradient(ellipse at 30% 30%, #a3221a, #5e0e09 70%, #3a0805); border: 2px solid #2a0604; border-radius: 3px;
+    box-shadow: inset 0 0 0 2px rgba(241,226,196,.35), inset 0 0 10px rgba(0,0,0,.6), 0 0 18px rgba(255,80,20,.35); text-shadow: 0 1px 0 #000; }
+  .t-by { margin: 8px 0 0; font: 13px/1.3 "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; color: #b7a585; }
+  .t-chip { margin: 6px 0 0; padding: 8px 14px; border-radius: 4px; background: rgba(12,8,5,.7); border: 1px solid rgba(217,197,155,.2); }
+  .t-embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .t-embers i { position: absolute; bottom: -12px; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: #ffb050; box-shadow: 0 0 6px 2px rgba(255,110,20,.8), 0 0 14px rgba(255,60,0,.5);
+    opacity: 0; animation: tEmber var(--t) linear var(--d) infinite; }
+  @keyframes tEmber { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: .95; } 60% { opacity: .7; } 100% { transform: translate(var(--w, 40px), -92vh); opacity: 0; } }
+  .blades { display: flex; align-items: stretch; gap: 0; min-height: 0; height: min(64vh, 560px); align-self: center; max-width: 1180px; width: 100%; position: relative; z-index: 1;
+    filter: drop-shadow(0 22px 28px rgba(0,0,0,.75)); }
+  .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; isolation: isolate; transition: flex .35s cubic-bezier(.2,.8,.2,1); }
   .blade.open { flex: 1 1 auto; min-width: 0; }
-  .blade-tab { all: unset; box-sizing: border-box; cursor: pointer; width: 54px; display: grid; place-items: center; position: relative;
-    background: linear-gradient(90deg, var(--bc2), var(--bc) 60%, color-mix(in srgb, var(--bc) 70%, #fff)); border-radius: 10px 0 0 10px; margin-left: -6px;
-    box-shadow: -6px 0 18px rgba(0,0,0,.55), inset 1px 0 0 rgba(255,255,255,.35), inset 0 1px 0 rgba(255,255,255,.25); transition: filter .2s, width .3s; }
+  /* the paper: the tabs and the open sheet share it; #burn tears and singes its edge */
+  .blade-tab::before, .blade.open::after { content: ""; position: absolute; z-index: -1; pointer-events: none; filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35));
+    background:
+      radial-gradient(ellipse 40% 30% at 28% 22%, rgba(255,244,214,.35), transparent 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .07 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
+      linear-gradient(170deg, var(--paper), var(--paper-lo));
+    box-shadow: inset 0 0 0 2px var(--char), inset 0 0 14px 7px rgba(22,12,5,.92), inset 0 0 46px 20px rgba(80,42,14,.55), inset 0 0 110px rgba(110,62,22,.35); }
+  .blade-tab { all: unset; box-sizing: border-box; cursor: pointer; width: var(--tabw); display: grid; place-items: center; position: relative; isolation: isolate; margin-left: -8px; transition: transform .2s, filter .2s; }
+  .blade-tab::before { inset: 0; border-radius: 3px; --paper: #c9b183; --paper-lo: #a98d5a; }
+  .blade:nth-child(1) .blade-tab { transform: rotate(-.5deg); } .blade:nth-child(2) .blade-tab { transform: rotate(.6deg); }
+  .blade:nth-child(3) .blade-tab { transform: rotate(-.3deg); } .blade:nth-child(4) .blade-tab { transform: rotate(.4deg); }
   .blade:first-child .blade-tab { margin-left: 0; }
-  .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 24px; letter-spacing: 3px; text-transform: uppercase; color: #fff; text-shadow: 0 2px 2px rgba(0,0,0,.5); }
-  .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.25); outline: none; }
-  .blade-tab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 40%); pointer-events: none; }
-  .blade-body { display: none; min-width: 0; flex: 1; overflow-y: auto; padding: clamp(18px, 3vh, 30px) clamp(18px, 3vw, 40px);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--bc) 34%, rgba(8,10,12,.9)), rgba(8,10,14,.86) 55%, rgba(6,8,10,.8));
-    border-top: 2px solid color-mix(in srgb, var(--bc) 80%, #fff); border-bottom: 1px solid rgba(255,255,255,.08); box-shadow: 0 18px 40px rgba(0,0,0,.6); backdrop-filter: blur(4px); animation: bladeIn .35s cubic-bezier(.2,.8,.2,1); }
+  .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 25px; letter-spacing: 4px; text-transform: uppercase; color: var(--ink-d); opacity: .85; text-shadow: 0 0 1px rgba(35,22,11,.7); }
+  .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.12); outline: none; }
+  .blade-tab:focus-visible span, .blade.open .blade-tab span { color: var(--ink-r); opacity: 1; }
+  .blade.open .blade-tab::before { --paper: #dcc9a0; --paper-lo: #c6aa78; }
+  .blade.open::after { top: 0; bottom: 0; left: calc(var(--tabw) - 6px); right: 0;
+    background:
+      radial-gradient(ellipse 70px 20px at 90% 10%, rgba(120,14,10,.32), transparent 70%), radial-gradient(circle at 86% 15%, rgba(110,12,8,.45) 0 3px, transparent 4px), radial-gradient(circle at 93% 6%, rgba(110,12,8,.4) 0 2px, transparent 3px),
+      radial-gradient(circle at 80% 82%, transparent 0 44px, rgba(110,66,26,.22) 45px 49px, transparent 51px),
+      linear-gradient(90deg, rgba(40,20,6,.5), transparent 7%),
+      radial-gradient(ellipse 40% 30% at 28% 22%, rgba(255,244,214,.35), transparent 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .07 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
+      linear-gradient(170deg, var(--paper), var(--paper-lo)); }
+  .blade-body { display: none; min-width: 0; flex: 1; overflow-y: auto; position: relative; z-index: 1; color: var(--ink-d); padding: clamp(22px, 3.4vh, 34px) clamp(22px, 3.4vw, 46px);
+    scrollbar-width: thin; scrollbar-color: #8a6a3a transparent; animation: bladeIn .35s cubic-bezier(.2,.8,.2,1);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent); }
   .blade.open .blade-body { display: block; }
-  .blade.open .blade-tab { width: 60px; filter: brightness(1.15); }
-  @keyframes bladeIn { from { opacity: 0; transform: translateX(-24px) rotateY(8deg); } to { opacity: 1; transform: none; } }
-  .b-title { margin: 0; font-family: var(--display); font-size: clamp(34px, 4.4vw, 54px); letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 #000, 0 0 22px color-mix(in srgb, var(--bc) 60%, transparent); }
-  .b-sub { margin: 4px 0 18px; color: var(--muted); font-size: 14px; max-width: 46ch; }
-  .b-menu { gap: 2px; }
-  .b-menu button { font-size: clamp(22px, 2.6vw, 30px); }
-  .b-menu button::after { background: var(--bc); }
+  @keyframes bladeIn { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+  .b-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(36px, 4.6vw, 58px); letter-spacing: 2px; text-transform: uppercase; color: var(--ink-d); text-shadow: 0 0 1px rgba(35,22,11,.8), 1px 1px 0 rgba(35,22,11,.15); position: relative; display: inline-block; }
+  .b-title::after { content: ""; position: absolute; left: -4px; right: -10px; bottom: .02em; height: .16em; z-index: -1; background: var(--ink-r); opacity: .78;
+    clip-path: polygon(0 40%, 6% 10%, 30% 30%, 55% 0, 80% 25%, 100% 15%, 97% 70%, 70% 90%, 40% 70%, 15% 100%, 2% 80%); }
+  .b-sub { margin: 6px 0 18px; font: 14px/1.45 "American Typewriter", "Courier New", Courier, monospace; color: #4a3520; max-width: 48ch; }
+  .blade .b-menu { gap: 2px; }
+  .blade .b-menu button { font-size: clamp(22px, 2.6vw, 30px); color: var(--ink-d); }
+  .blade .b-menu button:hover, .blade .b-menu button:focus-visible { color: var(--ink-r); }
+  .blade .b-menu button::after { background: var(--ink-r); height: 4px; clip-path: polygon(0 30%, 40% 0, 100% 40%, 96% 100%, 50% 70%, 3% 100%); }
+  .blade .b-menu button:focus-visible { outline: 1px dashed rgba(35,22,11,.45); }
+  .blade .trailer-pick span, .blade .trailer-pick small { color: #5a4630; }
+  .blade .menu .trailer-pick button[aria-current="true"] { color: var(--ink-r); }
   .b-pack { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
-  .b-pack img { width: 58px; height: 58px; filter: drop-shadow(0 2px 4px #000); }
-  .b-div { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
-  .b-div b { font-family: var(--display); font-size: 24px; color: #5ad1e8; letter-spacing: 1px; }
-  .blade .keys { font-size: 13px; }
-  .blade .set-head { margin: 22px 0 12px; }
-  .t-hint { margin: 0; justify-self: center; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .b-pack img { width: 58px; height: 58px; filter: drop-shadow(0 2px 3px rgba(30,15,5,.7)) sepia(.15); }
+  .b-div { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: #4a3520; font: 13px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; }
+  .b-div b { font: 400 26px var(--display); color: #14586a; letter-spacing: 1px; }
+  .blade .set-head { margin: 22px 0 12px; color: var(--ink-r); border-top: 1px solid rgba(35,22,11,.3); }
+  .blade .keys { font-size: 13px; color: #4a3520; }
+  .blade .keys dt { color: var(--ink-d); border-color: rgba(35,22,11,.35); }
+  .blade kbd.glyph.key { color: #efe2c4; background: #2a1a0e; border-color: #2a1a0e; }
+  .t-hint { margin: 0; justify-self: center; position: relative; z-index: 1; font: 12px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 2px; text-transform: uppercase; color: #9a8868; }
   @media (max-width: 720px) {
+    .screen.titlescreen { grid-template-rows: auto auto auto; }
     .blades { flex-direction: column; height: auto; }
     .blade { flex-direction: column; }
-    .blade-tab { width: 100%; height: 46px; margin: -4px 0 0; border-radius: 10px 10px 0 0; }
+    .blade-tab { width: 100%; height: 46px; margin: -6px 0 0; }
+    .blade:first-child .blade-tab { margin-top: 0; }
     .blade-tab span { writing-mode: horizontal-tb; transform: none; font-size: 20px; }
-    .blade.open .blade-tab { width: 100%; }
+    .blade.open::after { left: 0; top: 40px; }
   }
   /* ---------------- Menus ---------------- */
   .screen { position: fixed; inset: 0; display: grid; align-content: safe center; padding-inline: max(16px, 7vw); padding-block: 32px;
@@ -1069,8 +1108,11 @@
 
 <section id="title" class="screen titlescreen">
   <!-- Stew Zombies 2.0: the "blades" (after the Xbox 360's): Play, GobbleGum,
-       Extras, Settings side by side; the open one shows what's in it, the rest
-       stand as tabs either side. Left/right (or the bumpers) to flip between. -->
+       Extras, Settings side by side, as the charred pages of an old book; the
+       open one shows what's in it, the rest stand as page edges either side.
+       Left/right (or the bumpers) to flip between. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="burn" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.045" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+  <div class="t-embers" aria-hidden="true"><i style="--x:45%;--s:5px;--t:13.0s;--d:-10.9s;--w:-8px"></i><i style="--x:84%;--s:3px;--t:8.3s;--d:-7.2s;--w:21px"></i><i style="--x:78%;--s:2px;--t:10.1s;--d:-2.0s;--w:6px"></i><i style="--x:87%;--s:2px;--t:11.2s;--d:-5.5s;--w:-8px"></i><i style="--x:73%;--s:3px;--t:11.4s;--d:-11.6s;--w:-70px"></i><i style="--x:5%;--s:3px;--t:11.2s;--d:-10.9s;--w:-28px"></i><i style="--x:59%;--s:3px;--t:10.6s;--d:-9.0s;--w:-0px"></i><i style="--x:66%;--s:4px;--t:11.6s;--d:-5.7s;--w:8px"></i><i style="--x:91%;--s:2px;--t:12.0s;--d:-4.4s;--w:-43px"></i><i style="--x:30%;--s:2px;--t:10.9s;--d:-1.5s;--w:-63px"></i><i style="--x:30%;--s:2px;--t:13.7s;--d:-11.9s;--w:-80px"></i><i style="--x:22%;--s:2px;--t:10.3s;--d:-13.7s;--w:-16px"></i><i style="--x:9%;--s:3px;--t:12.4s;--d:-3.8s;--w:-66px"></i><i style="--x:34%;--s:4px;--t:12.3s;--d:-1.7s;--w:-41px"></i><i style="--x:12%;--s:2px;--t:10.3s;--d:-6.8s;--w:29px"></i><i style="--x:20%;--s:5px;--t:8.3s;--d:-10.2s;--w:-59px"></i><i style="--x:64%;--s:2px;--t:9.8s;--d:-13.9s;--w:-80px"></i><i style="--x:85%;--s:5px;--t:9.1s;--d:-12.4s;--w:-46px"></i></div>
   <header class="t-head">
     <div class="t-brand">
       <h1 class="t-logo">Stew Zombies<b>2.0</b></h1>
@@ -1079,7 +1121,7 @@
     <p id="profile-chip" class="profile-chip t-chip"></p>
   </header>
   <div class="blades" id="blades">
-    <section class="blade" data-blade="play" style="--bc:#3fae3a;--bc2:#1d5e1a">
+    <section class="blade" data-blade="play">
       <button class="blade-tab" type="button" data-blade-tab="play"><span>Play</span></button>
       <div class="blade-body">
         <h2 class="b-title">Play</h2>
@@ -1093,7 +1135,7 @@
         </nav>
       </div>
     </section>
-    <section class="blade" data-blade="gums" style="--bc:#c83ea8;--bc2:#5a1a52">
+    <section class="blade" data-blade="gums">
       <button class="blade-tab" type="button" data-blade-tab="gums"><span>GobbleGum</span></button>
       <div class="blade-body">
         <h2 class="b-title">GobbleGum</h2>
@@ -1106,7 +1148,7 @@
         </nav>
       </div>
     </section>
-    <section class="blade" data-blade="extras" style="--bc:#e8862a;--bc2:#6a3410">
+    <section class="blade" data-blade="extras">
       <button class="blade-tab" type="button" data-blade-tab="extras"><span>Extras</span></button>
       <div class="blade-body">
         <h2 class="b-title">Extras</h2>
@@ -1123,7 +1165,7 @@
         </nav>
       </div>
     </section>
-    <section class="blade" data-blade="settings" style="--bc:#4a8fd8;--bc2:#1a3a66">
+    <section class="blade" data-blade="settings">
       <button class="blade-tab" type="button" data-blade-tab="settings"><span>Settings</span></button>
       <div class="blade-body">
         <h2 class="b-title">Settings</h2>

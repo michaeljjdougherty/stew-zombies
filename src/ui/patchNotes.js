@@ -22,7 +22,8 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Stew Zombies 2.0', items: [
-      'A whole new main menu: four blades, side by side. Play (every way to play), GobbleGum (your pack and your Liquid Divinium), Extras (your career, the trailer, the story) and Settings. Flip between them with the arrow keys, the bumpers, or a click.',
+      'A whole new main menu: four blades, the charred pages of an old book. Play (every way to play), GobbleGum (your pack and your Liquid Divinium), Extras (your career, the trailer, the story) and Settings. Flip between them with the arrow keys, the bumpers, or a click.',
+      'Dr. Monty\'s Factory is its own room now, like Black Ops 3\'s: pick 1, 2 or 3 vats, pour in that many vials of Liquid Divinium, and watch the vats brew your Mega GobbleGums.',
       'Two maps, two writers: Stew Leonard High by James Amarante, Call of the Crust by Michael Dougherty.',
       'New menu music: The Kettle Liturgy. Miss the old theme? Settings › Menu music brings it back.',
       'Big Evil Zach\'s fight on Call of the Crust has a soundtrack now.',
