@@ -3,7 +3,7 @@
 // Also runs the ambience (wind at the windows, light buzz, drips, creaks).
 // =============================================================================
 import * as S from './sfx.js';
-import { StewSong, FireSaleMusic } from './music.js';
+import { StewSong, FireSaleMusic, RecordedSong } from './music.js';
 import { powerupActive } from '../sim/powerups.js';
 import { GUN_VOICES, MECH_TUNE, mechSetFor } from './gunSamples.js';
 import { baseWeaponId } from '../config.js';
@@ -211,6 +211,12 @@ export class SoundDirector {
     this.saleMusic = this.saleMusic || new FireSaleMusic(A);
     if (sale && !this.saleMusic.playing) this.saleMusic.start('music', 0.75);
     else if (!sale && this.saleMusic.playing) this.saleMusic.stop(1.5);
+    // Big Evil Zach's fight (Call of the Crust): the Tank song from his descent till he's freed
+    const F = sim.crustEgg && sim.crustEgg.finale;
+    const zach = !!F && (F.state === 'descend' || F.state === 'fight' || F.state === 'kneel') && this.ambientStarted;
+    if (zach || this.zachSong) this.zachSong = this.zachSong || new RecordedSong(A, this.cfg.audio.zachSong);
+    if (zach && !this.zachSong.playing) this.zachSong.start('music', this.cfg.audio.zachSongGain, 2);
+    else if (!zach && this.zachSong && this.zachSong.playing) this.zachSong.stop(3);
     // the jukebox
     const j = sim.jukebox, spot = sim.mapData.jukebox;
     const want = j && j.song != null && this.ambientStarted ? j.song + '@' + j.startedAt : null;
