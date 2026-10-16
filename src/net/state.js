@@ -150,7 +150,7 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // --- the client's copy takes in the host's state ---------------------------
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
-const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
+const OWNED = ['name', 'character', 'skin', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
   'points', 'kills', 'headshots', 'downs', 'revives', 'wallBuys', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding',
   'gum', 'gumPack', 'gumStock', 'gumBuys', 'perkBonus',   // (GobbleGum: src/sim/gums.js)
   'shove', 'slowUntil', 'slowMult'];   // (a titan's breath or slam carrying you, its frost: src/sim/crustEgg.js)

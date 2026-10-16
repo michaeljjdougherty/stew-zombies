@@ -50,7 +50,7 @@ import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
-import { applySkin } from './career/skins.js';
+import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
@@ -212,7 +212,7 @@ function setLook(id) {
 
 function makeSim(gameMode, mapId = 'lastbell') {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame() });
+  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame(), skin: career.wornSkin(playableCharacter()) });
   return s;
 }
 
@@ -246,10 +246,10 @@ const menus = new Menus(settings, {
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
-  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
+  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (id === 'store') refreshStoreBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
-  preview: (id, shirt) => renderer.getShowcase().show(id, shirt, career.wornSkin(id)),
+  preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.setStyle(null); S.show(id, shirt, career.wornSkin(id)); },
   questDone: () => !!progress.questDone,
   crustDone: () => !!progress.crustDone,
   done: (s) => {
@@ -291,7 +291,10 @@ const onlineUI = new OnlineUI(settings, {
     saveSettings(settings); newSession(name);
     try { await online.join(code); } catch (e) { const o = online; online = null; if (o) o.leave(); throw e; }
   },
-  pick: (ch) => { if (online) online.pick(ch); },
+  pick: (ch) => { if (online) online.pick(ch, career.wornSkin(ch)); },
+  // your skin in the lobby: the ones you have that fit who you're playing (it's what you wear on them from now on)
+  skins: (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))],
+  setSkin: (ch, id) => { if (career.wearSkin(ch, id || null) && online) online.setSkin(id || null); },
   setMap: (id) => { if (online) online.setMap(id); },
   setIntro: (on) => { if (online) online.setIntro(on); },
   start: () => { if (online) online.start(); },
@@ -302,7 +305,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -375,7 +378,7 @@ function beginOnlineGame(st) {
   localId = st.you;
   // (the map the host picked: an older host never says, and that was always the school)
   const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
-  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null });
   stopOnlineGame();
   installSim(s);
   if (online.isHost) {
@@ -1026,20 +1029,24 @@ function refreshGumBlade() {
   }
   document.getElementById('b-div').textContent = String(career.gums.divinium);
 }
-// The Skin Shop: Stew Bucks for outfits (from the Play blade)
+// The Stew Store: Stew Bucks for skins and emotes (its own blade on the title)
 const shopUI = new ShopUI(career, {
   characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
   current: () => playableCharacter(),
-  preview: (id, skin) => renderer.getShowcase().show(id, settings.shirt, skin),
-  back: () => { renderer.showcase.hide(); setLook(playableCharacter()); mode = 'title'; menus.show('title'); },
+  preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.setStyle('store'); S.show(id, settings.shirt, skin); S.setEmote(act); },
+  thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),
+  back: () => { const S = renderer.showcase; S.hide(); S.setEmote(null); S.setStyle(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); refreshStoreBlade(); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
-document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open(); });
+document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('skins'); });
+document.getElementById('btn-shop-emotes').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('emotes'); });
+// (the Stew Store blade shows your Bucks)
+function refreshStoreBlade() { document.getElementById('b-bucks').textContent = career.bucks.toLocaleString(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
-  if (why === 'backpay') achToast.push({ head: 'Skin Shop', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
-  else hud.toast(`+${n} ${C.currency}`, 'Spend them in the Skin Shop', '#e8b13a', 2.6);
+  if (why === 'backpay') achToast.push({ head: 'Stew Store', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
+  else hud.toast(`+${n} ${C.currency}`, 'Spend them in the Stew Store', '#e8b13a', 2.6);
 };
 // Settings blade: switch username (then back to the title)
 document.getElementById('btn-title-signin').addEventListener('click', () => {
@@ -1047,7 +1054,7 @@ document.getElementById('btn-title-signin').addEventListener('click', () => {
   menus.show('signin'); signIn.open();
 });
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
-career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); };
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
   // your username is your name online too

@@ -379,25 +379,67 @@
   #cs-swatches button[aria-checked="true"] { box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 3px var(--brass); }
   #cs-swatches button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
   .cs-hint { font-size: 12px; }
-  /* the Skin Shop (src/ui/shopUI.js): the character screen's layout, a grid of skins */
-  .shopscreen .stack { max-width: 460px; gap: 10px; max-height: 100%; overflow-y: auto; scrollbar-width: thin; }
-  .sh-bucks { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
-  .sh-bucks b { font-family: var(--display); font-weight: 400; font-size: 28px; letter-spacing: 1px; color: #e8b13a; }
-  .sh-coin { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe08a, #c8901e 70%); color: #5a3a08; font-weight: 900; font-size: 14px; box-shadow: 0 0 0 1px #7a5410; }
-  .sh-chars { gap: 6px; }
-  .sh-chars .cs-card { min-width: 0; padding: 4px 9px; }
-  .sh-chars .cs-card b { font-size: 15px; }
-  .sh-chars .cs-card span { font-size: 9px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
-  .shopscreen h2 { font-size: clamp(30px, 4vw, 44px); }
-  .shopscreen h2.long { font-size: clamp(20px, 2.4vw, 28px); }
-  .sh-skin { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 1px; padding: 6px 9px; min-width: 0; border: 1px solid var(--line); border-left: 4px solid var(--rc); background: rgba(255,255,255,.03); }
-  .sh-skin b { font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; letter-spacing: 1px; text-transform: uppercase; }
-  .sh-skin small { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
-  .sh-skin.for-sale small { color: var(--rc); }
-  .sh-skin.wearing small { color: #e8b13a; }
-  .sh-skin[aria-selected="true"] { border-color: var(--brass); border-left-color: var(--rc); background: rgba(217,180,90,.1); }
-  .sh-skin:focus-visible { outline: 1px dashed var(--muted); outline-offset: 3px; }
+  /* the Stew Store (src/ui/shopUI.js), after Fortnite's Item Shop: big rarity
+     tiles on the left, the character trying it on in the middle, the item on the right */
+  .sh-coin { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe08a, #c8901e 70%); color: #5a3a08; font-weight: 900; font-size: 14px; box-shadow: 0 0 0 1px #7a5410; flex: none; }
+  .screen.storescreen { --st-ink: #fff; padding: 0; display: block; overflow: hidden; cursor: grab; font-family: var(--body);
+    background: linear-gradient(90deg, rgba(8,18,64,.92) 0%, rgba(8,18,64,.7) 44%, rgba(8,18,64,0) 60%), linear-gradient(0deg, rgba(4,8,30,.55), transparent 30%); }
+  .storescreen:active { cursor: grabbing; }
+  .st-main { position: absolute; left: 0; top: 0; bottom: 0; width: min(58vw, 860px); display: flex; flex-direction: column; gap: 12px; padding: max(18px, 3vh) 0 14px max(16px, 3vw); cursor: default; }
+  .st-top { display: flex; align-items: center; gap: clamp(12px, 2vw, 28px); padding-right: 16px; flex-wrap: wrap; }
+  .st-logo { margin: 0; font: italic 400 clamp(34px, 4.4vw, 58px)/.9 Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: #fff; text-shadow: 0 3px 0 #0a1a5a, 0 0 22px rgba(80,160,255,.55); transform: skewX(-6deg); }
+  .st-tabs { display: flex; gap: 6px; }
+  .st-tabs button { all: unset; cursor: pointer; padding: 6px 16px 5px; font: italic 400 20px Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.65); border-radius: 4px; transform: skewX(-8deg); }
+  .st-tabs button:hover, .st-tabs button:focus-visible { color: #fff; background: rgba(255,255,255,.12); outline: none; }
+  .st-tabs button[aria-selected="true"] { color: #0a1a5a; background: #fff; box-shadow: 0 3px 0 #0a1a5a; }
+  .st-wallet { margin: 0 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: rgba(4,10,40,.65); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+  .st-wallet b { font: 400 26px/1 Anton, var(--display); color: #fff; letter-spacing: 1px; }
+  .st-chars { display: flex; gap: 6px; overflow-x: auto; padding: 2px 16px 4px 0; scrollbar-width: none; }
+  .st-chars[hidden] { display: none; }
+  .st-chars button { all: unset; cursor: pointer; flex: none; padding: 5px 12px 4px; border-radius: 999px; font: italic 400 15px Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: #cfe0ff; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+  .st-chars button:hover, .st-chars button:focus-visible { background: rgba(255,255,255,.18); color: #fff; outline: none; }
+  .st-chars button[aria-selected="true"] { background: #ffe32b; color: #1a1400; box-shadow: none; }
+  .st-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 12vw, 168px), 1fr)); grid-auto-rows: max-content; gap: 10px; padding: 4px 16px 18px 4px; align-content: start;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent; }
+  .st-head { grid-column: 1 / -1; margin: 10px 0 -2px; font: italic 400 22px Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  .st-head:first-child { margin-top: 0; }
+  .st-tile { all: unset; box-sizing: border-box; cursor: pointer; position: relative; aspect-ratio: 5 / 6; border-radius: 6px; overflow: hidden; isolation: isolate;
+    background: radial-gradient(120% 90% at 50% 18%, color-mix(in srgb, var(--rc) 55%, #fff) 0%, var(--rc) 38%, color-mix(in srgb, var(--rc) 45%, #000) 100%);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 6px 14px rgba(0,0,0,.35); transition: transform .12s, box-shadow .12s, filter .12s; }
+  .st-tile::before { content: ""; position: absolute; inset: 0; z-index: -1; background: repeating-linear-gradient(115deg, rgba(255,255,255,.09) 0 18px, transparent 18px 48px); }
+  .st-art { position: absolute; inset: 0 0 14% 0; background: center top / cover no-repeat; }
+  .st-art:empty::after { content: ""; position: absolute; left: 50%; bottom: 10%; width: 30%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: transparent; animation: stSpin 1s linear infinite; }
+  .st-art.ready::after { display: none; }
+  @keyframes stSpin { to { rotate: 1turn; } }
+  .st-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 9px 7px; display: grid; gap: 2px; background: linear-gradient(transparent, rgba(0,0,0,.78) 45%); }
+  .st-info b { font: italic 400 clamp(15px, 1.4vw, 19px)/1 Anton, var(--display); letter-spacing: .5px; text-transform: uppercase; color: #fff; overflow-wrap: anywhere; }
+  .st-info span { display: flex; align-items: center; gap: 5px; font: 400 15px/1 Anton, var(--display); letter-spacing: .5px; color: #fff; }
+  .st-info .sh-coin { width: 16px; height: 16px; font-size: 10px; }
+  .st-info span.st-own { color: #9dffb0; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .st-info span.st-lock { color: #ffd0f0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .st-flag { position: absolute; top: 7px; left: 7px; padding: 3px 7px 2px; border-radius: 3px; background: #ffe32b; color: #1a1400; font: italic 400 12px Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; }
+  .st-tile:hover { filter: brightness(1.1); transform: translateY(-2px); }
+  .st-tile[aria-selected="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 0 0 3px #fff, 0 0 18px color-mix(in srgb, var(--rc) 70%, #fff); transform: translateY(-2px) scale(1.02); }
+  .st-tile:focus-visible { outline: 3px solid #ffe32b; outline-offset: 2px; }
+  .st-earn { margin: 0; padding-right: 16px; font-size: 12px; line-height: 1.45; color: #a9c0f0; max-width: 70ch; }
+  .st-detail { position: absolute; right: max(16px, 3vw); bottom: max(18px, 4vh); width: min(330px, 32vw); display: grid; gap: 10px; justify-items: start; cursor: default; }
+  .st-rarity { padding: 3px 10px 2px; border-radius: 3px; background: var(--rc, #9fb4c8); color: #0a0a10; font: italic 400 14px Anton, var(--display); letter-spacing: 1.5px; text-transform: uppercase; }
+  .st-detail h2 { margin: 0; font: italic 400 clamp(34px, 3.8vw, 54px)/.95 Anton, var(--display); letter-spacing: .5px; text-transform: uppercase; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.45), 0 0 24px rgba(0,0,0,.4); overflow-wrap: anywhere; }
+  .st-detail h2.long { font-size: clamp(22px, 2.2vw, 30px); }
+  .st-blurb { margin: 0; font-size: 14px; line-height: 1.45; color: #e2ebff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  .st-buy { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; padding: 12px 16px 10px; border-radius: 6px; text-align: center; background: #ffe32b; color: #1a1400; font: italic 400 24px/1 Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 0 #b39a00, 0 8px 18px rgba(0,0,0,.35); transition: transform .08s, filter .12s; }
+  .st-buy:hover, .st-buy:focus-visible { filter: brightness(1.08); outline: none; transform: translateY(-1px); }
+  .st-buy:focus-visible { box-shadow: 0 4px 0 #b39a00, 0 0 0 3px #fff; }
+  .st-buy:active { transform: translateY(2px); box-shadow: 0 2px 0 #b39a00; }
+  .st-buy[aria-disabled="true"] { cursor: default; background: rgba(255,255,255,.16); color: rgba(255,255,255,.8); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); transform: none; }
+  .st-back { all: unset; cursor: pointer; padding: 6px 2px; font: italic 400 18px Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.75); }
+  .st-back:hover, .st-back:focus-visible { color: #fff; outline: none; text-decoration: underline; }
+  @media (max-width: 760px) {
+    .screen.storescreen { overflow-y: auto; background: rgba(8,18,64,.55); }
+    .st-main { position: static; width: auto; height: 62vh; padding: 14px 0 10px 14px; }
+    .st-detail { position: static; width: auto; margin: 0 14px 18px; padding: 14px; border-radius: 8px; background: rgba(4,10,40,.75); }
+    .st-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+  }
   #btn-sh-act[aria-disabled="true"] { opacity: .45; }
 
 
@@ -780,7 +822,15 @@
   .blade { display: flex; align-items: stretch; flex: 0 0 auto; position: relative; isolation: isolate; }
   .blade.open { flex: 1 1 auto; min-width: 0; }
   /* the paper: the tabs and the open sheet share it; #burn tears and singes its edge */
-  .blade-tab::before, .blade.open::after, .blades::before { content: ""; position: absolute; z-index: -1; pointer-events: none; filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35)) drop-shadow(0 22px 22px rgba(0,0,0,.6));
+  /* each blade smoulders in its own colour (the open sheet takes the open blade's) */
+  .blade, .blades { --glow: #ff7820; }
+  .blade[data-blade="play"], .blades[data-open="play"] { --glow: #ff6a1a; }
+  .blade[data-blade="gums"], .blades[data-open="gums"] { --glow: #ff4fc8; }
+  .blade[data-blade="store"], .blades[data-open="store"] { --glow: #ffc21a; }
+  .blade[data-blade="extras"], .blades[data-open="extras"] { --glow: #5cff5a; }
+  .blade[data-blade="settings"], .blades[data-open="settings"] { --glow: #3ab8ff; }
+  .blade-tab::before, .blade.open::after, .blades::before { content: ""; position: absolute; z-index: -1; pointer-events: none; transition: filter .34s;
+    filter: url(#burn) drop-shadow(0 0 3px var(--glow)) drop-shadow(0 0 10px color-mix(in srgb, var(--glow) 60%, transparent)) drop-shadow(0 22px 22px rgba(0,0,0,.6));
     background:
       radial-gradient(ellipse 40% 30% at 28% 22%, rgba(255,244,214,.35), transparent 70%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .07 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
@@ -791,6 +841,10 @@
   .blade-tab::before { inset: 0; border-radius: 3px; --paper: #c9b183; --paper-lo: #a98d5a; }
   .blade:nth-child(1) .blade-tab { transform: rotate(-.5deg); } .blade:nth-child(2) .blade-tab { transform: rotate(.6deg); }
   .blade:nth-child(3) .blade-tab { transform: rotate(-.3deg); } .blade:nth-child(4) .blade-tab { transform: rotate(.4deg); }
+  .blade:nth-child(5) .blade-tab { transform: rotate(-.5deg); }
+  .blade.open .blade-tab::before { filter: url(#burn) drop-shadow(0 0 3px var(--glow)) drop-shadow(0 0 14px color-mix(in srgb, var(--glow) 70%, transparent)) drop-shadow(0 22px 22px rgba(0,0,0,.6)); }
+  .b-bucks { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: #4a3520; font: 13px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; }
+  .b-bucks b { font: 400 26px var(--display); color: #8a5a08; letter-spacing: 1px; }
   .blade:first-child .blade-tab { margin-left: 0; }
   .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 25px; letter-spacing: 4px; text-transform: uppercase; color: var(--ink-d); opacity: .85; text-shadow: 0 0 1px rgba(35,22,11,.7); }
   .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.12); outline: none; }
@@ -1220,7 +1274,7 @@
 
 <section id="title" class="screen titlescreen">
   <!-- Stew Zombies 2.0: the "blades" (after the Xbox 360's): Play, GobbleGum,
-       Extras, Settings side by side, as the charred pages of an old book; the
+       Stew Store, Extras, Settings side by side, as the charred pages of an old book; the
        open one shows what's in it, the rest stand as page edges either side.
        Left/right (or the bumpers) to flip between. -->
   <div class="t-embers" aria-hidden="true"><i style="--x:45%;--s:5px;--t:13.0s;--d:-10.9s;--w:-8px"></i><i style="--x:84%;--s:3px;--t:8.3s;--d:-7.2s;--w:21px"></i><i style="--x:78%;--s:2px;--t:10.1s;--d:-2.0s;--w:6px"></i><i style="--x:87%;--s:2px;--t:11.2s;--d:-5.5s;--w:-8px"></i><i style="--x:73%;--s:3px;--t:11.4s;--d:-11.6s;--w:-70px"></i><i style="--x:5%;--s:3px;--t:11.2s;--d:-10.9s;--w:-28px"></i><i style="--x:59%;--s:3px;--t:10.6s;--d:-9.0s;--w:-0px"></i><i style="--x:66%;--s:4px;--t:11.6s;--d:-5.7s;--w:8px"></i><i style="--x:91%;--s:2px;--t:12.0s;--d:-4.4s;--w:-43px"></i><i style="--x:30%;--s:2px;--t:10.9s;--d:-1.5s;--w:-63px"></i><i style="--x:30%;--s:2px;--t:13.7s;--d:-11.9s;--w:-80px"></i><i style="--x:22%;--s:2px;--t:10.3s;--d:-13.7s;--w:-16px"></i><i style="--x:9%;--s:3px;--t:12.4s;--d:-3.8s;--w:-66px"></i><i style="--x:34%;--s:4px;--t:12.3s;--d:-1.7s;--w:-41px"></i><i style="--x:12%;--s:2px;--t:10.3s;--d:-6.8s;--w:29px"></i><i style="--x:20%;--s:5px;--t:8.3s;--d:-10.2s;--w:-59px"></i><i style="--x:64%;--s:2px;--t:9.8s;--d:-13.9s;--w:-80px"></i><i style="--x:85%;--s:5px;--t:9.1s;--d:-12.4s;--w:-46px"></i></div>
@@ -1243,7 +1297,6 @@
           <button id="btn-range" type="button">Firing Range</button>
           <button id="btn-explore" type="button">Explore</button>
           <button id="btn-chars" type="button">Characters</button>
-          <button id="btn-shop" type="button">Skin Shop</button>
         </nav>
       </div>
     </section>
@@ -1257,6 +1310,18 @@
         <nav class="menu b-menu">
           <button id="btn-gums" type="button">Build your pack</button>
           <button id="btn-gums-factory" type="button">Dr. Monty's Factory</button>
+        </nav>
+      </div>
+    </section>
+    <section class="blade" data-blade="store">
+      <button class="blade-tab" type="button" data-blade-tab="store"><span>Stew Store</span></button>
+      <div class="blade-body">
+        <h2 class="b-title">Stew Store</h2>
+        <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks.</p>
+        <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
+        <nav class="menu b-menu">
+          <button id="btn-shop" type="button">Skins</button>
+          <button id="btn-shop-emotes" type="button">Emotes</button>
         </nav>
       </div>
     </section>
@@ -1464,6 +1529,8 @@
       </div>
       <span class="eyebrow">You're playing</span>
       <div class="cs-list on-chars" id="on-chars" role="listbox" aria-label="Characters"></div>
+      <div id="on-skinrow"><span class="eyebrow">In your skin</span>
+        <div class="cs-list on-chars on-skins" id="on-skins" role="listbox" aria-label="Skin"></div></div>
       <nav class="menu">
         <button id="btn-on-go" type="button">Start the game</button>
         <button id="btn-on-leave" type="button">Leave</button>
@@ -1493,20 +1560,29 @@
   </div>
 </section>
 
-<section id="shop" class="screen charscreen shopscreen" hidden>
-  <div class="stack panel-ui">
-    <span class="eyebrow">Skin Shop</span>
-    <h2 id="sh-name">Own clothes</h2>
-    <p class="sh-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b> Stew Bucks</p>
-    <div class="cs-list sh-chars" id="sh-chars" role="tablist" aria-label="Try it on"></div>
-    <div class="sh-grid" id="sh-grid" role="listbox" aria-label="Skins"></div>
-    <p class="note" id="sh-blurb"></p>
-    <nav class="menu">
-      <button id="btn-sh-act" type="button">Wear</button>
-      <button id="btn-sh-back" type="button">Back</button>
-    </nav>
-    <p class="note cs-hint" id="sh-earn"></p>
+<section id="shop" class="screen storescreen" hidden>
+  <!-- the Stew Store (src/ui/shopUI.js): the tiles on the left, the character
+       trying it on in the middle (src/render/showcase.js), what it is on the right -->
+  <div class="st-main panel-ui">
+    <header class="st-top">
+      <h2 class="st-logo">Stew Store</h2>
+      <nav class="st-tabs" role="tablist" aria-label="Store">
+        <button type="button" role="tab" data-tab="skins" id="st-tab-skins">Skins</button>
+        <button type="button" role="tab" data-tab="emotes" id="st-tab-emotes">Emotes</button>
+      </nav>
+      <p class="st-wallet" aria-label="Your Stew Bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b></p>
+    </header>
+    <div class="st-chars" id="sh-chars" role="tablist" aria-label="Whose skins"></div>
+    <div class="st-grid" id="sh-grid" role="listbox" aria-label="Items"></div>
+    <p class="st-earn" id="sh-earn"></p>
   </div>
+  <aside class="st-detail panel-ui">
+    <span class="st-rarity" id="sh-rarity">Common</span>
+    <h2 id="sh-name">Own clothes</h2>
+    <p class="st-blurb" id="sh-blurb"></p>
+    <button id="btn-sh-act" class="st-buy" type="button">Equip</button>
+    <button id="btn-sh-back" class="st-back" type="button">Back</button>
+  </aside>
 </section>
 
 <section id="lineup" class="screen lineupscreen" hidden>
