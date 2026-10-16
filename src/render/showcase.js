@@ -4,6 +4,7 @@
 // =============================================================================
 import * as THREE from 'three';
 import { buildCharacter, idleCharacter, idleAct, CHARACTERS } from './characters.js';
+import { IDLE_ACTS } from './characterAnim.js';
 import { applySkin } from '../career/skins.js';
 import { applySkinFx } from './skinFx.js';
 
@@ -65,6 +66,94 @@ export class Showcase {
     this.turntable = new THREE.Group();
     s.add(this.turntable);
     this.bindDrag();
+    this.floor = floor; this.beam = beam;
+    this.thumbs = new Map();     // key -> data URL (the Stew Store's tiles)
+    this.thumbQueue = [];
+  }
+
+  // 'store': the Stew Store's bright blue stage; anything else: the dark hallway
+  setStyle(style) {
+    if (this.style === style) return;
+    this.style = style;
+    const s = this.scene;
+    if (style === 'store') {
+      if (!this.storeBg) {
+        const c = document.createElement('canvas'); c.width = 16; c.height = 256;
+        const g = c.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, 256);
+        grd.addColorStop(0, '#2a7cff'); grd.addColorStop(0.55, '#1446c8'); grd.addColorStop(1, '#081a5c');
+        g.fillStyle = grd; g.fillRect(0, 0, 16, 256);
+        this.storeBg = new THREE.CanvasTexture(c); this.storeBg.colorSpace = THREE.SRGBColorSpace;
+      }
+      s.background = this.storeBg;
+      s.fog.color.set('#123a9e'); s.fog.near = 5; s.fog.far = 14;
+      this.beam.visible = false; this.floor.material.color.set('#8fb0ff');
+    } else {
+      s.background = new THREE.Color('#0b0c0f');
+      s.fog.color.set('#0b0c0f'); s.fog.near = 4; s.fog.far = 11;
+      this.beam.visible = true; this.floor.material.color.set('#ffffff');
+    }
+  }
+
+  // A picture of someone wearing a skin (or doing an emote), on a rarity's
+  // colour, for a store tile. done(url) once it's drawn (one a frame, before the
+  // platform's own frame: it borrows the corner of the screen, then copies it out).
+  thumb(spec, done) {
+    const key = [spec.char, spec.skin || '', spec.act || '', spec.color || ''].join(':');
+    if (this.thumbs.has(key)) { done(this.thumbs.get(key)); return; }
+    const q = this.thumbQueue.find((x) => x.key === key);
+    if (q) q.done.push(done);
+    else this.thumbQueue.push({ key, spec, done: [done] });
+  }
+
+  drawThumb() {
+    const job = this.thumbQueue.shift();
+    if (!job) return;
+    const { spec } = job, r = this.renderer;
+    if (!this.thumbScene) {
+      const ts = this.thumbScene = new THREE.Scene();
+      ts.add(new THREE.HemisphereLight('#e8f0ff', '#3a3040', 1.3));
+      const key = new THREE.DirectionalLight('#fff4e6', 2.6); key.position.set(1.2, 2.5, 3); ts.add(key);
+      const rim = new THREE.DirectionalLight('#bfe0ff', 1.6); rim.position.set(-2, 2, -2); ts.add(rim);
+      this.thumbCam = new THREE.PerspectiveCamera(24, 5 / 6, 0.05, 20);
+    }
+    const ts = this.thumbScene;
+    const id = spec.char, def = spec.skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, spec.skin) : null;
+    const k = buildCharacter(def || id, { detail: 0.7 });
+    if (def && def.skinFx) applySkinFx(k, def.skinFx, { light: false });
+    idleCharacter(k, 1.3);
+    if (spec.act) { idleAct(k, spec.act, spec.t ?? 1.6, 1); if (IDLE_ACTS[spec.act] && IDLE_ACTS[spec.act].turn) k.root.rotation.y = Math.PI; }
+    k.root.rotation.y += spec.act ? 0 : -0.35;
+    ts.add(k.root);
+    // a rarity's glow behind them
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(64, 40, 4, 64, 60, 90);
+    grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.25, spec.color || '#5aa0ff'); grd.addColorStop(1, '#0a0a14');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    const bg = new THREE.CanvasTexture(c); bg.colorSpace = THREE.SRGBColorSpace;
+    ts.background = bg;
+    const h = (k.def.height || 1);
+    const cam = this.thumbCam;
+    if (spec.act) { cam.fov = 26; cam.position.set(0, 1.0 * h, 4.4 * h); cam.lookAt(0, 0.9 * h, 0); }
+    else { cam.fov = 22; cam.position.set(0, 1.45 * h, 3.6 * h); cam.lookAt(0, 1.2 * h, 0); }
+    cam.updateProjectionMatrix();
+    const W = 200, H = 240, pr = r.getPixelRatio(), size = r.getSize(new THREE.Vector2());
+    r.setRenderTarget(null);
+    r.setViewport(0, 0, W / pr, H / pr); r.setScissor(0, 0, W / pr, H / pr); r.setScissorTest(true);
+    r.render(ts, cam);
+    if (!this.thumbCanvas) { this.thumbCanvas = document.createElement('canvas'); this.thumbCanvas.width = W; this.thumbCanvas.height = H; }
+    const tc = this.thumbCanvas.getContext('2d');
+    tc.clearRect(0, 0, W, H);
+    tc.drawImage(r.domElement, 0, r.domElement.height - H, W, H, 0, 0, W, H);
+    r.setScissorTest(false); r.setViewport(0, 0, size.x, size.y);
+    ts.remove(k.root);
+    // (all of it: a picture each, they'd add up)
+    const mats = new Set();
+    k.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); for (const m of [].concat(o.material || [])) mats.add(m); });
+    for (const m of mats) { for (const key of ['map', 'bumpMap', 'alphaMap', 'emissiveMap', 'normalMap']) if (m[key]) m[key].dispose(); m.dispose(); }
+    bg.dispose();
+    const url = this.thumbCanvas.toDataURL('image/webp', 0.85);
+    this.thumbs.set(job.key, url);
+    for (const d of job.done) d(url);
   }
 
   bindDrag() {
@@ -107,6 +196,7 @@ export class Showcase {
 
   render(dt, aspect) {
     this.time += dt;
+    if (this.thumbQueue.length) this.drawThumb();
     if (this.heldT > 0) this.heldT -= dt;
     else if (!this.dragging) {
       this.spinVel += (0.35 - this.spinVel) * Math.min(1, dt * 1.5);
@@ -121,8 +211,10 @@ export class Showcase {
     cam.aspect = aspect;
     const wide = aspect > 1.2;
     cam.fov = wide ? 30 : 38;
-    cam.position.set(wide ? -0.75 : 0, 1.15, wide ? 4.3 : 4.6);
-    cam.lookAt(wide ? -0.75 : 0, 0.98, 0);
+    // (the Stew Store: him in the middle, between the tiles and what he's trying on)
+    const sx = this.style === 'store' ? (wide ? -0.55 : 0) : (wide ? -0.75 : 0);
+    cam.position.set(sx, 1.15, wide ? 4.3 : 4.6);
+    cam.lookAt(sx, 0.98, 0);
     cam.updateProjectionMatrix();
     const r = this.renderer;
     const tm = r.toneMappingExposure;

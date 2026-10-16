@@ -47,7 +47,7 @@ export class Menus {
     this.bindBlades();
   }
 
-  // --- the title's blades (Play, GobbleGum, Extras, Settings) ----------------------
+  // --- the title's blades (Play, GobbleGum, Stew Store, Extras, Settings) ----------------------
   // One open at a time; the others stand as tabs either side. Clicking or focusing
   // a tab opens its blade; left/right (keyboard) and the bumpers (controller) flip.
   bindBlades() {
@@ -77,6 +77,7 @@ export class Menus {
     const tabs = this.blades.map((b) => b.querySelector('.blade-tab'));
     const was = flip ? tabs.map((t) => t.getBoundingClientRect().left) : null;
     for (const b of this.blades) b.classList.toggle('open', b.dataset.blade === id);
+    if (this.row) this.row.dataset.open = id;   // (the open sheet glows in this blade's colour)
     if (was) {
       tabs.forEach((t, i) => {
         const dx = was[i] - t.getBoundingClientRect().left;

@@ -246,10 +246,10 @@ const menus = new Menus(settings, {
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
-  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
+  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (id === 'store') refreshStoreBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
-  preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.show(id, shirt, career.wornSkin(id)); },
+  preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.setStyle(null); S.show(id, shirt, career.wornSkin(id)); },
   questDone: () => !!progress.questDone,
   crustDone: () => !!progress.crustDone,
   done: (s) => {
@@ -1029,20 +1029,24 @@ function refreshGumBlade() {
   }
   document.getElementById('b-div').textContent = String(career.gums.divinium);
 }
-// The Skin Shop: Stew Bucks for outfits (from the Play blade)
+// The Stew Store: Stew Bucks for skins and emotes (its own blade on the title)
 const shopUI = new ShopUI(career, {
   characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
   current: () => playableCharacter(),
-  preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.show(id, settings.shirt, skin); S.setEmote(act); },
-  back: () => { renderer.showcase.hide(); renderer.showcase.setEmote(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); },
+  preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.setStyle('store'); S.show(id, settings.shirt, skin); S.setEmote(act); },
+  thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),
+  back: () => { const S = renderer.showcase; S.hide(); S.setEmote(null); S.setStyle(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); refreshStoreBlade(); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
-document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open(); });
+document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('skins'); });
+document.getElementById('btn-shop-emotes').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('emotes'); });
+// (the Stew Store blade shows your Bucks)
+function refreshStoreBlade() { document.getElementById('b-bucks').textContent = career.bucks.toLocaleString(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
-  if (why === 'backpay') achToast.push({ head: 'Skin Shop', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
-  else hud.toast(`+${n} ${C.currency}`, 'Spend them in the Skin Shop', '#e8b13a', 2.6);
+  if (why === 'backpay') achToast.push({ head: 'Stew Store', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
+  else hud.toast(`+${n} ${C.currency}`, 'Spend them in the Stew Store', '#e8b13a', 2.6);
 };
 // Settings blade: switch username (then back to the title)
 document.getElementById('btn-title-signin').addEventListener('click', () => {
@@ -1050,7 +1054,7 @@ document.getElementById('btn-title-signin').addEventListener('click', () => {
   menus.show('signin'); signIn.open();
 });
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
-career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); };
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
   // your username is your name online too
