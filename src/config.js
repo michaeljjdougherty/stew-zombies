@@ -2229,6 +2229,9 @@ export const CONFIG = {
     tallyUpTo: 10,           // tally marks up to this round, scratched numerals after
     hitmarkers: true,
     lowAmmoFraction: 0.25,
+    // each player's colour online: their name over their head, on the scoreboard and the team list
+    playerColors: ['#f2ead8', '#5aa9ff', '#ffd23f', '#6fdc6a'],
+    pitTagColor: '#ff9a3c',  // Pit's name over his head at the forge (Call of the Crust)
   },
 };
 
