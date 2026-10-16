@@ -372,7 +372,7 @@ class StandInteractable {
     const F = forgeOf(sim);
     const mine = partsCarriedBy(F, p.id);
     if (mine.length) return { text: `Press [F] to put the ${mine.map((id) => PART_NAME(sim, id)).join(' and ')} on the stand`, cost: null };
-    if (!hammerBuilt(F)) return { text: `The War Hammer · ${partsPlaced(F)} of ${partsTotal(F)} parts`, cost: null, sub: 'One part on each island, at its shrine' };
+    if (!hammerBuilt(F)) return { text: `The War Hammer · ${partsPlaced(F)} of ${partsTotal(F)} parts`, cost: null, sub: 'One part hidden somewhere on each island' };
     if (hasAnyHammer(sim, p)) return { text: 'You have your War Hammer', cost: null };
     return { text: 'Press [F] to take a War Hammer', cost: null };
   }

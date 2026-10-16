@@ -924,6 +924,15 @@ export const CONFIG = {
     openTime: 1.1,             // door swing / debris clear animation (zombies can path once started)
   },
 
+  // The maps you can play online (the host picks one in the lobby: src/ui/online.js).
+  // beta: marked BETA (still being worked on online); locked: the host needs the
+  // developer code to pick it; notPlayable: characters you can't be there (they're
+  // part of the map: Pit's at his forge on the Crust).
+  onlineMaps: [
+    { id: 'lastbell', name: 'The Last Bell' },
+    { id: 'crust', name: 'Call of the Crust', beta: true, locked: true, notPlayable: ['pit'] },
+  ],
+
   box: {
     cost: 950,
     spinTime: 4.2,             // how long it cycles before landing
@@ -1733,6 +1742,7 @@ export const CONFIG = {
       slideMin: 6,           // m/s an ice slide never goes slower than
       slideMax: 17,          // m/s nor faster than
       slideDrag: 1.5,        // m/s² of friction on the ice
+      handOver: 2,           // s (online) the host waits for a friend to say they're on a zipline it put them on
     },
     // the launchers between the hub and the islands
     launch: {

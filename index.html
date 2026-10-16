@@ -314,6 +314,18 @@
   .on-members li.you { border-color: var(--brass); }
   .on-members li.empty { opacity: .4; }
   .on-chars { margin: 8px 0 14px; }
+  .on-maps { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+  .on-maps button { all: unset; cursor: pointer; padding: 9px 14px; border: 1px solid var(--line); background: rgba(255,255,255,.03); font: 600 15px var(--body); color: var(--ink); }
+  .on-maps button[aria-checked="true"] { border-color: var(--brass); color: #fff; background: rgba(255,255,255,.07); }
+  .on-maps button:hover:not([disabled]), .on-maps button:focus-visible { border-color: var(--blood-hi); }
+  .on-maps button[disabled] { cursor: default; }
+  .on-maps button[disabled]:not([aria-checked="true"]) { opacity: .4; }
+  .on-maps em { font-style: normal; font: 700 10px var(--body); letter-spacing: 1.5px; color: #111; background: var(--brass); padding: 2px 5px; margin-left: 8px; vertical-align: 2px; }
+  .on-maprow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: -6px 0 14px; }
+  #on-mapcode { all: unset; box-sizing: border-box; border: 1px solid var(--line); background: rgba(255,255,255,.04); padding: 7px 10px; font-size: 15px; color: var(--ink); width: 14em; }
+  #on-mapcode:focus-visible { border-color: var(--brass); }
+  .on-maprow .note { margin: 0; color: var(--blood-hi); }
+  .on-maprow[hidden] { display: none; }
   .on-chars .cs-card[disabled] { opacity: .35; cursor: default; }
   .online button.sm { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 8px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; color: var(--ink); }
   .online button.sm:hover, .online button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
@@ -1018,6 +1030,13 @@
         <button id="btn-on-copy" class="sm" type="button">Copy invite link</button>
       </div>
       <ol class="on-members" id="on-members" aria-label="Players"></ol>
+      <span class="eyebrow">Map</span>
+      <div class="on-maps" id="on-maps" role="radiogroup" aria-label="Map"></div>
+      <div class="on-maprow" id="on-maprow" hidden>
+        <input id="on-mapcode" type="password" maxlength="24" placeholder="Developer code" autocomplete="off" spellcheck="false">
+        <button id="btn-on-mapcode" class="sm" type="button">Unlock</button>
+        <span class="note" id="on-mapmsg"></span>
+      </div>
       <span class="eyebrow">You're playing</span>
       <div class="cs-list on-chars" id="on-chars" role="listbox" aria-label="Characters"></div>
       <nav class="menu">

@@ -10,8 +10,9 @@
 // get p2..p4 in the order they join.
 // =============================================================================
 import { hostPeer, joinPeer, localHost, localJoin } from './peer.js';
+import { CONFIG } from '../config.js';
 
-export const PROTOCOL = 1;
+export const PROTOCOL = 2;   // (2: the lobby picks the map)
 export const MAX_PLAYERS = 4;
 export const LAUNCH = ['kearns', 'ryan', 'pit', 'rocco'];
 const CODE_CHARS = 'BCDFGHJKMNPQRSTVWXZ23456789';
@@ -21,6 +22,7 @@ export function makeCode(rand = Math.random) {
   for (let i = 0; i < 4; i++) s += CODE_CHARS[Math.floor(rand() * CODE_CHARS.length)];
   return s;
 }
+export const mapInfo = (id) => CONFIG.onlineMaps.find((m) => m.id === id) || CONFIG.onlineMaps[0];
 export const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 
 export class OnlineSession {
@@ -35,6 +37,7 @@ export class OnlineSession {
     this.you = null;
     this.inGame = false;
     this.ended = false;
+    this.map = CONFIG.onlineMaps[0].id;   // the map the host's picked
   }
 
   get isHost() { return this.role === 'host'; }
@@ -104,6 +107,7 @@ export class OnlineSession {
 
   canPlay(ch, member) {
     if (!(LAUNCH.includes(ch) || (ch === 'brian' && member.brian))) return false;
+    if (mapInfo(this.map).notPlayable?.includes(ch)) return false;   // (Pit, on the Crust)
     return !this.members.some((x) => x !== member && x.character === ch);
   }
 
@@ -119,7 +123,15 @@ export class OnlineSession {
   }
 
   lobby() {
-    return { code: this.code, members: this.members.map(({ id, name, character, brian }) => ({ id, name, character, brian })) };
+    return { code: this.code, map: this.map, members: this.members.map(({ id, name, character, brian }) => ({ id, name, character, brian })) };
+  }
+
+  // the host picks the map (anyone now playing someone who isn't there gets moved)
+  setMap(id) {
+    if (!this.isHost || this.inGame || !CONFIG.onlineMaps.some((m) => m.id === id) || id === this.map) return;
+    this.map = id;
+    for (const m of this.members) if (m.character && !this.canPlay(m.character, m)) { m.character = null; m.character = this.freeCharacter(null, m); }
+    this.lobbyChanged();
   }
 
   // the host picks their own character
@@ -143,7 +155,7 @@ export class OnlineSession {
   start(seed = (Math.random() * 0xffffffff) >>> 0) {
     if (!this.isHost || this.inGame) return;
     this.inGame = true;
-    const start = { t: 'start', seed, members: this.lobby().members };
+    const start = { t: 'start', seed, map: this.map, members: this.lobby().members };
     for (const m of this.members) if (m.peer) this.ep.send(m.peer, { ...start, you: m.id });
     if (this.o.onStart) this.o.onStart({ ...start, you: 'p1', peers: this.members.filter((m) => m.peer).map((m) => ({ peer: m.peer, id: m.id })) });
   }
@@ -181,8 +193,9 @@ export class OnlineSession {
       case 'lobby':
         this.you = m.you;
         this.members = m.members;
+        this.map = m.map || CONFIG.onlineMaps[0].id;
         if (this.waitLobby) this.waitLobby();
-        if (this.o.onLobby) this.o.onLobby({ code: this.code, members: m.members, you: m.you });
+        if (this.o.onLobby) this.o.onLobby({ code: this.code, map: this.map, members: m.members, you: m.you });
         return;
       case 'start':
         this.inGame = true;

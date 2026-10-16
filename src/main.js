@@ -262,6 +262,7 @@ const onlineUI = new OnlineUI(settings, {
     try { await online.join(code); } catch (e) { const o = online; online = null; if (o) o.leave(); throw e; }
   },
   pick: (ch) => { if (online) online.pick(ch); },
+  setMap: (id) => { if (online) online.setMap(id); },
   start: () => { if (online) online.start(); },
   leave: () => { leaveOnline(); onlineUI.open(); },
   back: () => { mode = 'title'; menus.show('title'); },
@@ -301,7 +302,8 @@ function showOnlineLobby() {
 
 function startOnlineGame(st) {
   localId = st.you;
-  const s = new GameSim({ map: SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
+  // (the map the host picked: an older host never says, and that was always the school)
+  const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
   for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character });
   stopOnlineGame();
   installSim(s);
@@ -311,7 +313,8 @@ function startOnlineGame(st) {
   } else {
     net.client = new NetClient(sim, localId, (m) => online && online.send(null, m));
   }
-  const me = st.members.find((m) => m.id === localId);
+  // (who you are in this game: on the Crust, someone who picked Pit is someone else)
+  const me = sim.playerById(localId);
   renderer.setCharacter(me.character, settings.shirt);
   hud.localName = CHARACTERS[me.character].name;
   startPlaying();

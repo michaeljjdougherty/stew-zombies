@@ -4,12 +4,14 @@
 // src/net/online.js; this just draws it and passes clicks along.
 // =============================================================================
 import { CHARACTERS } from '../render/characters.js';
-import { LAUNCH, MAX_PLAYERS, cleanCode } from '../net/online.js';
+import { LAUNCH, MAX_PLAYERS, cleanCode, mapInfo } from '../net/online.js';
+import { CONFIG } from '../config.js';
+import { DEV_CODE } from './mapselect.js';
 
 const $ = (id) => document.getElementById(id);
 
 export class OnlineUI {
-  // h: { host(name), join(name, code), pick(ch), start(), leave(), back(), questDone() }
+  // h: { host(name), join(name, code), pick(ch), setMap(id), start(), leave(), back(), questDone() }
   constructor(settings, h) {
     this.settings = settings;
     this.h = h;
@@ -29,6 +31,36 @@ export class OnlineUI {
     $('btn-on-leave').addEventListener('click', () => this.h.leave());
     $('btn-on-back').addEventListener('click', () => this.h.back());
     $('btn-on-copy').addEventListener('click', () => this.copyInvite());
+    // the map: the host picks; a locked one (still in development) wants the developer code once
+    this.unlocked = new Set();
+    for (const m of CONFIG.onlineMaps) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.map = m.id; b.setAttribute('role', 'radio');
+      b.textContent = m.name;
+      if (m.beta) { const e = document.createElement('em'); e.textContent = 'BETA'; b.appendChild(e); }
+      b.addEventListener('click', () => this.chooseMap(m.id));
+      $('on-maps').appendChild(b);
+    }
+    $('btn-on-mapcode').addEventListener('click', () => this.tryCode());
+    $('on-mapcode').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.tryCode(); e.stopPropagation(); });
+  }
+
+  chooseMap(id) {
+    if (!this.isHost) return;
+    if (mapInfo(id).locked && !this.unlocked.has(id)) {
+      this.wantMap = id;
+      $('on-maprow').hidden = false; $('on-mapmsg').textContent = 'Developers only: enter the code.';
+      $('on-mapcode').focus();
+      return;
+    }
+    $('on-maprow').hidden = true;
+    this.h.setMap(id);
+  }
+  tryCode() {
+    if ($('on-mapcode').value.trim().toLowerCase() !== DEV_CODE) { $('on-mapmsg').textContent = 'Wrong code.'; $('on-mapcode').focus(); return; }
+    $('on-mapcode').value = '';
+    this.unlocked.add(this.wantMap);
+    this.chooseMap(this.wantMap);
   }
 
   name() {
@@ -109,11 +141,23 @@ export class OnlineUI {
       c.querySelector('span').textContent = mine ? 'You' : who ? who.name : 'Open';
     }
 
+    // the map
+    this.isHost = isHost;
+    const map = lobby.map || CONFIG.onlineMaps[0].id;
+    for (const b of $('on-maps').children) {
+      const on = b.dataset.map === map;
+      b.setAttribute('aria-checked', String(on));
+      b.disabled = !isHost;
+    }
+    if (!isHost) $('on-maprow').hidden = true;
+    for (const c of chars.children) if (mapInfo(map).notPlayable?.includes(c.dataset.id)) { c.disabled = true; c.querySelector('span').textContent = 'At his forge'; }
+
     const go = $('btn-on-go');
     go.hidden = !isHost;
     go.disabled = !isHost || lobby.members.some((m) => !m.character);
-    if (isHost) this.status(lobby.members.length > 1 ? 'Start whenever everyone\'s in.' : 'Send your friends the code or the invite link. You can also start on your own.');
-    else this.status('Waiting for the host to start the game.');
+    const beta = mapInfo(map).beta ? ` ${mapInfo(map).name} online is a beta: some of it may not work yet.` : '';
+    if (isHost) this.status((lobby.members.length > 1 ? 'Start whenever everyone\'s in.' : 'Send your friends the code or the invite link. You can also start on your own.') + beta);
+    else this.status('Waiting for the host to start the game.' + beta);
   }
 
   async copyInvite() {

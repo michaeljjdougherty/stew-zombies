@@ -13,7 +13,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // Map 2 is in development: only Michael and James get in.
-const DEV_CODE = 'fuck-kurn';
+export const DEV_CODE = 'fuck-kurn';   // (online too: the host needs it to pick a locked map, src/ui/online.js)
 
 // The maps.
 export const MAPS = [

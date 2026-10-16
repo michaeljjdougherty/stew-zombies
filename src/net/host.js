@@ -114,6 +114,15 @@ export class NetHost {
       w.current = Math.min(st.cur, w.slots.length - 1);
       p.grenades = st.g; p.stewBombs = st.sb; p.maisyDogs = st.md || 0; p.lbds = st.lb || 0;
     }
+    // their ride (a zipline, an ice slide): their browser rides it; here it only
+    // follows along (so nobody else grabs them a second ride, and they're drawn
+    // hanging). One the host just started waits for them to say they're on it.
+    if (st.rd) {
+      if (!p.ride || p.ride.id !== st.rd) { const r = sim.rides.find((q) => q.id === st.rd); p.ride = r ? { id: r.id, ride: r, s: 0, speed: 0, t0: sim.time, handed: true } : null; }
+      else p.ride.handed = true;
+    } else if (p.ride && (p.ride.handed || sim.time - (p.ride.t0 || 0) > sim.cfg.crust.ride.handOver)) {
+      p.ride = null; p.rideReady = sim.time + 0.8;
+    }
     p.region = sim.nav.regionAt(p.pos, p.region);
   }
 

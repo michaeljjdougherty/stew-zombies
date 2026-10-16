@@ -51,7 +51,8 @@ export class ZiplineInteractable {
 
 export function startRide(sim, p, ride) {
   const c = sim.cfg.crust.ride;
-  p.ride = { id: ride.id, ride, s: 0, speed: ride.kind === 'zip' ? c.zipStart : c.slideMin };
+  p.ride = { id: ride.id, ride, s: 0, speed: ride.kind === 'zip' ? c.zipStart : c.slideMin, t0: sim.time };
+  p.rideRev = (p.rideRev || 0) + 1;   // (online: tells a friend's browser to ride it)
   p.sprinting = false;
   p.grounded = false;
   sim.emit('rideStart', { playerId: p.id, ride: ride.id, kind: ride.kind });
