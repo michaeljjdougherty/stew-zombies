@@ -7,6 +7,8 @@
 // =============================================================================
 import * as THREE from 'three';
 import * as TX from './textures.js';
+import { captainMouth } from '../sim/crustEgg.js';
+import { TrialsView } from './trialsView.js';
 
 const v3 = (p) => new THREE.Vector3(p.x, p.y, p.z);
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -29,15 +31,17 @@ export class TitanView {
     this.glowTex = TX.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
     this.buildClusters();
     this.buildCoils();
+    this.trials = new TrialsView(this.group, sim, cfg, map, effects, this.glowTex);   // (the War Hammers' trials)
   }
 
   setSim(sim) {
     this.sim = sim;
     for (const r of this.rings) this.group.remove(r.mesh);
     for (const f of this.fx) this.group.remove(f.obj);
-    for (const h of this.hazards.values()) this.group.remove(h.obj);
-    this.rings = []; this.fx = []; this.hazards.clear();
+    for (const [id, hv] of this.hazards) this.dropHazard(id, hv);
+    this.rings = []; this.fx = [];
     for (const v of Object.values(this.views)) this.restore(v);
+    this.trials.setSim(sim);
   }
 
   E() { return this.sim && this.sim.crustEgg; }
@@ -116,6 +120,7 @@ export class TitanView {
   update(dt, time, camera) {
     const E = this.E();
     if (!E) return;
+    this.trials.update(dt, time);
     const look = this.cfg.crust.egg.look;
     for (const T of Object.values(E.titans)) {
       const v = this.view(T.id);
@@ -130,18 +135,19 @@ export class TitanView {
       v.holder.visible = true;
       const a = T.act;
       const k = Math.min(1, dt * 10);
-      // where it is (the ship's head stays put; it rises when it wakes)
+      // where it is (the ship's head rises when it wakes, then follows you through the air)
       if (T.id === 'ship') {
         const c = this.cfg.crust.egg.ship;
         const up = T.state === 'waking' ? sm(0, this.cfg.crust.egg.wakeTime.ship, T.t) * c.rise : T.state === 'dying' ? c.rise - sm(0, this.cfg.crust.egg.dyingTime, T.t) * (c.rise + 18) : c.rise;
-        v.pos.set(v.home.x, v.home.y + up, v.home.z);
+        v.pos.set(T.pos.x, T.pos.y + up, T.pos.z);
+        const turned = T.yaw - (T.home.yaw - (L.face || 0));
         let tilt = Math.sin(time * 0.6) * 0.02;
         if (a && a.kind === 'inhaleWarn') tilt -= sm(0, c.inhaleWarn, a.t) * 0.16;
         else if (a && a.kind === 'inhale') tilt -= 0.16 - Math.sin(time * 20) * 0.01;
         else if (a && a.kind === 'exhale') tilt += 0.1 * (1 - sm(0, c.exhaleTime, a.t));
         v.holder.position.copy(v.pos);
         v.holder.position.x += (Math.random() - 0.5) * (T.state === 'waking' || T.state === 'dying' ? 0.12 : 0);
-        v.holder.rotation.set(v.rot.x + tilt, v.rot.y + Math.sin(time * 0.4) * 0.03, v.rot.z + (T.state === 'dying' ? T.t * 0.08 : 0), 'YXZ');
+        v.holder.rotation.set(v.rot.x + tilt, v.rot.y + turned + Math.sin(time * 0.4) * 0.03, v.rot.z + (T.state === 'dying' ? T.t * 0.08 : 0), 'YXZ');
       } else {
         v.pos.x += (T.pos.x - v.pos.x) * k; v.pos.y += (T.pos.y - v.pos.y) * k; v.pos.z += (T.pos.z - v.pos.z) * k;
         if (a && a.kind === 'leap') v.pos.set(T.pos.x, T.pos.y, T.pos.z);
@@ -271,8 +277,17 @@ export class TitanView {
       const pulse = 0.5 + 0.5 * Math.sin(time * (8 + u * 18));
       r.mesh.material.opacity = 0.12 + 0.18 * u * pulse;
       r.edge.material.opacity = 0.5 + 0.5 * pulse;
-      if (u >= 1) { this.group.remove(r.mesh); this.rings.splice(i, 1); }
+      if (u >= 1) { this.group.remove(r.mesh); this.free(r.mesh); this.rings.splice(i, 1); }
     }
+  }
+
+  // a short-lived thing's own geometry and materials, once it's gone (a long
+  // fight makes hundreds of them)
+  free(obj) {
+    obj.traverse((o) => {
+      if (o.geometry && o.geometry !== this.ringGeo && o.geometry !== this.discGeo) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
   }
 
   // --- the icicle clusters -----------------------------------------------------
@@ -373,7 +388,9 @@ export class TitanView {
           const m = new THREE.Mesh(this.discGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.9, 0.15), transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
           m.scale.setScalar(h.r); m.position.y = 0.06;
           hv.obj.add(m); hv.disc = m;
-          hv.light = new THREE.PointLight(0xff6a18, 6, h.r * 4, 1.8); hv.light.position.y = 0.6; hv.obj.add(hv.light);
+          // (one of the map's pooled lights, not a new one: adding a light to the
+          // scene rebuilds every shader, which froze the game for seconds at a time)
+          hv.light = this.map.addVirtualLight({ x: h.x, y: h.y + 0.6, z: h.z }, 0xff6a18, 6, h.r * 4, 1.8); hv.light.live = true; hv.light.level = 0;
         } else {
           hv.ring = this.ring(h, h.r, COLORS[h.kind] || '#ffffff', Math.max(0.1, h.at - this.sim.time), { fill: true });
         }
@@ -386,7 +403,7 @@ export class TitanView {
       if (h.kind === 'burn') {
         const left = h.until - this.sim.time;
         hv.disc.material.opacity = Math.min(1, left) * (0.55 + 0.2 * Math.sin(time * 7 + h.id));
-        hv.light.intensity = Math.min(1, left) * (5 + Math.sin(time * 11 + h.id) * 1.5);
+        hv.light.level = Math.min(1, left) * (5 + Math.sin(time * 11 + h.id) * 1.5) / 6;
         if (Math.random() < dt * 8) this.effects.spawnParticle(new THREE.Vector3(h.x + (Math.random() - 0.5) * h.r, h.y + 0.1, h.z + (Math.random() - 0.5) * h.r), new THREE.Vector3(0, 1.5 + Math.random() * 1.5, 0), { life: 0.7, size: 0.03, color: [4, 1.2, 0.2], gravity: -1, drag: 0.5 });
       }
       if (h.went && !hv.went) {
@@ -394,7 +411,14 @@ export class TitanView {
         if (h.kind === 'shard') this.shards(h);
       }
     }
-    for (const [id, hv] of this.hazards) if (!live.has(id)) { this.group.remove(hv.obj); this.hazards.delete(id); }
+    for (const [id, hv] of this.hazards) if (!live.has(id)) this.dropHazard(id, hv);
+  }
+
+  dropHazard(id, hv) {
+    this.group.remove(hv.obj);
+    if (hv.light) this.map.removeVirtualLight(hv.light);
+    if (hv.disc) hv.disc.material.dispose();
+    this.hazards.delete(id);
   }
 
   shards(h) {
@@ -479,7 +503,7 @@ export class TitanView {
           for (let k = 0; k < 20; k++) this.effects.spawnParticle(f.to.clone().setY(f.to.y + 0.3), new THREE.Vector3((Math.random() - 0.5) * 7, 2 + Math.random() * 5, (Math.random() - 0.5) * 7), { life: 0.9, size: 0.035, color: [4, 1.2, 0.2], gravity: 12, drag: 0.4 });
         }
       }
-      if (f.t >= f.dur) { this.group.remove(f.obj); this.fx.splice(i, 1); }
+      if (f.t >= f.dur) { this.group.remove(f.obj); this.free(f.obj); this.fx.splice(i, 1); }
     }
   }
 
@@ -487,6 +511,7 @@ export class TitanView {
   onEvent(e, R) {
     const E = this.E();
     if (!E) return;
+    this.trials.onEvent(e);
     const T = e.id && E.titans[e.id];
     switch (e.type) {
       case 'titanWake': {
@@ -565,10 +590,8 @@ export class TitanView {
       }
       case 'titanBreath': {
         if (e.phase === 'warn') break;
-        const s = this.sim.mapData.titans.find((q) => q.id === 'ship');
-        const c = this.cfg.crust.egg.ship;
-        const M = new THREE.Vector3(s.home.x + c.mouth[0], s.home.y + c.rise + c.mouth[1], s.home.z + c.mouth[2]);
-        this.breath = { phase: e.phase, t: 0, dur: e.dur, M };
+        const m = captainMouth(this.sim, E.titans.ship);
+        this.breath = { phase: e.phase, t: 0, dur: e.dur, M: new THREE.Vector3(m.x, m.y, m.z) };
         break;
       }
       case 'titanDown': {

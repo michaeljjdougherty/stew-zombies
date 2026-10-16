@@ -21,6 +21,17 @@ export const PATCH = {
     { title: 'Coming soon', items: [
       'Something crusty is coming…',
     ] },
+    { title: 'Call of the Crust: the War Hammer trials', items: [
+      'Pit doesn\'t take points to upgrade a War Hammer any more. Like the staffs in Origins, each hammer earns it on its own island, and then Pit does it for free.',
+      'Wind: hit the three buoys floating off the Ship Graveyard\'s north shore. Lightning: charge every tesla coil at the Research Base inside a minute, then slam the hammer down by one. Ice: freeze 20 zombies in the Ice Caves, then smash the shrine where the Golem slept. Fire: carry it through three burning craters on the Trench Front without going down.',
+    ] },
+    { title: 'Call of the Crust: the titans', items: [
+      'The Drowned Captain rises higher and follows you through the air, so you can see his skeletons fly out of his mouth, and they always land on the island.',
+      'The Molten Fiend no longer freezes the game when his magma sets the ground on fire.',
+      'The Warden doesn\'t get stuck at the bottom of the catwalk stairs any more: he leaps out after you.',
+      'Fighting the Glacier Golem from Explore no longer drops you through the map, and Explore\'s Molten Fiend button works.',
+      'Online, friends feel the titans too: the Captain\'s breath, the slams and stomps, the Golem\'s frost, and they can\'t walk through a titan or Big Evil Zach.',
+    ] },
     { title: 'Stew Zombies 2.0', items: [
       'A whole new main menu: four blades, the charred pages of an old book. Play (every way to play), GobbleGum (your pack and your Liquid Divinium), Extras (your career, the trailer, the story) and Settings. Flip between them with the arrow keys, the bumpers, or a click.',
       'Can\'t remember your username exactly? The sign-in screen lists every username so far: pick yours, then type your PIN.',

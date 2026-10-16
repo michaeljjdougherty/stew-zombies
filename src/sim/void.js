@@ -11,7 +11,8 @@ export function updateVoid(sim) {
   for (const p of sim.players) {
     if (!p.alive || p.launch || p.ride) continue;
     // remember the last solid ground under you
-    if (p.grounded && !p.downed) p.safePos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+    // (on the map's walkable ground: not a ledge you were thrown onto out of bounds)
+    if (p.grounded && !p.downed && p.region != null) p.safePos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     if (p.pos.y > V) continue;
     if (sim.godMode || sim.mode === 'explore') {
       const s = p.safePos || sim.mapData.playerSpawns[0];

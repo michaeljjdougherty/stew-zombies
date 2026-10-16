@@ -1651,7 +1651,8 @@ export const CONFIG = {
       dyingTime: 4.5,        // s it takes to go down
       leash: 20,             // s with nobody on its island before it goes back to sleep
       // stuck, or you're somewhere it can't walk to: it leaps (the Fiend burrows) to open ground near you
-      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8 },
+      // (checkEvery s: if it's got less than checkDist m in that time, it's stuck too)
+      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8, checkEvery: 2.5, checkDist: 1.2 },
       // where bullets spark off them: [height up its body, radius] (m)
       // how each one's drawn (src/render/titanView.js): its eyes' glow (m up, m forward),
       // which way its model faces, its walk, how far it sinks to wake and kneel
@@ -1678,6 +1679,10 @@ export const CONFIG = {
         exhaleTime: 1.0, push: 9, // and the gust back out
         rise: 7,                // m it comes up out of the dark when it wakes
         mouth: [0, 4.0, 9.5],   // its mouth, from where it sits (m: x, up, z)
+        // once it's up it follows you through the air: dist m off, its base height m
+        // over the ground (or you; never more than maxUp m over you), at up to
+        // speed m/s, turning turn rad/s
+        follow: { dist: 26, height: 3, maxUp: 9, clear: 7, speed: 6, ease: 0.8, turn: 0.9 },
         landReach: 70,          // m from it its crew can land
         landMin: 3,             // m from you, at the closest
       },
@@ -1795,12 +1800,24 @@ export const CONFIG = {
       socketRange: 2.1,      // m from a socket on the Anvil to take or put back its hammer
       forgeTime: 22,         // s Pit takes over each War Hammer
       strikeEvery: 0.85,     // s between his hammer blows while he works (the sparks)
-      temperCost: 5000,      // points for Pit to temper a War Hammer (its elemental upgrade)
       temperTime: 9,         // s he takes over that
       introDelay: 9,         // s into the game before he says hello (after the Schnitz's welcome)
       idleEvery: 45,         // s at least between his "bring me a core" nudges
       nearPit: 30,           // m: further than this from him and you hear him on the walkie
       lineGap: 0.5,          // s between one of his lines and the next
+    },
+    // The War Hammers' trials (src/sim/hammerTrials.js): each element earns its "+"
+    // on its own island, then Pit tempers it for free.
+    trials: {
+      // buoys: out m off the north shore, height m up; a gale reaches them within the
+      // hammer's reach + its gale's range (+ slack m), angle degrees either side, reachUp m up or down
+      wind: { out: 6, height: 2.2, slack: 1.5, angle: 40, reachUp: 6 },
+      // charge every coil within time s of the first; then slam within near m of one
+      lightning: { time: 60, near: 5 },
+      // count zombies frozen or smashed in the Ice Caves; then slam within near m of the shrine
+      ice: { count: 20, near: 5 },
+      // craters to walk the Fire Hammer through (within margin m of the rim)
+      fire: { craters: 3, margin: 0.6 },
     },
     // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of
     // you. The War Hammer is plain iron; a titan's core makes it elemental (its

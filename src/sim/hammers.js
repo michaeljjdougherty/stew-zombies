@@ -16,6 +16,7 @@ import { damageZombie } from './zombies.js';
 import { explode, spawnProjectile } from './projectiles.js';
 import { windBlast } from './wind.js';
 import { zachHammerHit } from './zachBoss.js';
+import { trialSlam } from './hammerTrials.js';
 import { DEG } from '../core/math.js';
 
 const alive = (z) => z.state !== 'dead' && !(z.state === 'rising' && z.pos.y < -0.8);
@@ -58,6 +59,7 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
   // an elemental hammer: its element goes off (at elementK of full strength);
   // tempered, at full strength, and it leaves something behind
   const k = up ? 1 : H.elementK;
+  let frozen = 0;
   const leave = (type, o = {}) => {
     if (!up) return null;
     const pr = spawnProjectile(sim, type, land, { x: fx, y: 0, z: fz }, p.id, { gravity: 0, weapon }); pr.resting = true; pr.dir = { x: fx, z: fz }; Object.assign(pr, o); return pr;
@@ -74,6 +76,7 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
     const ids = [];
     for (const { z } of near.slice(0, Math.round(E.maxFrozen * k))) { z.frozen = E.freeze * k; ids.push(z.id); }
     sim.emit('hammerFreeze', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, radius: E.radius * k, ids });
+    frozen = ids.length;
     leave('hice');
   } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: { ...E, range: E.range * k, maxKills: Math.round(E.maxKills * k) } }, weapon); leave('hwind'); }
   else if (el === 'lightning') {
@@ -100,4 +103,6 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
 
   // Big Evil Zach (the finale): the only thing that gets through
   zachHammerHit(sim, p, el, land, { x: fx, z: fz });
+  // (an untempered one: does it count for its trial? hammerTrials.js)
+  if (!up) trialSlam(sim, p, el, land, { x: fx, z: fz }, { smashed: Math.min(hits.length, maxKills), frozen });
 }

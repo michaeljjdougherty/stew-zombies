@@ -24,13 +24,14 @@
 // =============================================================================
 import { zombieHealthForRound } from '../config.js';
 import { makeZombie, pickZombieType } from './zombies.js';
-import { moveBody, groundHeight } from './physics.js';
+import { moveBody, groundHeight, outOfWalls } from './physics.js';
 import { explode } from './projectiles.js';
 import { spawnPowerup } from './powerups.js';
 import { angleWrap, lookDir } from '../core/math.js';
 import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
 import { createCrustPower, updateCrustPower, powerObjective, crustPowerInteractables } from './crustPower.js';
-import { updateZach, zachTargets, zachObjective, finaleOn } from './zachBoss.js';
+import { updateZach, zachTargets, zachObjective, finaleOn, ZACH_H } from './zachBoss.js';
+import { createTrials, updateTrials, coilsForTrial } from './hammerTrials.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // radius: what it moves as (a zombie's size, so it fits the paths you do; it's
@@ -70,6 +71,7 @@ export function createCrustEgg(sim) {
   E.forge = createForge(sim);       // Pit's forge: the cores become the War Hammers (forge.js)
   E.power = createCrustPower(sim);  // the power: the Anvil's relays, the islands' switches (crustPower.js)
   E.finale = { state: 'off' };      // Big Evil Zach (zachBoss.js)
+  E.trials = createTrials(sim, E);  // the War Hammers' trials, for their "+" (hammerTrials.js)
   return E;
 }
 
@@ -104,8 +106,42 @@ function hazard(sim, h) { const E = sim.crustEgg; h.id = E.hid++; E.hazards.push
 function shove(sim, p, fromX, fromZ, speed) {
   const dx = p.pos.x - fromX, dz = p.pos.z - fromZ, l = Math.hypot(dx, dz) || 1;
   p.shove = { x: (dx / l) * speed, z: (dz / l) * speed };
-  p.vel.y = Math.max(p.vel.y, speed * 0.35);
+  kickUp(p, speed * 0.35);
+}
+
+// Thrown up off your feet. (kicks counts them, so an online friend's browser,
+// which moves them, knows a new one came: src/net/state.js)
+export function kickUp(p, up) {
+  p.vel.y = Math.max(p.vel.y, up);
   p.grounded = false;
+  p.kicks = (p.kicks || 0) + 1; p.kickUp = up;
+}
+
+// What the titans and Big Evil Zach do to you every step: a shove dies away, a
+// frost slow wears off, and you can't walk through them. The host does this for
+// everyone; an online friend's browser does it for them too (src/net/client.js),
+// since that's where they're moved.
+export function feelTitans(sim, p, dt) {
+  const E = sim.crustEgg;
+  if (!E) return;
+  const c = sim.cfg.crust.egg;
+  if (p.shove) { const k = Math.exp(-c.pushDecay * dt); p.shove.x *= k; p.shove.z *= k; if (Math.abs(p.shove.x) + Math.abs(p.shove.z) < 0.05) p.shove = null; }
+  if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
+  if (!p.alive || p.launch) return;
+  let pushed = false;
+  const out = (x, z, r) => {
+    const dx = p.pos.x - x, dz = p.pos.z - z, dd = Math.hypot(dx, dz), rr = r + p.radius;
+    if (dd < rr && dd > 1e-4) { p.pos.x = x + (dx / dd) * rr; p.pos.z = z + (dz / dd) * rr; pushed = true; }
+  };
+  for (const T of Object.values(E.titans)) {
+    // (it's solid, asleep or awake)
+    if (T.bulk && T.state !== 'dead' && Math.abs(p.pos.y - T.pos.y) <= T.height) out(T.pos.x, T.pos.z, T.bulk);
+  }
+  const F = E.finale, f = sim.cfg.crust.finale;
+  if (F && F.state !== 'off' && F.state !== 'done' && F.state !== 'freed' && Math.abs(p.pos.y - F.pos.y) <= ZACH_H * F.scale) out(F.pos.x, F.pos.z, f.bulk * F.scale / f.scale[0]);
+  // (never through a wall: up against one, the wall wins. Pinned in a cave
+  // passage by the Golem, you used to be shoved out through the rock)
+  if (pushed) outOfWalls(p, [sim.world.solids, sim.world.terrain]);
 }
 
 // damage everyone within r of (x,z) (and near enough in height), falling off to `edge` at the rim
@@ -117,6 +153,33 @@ function blastPlayers(sim, pos, r, dmg, edge = 0.4, push = 0) {
     sim.damagePlayer(p, dmg * (1 - (1 - edge) * (d / r)), { pos: { x: pos.x, z: pos.z } });
     if (push) shove(sim, p, pos.x, pos.z, push);
   }
+}
+
+// Where to stand to take a titan on (Explore's "Fight" buttons): on walkable
+// ground near where it's woken, about level with it, facing it. The Fiend's
+// woken from a field gun, so beside one of those.
+export function titanApproach(sim, id) {
+  const s = sim.mapData.titans.find((t) => t.id === id);
+  const E = sim.crustEgg, lists = [sim.world.solids, sim.world.terrain];
+  const face = (x, z, to) => Math.atan2(-(to.x - x), -(to.z - z));
+  if (!s.wake) {
+    const g = E.guns[1] || E.guns[0];
+    const x = g.x - 2, z = g.z - 2;
+    return { x, y: groundHeight(x, z, 0.3, g.y + 2, lists), z, yaw: face(x, z, s.home) };
+  }
+  const w = s.wake, y0 = w.y || 0;
+  if (id === 'ship') return { x: w.x, y: y0, z: w.z + 2, yaw: face(w.x, w.z + 2, s.home) };
+  for (const r of [w.r + 4, w.r + 2.5, w.r + 6, w.r + 8, w.r + 1]) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, x = w.x + Math.cos(a) * r, z = w.z + Math.sin(a) * r;
+      const y = groundHeight(x, z, 0.4, y0 + 1.5, lists);
+      if (Math.abs(y - y0) > 1.2 || sim.nav.regionAt({ x, y, z }) == null) continue;
+      // (not with rock over your head)
+      if (groundHeight(x, z, 0.4, y + 40, lists) > y + 2.5) continue;
+      return { x, y, z, yaw: face(x, z, s.home) };
+    }
+  }
+  return { x: w.x, y: y0, z: w.z, yaw: 0 };
 }
 
 // --- waking --------------------------------------------------------------------
@@ -160,23 +223,11 @@ export function updateCrustEgg(sim, dt) {
   const E = sim.crustEgg;
   if (!E) return;
   const c = sim.cfg.crust.egg;
-  for (const p of sim.players) {
-    // shoves (a gust, a slam) die away; a frost slow wears off
-    if (p.shove) { const k = Math.exp(-c.pushDecay * dt); p.shove.x *= k; p.shove.z *= k; if (Math.abs(p.shove.x) + Math.abs(p.shove.z) < 0.05) p.shove = null; }
-    if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
-  }
+  for (const p of sim.players) feelTitans(sim, p, dt);
   updateFlung(sim, dt);
   updateClusters(sim, dt);
   updateShells(sim);
   for (const T of Object.values(E.titans)) {
-    if (T.bulk && T.state !== 'dead') {
-      // (it's solid, asleep or awake: you can't walk through it)
-      for (const p of sim.players) {
-        if (!p.alive || p.launch || Math.abs(p.pos.y - T.pos.y) > T.height) continue;
-        const dx = p.pos.x - T.pos.x, dz = p.pos.z - T.pos.z, dd = Math.hypot(dx, dz), rr = T.bulk + p.radius;
-        if (dd < rr && dd > 1e-4) { p.pos.x = T.pos.x + (dx / dd) * rr; p.pos.z = T.pos.z + (dz / dd) * rr; }
-      }
-    }
     if (T.state === 'asleep' || T.state === 'dead') continue;
     T.t += dt;
     if (T.state === 'waking') {
@@ -212,6 +263,7 @@ export function updateCrustEgg(sim, dt) {
   updateHazards(sim, dt);
   updateCrustPower(sim);
   updateForge(sim, dt);
+  updateTrials(sim);
   updateZach(sim, dt);
 }
 
@@ -254,6 +306,17 @@ function stride(sim, T, goalPos, goalRegion, speed, dt, { nav = true, turn = 2.2
   T.moveSpeed = moved;
   const far = Math.hypot(goalPos.x - T.pos.x, goalPos.z - T.pos.z) > 4;
   if ((sp > 0.3 && moved < sp * 0.3) || (sp === 0 && far)) T.stuckT += dt; else T.stuckT = Math.max(0, T.stuckT - dt);
+  // (and stuck shuffling back and forth on the spot: the Warden at the foot of a
+  // catwalk's stairs, one foot on and one off. Every couple of seconds: has it
+  // got anywhere?)
+  const W = sim.cfg.crust.egg.leap;
+  // (only while it's been walking all that time, not stopped to stomp or fire)
+  if (!T.chk || sim.time - T.chk.last > 0.1) T.chk = { x: T.pos.x, z: T.pos.z, t: sim.time };
+  T.chk.last = sim.time;
+  if (sim.time - T.chk.t >= W.checkEvery) {
+    if (far && Math.hypot(T.pos.x - T.chk.x, T.pos.z - T.chk.z) < W.checkDist) T.stuckT = Math.max(T.stuckT, W.stuck + 0.01);
+    T.chk = { x: T.pos.x, z: T.pos.z, t: sim.time, last: sim.time };
+  }
   return moved > 0.2;
 }
 
@@ -285,7 +348,7 @@ function leapToward(sim, T, target, airTime) {
   // (the Warden flies on its jump jets; the Golem and the Fiend sink into the ground and come up again)
   const burrow = T.id !== 'research';
   T.act = { kind: 'leap', burrow, t: 0, dur: airTime, from: { ...T.pos }, to: { x: best.x, y: best.y, z: best.z } };
-  T.stuckT = 0;
+  T.stuckT = 0; T.chk = null;
   sim.emit('titanLeap', { id: T.id, from: { ...T.pos }, to: { ...T.act.to }, dur: airTime, burrow });
   return true;
 }
@@ -331,14 +394,43 @@ function smash(sim, T, dt, range, warn, dmg, push) {
 // ---------------------------------------------------------------------------
 // The Drowned Captain
 // ---------------------------------------------------------------------------
-function mouthOf(sim, T) {
+// Its mouth: where its crew come out (and where its breath pulls you), turned
+// as it's turned. (T.pos is where it sits, before it rises.)
+export function captainMouth(sim, T) {
   const c = sim.cfg.crust.egg.ship;
-  return { x: T.home.x + c.mouth[0], y: T.home.y + c.rise + c.mouth[1], z: T.home.z + c.mouth[2] };
+  const d = T.yaw - (T.home.yaw - (sim.cfg.crust.egg.look.ship.face || 0)), cs = Math.cos(d), sn = Math.sin(d);
+  const [mx, my, mz] = c.mouth;
+  return { x: T.pos.x + mx * cs + mz * sn, y: T.pos.y + c.rise + my, z: T.pos.z - mx * sn + mz * cs };
+}
+const mouthOf = captainMouth;
+
+// It hangs in the air and follows you round the island, keeping its distance,
+// high enough to see over the ground (and to see its crew come out).
+function hover(sim, T, dt, here) {
+  const c = sim.cfg.crust.egg.ship, F = c.follow;
+  // (the one it's after: whoever's nearest)
+  let who = null, bd = Infinity;
+  for (const p of here) { const d = d2(p.pos, T.pos); if (d < bd) { bd = d; who = p; } }
+  if (!who) return;
+  let dx = T.pos.x - who.pos.x, dz = T.pos.z - who.pos.z;
+  const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+  const tx = who.pos.x + dx * F.dist, tz = who.pos.z + dz * F.dist;
+  // (clear of the ground under it: it's a big head)
+  const g = groundHeight(tx, tz, F.clear, 200, [sim.world.solids, sim.world.terrain]);
+  const ty = Math.min(who.pos.y + F.maxUp, Math.max(who.pos.y, Number.isFinite(g) ? g : -1e9) + F.height);
+  const k = Math.min(1, dt * F.ease);
+  const mx = (tx - T.pos.x) * k, my = (ty - T.pos.y) * k, mz = (tz - T.pos.z) * k, m = Math.hypot(mx, mz), cap = F.speed * dt;
+  T.pos.x += m > cap ? mx / m * cap : mx; T.pos.z += m > cap ? mz / m * cap : mz;
+  T.pos.y += Math.max(-cap, Math.min(cap, my));
+  // and looks at you
+  const want = Math.atan2(who.pos.x - T.pos.x, who.pos.z - T.pos.z);
+  T.yaw = angleWrap(T.yaw + Math.max(-F.turn * dt, Math.min(F.turn * dt, angleWrap(want - T.yaw))));
 }
 
 function updateCaptain(sim, T, dt, here) {
   const c = sim.cfg.crust.egg.ship, E = sim.crustEgg, now = sim.time;
   T.crew = T.crew.filter((id) => sim.zombieById(id));
+  hover(sim, T, dt, here);
   // its breath: rear back, pull everyone toward the edge, then blow them back
   if (T.act) {
     const a = T.act;
@@ -394,7 +486,10 @@ function updateCaptain(sim, T, dt, here) {
     z.cast = 'skeleton';
     z.titan = T.id;
     z.canDrop = true;
-    z.fling = { from: { ...M }, to: { x: land.x + sim.rng.range(-0.8, 0.8), y: land.y, z: land.z + sim.rng.range(-0.8, 0.8) }, t: 0, dur: c.flight };
+    // (a little off the spot, unless that's off the edge of something)
+    let to = { x: land.x + sim.rng.range(-0.8, 0.8), y: land.y, z: land.z + sim.rng.range(-0.8, 0.8) };
+    if (sim.nav.regionAt(to) == null) to = { x: land.x, y: land.y, z: land.z };
+    z.fling = { from: { ...M }, to, t: 0, dur: c.flight };
     sim.zombies.push(z);
     T.crew.push(z.id);
     T.toSpit--;
@@ -716,7 +811,7 @@ export function crustEggTargets(sim) {
   if (T.state === 'fight' || T.state === 'waking') {
     if (T.id === 'ship') {
       const c = sim.cfg.crust.egg.ship;
-      out.push({ id: 'titan', c: { x: T.home.x, y: T.home.y + c.rise + 9, z: T.home.z }, r: 8.5, surface: 'rock' });
+      out.push({ id: 'titan', c: { x: T.pos.x, y: T.pos.y + c.rise + 9, z: T.pos.z }, r: 8.5, surface: 'rock' });
     } else {
       const s = sim.cfg.crust.egg.hitSpheres[T.id];
       for (const [y, r] of s) out.push({ id: 'titan', c: { x: T.pos.x, y: T.pos.y + y, z: T.pos.z }, r, surface: T.id === 'research' ? 'metal' : 'rock' });
@@ -769,7 +864,7 @@ class CoilInteractable {
   coil(sim) { return sim.crustEgg.coils[this.i]; }
   get range() { return 1.8; }
   distanceTo(sim, p) { const k = this.coil(sim); this.pos = k.con; return Math.hypot(p.pos.x - k.con.x, p.pos.z - k.con.z); }
-  canUse(sim, p) { return p.alive && !p.downed && sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight'; }
+  canUse(sim, p) { return p.alive && !p.downed && ((sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight') || coilsForTrial(sim)); }
   prompt(sim) {
     const k = this.coil(sim);
     if (k.ready) return { text: 'The coil is charged: lead the Warden to it', cost: null };
