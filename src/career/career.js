@@ -169,7 +169,7 @@ export class Career {
     this.db.last = name;
     this.saveLocal();
     this.changed();
-    if (offline) { this.status = 'offline'; this.payAchievements(); this.changed(); return { ok: true, offline: true }; }
+    if (offline) { this.status = 'offline'; this.stockAllAccess(); this.payAchievements(); this.changed(); return { ok: true, offline: true }; }
     if (this.url) {
       try {
         const cloud = await this.request('GET', key);
@@ -377,7 +377,7 @@ export class Career {
   }
   // One came out of a machine for you (a Mega's gone as it does)
   useMega(id) {
-    if (!this.profile || !isMegaId(id) || !(this.profile.gums.megas[id] > 0)) return;
+    if (!this.profile || !isMegaId(id) || !(this.profile.gums.megas[id] > 0) || this.allAccess) return;   // (all access: they never run out)
     this.addMega(id, -1);
     this.saveLocal(); this.changed();
   }
@@ -407,8 +407,14 @@ export class Career {
     for (const id of G.pack) if (isMegaId(id)) stock[id] = G.megas[id] || 0;
     return { pack: [...G.pack], stock };
   }
+  // All access: at least CONFIG.shop.allAccessMegas of every Mega, topped up each sign-in
+  stockAllAccess() {
+    if (!this.allAccess) return;
+    for (const id of Object.keys(GG().gums)) if (isMegaId(id)) { const n = SHOP().allAccessMegas - (this.profile.gums.megas[id] || 0); if (n > 0) this.addMega(id, n); }
+  }
   // A new career gets a few vials to start with (once)
   giveStarter() {
+    this.stockAllAccess();
     if (!this.profile || this.profile.gums.started) return;
     this.profile.gums.started = true;
     this.pending().gums.started = true;
@@ -441,6 +447,7 @@ export class Career {
     const s = SKIN_BY_ID[id];
     if (!this.profile || !s) return false;
     if (s.only && charId && s.only !== charId) return false;   // (Sexy Fucci: Rocco's alone)
+    if (this.allAccess) return true;
     if (!s.unlock) return !!this.profile.shop.owned[id];
     if (s.unlock.kind === 'free') return true;
     if (s.unlock.kind === 'kills') return SHOP().opalAccounts.includes(this.key) || (!!charId && this.charKills(charId) >= s.unlock.need);
@@ -481,7 +488,9 @@ export class Career {
 
   // --- the Battle Pass (src/career/battlepass.js) ---------------------------------------
   get passXp() { return (this.profile && this.profile.shop.passXp) || 0; }
-  get passTier() { return tierOf(this.passXp); }
+  get passTier() { return this.allAccess ? CONFIG.shop.pass.tiers : tierOf(this.passXp); }
+  // CONFIG.shop.allAccess: everything in the game unlocked, always (PHAT CHOPS)
+  get allAccess() { return !!this.profile && SHOP().allAccess.includes(this.key); }
   addPassXp(n) {
     if (!this.profile || !(n > 0)) return;
     const S = this.profile.shop, was = tierOf(S.passXp);
@@ -498,7 +507,7 @@ export class Career {
   // The Bucks tiers you've reached pay out once each (here, or the first time you sign in)
   payPass() {
     if (!this.profile) return 0;
-    const S = this.profile.shop, ps = this.shopPending(), tier = this.passTier;
+    const S = this.profile.shop, ps = this.shopPending(), tier = tierOf(this.passXp);   // (the XP you've earned: all access doesn't pay out)
     let n = 0;
     for (const t of passTiers()) {
       const id = 'pass' + t.tier;
@@ -550,6 +559,7 @@ export class Career {
   ownsEmote(id) {
     const e = EMOTE_BY_ID[id];
     if (!e) return false;
+    if (this.allAccess) return true;
     if (e.pass) return !!this.profile && this.passTier >= e.pass;   // (the Battle Pass's: reach its tier)
     return !!e.free || !!(this.profile && this.profile.shop.emotes && this.profile.shop.emotes[id]);
   }

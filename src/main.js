@@ -198,10 +198,15 @@ let endingAt = null;          // when the ending cutscene starts (after Erik's b
 const cutsceneUI = new CutsceneUI();
 
 // Who you're playing (Brian only once The Final Whistle is done).
+// Can you play as them? (Brian after The Final Whistle, Zach after Call of the Crust;
+// CONFIG.shop.allAccess usernames: everyone, always)
+function charOpen(id) {
+  const c = CHARACTERS[id], all = career.allAccess;
+  return !!c && (c.playable || (c.unlock === 'quest' && (progress.questDone || all)) || (c.rescue === 'crust' && (progress.crustDone || all)));
+}
 function playableCharacter() {
   const id = settings.character;
-  const ok = CHARACTERS[id] && (CHARACTERS[id].playable || (CHARACTERS[id].unlock === 'quest' && progress.questDone) || (CHARACTERS[id].rescue === 'crust' && progress.crustDone));
-  return ok ? id : 'kearns';
+  return charOpen(id) ? id : 'kearns';
 }
 
 // How you look: the character, wearing their skin from the Skin Shop (your
@@ -252,8 +257,8 @@ const menus = new Menus(settings, {
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.setStyle(null); S.show(id, shirt, career.wornSkin(id)); },
-  questDone: () => !!progress.questDone,
-  crustDone: () => !!progress.crustDone,
+  questDone: () => !!progress.questDone || career.allAccess,
+  crustDone: () => !!progress.crustDone || career.allAccess,
   done: (s) => {
     saveSettings(s); renderer.showcase.hide();
     setLook(playableCharacter());
@@ -269,7 +274,7 @@ const lineupUI = new LineupUI({
   back: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
 });
 const extras = new Extras(CONFIG, {
-  progress: () => progress,
+  progress: () => (career.allAccess ? { ...progress, song: true } : progress),   // (all access: the song too)
   watchEnding: () => watchEnding(),
   watchIntro: () => startIntro('extras'),
   watchFilm: (name) => startFilm(name, 'extras'),   // (Call of the Crust's intro and ending)
@@ -307,7 +312,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -1034,7 +1039,7 @@ function refreshGumBlade() {
 }
 // The Stew Store: Stew Bucks for skins and emotes (its own blade on the title)
 const shopUI = new ShopUI(career, {
-  characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
+  characters: () => Object.keys(CHARACTERS).filter(charOpen).map((id) => ({ id, name: CHARACTERS[id].name })),
   current: () => playableCharacter(),
   preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.setStyle('store'); S.show(id, settings.shirt, skin); S.setEmote(act); },
   thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),

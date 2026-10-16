@@ -53,6 +53,7 @@ export class ShopUI {
   setTab(tab, force = false, sel = null) {
     if (this.tab === tab && !force) return;
     this.tab = tab;
+    if (tab === 'pass') this.char = this.h.current();   // (its items are tried on whoever you play as)
     for (const b of document.querySelectorAll('.st-tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
     this.sel = sel != null ? sel : tab === 'emotes' ? EM + EMOTES[0].id : tab === 'pass' ? this.passStart() : this.career.wornSkin(this.char) || '';
     this.render();
@@ -81,7 +82,7 @@ export class ShopUI {
   render() {
     const C = this.career;
     $('sh-bucks').textContent = C.bucks.toLocaleString();
-    $('sh-chars').hidden = this.tab === 'emotes';
+    $('sh-chars').hidden = this.tab !== 'skins';   // (the pass is one for your account, not per character)
     this.passBar();
     for (const b of $('sh-chars').querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.id === this.char));
     const grid = $('sh-grid');
@@ -127,7 +128,7 @@ export class ShopUI {
     if (!box) return;
     box.hidden = this.tab !== 'pass';
     if (box.hidden) return;
-    const C = this.career, P = CONFIG.shop.pass, g = passProgress(C.passXp);
+    const C = this.career, P = CONFIG.shop.pass, g = passProgress(C.allAccess ? Infinity : C.passXp);
     $('sh-pass-tier').textContent = `Tier ${g.tier} of ${P.tiers}`;
     $('sh-pass-xp').textContent = !C.signedIn ? 'Sign in to earn XP' : g.done ? 'Every tier unlocked' : `${g.into.toLocaleString()} / ${g.need.toLocaleString()} XP to tier ${g.tier + 1}`;
     $('sh-pass-fill').style.width = `${Math.round((g.into / g.need) * 100)}%`;

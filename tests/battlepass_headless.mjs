@@ -97,3 +97,17 @@ db.old = { name: 'Old', stats: { kills: 5 }, shop: { bucks: 50 } };
 const O = new Career({ firebaseUrl: 'https://x.firebaseio.com' }, { fetchFn: fakeFetch, storage: store() });
 await O.signIn('Old');
 check(O.passXp === 0 && O.bucks === 50, 'a save from before the pass starts at tier 0');
+
+// --- all access (CONFIG.shop.allAccess): PHAT CHOPS has everything, always ---
+const PC = new Career({}, { fetchFn: null, storage: store() });
+await PC.signIn('PHAT CHOPS');
+check(PC.allAccess && !L.allAccess, 'PHAT CHOPS has all access (nobody else)');
+check(['kearns', 'rocco', 'brian', 'zach'].every((ch) => SKINS.every((s) => (s.only && s.only !== ch) || PC.ownsSkin(s.id, ch))), 'every skin that fits, on every character, the vault and the specials too');
+check(PC.ownsSkin('sexyFucci', 'rocco') && !PC.ownsSkin('sexyFucci', 'kearns'), 'Sexy Fucci still only fits Rocco');
+check(EMOTES.every((e) => PC.ownsEmote(e.id)), 'every emote');
+check(PC.passTier === 20 && PC.bucks === 0, 'the whole Battle Pass (without the pass\'s Bucks)');
+const megas = Object.entries(CONFIG.gobblegum.gums).filter(([, d]) => d.tier !== 'classic' && d.tier !== 'whimsical').map(([id]) => id);
+check(megas.every((id) => PC.owns(id) && PC.gums.megas[id] >= CONFIG.shop.allAccessMegas), `${CONFIG.shop.allAccessMegas} of every Mega gum`);
+const had = PC.gums.megas[megas[0]];
+PC.useMega(megas[0]);
+check(PC.gums.megas[megas[0]] === had, 'and they never run out');

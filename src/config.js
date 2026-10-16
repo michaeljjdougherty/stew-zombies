@@ -1434,6 +1434,10 @@ export const CONFIG = {
     },
     // usernames (as database keys) that have the Pink Diamond Galaxy Opal skin on every character
     opalAccounts: ['phat_chops'],
+    // usernames (as database keys) with everything in the game unlocked, always: every skin
+    // that fits, every emote, the whole Battle Pass, every character, the song, and this many of every Mega
+    allAccess: ['phat_chops'],
+    allAccessMegas: 99,
     // The Battle Pass (src/career/battlepass.js): free for everyone signed in.
     // Pass XP comes from playing (real zombies games only); every tier's prize
     // (a skin or emote any character can use, or Stew Bucks) is yours when you reach it.
