@@ -5,6 +5,7 @@
 //   { id, kind, range, pos, requireLook, distanceTo(sim,p), canUse(sim,p),
 //     prompt(sim,p), use(sim,p,cmd,dt), release?(sim,p), update?(sim,dt) }
 // =============================================================================
+import { gumOnBoard } from '../gums.js';
 
 export function createWindows(sim) {
   const max = sim.cfg.windows.boards;
@@ -64,6 +65,7 @@ export class WindowInteractable {
         sim.addPoints(p, awarded, 'board');
       }
       sim.emit('boardRepaired', { windowId: w.id, board: w.boards - 1, playerId: p.id, points: awarded });
+      if (!sim.replica) gumOnBoard(sim, p, w);   // (Board Games, Board to Death)
     } else {
       w.rebuild.set(p.id, t);
     }

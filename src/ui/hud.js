@@ -25,7 +25,7 @@ export class HUD {
     this.el = {
       points: $('points'), popups: $('popups'), wname: $('wname'), clip: $('clip'), reserve: $('reserve'),
       ammo: $('ammo'), clipL: $('clipL'), grenades: $('grenades'), scope: $('scope'),
-      promptsub: $('promptsub'), powerups: $('powerups'), perks: $('perks'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), swing: $('swingbar'), swingFill: $('swingbar') && $('swingbar').firstElementChild, hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
+      promptsub: $('promptsub'), powerups: $('powerups'), perks: $('perks'), gum: $('gum'), toast: $('toast'), downed: $('downed'), revive: $('revive'), cross: $('crosshair'), swing: $('swingbar'), swingFill: $('swingbar') && $('swingbar').firstElementChild, hit: $('hitmarker'), prompt: $('prompt'), hint: $('hint'), fps: $('fps'),
     };
     this.shownPoints = null;
     this.hitT = 0;
@@ -93,6 +93,24 @@ export class HUD {
         break;
       case 'shot':
         if (e.playerId === this.localId && this.cfg.hud.hitmarkers && e.impacts.some((h) => h.kind === 'zombie')) this.hitT = 0.12;
+        break;
+      // GobbleGum
+      case 'gumDispensed':
+        if (e.playerId === this.localId && e.mega) this.toast(this.cfg.gobblegum.gums[e.gum].name, this.cfg.gobblegum.tiers[e.tier].name + ' · used up', this.cfg.gobblegum.tiers[e.tier].color, 2.4);
+        break;
+      case 'gumChewed':
+        if (e.playerId === this.localId) { const d = this.cfg.gobblegum.gums[e.gum]; this.toast(d.name, d.desc, this.cfg.gobblegum.tiers[d.tier].color, 3.2); }
+        break;
+      case 'gumExpired':
+        if (e.playerId === this.localId) this.toast('Your GobbleGum fell out', 'take it from the tray sooner', '#ff7ad0', 2.2);
+        break;
+      case 'gumDenied':
+        if (e.playerId === this.localId && e.gum) this.toast('Not now', this.cfg.gobblegum.gums[e.gum].name + ' can\'t do anything here', '#ff7ad0', 1.8);
+        break;
+      case 'perksKept':
+        if (e.playerId === this.localId) this.toast('Perks kept', '', '#ff7ad0', 2);
+        break;
+      case 'aatProc':
         break;
       case 'powerupGrab': {
         const d = this.cfg.powerups.list[e.ptype];
@@ -521,6 +539,32 @@ export class HUD {
     el[prop] = value;
   }
 
+  // The gum you're chewing: its name, and what's left (uses, time, rounds), and
+  // [H] when it's one you set off yourself.
+  updateGum(sim, p) {
+    const el = this.el.gum;
+    if (!el) return;
+    const g = p.gum, G = this.cfg.gobblegum;
+    const d = g && G.gums[g.id];
+    if (!d) { if (!el.hidden) { el.hidden = true; this.last.gum = null; } return; }
+    let st, f = 1;
+    if (g.kind === 'activated') {
+      if (g.on && g.onUntil) { const left = Math.max(0, g.onUntil - sim.time); st = `on · ${Math.ceil(left)}s`; f = left / (d.window || 1); }
+      else { st = `[${this.gumKey || 'H'}] use · ${g.uses} left`; f = g.uses / (d.uses || 1); }
+    } else if (g.kind === 'timed') { const m = Math.floor(g.left / 60), s = Math.floor(g.left % 60); st = `${m}:${String(s).padStart(2, '0')}`; f = g.left / (d.time || 1); }
+    else if (g.kind === 'rounds') { st = `${g.rounds} round${g.rounds === 1 ? '' : 's'}`; f = g.rounds / (d.rounds || 1); }
+    else { st = `${g.uses} left`; f = g.uses / (d.uses || 1); }
+    const key = g.id + '|' + st;
+    if (key === this.last.gum) return;
+    this.last.gum = key;
+    el.hidden = false;
+    el.style.setProperty('--c', G.tiers[d.tier].color);
+    el.style.setProperty('--f', Math.max(0, Math.min(1, f)).toFixed(3));
+    el.classList.toggle('ready', g.kind === 'activated' && !(g.on && g.onUntil));
+    el.querySelector('.nm').textContent = d.name;
+    el.querySelector('.st').textContent = st;
+  }
+
   update(dt, sim, p, camera, showFps) {
     this.tally.update(dt);
     // the quest's current objective, top left
@@ -642,6 +686,9 @@ export class HUD {
         this.el.perks.appendChild(i);
       }
     }
+
+    // your GobbleGum
+    this.updateGum(sim, p);
 
     // last stand
     const dn = p.downed;

@@ -226,6 +226,7 @@ export const CONFIG = {
       grenade: ['KeyG'],
       tactical: ['KeyQ'],
       mine: ['KeyX'],
+      gum: ['KeyH'],             // use your GobbleGum
     },
   },
 
@@ -764,6 +765,18 @@ export const CONFIG = {
       view: { model: 'm60', flash: 1.6 },
       upgrade: { name: 'Death Machine', color: '#ff9f1a', magSize: 200, reloadTime: 4.4, reloadEmptyTime: 4.8 },
     }),
+    // The Death Machine power-up (Fatal Contraption's GobbleGum drop): a minigun
+    // that never runs dry, yours for `powerups.list.deathMachine.time` s. You can't
+    // put it away. (Not in the box or on a wall.)
+    'Death Machine': gun('lmg', {
+      name: 'Death Machine', boxOnly: true, gumOnly: true, deathMachine: true, infinite: true,
+      rpm: 1100, damage: 300, headMult: 2, magSize: 999, reserve: 0, penetration: 4,
+      drawTime: 0.4, adsTime: 0.3, adsMoveMult: 0.6, moveSpeedMult: 0.85,
+      spread: { hipBase: 2.4, hipMax: 5, perShot: 0.15 },
+      recoil: { pitch: 0.5, yaw: 0.6, recovery: 12, adsMult: 0.7, viewKick: 0.8 },
+      sound: { kind: 'lmg', body: 2300, thump: 90, crack: 1.1, tail: 0.7, pitch: 1.15, mech: true },
+      view: { model: 'm60', flash: 1.8, camo: '#3a3a3a' },
+    }),
     'China Pond': gun('launcher', {
       name: 'China Pond', boxOnly: true,
       action: 'pump', rpm: 60, damage: 0, magSize: 2, reserve: 20,
@@ -933,6 +946,141 @@ export const CONFIG = {
     { id: 'crust', name: 'Call of the Crust', beta: true, locked: true, notPlayable: ['pit'] },
   ],
 
+  // ---------------------------------------------------------------------------
+  // GobbleGum (src/sim/gums.js, the menu: src/ui/gumsUI.js). As in Black Ops 3:
+  // you take a pack of 5 into a game; a GobbleGum machine gives you one of them
+  // at random (500 the first time in a round, then 1000, then 2000: 3 a round).
+  // Classics never run out. Megas are used up as they come out of the machine,
+  // and come from Dr. Monty's Factory for Liquid Divinium, which you earn by
+  // playing. Your pack, your Megas and your Divinium are your career's (your
+  // username's). The gum you've got goes off one of four ways:
+  //   activated  press [H] (D-pad down) to use it: `uses` times
+  //   timed      starts as you chew it; lasts `time` s
+  //   rounds     starts as you chew it; lasts `rounds` round ends
+  //   special    sits there till the thing it's for happens (`uses` times)
+  // A gum with `window` s: each use stays on that long.
+  // ---------------------------------------------------------------------------
+  gobblegum: {
+    packSize: 5,
+    costs: [500, 1000, 2000],    // the 1st, 2nd and 3rd gum in a round
+    perRound: 3,
+    dispenseTime: 2.2,           // s the machine churns
+    offerTime: 6,                // s the gum sits in the tray for you
+    chewTime: 0.8,               // s to chew it (your gun's down)
+    // a machine stands `offset` m beside a perk machine (`half` its half-width), `perMap` at most;
+    // it goes dark after a few uses (`awayTime` s till it's back)
+    machine: { range: 1.7, uses: [3, 5], awayTime: 25, offset: 1.5, half: 0.4, perMap: 6 },
+    // the machine (src/render/gumView.js): globe and gumball radius (m), how many
+    // balls in it, its paint and its light
+    look: { globe: 0.3, ball: 0.035, balls: 70, body: '#c8246e', light: '#ff7ad0', lightI: 6 },
+    defaultPack: ['alwaysDoneSwiftly', 'stockOption', 'swordFlay', 'inPlainSight', 'coagulant'],
+    // Liquid Divinium, at the end of a game you played (rounds you survived):
+    // each round past `fromRound` a chance at a vial, one for sure every
+    // `every` rounds, never more than `max` a game
+    divinium: { fromRound: 2, chance: 0.1, every: 10, max: 5 },
+    starter: 3,                  // vials a new career starts with
+    // Dr. Monty's Factory: vials in, Megas out (each one's tier by `odds`)
+    factory: { single: { cost: 1, gums: 2 }, bundle: { cost: 3, gums: 7 }, odds: { mega: 0.7, rare: 0.25, ultra: 0.05 } },
+    tiers: {
+      classic: { name: 'Classic', color: '#3a8de8' },
+      whimsical: { name: 'Whimsical', color: '#e85ab4' },
+      mega: { name: 'Mega', color: '#8e4ae0' },
+      rare: { name: 'Rare Mega', color: '#5ad1e8' },
+      ultra: { name: 'Ultra-Rare Mega', color: '#f09a2a' },
+    },
+    gums: {
+      // --- Classics: never run out
+      alchemicalAntithesis: { name: 'Alchemical Antithesis', tier: 'classic', kind: 'activated', uses: 1, window: 60, perAmmo: 10, desc: 'Every 10 points you earn is 1 round of stock ammo for the gun in your hands instead. Lasts 60 seconds.' },
+      alwaysDoneSwiftly: { name: 'Always Done Swiftly', tier: 'classic', kind: 'rounds', rounds: 3, adsMult: 0.5, desc: 'Aim down sights faster, and walk at full speed while aiming. Lasts 3 rounds.' },
+      anywhereButHere: { name: 'Anywhere But Here!', tier: 'classic', kind: 'activated', uses: 1, minFromZombies: 6, desc: 'Teleport to a random spot on the map.' },
+      armamentalAccomplishment: { name: 'Armamental Accomplishment', tier: 'classic', kind: 'rounds', rounds: 3, drawMult: 0.5, regenMult: 0.5, desc: 'Switch weapons faster, and recover from taking damage faster. Lasts 3 rounds.' },
+      armsGrace: { name: 'Arms Grace', tier: 'classic', kind: 'special', uses: 1, desc: 'Bleed out and you come back with the guns you had. Lasts till then.' },
+      arsenalAccelerator: { name: 'Arsenal Accelerator', tier: 'classic', kind: 'timed', time: 600, fireMult: 1.5, desc: 'Wonder weapons and War Hammers fire and come back round 50% faster. Lasts 10 minutes.' },
+      coagulant: { name: 'Coagulant', tier: 'classic', kind: 'timed', time: 1200, bleedMult: 3, desc: 'You take three times as long to bleed out. Lasts 20 minutes.' },
+      dangerClosest: { name: 'Danger Closest', tier: 'classic', kind: 'rounds', rounds: 3, desc: 'No explosive damage to you at all. Lasts 3 rounds.' },
+      firingOnAllCylinders: { name: 'Firing On All Cylinders', tier: 'classic', kind: 'rounds', rounds: 3, desc: 'Shoot while sprinting. Lasts 3 rounds.' },
+      impatient: { name: 'Impatient', tier: 'classic', kind: 'special', uses: 1, after: 20, left: 3, desc: 'Bleed out and you\'re back near the end of the round, not at the start of the next. Lasts till then.' },
+      inPlainSight: { name: 'In Plain Sight', tier: 'classic', kind: 'activated', uses: 2, window: 10, desc: 'The zombies ignore you for 10 seconds. 2 uses.' },
+      luckyCrit: { name: 'Lucky Crit', tier: 'classic', kind: 'rounds', rounds: 1, aatMult: 2.5, desc: 'Your Mad Dog\'d guns\' bite (their alternate ammo) goes off far more often. Lasts 1 round.' },
+      nowYouSeeMe: { name: 'Now You See Me', tier: 'classic', kind: 'activated', uses: 2, window: 10, desc: 'Every zombie comes for you for 10 seconds. 2 uses.' },
+      stockOption: { name: 'Stock Option', tier: 'classic', kind: 'timed', time: 180, desc: 'Your ammo comes out of your stockpile, not your magazine. Lasts 3 minutes.' },
+      swordFlay: { name: 'Sword Flay', tier: 'classic', kind: 'timed', time: 150, meleeMult: 5, desc: 'Your knife does 5 times the damage. Lasts 2.5 minutes.' },
+      // (Whimsical: harmless fun, and never run out either)
+      eyeCandy: { name: 'Eye Candy', tier: 'whimsical', kind: 'activated', uses: 4, camos: ['#ff3ba8', '#3bffd2', '#ffe23b', '#7a3bff', '#ff7a1a', '#46ff4a', '#1ab8ff', '#ffffff'], desc: 'Paint the gun in your hands a new colour. 4 uses.' },
+      newtonianNegation: { name: 'Newtonian Negation', tier: 'whimsical', kind: 'timed', time: 1500, rise: 9, desc: 'Zombies you kill fall straight up. Lasts 25 minutes.' },
+      projectileVomiting: { name: 'Projectile Vomiting', tier: 'whimsical', kind: 'rounds', rounds: 5, flingMult: 3, desc: 'Zombies killed by your explosives go flying a lot further. Lasts 5 rounds.' },
+      toneDeath: { name: 'Tone Death', tier: 'whimsical', kind: 'special', uses: 25, desc: 'Silly sounds play when you kill zombies. 25 kills.' },
+      // --- Megas: used up as they come out of the machine
+      aftertaste: { name: 'Aftertaste', tier: 'mega', kind: 'rounds', rounds: 3, desc: 'Keep all your perks when you\'re revived. Lasts 3 rounds.' },
+      boardGames: { name: 'Board Games', tier: 'mega', kind: 'rounds', rounds: 5, desc: 'Putting one board back puts every board back on that window. Lasts 5 rounds.' },
+      boardToDeath: { name: 'Board to Death', tier: 'mega', kind: 'timed', time: 300, radius: 3.5, desc: 'Putting a board back kills every zombie near that window. Lasts 5 minutes.' },
+      bulletBoost: { name: 'Bullet Boost', tier: 'mega', kind: 'activated', uses: 2, desc: 'Re-roll your Mad Dog\'d gun\'s bite (its alternate ammo). 2 uses.' },
+      burnedOut: { name: 'Burned Out', tier: 'mega', kind: 'special', uses: 2, radius: 5, desc: 'The next time a zombie hits you, every zombie near you bursts into flames. 2 uses.' },
+      cratePower: { name: 'Crate Power', tier: 'mega', kind: 'special', uses: 1, desc: 'The next gun you take out of the Mystery Box comes Mad Dog\'d.' },
+      crawlSpace: { name: 'Crawl Space', tier: 'mega', kind: 'activated', uses: 1, radius: 25, desc: 'Every zombie near you loses its legs.' },
+      deadOfNuclearWinter: { name: 'Dead of Nuclear Winter', tier: 'mega', kind: 'activated', uses: 1, drop: 'pressureCooker', desc: 'Drops a Pressure Cooker.' },
+      disorderlyCombat: { name: 'Disorderly Combat', tier: 'mega', kind: 'timed', time: 300, every: 10, desc: 'A random gun in your hands every 10 seconds; yours back after. Lasts 5 minutes.' },
+      ephemeralEnhancement: { name: 'Ephemeral Enhancement', tier: 'mega', kind: 'activated', uses: 2, window: 60, desc: 'The gun in your hands is Mad Dog\'d for 60 seconds. 2 uses.' },
+      headDrama: { name: 'Head Drama', tier: 'mega', kind: 'rounds', rounds: 1, desc: 'Every bullet that hits a zombie hits it in the head. Lasts the rest of the round.' },
+      imFeelinLucky: { name: 'I\'m Feelin\' Lucky', tier: 'mega', kind: 'activated', uses: 2, drop: 'random', desc: 'Drops a random power-up. 2 uses.' },
+      immolationLiquidation: { name: 'Immolation Liquidation', tier: 'mega', kind: 'activated', uses: 3, drop: 'clearanceSale', desc: 'Drops a Clearance Sale. 3 uses.' },
+      licensedContractor: { name: 'Licensed Contractor', tier: 'mega', kind: 'activated', uses: 3, drop: 'shopClass', desc: 'Drops a Shop Class. 3 uses.' },
+      mindBlown: { name: 'Mind Blown', tier: 'mega', kind: 'activated', uses: 3, range: 40, desc: 'Pops the head off every zombie you can see. 3 uses.' },
+      nowhereButThere: { name: 'Nowhere But There', tier: 'mega', kind: 'activated', uses: 2, desc: 'Teleport to a downed teammate. 2 uses.' },
+      popShocks: { name: 'Pop Shocks', tier: 'mega', kind: 'special', uses: 5, radius: 4, desc: 'Your knife hits set off a shock that fries every zombie near the one you hit. 5 hits.' },
+      powerVacuum: { name: 'Power Vacuum', tier: 'mega', kind: 'rounds', rounds: 1, chanceMult: 5, desc: 'Power-ups drop much more often. Lasts the rest of the round.' },
+      respinCycle: { name: 'Respin Cycle', tier: 'mega', kind: 'activated', uses: 3, desc: 'The Mystery Box offering you a gun spins again. 3 uses.' },
+      slaughterSlide: { name: 'Slaughter Slide', tier: 'mega', kind: 'special', uses: 6, explosion: 'gumSlide', side: 1.2, desc: 'Dolphin dive and two lethal blasts go off either side of you as you land. 6 dives.' },
+      temporalGift: { name: 'Temporal Gift', tier: 'mega', kind: 'rounds', rounds: 1, durationMult: 2, desc: 'Power-ups last twice as long. Lasts the rest of the round.' },
+      unbearable: { name: 'Unbearable', tier: 'mega', kind: 'special', uses: 1, desc: 'When Erik\'s bobblehead comes out of the Mystery Box for you, it spins again and the box stays put.' },
+      wallPower: { name: 'Wall Power', tier: 'mega', kind: 'special', uses: 1, desc: 'The next gun you buy off a wall comes Mad Dog\'d.' },
+      whosKeepingScore: { name: 'Who\'s Keeping Score?', tier: 'mega', kind: 'activated', uses: 2, drop: 'doubleDough', desc: 'Drops a Double Dough. 2 uses.' },
+      // --- Rare Megas
+      cacheBack: { name: 'Cache Back', tier: 'rare', kind: 'activated', uses: 1, drop: 'fullPantry', desc: 'Drops a Full Pantry.' },
+      extraCredit: { name: 'Extra Credit', tier: 'rare', kind: 'activated', uses: 4, drop: 'extraCredit', desc: 'Drops a personal power-up worth 1250 points. 4 uses.' },
+      fatalContraption: { name: 'Fatal Contraption', tier: 'rare', kind: 'activated', uses: 2, drop: 'deathMachine', desc: 'Drops a Death Machine. 2 uses.' },
+      fearInHeadlights: { name: 'Fear in Headlights', tier: 'rare', kind: 'timed', time: 120, every: 0.2, dot: 0.6, range: 45, desc: 'Zombies anyone\'s looking at can\'t move. Lasts 2 minutes.' },
+      idleEyes: { name: 'Idle Eyes', tier: 'rare', kind: 'activated', uses: 3, window: 30, desc: 'Every zombie ignores everybody for 30 seconds. 3 uses.' },
+      killJoy: { name: 'Kill Joy', tier: 'rare', kind: 'activated', uses: 2, drop: 'oneBite', desc: 'Drops a One Bite. 2 uses.' },
+      killingTime: { name: 'Killing Time', tier: 'rare', kind: 'activated', uses: 1, window: 20, desc: 'Every zombie freezes for 20 seconds; the ones you shoot blow up when it\'s over.' },
+      nearDeathExperience: { name: 'Near Death Experience', tier: 'rare', kind: 'rounds', rounds: 3, range: 2.5, time: 0.6, desc: 'Revive, or be revived, just by being near each other. Lasts 3 rounds.' },
+      phoenixUp: { name: 'Phoenix Up', tier: 'rare', kind: 'activated', uses: 1, desc: 'Revives every downed teammate, and they keep their perks.' },
+      profitSharing: { name: 'Profit Sharing', tier: 'rare', kind: 'timed', time: 600, range: 12, desc: 'Points you earn go to everyone near you too, and theirs to you. Lasts 10 minutes.' },
+      roundRobbin: { name: 'Round Robbin\'', tier: 'rare', kind: 'activated', uses: 1, points: 1600, desc: 'Ends the round; everyone gets 1600 points.' },
+      secretShopper: { name: 'Secret Shopper', tier: 'rare', kind: 'timed', time: 600, desc: 'Any wall gun sells you ammo for the gun in your hands. Lasts 10 minutes.' },
+      selfMedication: { name: 'Self Medication', tier: 'rare', kind: 'special', uses: 3, desc: 'Down? Kill a zombie and you get yourself back up, with your perks. 3 uses (and you get a last stand on your own).' },
+      shoppingFree: { name: 'Shopping Free', tier: 'rare', kind: 'timed', time: 60, desc: 'Everything you buy is free. Lasts 60 seconds.' },
+      sodaFountain: { name: 'Soda Fountain', tier: 'rare', kind: 'special', uses: 5, desc: 'Buy a perk, get another random one with it (past the limit). 5 perks.' },
+      undeadManWalking: { name: 'Undead Man Walking', tier: 'rare', kind: 'timed', time: 240, speed: 1.0, desc: 'Every zombie slows to a shamble. Lasts 4 minutes.' },
+      unquenchable: { name: 'Unquenchable', tier: 'rare', kind: 'activated', uses: 1, desc: 'You can hold one more perk.' },
+      // --- Ultra-Rare Megas
+      flavorHexed: { name: 'Flavor Hexed', tier: 'ultra', kind: 'activated', uses: 1, desc: 'Take a chance on a random Mega that isn\'t in your pack.' },
+      onTheHouse: { name: 'On the House', tier: 'ultra', kind: 'activated', uses: 1, desc: 'A free random perk (past the limit).' },
+      perkaholic: { name: 'Perkaholic', tier: 'ultra', kind: 'activated', uses: 1, desc: 'Every perk on the map.' },
+      reignDrops: { name: 'Reign Drops', tier: 'ultra', kind: 'activated', uses: 2, spread: 2.2, desc: 'Drops one of every power-up. 2 uses.' },
+    },
+  },
+
+  // Alternate ammo (a Mad Dog'd gun's bite): every upgraded gun has one, picked
+  // at random as it comes out (and again if you pay to feed it back in). A hit
+  // has `chance` of setting it off; then that gun's bite rests for `cooldown` s.
+  aat: {
+    chance: 0.15, cooldown: 5, rerollCost: 2500,
+    types: {
+      blastFurnace: { name: 'Blast Furnace', color: '#ff6a1a', radius: 4, burnKill: 3 },
+      deadWire: { name: 'Dead Wire', color: '#5ad1ff', chains: 5, hop: 6 },
+      thunderWall: { name: 'Thunder Wall', color: '#c8f0ff', range: 8, angle: 40, dist: 9, up: 3 },
+    },
+  },
+
+  // The title screen (and the menus behind it): the map it shows, and the camera
+  // drifting round it there: a slow circle (radius m, height m over center,
+  // speed rad/s) round `center`, looking at `look` (+ a slow bob of `bob` m).
+  title: {
+    map: 'crust',
+    cam: { center: [0, 0, 0], radius: 62, height: 30, speed: 0.022, look: [0, 7, 0], bob: 1.5, fov: 55 },
+  },
+
   box: {
     cost: 950,
     spinTime: 4.2,             // how long it cycles before landing
@@ -1035,6 +1183,7 @@ export const CONFIG = {
   // selfDamage = damage to the player who caused it if they're at the center.
   explosions: {
     frag: { radius: 4.5, damage: 1100, selfDamage: 120, minFrac: 0.15, shake: 1.0 },
+    gumSlide: { radius: 3.2, damage: 1e6, selfDamage: 0, minFrac: 1, shake: 0.6 },   // (Slaughter Slide: either side of your dive)
     shell: { radius: 4.5, damage: 900, selfDamage: 0, minFrac: 0.2, shake: 0.8 },   // (the Trench Front's guns)
     launcher: { radius: 3.6, damage: 1300, selfDamage: 80, minFrac: 0.2, shake: 0.9 },
     bolt: { radius: 2.8, damage: 1000, selfDamage: 60, minFrac: 0.2, shake: 0.6 },
@@ -1155,6 +1304,10 @@ export const CONFIG = {
       pressureCooker: { name: 'Pressure Cooker', desc: 'every zombie on the map is gone', weight: 0.7, color: '#ff8a1a', points: 400 },
       shopClass: { name: 'Shop Class', desc: 'every barrier rebuilt', weight: 0.6, color: '#c8a46a', points: 200 },
       clearanceSale: { name: 'Clearance Sale', desc: 'the Mystery Box costs 10', weight: 0.5, color: '#ff4fd8', timed: true, boxCost: 10 },
+      // (GobbleGum only: never dropped by a zombie. personal: only the one who
+      // chewed it can pick it up)
+      extraCredit: { name: 'Extra Credit', desc: '1250 points, all yours', weight: 0, color: '#6affc8', gumOnly: true, personal: true, points: 1250 },
+      deathMachine: { name: 'Death Machine', desc: 'a minigun that never runs dry', weight: 0, color: '#c8c8c8', gumOnly: true, weapon: 'Death Machine', time: 30 },
     },
   },
 

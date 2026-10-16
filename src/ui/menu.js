@@ -10,7 +10,7 @@ export class Menus {
   constructor(settings, handlers) {
     this.settings = settings;
     this.h = handlers; // { play, range, resume, restart, quit, settingsChanged }
-    this.screens = ['title', 'mapselect', 'pause', 'settings', 'gameover', 'victory', 'extras', 'charselect', 'lineup', 'online', 'signin', 'career'].map((id) => $(id));
+    this.screens = ['title', 'mapselect', 'pause', 'settings', 'gameover', 'victory', 'extras', 'charselect', 'lineup', 'online', 'signin', 'career', 'gums'].map((id) => $(id));
     this.returnTo = 'title';
 
     $('btn-play').addEventListener('click', () => this.h.play());
@@ -176,7 +176,9 @@ export class Menus {
     this.show('victory');
   }
 
-  showGameOver(team, round, p, erikLine = '') {
+  showGameOver(team, round, p, erikLine = '', divinium = 0) {
+    $('over-div').hidden = !divinium;
+    $('over-div').textContent = divinium ? `+${divinium} Liquid Divinium` : '';
     $('over-erik').textContent = erikLine ? `“${erikLine}” — Erik, over the PA` : '';
     $('over-rounds').textContent = String(round);
     $('over-round-word').textContent = round === 1 ? 'round' : 'rounds';

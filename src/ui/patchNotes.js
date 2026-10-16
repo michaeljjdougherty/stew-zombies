@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-05l',
-  date: 'October 5, 2026',
+  version: '2026-10-15a',
+  date: 'October 15, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -22,6 +22,10 @@ export const PATCH = {
       'Something crusty is coming…',
     ] },
     { title: 'Just added', items: [
+      'GobbleGum: all 64 gums. Build a pack of 5 on the GobbleGum screen (title menu), then buy one from the GobbleGum machines next to the perk machines (500, 1000, then 2000 points, 3 a round). Activated gums go off with H (D-pad down on a controller). Classics never run out; Megas are used up as they come out of the machine.',
+      'Liquid Divinium: earn vials by playing (the longer you last, the more), saved to your username. Spend them at Dr. Monty\'s Factory for Mega GobbleGums.',
+      'Mad Dog\'d guns have alternate ammo now (Blast Furnace, Dead Wire or Thunder Wall). Feed an upgraded gun back to the Mad Dog for 2500 to get a different one.',
+      'Online: the intro cutscene plays for everyone, and the host can skip it (or switch it off in the lobby).',
       'Rocco has his real voice: all 62 of his lines are recorded.',
       'Usernames have a 4-digit PIN now: make one the first time you use a name, and only you can sign in as it from then on.',
       'The Easter egg\'s final fight is a lot tougher.',

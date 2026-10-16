@@ -59,7 +59,7 @@ export class RangeUI {
   buildPanel() {
     const list = $('rp-weapons');
     list.textContent = '';
-    const entries = Object.entries(this.cfg.weapons).filter(([id]) => !id.endsWith('+'));
+    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => !id.endsWith('+') && !d.gumOnly);
     for (const [title, test] of GROUPS) {
       const ids = entries.filter(([, d]) => test(d)).map(([id]) => id);
       if (!ids.length) continue;

@@ -2127,3 +2127,40 @@ export function ignite(A, out, t) {
   n.connect(lp); lp.connect(g); g.connect(out);
   return 0.55;
 }
+
+// --- GobbleGum ------------------------------------------------------------------
+// The machine churning: a crank ratchet and gumballs rattling round the globe.
+export function gumChurn(A, out, t, { duration = 2.2 } = {}) {
+  for (let i = 0; i < duration * 9; i++) click(A, out, t + i / 9 + Math.random() * 0.03, 1400 + Math.random() * 900, 3, 0.03, 0.35);
+  for (let i = 0; i < duration * 22; i++) click(A, out, t + Math.random() * duration, 3000 + Math.random() * 2500, 6, 0.02, 0.12 + Math.random() * 0.12, 1800 + Math.random() * 1200);
+  // and the ball dropping into the tray at the end
+  click(A, out, t + duration - 0.1, 1800, 4, 0.06, 0.6, 1300);
+  click(A, out, t + duration + 0.02, 2200, 4, 0.04, 0.35, 1500);
+  return duration + 0.4;
+}
+// Chewing it: a soft squish and a bubble popping.
+export function gumChew(A, out, t) {
+  for (let i = 0; i < 3; i++) {
+    const n = A.noiseSource('pink', t + i * 0.16, 0.14);
+    const lp = A.filter('lowpass', 700, 1.2);
+    const g = A.gain(0); A.env(g, t + i * 0.16, 0.02, 0.1, 0.35);
+    n.connect(lp); lp.connect(g); g.connect(out);
+  }
+  gumPop(A, out, t + 0.55);
+  return 1;
+}
+// A bubble popping (an activated gum going off).
+export function gumPop(A, out, t) {
+  const o = A.osc('sine', 300, t, 0.15); o.frequency.exponentialRampToValueAtTime(1100, t + 0.06);
+  const g = A.gain(0); A.env(g, t, 0.003, 0.08, 0.5); o.connect(g); g.connect(out);
+  click(A, out, t + 0.06, 2600, 2, 0.03, 0.7);
+  return 0.3;
+}
+// Tone Death: a silly cartoon boing.
+export function gumBoing(A, out, t) {
+  const o = A.osc('triangle', 180, t, 0.5);
+  o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(520, t + 0.12); o.frequency.exponentialRampToValueAtTime(240, t + 0.4);
+  const lfo = A.osc('sine', 18, t, 0.5), lg = A.gain(40); lfo.connect(lg); lg.connect(o.frequency);
+  const g = A.gain(0); A.env(g, t, 0.005, 0.4, 0.45); o.connect(g); g.connect(out);
+  return 0.6;
+}

@@ -72,6 +72,10 @@ export function worldState(sim) {
     crustEgg: sim.crustEgg ? clean(sim.crustEgg, EGG_SKIP) : null,
     powerups: { drops: byId(sim.powerups.drops, (d) => clean(d)), active: clean(sim.powerups.active) },
     stewEgg: clean(sim.stewEgg),
+    gums: sim.gums ? clean({
+      machines: byId(sim.gums.machines, (m) => ({ state: m.state, timer: m.timer, buyerId: m.buyerId, gum: m.gum })),
+      idleUntil: sim.gums.idleUntil, killing: sim.gums.killing ? { until: sim.gums.killing.until } : null, lure: sim.gums.lure,
+    }) : null,
   };
   for (const [id, st] of sim.doorState) if (st.open) S.doors[id] = clean(st.openedAt);
   return S;
@@ -147,7 +151,8 @@ const unbig = (v) => (v >= BIG ? Infinity : v <= -BIG ? -Infinity : v);
 // Fields of your own player that the host decides (everything else, like where
 // you are and what's in your magazine, your own browser decides).
 const OWNED = ['name', 'character', 'health', 'maxHealth', 'alive', 'downed', 'perks', 'drinking', 'reviving',
-  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding'];
+  'points', 'kills', 'headshots', 'downs', 'revives', 'knifeKills', 'boosts', 'prompt', 'lastDamageTime', 'invulnUntil', 'grenadeMax', 'lbdMax', 'boardPointsThisRound', 'rebuilding',
+  'gum', 'gumPack', 'gumStock', 'gumBuys', 'perkBonus'];   // (GobbleGum: src/sim/gums.js)
 const INTERP = new Set(['pos', 'yaw', 'pitch']);
 
 export function applyMirror(sim, M, localId) {
@@ -255,6 +260,10 @@ export function applyMirror(sim, M, localId) {
   sim.powerups.drops = Object.values(M.powerups.drops).map(structuredCopy);
   sim.powerups.active = structuredCopy(M.powerups.active);
   deepAssign(sim.stewEgg, M.stewEgg);
+  if (sim.gums && M.gums) {
+    for (const m of sim.gums.machines) { const s = M.gums.machines[m.id]; if (s) Object.assign(m, s); }
+    sim.gums.idleUntil = M.gums.idleUntil; sim.gums.killing = structuredCopy(M.gums.killing); sim.gums.lure = structuredCopy(M.gums.lure);
+  }
 }
 
 // Bring a list of {id,...} objects in line with the host's map of them,
@@ -286,6 +295,6 @@ export function positionFrame(M, localId) {
 export function inventorySig(p) {
   const w = p.loadout;
   let s = w.current + '|' + p.grenades + '|' + p.stewBombs + '|' + (p.maisyDogs || 0) + '|' + (p.lbds || 0);
-  for (const sl of w.slots) s += '|' + sl.id + ',' + sl.clip + ',' + (sl.clipL || 0) + ',' + sl.reserve + ',' + (sl.upgraded ? 1 : 0) + ',' + (sl.away ? 1 : 0);
+  for (const sl of w.slots) s += '|' + sl.id + ',' + sl.clip + ',' + (sl.clipL || 0) + ',' + sl.reserve + ',' + (sl.upgraded ? 1 : 0) + ',' + (sl.away ? 1 : 0) + ',' + (sl.aat || '') + ',' + (sl.camo || '');
   return s;
 }

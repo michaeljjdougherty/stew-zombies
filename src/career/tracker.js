@@ -6,7 +6,7 @@
 // Works the same on the host and on a friend's copy online: it only ever looks
 // at the local player.
 // =============================================================================
-import { baseWeaponId } from '../config.js';
+import { baseWeaponId, CONFIG } from '../config.js';
 
 export class CareerTracker {
   constructor(career) {
@@ -15,6 +15,8 @@ export class CareerTracker {
     this.on = false;
     this.checkT = 0;
     this.flushT = 0;
+    this.divinium = 0;
+    this.onDivinium = null;     // (n) => tell the player they got a vial
   }
 
   // Called every simulation step, before that step's events.
@@ -26,6 +28,7 @@ export class CareerTracker {
       this.hardcore = hardcore;
       this.cheddarClean = null;
       this.counted = false;
+      this.divinium = 0;         // vials of Liquid Divinium earned this game
     }
     if (!this.on) return;
     const C = this.career;
@@ -43,6 +46,19 @@ export class CareerTracker {
     // save now and then (and online, send it up)
     this.flushT -= dt;
     if (this.flushT <= 0) { this.flushT = C.cfg.flushEvery || 15; C.flush(); }
+  }
+
+  // Liquid Divinium: playing earns it. Each round you survive past
+  // CONFIG.gobblegum.divinium.fromRound has a chance at a vial, and every
+  // `every`th round is a sure one (up to `max` a game).
+  maybeDivinium(round, sim) {
+    const D = (sim.cfg || CONFIG).gobblegum.divinium;
+    if (round < D.fromRound || this.divinium >= D.max) return;
+    if (round % D.every === 0 || Math.random() < D.chance) {
+      this.divinium++;
+      this.career.addDivinium(1);
+      if (this.onDivinium) this.onDivinium(this.divinium);
+    }
   }
 
   onEvent(e, sim, localId) {
@@ -69,8 +85,13 @@ export class CareerTracker {
         break;
       case 'roundEnd':
         if (alive) C.add('rounds');
+        if (alive) this.maybeDivinium(e.round, sim);
         if (e.cheddar && this.cheddarClean && alive) C.unlock('cheddar');
         this.cheddarClean = null;
+        break;
+      // GobbleGum: a Mega's used up as it comes out of the machine for you
+      case 'gumDispensed':
+        if (e.playerId === localId && e.mega) C.useMega(e.gum);
         break;
       case 'madDogTaken':
         if (e.playerId === localId) C.unlock('maddog');

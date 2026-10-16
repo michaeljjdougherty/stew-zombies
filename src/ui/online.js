@@ -11,7 +11,7 @@ import { DEV_CODE } from './mapselect.js';
 const $ = (id) => document.getElementById(id);
 
 export class OnlineUI {
-  // h: { host(name), join(name, code), pick(ch), setMap(id), start(), leave(), back(), questDone() }
+  // h: { host(name), join(name, code), pick(ch), setMap(id), setIntro(on), start(), leave(), back(), questDone() }
   constructor(settings, h) {
     this.settings = settings;
     this.h = h;
@@ -42,6 +42,7 @@ export class OnlineUI {
       $('on-maps').appendChild(b);
     }
     $('btn-on-mapcode').addEventListener('click', () => this.tryCode());
+    $('on-intro').addEventListener('change', () => this.h.setIntro($('on-intro').checked));
     $('on-mapcode').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.tryCode(); e.stopPropagation(); });
   }
 
@@ -150,6 +151,10 @@ export class OnlineUI {
       b.disabled = !isHost;
     }
     if (!isHost) $('on-maprow').hidden = true;
+    // the intro: the host's choice (friends just see it)
+    $('on-intro').checked = lobby.intro !== false;
+    $('on-intro').disabled = !isHost;
+    $('on-introtxt').textContent = isHost ? 'Play the map\'s intro first (you can skip it)' : (lobby.intro !== false ? 'The host is playing the intro first' : 'No intro: straight in');
     for (const c of chars.children) if (mapInfo(map).notPlayable?.includes(c.dataset.id)) { c.disabled = true; c.querySelector('span').textContent = 'At his forge'; }
 
     const go = $('btn-on-go');

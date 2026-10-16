@@ -501,6 +501,8 @@ export class ZombieViews {
   flingOf(v, e) {
     const f = e.fling;
     if (!f) return null;
+    // (Newtonian Negation: it falls up, slowly turning, and is gone)
+    if (f.float) return { float: true, from: v.root.position.clone(), rise: f.up, t: 0, T: 5, landed: false };
     const g = 14;
     const T = Math.sqrt(8 * f.up / g);
     v.root.rotation.order = 'YXZ';
@@ -512,6 +514,12 @@ export class ZombieViews {
     const F = c.fling;
     if (F.landed) return true;
     F.t += dt;
+    if (F.float) {
+      v.root.position.y = F.from.y + F.rise * F.t * F.t * 0.12;
+      v.root.rotation.z += dt * 0.6;
+      if (F.t >= F.T) { F.landed = true; v.root.visible = false; }
+      return F.landed;
+    }
     const k = Math.min(1, F.t / F.T);
     v.root.position.set(F.from.x + F.x * F.dist * k, Math.max(0, F.from.y + F.vy * F.t - 0.5 * F.g * F.t * F.t), F.from.z + F.z * F.dist * k);
     v.root.rotation.x = F.flips >= 1 ? -Math.PI * 2 * k : -k * 0.6;   // big throws go end over end

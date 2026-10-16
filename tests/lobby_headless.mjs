@@ -33,6 +33,21 @@ friend.pick('pit'); await wait(150);
 host.pick('brian'); await wait(50);
 ok(host.members[0].character === 'brian', 'host picks Brian once he is free');
 
+// the intro cutscene: on by default; the host can switch it off; the start says so
+ok(host.intro === true && friendLobby.intro !== false, 'the intro cutscene plays online by default');
+host.setIntro(false); await wait(150);
+ok(friendLobby.intro === false, 'the host switches it off: the friend\'s lobby says so');
+// and each player's GobbleGum pack goes with them
+ok(fr().gums === null || typeof fr().gums === 'object', 'a friend with no pack: fine');
+let fs = null, hs = null;
+friend.o.onStart = (m) => { fs = m; }; host.o.onStart = (m) => { hs = m; };
+host.start(7); await wait(200);
+ok(fs && fs.intro === false && hs && hs.intro === false, 'the start carries it (no intro this time)');
+host.backToLobby && host.backToLobby(); await wait(100);
+host.setIntro(true); await wait(150);
+fs = null; host.start(8); await wait(200);
+ok(fs && fs.intro === true, 'switched back on: the next start plays it');
+
 friend.leave(); host.leave();
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

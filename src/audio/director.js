@@ -510,6 +510,23 @@ export class SoundDirector {
       case 'playerRevived': if (local) A.play(S.revived, {}, { gain: 0.9, reverb: 0.2 }); break;
       case 'zombieRise': A.play(S.dirtRise, {}, { pos: e.pos, ref: 3 }); break;
       case 'powerupSpawn': A.play(S.powerupSpawn, {}, { pos: { x: e.pos.x, y: 1.1, z: e.pos.z }, ref: 3, reverb: 0.4 }); break;
+      // GobbleGum
+      case 'gumDispensed': {
+        const m = sim.gums && sim.gums.machines.find((q) => q.id === e.machine);
+        A.play(S.gumChurn, { duration: this.cfg.gobblegum.dispenseTime }, { pos: m ? { x: m.pos.x, y: (m.pos.y || 0) + 1.4, z: m.pos.z } : null, ref: 4, reverb: 0.4 });
+        break;
+      }
+      case 'gumChewed': if (local) A.play(S.gumChew, {}, { gain: 0.9, reverb: 0.1 }); break;
+      case 'gumUsed': if (local) A.play(S.gumPop, {}, { gain: 0.9, reverb: 0.2 }); break;
+      case 'gumDenied': if (local) A.play(S.denied, {}, { gain: 0.7 }); break;
+      case 'gumToneDeath': A.play(S.gumBoing, {}, e.pos ? { pos: { x: e.pos.x, y: 1, z: e.pos.z }, ref: 5 } : { gain: 0.8 }); break;
+      case 'gumShock': case 'aatProc': {
+        const at = e.pos || (e.points && e.points[0]);
+        if (e.aat === 'blastFurnace') A.play(S.smallBoom, {}, { pos: at, ref: 6, reverb: 0.5 });
+        else if (e.aat === 'thunderWall') A.play(S.thunder, { near: 0.9 }, { pos: at, ref: 8, gain: 0.8, reverb: 0.6 });
+        else A.play(S.electrocute, {}, { pos: at, ref: 6, gain: 0.8, reverb: 0.5 });
+        break;
+      }
       case 'powerupGrab': A.play(S.powerupGrab, { type: e.ptype }, { gain: 1, reverb: 0.5, bus: 'sfx' }); break;
       case 'powerupEnd': A.play(S.powerupEnd, {}, { gain: 0.9, reverb: 0.3 }); break;
       case 'powerupGone': if (!e.taken) A.play(S.powerupFizzle, {}, { gain: 0.6 }); break;

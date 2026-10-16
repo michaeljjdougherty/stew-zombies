@@ -114,15 +114,18 @@ export class Viewmodel {
     this.models.clear();
     this.current = null;
     this.currentId = null;
+    this.currentKey = null;
   }
 
   // Show the model(s) for a weapon id (built on first use).
-  setWeapon(id) {
-    if (id === this.currentId) return;
+  // (camo: a colour of its own, Eye Candy's paint)
+  setWeapon(id, camo = null) {
+    const key = camo ? id + '#' + camo : id;
+    if (key === this.currentKey) return;
     const def = this.cfg.weapons[id];
-    let pair = this.models.get(id);
+    let pair = this.models.get(key);
     if (!pair) {
-      const camo = def.view.camo || null;
+      camo = camo || def.view.camo || null;
       const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual || !!def.hammer, camo });
       this.root.add(R.group);
       pair = { R };
@@ -132,7 +135,7 @@ export class Viewmodel {
         this.root.add(L.group);
         pair.L = L;
       }
-      this.models.set(id, pair);
+      this.models.set(key, pair);
     }
     if (this.current) { this.current.R.group.visible = false; if (this.current.L) this.current.L.group.visible = false; }
     pair.R.group.visible = true;
@@ -141,6 +144,7 @@ export class Viewmodel {
     if (pair.L) pair.L.muzzle.add(this.flash.L);
     this.current = pair;
     this.currentId = id;
+    this.currentKey = key;
     this.hammerT = -1;
     this.reload = null;
     this.slideLocked = false;
@@ -350,7 +354,7 @@ export class Viewmodel {
     this.time += dt;
     const w = p.loadout;
     const slot = w.slots[w.current];
-    if (slot.id !== this.currentId) this.setWeapon(slot.id);
+    if ((slot.camo ? slot.id + '#' + slot.camo : slot.id) !== this.currentKey) this.setWeapon(slot.id, slot.camo || null);
     const pair = this.current;
     const M = pair.R;
     const dual = !!def.dual;

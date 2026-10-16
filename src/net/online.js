@@ -25,6 +25,17 @@ export function makeCode(rand = Math.random) {
 export const mapInfo = (id) => CONFIG.onlineMaps.find((m) => m.id === id) || CONFIG.onlineMaps[0];
 export const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 
+// A player's GobbleGum pack, as sent (src/career/career.js packForGame): only
+// real gum ids, 5 at most, and whole numbers of Megas.
+function cleanGums(g) {
+  if (!g || !Array.isArray(g.pack)) return null;
+  const G = CONFIG.gobblegum.gums;
+  const pack = g.pack.filter((id) => typeof id === 'string' && G[id]).slice(0, CONFIG.gobblegum.packSize);
+  const stock = {};
+  for (const id of pack) { const n = Math.floor(Number(g.stock && g.stock[id]) || 0); if (n > 0) stock[id] = Math.min(n, 9999); }
+  return { pack, stock };
+}
+
 export class OnlineSession {
   // opts: { name, character, brian (unlocked?), local (BroadcastChannel test mode),
   //         onLobby(lobby), onStart(start), onGame(from, msg), onPeerLeft(id), onEnd(reason) }
@@ -38,6 +49,7 @@ export class OnlineSession {
     this.inGame = false;
     this.ended = false;
     this.map = CONFIG.onlineMaps[0].id;   // the map the host's picked
+    this.intro = true;          // play the map's intro cutscene first (the host's call)
   }
 
   get isHost() { return this.role === 'host'; }
@@ -56,7 +68,7 @@ export class OnlineSession {
       }
     }
     this.you = 'p1';
-    this.members = [{ id: 'p1', peer: null, name: this.o.name, character: this.o.character, brian: !!this.o.brian }];
+    this.members = [{ id: 'p1', peer: null, name: this.o.name, character: this.o.character, brian: !!this.o.brian, gums: cleanGums(this.o.gums) }];
     this.ep.onOpen = () => {};
     this.ep.onMessage = (from, m) => this.hostMessage(from, m);
     this.ep.onClose = (peer) => this.hostLost(peer);
@@ -73,7 +85,7 @@ export class OnlineSession {
       if (this.members.some((x) => x.peer === from)) return;
       const ids = ['p2', 'p3', 'p4'];
       const id = ids.find((i) => !this.members.some((x) => x.id === i));
-      const member = { id, peer: from, name: String(m.name || 'Friend').slice(0, 16), character: null, brian: !!m.brian };
+      const member = { id, peer: from, name: String(m.name || 'Friend').slice(0, 16), character: null, brian: !!m.brian, gums: cleanGums(m.gums) };
       member.character = this.freeCharacter(m.character, member);
       this.members.push(member);
       this.lobbyChanged();
@@ -123,7 +135,14 @@ export class OnlineSession {
   }
 
   lobby() {
-    return { code: this.code, map: this.map, members: this.members.map(({ id, name, character, brian }) => ({ id, name, character, brian })) };
+    return { code: this.code, map: this.map, intro: this.intro, members: this.members.map(({ id, name, character, brian, gums }) => ({ id, name, character, brian, gums })) };
+  }
+
+  // the host: play the map's intro first, or not
+  setIntro(on) {
+    if (!this.isHost || this.inGame || this.intro === !!on) return;
+    this.intro = !!on;
+    this.lobbyChanged();
   }
 
   // the host picks the map (anyone now playing someone who isn't there gets moved)
@@ -155,7 +174,7 @@ export class OnlineSession {
   start(seed = (Math.random() * 0xffffffff) >>> 0) {
     if (!this.isHost || this.inGame) return;
     this.inGame = true;
-    const start = { t: 'start', seed, map: this.map, members: this.lobby().members };
+    const start = { t: 'start', seed, map: this.map, intro: this.intro, members: this.lobby().members };
     for (const m of this.members) if (m.peer) this.ep.send(m.peer, { ...start, you: m.id });
     if (this.o.onStart) this.o.onStart({ ...start, you: 'p1', peers: this.members.filter((m) => m.peer).map((m) => ({ peer: m.peer, id: m.id })) });
   }
@@ -176,7 +195,7 @@ export class OnlineSession {
     this.ep.onMessage = (from, m) => this.friendMessage(m);
     this.ep.onClose = () => this.end('The host left the game.');
     this.ep.onError = () => {};
-    this.ep.send(this.ep.host, { t: 'hello', v: PROTOCOL, name: this.o.name, character: this.o.character, brian: !!this.o.brian });
+    this.ep.send(this.ep.host, { t: 'hello', v: PROTOCOL, name: this.o.name, character: this.o.character, brian: !!this.o.brian, gums: cleanGums(this.o.gums) });
     // wait for the first lobby (or a no)
     await new Promise((res, rej) => {
       const timer = setTimeout(() => rej(new Error('The host didn\'t answer.')), 12000);
@@ -194,8 +213,9 @@ export class OnlineSession {
         this.you = m.you;
         this.members = m.members;
         this.map = m.map || CONFIG.onlineMaps[0].id;
+        this.intro = m.intro !== false;
         if (this.waitLobby) this.waitLobby();
-        if (this.o.onLobby) this.o.onLobby({ code: this.code, map: this.map, members: m.members, you: m.you });
+        if (this.o.onLobby) this.o.onLobby({ code: this.code, map: this.map, intro: this.intro, members: m.members, you: m.you });
         return;
       case 'start':
         this.inGame = true;

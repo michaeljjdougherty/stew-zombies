@@ -2,6 +2,7 @@
 // Zombie simulation: spawning outside windows, tearing boards, climbing in,
 // chasing, attacking, damage, dismemberment and death. No rendering.
 // =============================================================================
+import { gumIgnored, gumLure, gumsIdle, gumOnHit, gumKillInfo, gumDownedKill, gumOnHurt, killingTimeOn, anyGumOn, aatOnHit } from './gums.js';
 import { moveBody, separateCircles } from './physics.js';
 import { rotY, angleWrap, dist2D } from '../core/math.js';
 import { zombieHealthForRound } from '../config.js';
@@ -177,12 +178,19 @@ const schnitzDark = (sim) => !!(sim.quest && sim.quest.darkUntil > sim.time);
 
 function nearestPlayer(sim, pos, z = null) {
   if (schnitzDark(sim)) return null;
+  // GobbleGum: Now You See Me (everyone comes for you); Idle Eyes (nobody's seen)
+  if (sim.gums) {
+    const lure = gumLure(sim);
+    if (lure && (!z || !sim.mapData.islands || reachable(sim, z, lure))) return lure;
+    if (gumsIdle(sim)) return null;
+  }
   let best = null, bd = Infinity;
   // islands (Call of the Crust): someone you can actually walk to beats someone across the ice
   const islands = z && sim.mapData.islands;
   for (const p of sim.players) {
     if (!p.alive || p.downed) continue;
     if (z && !z.ritual && inRitual(sim, p)) continue;
+    if (sim.gums && gumIgnored(sim, p)) continue;   // (In Plain Sight)
     let d = dist2D(p.pos, pos);
     if (islands && !reachable(sim, z, p)) d += 1e6;
     if (d < bd) { bd = d; best = p; }
@@ -228,6 +236,11 @@ export function updateZombies(sim, dt) {
       z.moveSpeed = 0; z.attack.phase = 'none';
       if (z.frozen > 0) continue;
       sim.emit('zombieThaw', { id: z.id });
+    }
+    // GobbleGum: Killing Time freezes them all; Fear in Headlights, the ones being looked at
+    if (z.state === 'chase' && (z.gumHeld || (sim.gums && killingTimeOn(sim)))) {
+      z.moveSpeed = 0; z.vel.x = 0; z.vel.z = 0; z.attack.phase = 'none';
+      continue;
     }
     // dragged toward a Maisy Dog's black hole: no walking, no swinging
     if (z.pull) {
@@ -386,6 +399,7 @@ export function updateZombies(sim, dt) {
 
         updateAttack(sim, z, dt, false, null, target);
         let speed = z.speed;
+        if (sim.gums && anyGumOn(sim, 'undeadManWalking')) speed = Math.min(speed, sim.cfg.gobblegum.gums.undeadManWalking.speed);   // (a shamble)
         if (z.attack.phase !== 'none') speed *= 0.2;
         if (z.stun > 0) speed *= 0.35;
         // stop short when already in swing range
@@ -444,7 +458,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
       // does it connect?
       let victim = null;
       for (const p of sim.players) {
-        if (!p.alive || p.downed) continue;
+        if (!p.alive || p.downed || (sim.gums && gumIgnored(sim, p))) continue;
         const d = dist2D(p.pos, z.pos);
         if (d < c.attackHitRange && Math.abs(p.pos.y - z.pos.y) < c.attackHeightTolerance) {
           const dx = p.pos.x - z.pos.x, dz = p.pos.z - z.pos.z;
@@ -454,7 +468,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
       }
       if (schnitzDark(sim)) victim = null;
       sim.emit('zombieSwingEnd', { id: z.id, hit: !!victim });
-      if (victim) sim.damagePlayer(victim, c.attackDamage, z);
+      if (victim) { sim.damagePlayer(victim, c.attackDamage, z); if (sim.gums) gumOnHurt(sim, victim); }   // (Burned Out)
       a.phase = 'recover';
       a.t = c.attackRecover;
     }
@@ -469,7 +483,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
   let victim = null;
   if (schnitzDark(sim)) { /* lost you in the dark */ } else if (throughWindow) {
     for (const p of sim.players) {
-      if (!p.alive || p.downed) continue;
+      if (!p.alive || p.downed || (sim.gums && gumIgnored(sim, p))) continue;
       if (dist2D(p.pos, win.center) < c.windowAttackRange + 0.4) { victim = p; break; }
     }
   } else if (target) {
@@ -570,6 +584,8 @@ export function damageZombie(sim, z, amount, info) {
   } else if (player && !info.quiet) {
     sim.addPoints(player, pts.hit, 'hit');
   }
+  // GobbleGum (Killing Time's mark, Pop Shocks) and a Mad Dog'd gun's bite
+  if (sim.gums && player) { gumOnHit(sim, z, info, player); aatOnHit(sim, z, info, player); }
 }
 
 // One step toward the hole (stopped by walls; it slides along them).
@@ -615,6 +631,11 @@ export function killZombie(sim, z, info = {}) {
   }
   const wasState = z.state;
   z.state = 'dead';
+  if (sim.gums) {
+    info = gumKillInfo(sim, info);   // (Newtonian Negation, Projectile Vomiting)
+    const killer = info.playerId && sim.playerById(info.playerId);
+    if (killer && killer.downed) gumDownedKill(sim, killer);   // (Self Medication)
+  }
   sim.lastKill = { pos: { ...z.pos }, type: z.type };
   sim.emit('zombieKilled', {
     id: z.id, pos: { ...z.pos }, yaw: z.yaw, part: info.part, kind: info.kind, zombieType: z.type,

@@ -219,7 +219,7 @@ export function explode(sim, pos, typeName, ownerId) {
     const d = Math.hypot(dx, dy, dz);
     if (d < ex.radius && (d < 0.3 || !sim.raycastWorld(pos, { x: dx / d, y: dy / d, z: dz / d }, d - 0.2, true))) {
       const dmg = ex.selfDamage * (1 - d / ex.radius);
-      if (dmg > 1) sim.damagePlayer(owner, dmg, { pos: { x: pos.x, z: pos.z } });
+      if (dmg > 1) sim.damagePlayer(owner, dmg, { pos: { x: pos.x, z: pos.z }, explosive: true });
     }
   }
 }

@@ -4,16 +4,22 @@
 // =============================================================================
 import { giveWeapon } from '../weapons.js';
 import { powerupActive } from '../powerups.js';
+import { gumOn, gumUpgradeBuy, gumUnbearable } from '../gums.js';
 
 const boxCost = (sim) => (powerupActive(sim, 'clearanceSale') ? sim.cfg.powerups.list.clearanceSale.boxCost : sim.cfg.box.cost);
 
 function flatDist(p, pos) { return Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z); }
 
 // Try to pay; tells the HUD if you can't.
-function pay(sim, p, cost) {
-  if (p.points < cost) { sim.emit('cantAfford', { playerId: p.id, cost }); return false; }
-  sim.spendPoints(p, cost);
-  return true;
+const pay = (sim, p, cost) => sim.pay(p, cost);
+// (Secret Shopper: any wall gun sells you ammo for the gun in your hands)
+function secretShop(sim, p, wb) {
+  if (!gumOn(p, 'secretShopper')) return null;
+  const s = p.loadout.slots[p.loadout.current], d = s && sim.cfg.weapons[s.id];
+  if (!s || s.away || !d || d.infinite || d.gumOnly || s.id === wb.weapon || s.id === wb.weapon + '+') return null;
+  const base = sim.cfg.weapons[d.baseId || s.id];
+  const cost = d.upgraded ? sim.cfg.madDog.ammoCost : base.ammoCost || Math.round((base.cost || 1000) / 2);
+  return { s, d, cost };
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +80,11 @@ export class WallBuyInteractable {
     }
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
+    const shop = !s && secretShop(sim, p, this.wb);
+    if (shop) {
+      if (shop.s.clip >= shop.d.magSize && shop.s.reserve >= shop.d.reserve) return { text: `${shop.d.name} ammo is full`, cost: null, sub: 'Secret Shopper' };
+      return { text: `Press [F] for ${shop.d.name} ammo`, cost: shop.cost, sub: 'Secret Shopper' };
+    }
     if (s) {
       const sd = sim.cfg.weapons[s.id];
       if (s.clip >= sd.magSize && s.reserve >= sd.reserve) return { text: `${sd.name} ammo is full`, cost: null };
@@ -95,13 +106,20 @@ export class WallBuyInteractable {
     }
     const def = sim.cfg.weapons[this.wb.weapon];
     const s = this.owned(p);
+    const shop = !s && secretShop(sim, p, this.wb);
+    if (shop) {
+      if (shop.s.clip >= shop.d.magSize && shop.s.reserve >= shop.d.reserve) return;
+      if (pay(sim, p, shop.cost)) { giveWeapon(sim, p, shop.s.id); sim.emit('wallBuy', { playerId: p.id, weapon: shop.s.id, ammo: true, id: this.wb.id, secret: true }); }
+      return;
+    }
     if (s) {
       const sd = sim.cfg.weapons[s.id];
       if (s.clip >= sd.magSize && s.reserve >= sd.reserve) return;
       if (pay(sim, p, this.ammoCost(sim, s))) { giveWeapon(sim, p, s.id); sim.emit('wallBuy', { playerId: p.id, weapon: s.id, ammo: true, id: this.wb.id }); }
     } else if (pay(sim, p, def.cost)) {
-      giveWeapon(sim, p, this.wb.weapon);
-      sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, ammo: false, id: this.wb.id });
+      const id = gumUpgradeBuy(sim, p, this.wb.weapon, 'wall');   // (Wall Power: comes Mad Dog'd)
+      giveWeapon(sim, p, id);
+      sim.emit('wallBuy', { playerId: p.id, weapon: id, ammo: false, id: this.wb.id });
     }
   }
 }
@@ -184,7 +202,7 @@ export class BoxInteractable {
         p.stewBombs = sim.cfg.equipment.stewBomb.perPurchase; p.maisyDogs = 0;
       } else if (this.weapon === 'maisyDog') {
         p.maisyDogs = sim.cfg.equipment.maisyDog.perPurchase; p.stewBombs = 0;
-      } else giveWeapon(sim, p, this.weapon);
+      } else giveWeapon(sim, p, gumUpgradeBuy(sim, p, this.weapon, 'box'));   // (Crate Power: comes Mad Dog'd)
       this.emit(sim, 'boxTaken', { playerId: p.id, weapon: this.weapon });
       this.phase = 'closing';
       this.timer = sim.cfg.box.closeTime;
@@ -206,6 +224,14 @@ export class BoxInteractable {
     if (this.phase === 'spinning') {
       if (this.weapon === 'bobble') {
         const p = sim.playerById(this.buyerId);
+        // (Unbearable: it spins again, and the box stays where it is)
+        if (p && gumUnbearable(sim, p)) {
+          this.uses = 0;
+          this.weapon = this.pick(sim, p);
+          this.timer = b.spinTime;
+          this.emit(sim, 'boxOpen', { playerId: p.id, spot: this.spot.id, weapon: this.weapon, spinTime: this.timer, respin: true });
+          return;
+        }
         if (p) { p.points += this.paid; sim.emit('points', { playerId: p.id, amount: this.paid, reason: 'refund', total: p.points }); }
         this.phase = 'leaving';
         this.timer = b.leaveTime;

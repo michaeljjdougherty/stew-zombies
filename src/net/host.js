@@ -13,6 +13,7 @@ import { flameBurst } from '../sim/flame.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
 import { crustEggShot, knifeTitan } from '../sim/crustEgg.js';
+import { useGum, gumSlide } from '../sim/gums.js';
 import { worldState, diff, inventorySig } from './state.js';
 
 export class NetHost {
@@ -142,6 +143,8 @@ export class NetHost {
       case 'titan': crustEggShot(sim, String(a.id), p); break;
       case 'titanKnife': knifeTitan(sim, p); break;
       case 'flame': { const def = sim.cfg.weapons[a.weapon]; if (def && def.flame && p.loadout.slots.some((sl) => sl.id === a.weapon)) flameBurst(sim, p, a.origin, a.dir, def, a.weapon); break; }
+      case 'gum': useGum(sim, p); break;            // ([H]: their GobbleGum)
+      case 'gumSlide': gumSlide(sim, p); break;     // (a dive landed: Slaughter Slide)
       case 'hammer': { const def = sim.cfg.weapons[a.weapon]; if (def && def.hammer && p.loadout.slots.some((sl) => sl.id === a.weapon)) hammerSlam(sim, p, a.origin, a.dir, def, a.weapon); break; }
     }
   }

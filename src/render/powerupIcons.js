@@ -75,6 +75,26 @@ export function drawPowerupIcon(g, type, S, color = '#fff') {
       g.restore();
       break;
     }
+    case 'extraCredit': {
+      // a coin with a plus
+      g.beginPath(); g.arc(0, 0, 46, 0, 7); g.fill();
+      g.globalCompositeOperation = 'destination-out';
+      g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 36, 0, 7); g.stroke();
+      g.fillRect(-7, -26, 14, 52); g.fillRect(-26, -7, 52, 14);
+      g.globalCompositeOperation = 'source-over';
+      break;
+    }
+    case 'deathMachine': {
+      // a skull over the barrels of a minigun
+      for (const y of [22, 34, 46]) g.fillRect(-44, y - 4, 88, 8);
+      g.beginPath(); g.arc(0, -14, 30, 0, 7); g.fill();
+      g.fillRect(-18, 6, 36, 14);
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath(); g.arc(-11, -14, 8, 0, 7); g.arc(11, -14, 8, 0, 7); g.fill();
+      g.fillRect(-2, 6, 4, 14);
+      g.globalCompositeOperation = 'source-over';
+      break;
+    }
   }
   g.restore();
 }

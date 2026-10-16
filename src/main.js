@@ -42,6 +42,7 @@ import { PatchNotes } from './ui/patchNotes.js';
 import { Splash } from './ui/splash.js';
 import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
+import { GumsUI } from './ui/gumsUI.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer } from './ui/careerUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -62,7 +63,11 @@ const settings = loadSettings();
 // Notes found, the Stew song, the quest (and Brian), remembered in this browser.
 const progress = loadProgress();
 
-let sim = makeSim('zombies');
+const TITLE_MAP = CONFIG.title.map;   // the map behind the title screen and the menus
+// --- careers: a username, its stats, achievements and GobbleGum (src/career/) ---
+const career = new Career(CONFIG.career);
+const careerTracker = new CareerTracker(career);
+let sim = makeSim('zombies', TITLE_MAP);
 let player = sim.playerById(localId);
 
 const renderer = new GameRenderer(canvas, sim, CONFIG, settings);
@@ -186,7 +191,7 @@ function playableCharacter() {
 
 function makeSim(gameMode, mapId = 'lastbell') {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(localId, 'Stew', { character: playableCharacter() });
+  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame() });
   return s;
 }
 
@@ -209,7 +214,7 @@ const menus = new Menus(settings, {
     restart(sim.mode === 'range' ? 'range' : sim.mode, sim.mapData.id); startPlaying();
   },
   online: () => openOnline(),
-  quit: () => { if (online) leaveOnline(); restart('zombies'); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
+  quit: () => { if (online) leaveOnline(); restart('zombies', TITLE_MAP); updateExploreHud(); mode = 'title'; hud.show(false); menus.show('title'); input.releaseLock(); startTitleMusic(); },
   settingsChanged: (s) => { applySettings(s); if (device !== 'kbm') { device = null; setInputDevice(pads.type); } },
   extras: () => { menus.show('extras'); extras.open(); },
   trailer: (o = {}) => startTrailer(o),
@@ -227,7 +232,7 @@ const charSelect = new CharSelect(settings, {
     saveSettings(s); renderer.showcase.hide();
     renderer.setCharacter(playableCharacter(), s.shirt);
     hud.localName = CHARACTERS[playableCharacter()].name;
-    if (sim.mode === 'zombies') restart('zombies');   // the next game starts as them
+    if (sim.mode === 'zombies') restart('zombies', TITLE_MAP);   // the next game starts as them
     mode = 'title'; menus.show('title');
   },
   back: () => { renderer.showcase.hide(); mode = 'title'; menus.show('title'); },
@@ -263,6 +268,7 @@ const onlineUI = new OnlineUI(settings, {
   },
   pick: (ch) => { if (online) online.pick(ch); },
   setMap: (id) => { if (online) online.setMap(id); },
+  setIntro: (on) => { if (online) online.setIntro(on); },
   start: () => { if (online) online.start(); },
   leave: () => { leaveOnline(); onlineUI.open(); },
   back: () => { mode = 'title'; menus.show('title'); },
@@ -271,10 +277,10 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), brian: !!progress.questDone, local: NET_LOCAL,
+    name, character: playableCharacter(), brian: !!progress.questDone, local: NET_LOCAL, gums: career.packForGame(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
-    onGame: (from, m) => { if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); },
+    onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
     onPeerLeft: (m) => teammateLeft(m),
     onToLobby: () => showOnlineLobby(),
     onEnd: (reason) => onlineEnded(reason),
@@ -291,7 +297,7 @@ function openOnline(code = '') {
 // after a game: everyone back to the lobby
 function showOnlineLobby() {
   stopOnlineGame();
-  restart('zombies');
+  restart('zombies', TITLE_MAP);
   mode = 'online';
   input.enabled = false; input.releaseLock();
   hud.show(false);
@@ -300,11 +306,51 @@ function showOnlineLobby() {
   startTitleMusic();
 }
 
+// The game's starting: with the map's intro first (the host's call), everyone
+// watches it; the host can skip it, and the game starts for everyone when the
+// host's ends (friends whose copy finishes first wait for them).
+let onlineStart = null, hostDoneIntro = false;
+// (a friend: the host's game updates that come in before our copy of the game is
+// up, kept for it: the first one is the whole picture)
+let earlyState = null;
 function startOnlineGame(st) {
+  earlyState = online && !online.isHost ? [] : null;
+  const intro = st.intro && (st.map === 'crust' || st.map === 'lastbell' || !st.map);
+  if (!intro) { beginOnlineGame(st); return; }
+  onlineStart = st; hostDoneIntro = false;
+  if (st.map === 'crust') startFilm('intro', 'online'); else startIntro('online');
+  if (!online.isHost) cutsceneUI.show('the host can skip');
+}
+// (a friend) the host's intro is over: in we go
+function hostIntroDone() {
+  hostDoneIntro = true;
+  if (onlineStart && (mode === 'film' || mode === 'intro')) endOnlineIntro();
+}
+// skip a cutscene: online, only the host can skip the intro (for everyone)
+function skipCutscene() {
+  if (!renderer.ending) return;
+  if ((filmThen === 'online' || introThen === 'online') && online && !online.isHost) return;
+  renderer.ending.skip();
+}
+// the intro's over here: the host tells everyone and starts; a friend waits for the host
+function endOnlineIntro() {
+  if (!onlineStart) return false;
+  if (online && online.isHost) online.send(null, { t: 'introDone' });
+  else if (!hostDoneIntro) { if (!onlineStart.waiting) { onlineStart.waiting = true; cutsceneUI.line('', 'Waiting for the host…', 999); } return true; }
+  const st = onlineStart; onlineStart = null;
+  renderer.endEnding(); cutsceneUI.hide(); trailerUI.hide();
+  filmThen = null; introThen = null;
+  if (st.map === 'crust') { if (!progress.crustIntroSeen) { progress.crustIntroSeen = true; saveProgress(progress); } }
+  else if (!progress.introSeen) { progress.introSeen = true; saveProgress(progress); }
+  if (!online) { restart('zombies', TITLE_MAP); mode = 'title'; menus.show('title'); return false; }
+  beginOnlineGame(st);
+  return false;
+}
+function beginOnlineGame(st) {
   localId = st.you;
   // (the map the host picked: an older host never says, and that was always the school)
   const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
-  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null });
   stopOnlineGame();
   installSim(s);
   if (online.isHost) {
@@ -312,7 +358,9 @@ function startOnlineGame(st) {
     for (const p of st.peers) net.host.addRemote(p.peer, p.id);
   } else {
     net.client = new NetClient(sim, localId, (m) => online && online.send(null, m));
+    if (earlyState) for (const m of earlyState) net.client.onMessage(m);
   }
+  earlyState = null;
   // (who you are in this game: on the Crust, someone who picked Pit is someone else)
   const me = sim.playerById(localId);
   renderer.setCharacter(me.character, settings.shirt);
@@ -349,7 +397,7 @@ function leaveOnline() {
   online = null;
   stopOnlineGame();
   if (o) o.leave();
-  if (localId !== 'p1') { localId = 'p1'; restart('zombies'); }
+  if (localId !== 'p1') { localId = 'p1'; restart('zombies', TITLE_MAP); }
   hud.localName = CHARACTERS[playableCharacter()].name;
   renderer.setCharacter(playableCharacter(), settings.shirt);
 }
@@ -361,7 +409,7 @@ function onlineEnded(reason) {
   stopOnlineGame();
   if (wasPlaying || mode !== 'online') {
     localId = 'p1';
-    restart('zombies');
+    restart('zombies', TITLE_MAP);
     input.enabled = false; input.releaseLock();
     hud.show(false);
     if (renderer.ending) { renderer.endEnding(); cutsceneUI.hide(); }
@@ -498,7 +546,7 @@ function startIntro(then = 'play') {
 
 // The Call of the Crust trailer (Main menu > Watch Trailer): the real map, a
 // scripted camera, the song. No HUD, no menus; the mouse brings up Skip.
-const trailerUI = new TrailerUI(() => renderer.ending && renderer.ending.skip());
+const trailerUI = new TrailerUI(() => skipCutscene());
 let trailerSong = null;
 const isTouch = () => (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
 function startTrailer({ silent = false, recording = false, quality = null } = {}) {
@@ -563,18 +611,19 @@ function finishTrailer() {
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   trailerUI.hide();
   if (trailerSong) { trailerSong.stop(); trailerSong = null; }
-  restart('zombies');
+  restart('zombies', TITLE_MAP);
   mode = 'title';
   menus.show('title');
   startTitleMusic();
 }
 
 function finishIntro() {
+  if (introThen === 'online') { endOnlineIntro(); return; }
   renderer.endEnding();
   cutsceneUI.hide();
   if (!progress.introSeen) { progress.introSeen = true; saveProgress(progress); }
-  restart('zombies');
   const then = introThen; introThen = null;
+  restart('zombies', then === 'play' ? 'lastbell' : TITLE_MAP);
   if (then === 'play') { startPlaying(); return; }
   mode = 'title';
   if (then === 'maps') openMapSelect(); else if (then === 'extras') { menus.show('extras'); extras.open('story'); } else menus.show('title');
@@ -586,7 +635,7 @@ function finishEnding() {
   cutsceneUI.hide();
   if (watchingEnding) {
     watchingEnding = false;
-    restart('zombies');
+    restart('zombies', TITLE_MAP);
     mode = 'title';
     menus.show('title');
     startTitleMusic();
@@ -632,6 +681,7 @@ function startFilm(name, then) {
   return T;
 }
 function finishFilm() {
+  if (filmThen === 'online') { if (endOnlineIntro()) return; return; }
   renderer.endEnding();
   cutsceneUI.hide();
   trailerUI.hide();
@@ -639,7 +689,7 @@ function finishFilm() {
   if (then === 'victory') { showCrustVictory(); return; }
   if (!progress.crustIntroSeen) { progress.crustIntroSeen = true; saveProgress(progress); }
   if (then === 'play') { restart('zombies', 'crust'); startPlaying(); return; }
-  restart('zombies');
+  restart('zombies', TITLE_MAP);
   mode = 'title';
   if (then === 'maps') openMapSelect(); else menus.show('title');
   startTitleMusic();
@@ -765,7 +815,7 @@ window.addEventListener('keydown', (e) => {
     if (mode === 'play') { if (sim.mode === 'explore') openExplorePanel(); else openRangePanel(); }
     else if (mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); }
   }
-  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { renderer.ending && renderer.ending.skip(); return; }
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && ['Escape', 'Space', 'Enter', 'KeyF'].includes(e.code) && !e.repeat) { skipCutscene(); return; }
   if (e.code === 'Escape' && mode === 'panel') { if (exploreUI.isOpen) closeExplorePanel(); else closeRangePanel(); return; }
   if (e.code === 'Escape' && mode === 'play' && input.fallbackLook) pause();
   if (e.code === 'KeyP' && mode === 'play') { input.releaseLock(); pause(); }
@@ -920,13 +970,15 @@ input.assist = () => {
   return best;
 };
 
-const BACK_BUTTON = { career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
+const BACK_BUTTON = { gums: 'btn-gums-back', career: 'btn-career-back', mapselect: 'ms-back', online: 'btn-on-back', settings: 'btn-settings-back', pause: 'btn-resume', extras: 'btn-extras-back', charselect: 'btn-cs-back', lineup: 'lu-back', rangepanel: 'rp-close', explorepanel: 'ep-close' };
 const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
-// --- careers: a username, its stats and achievements (src/career/) ---
-const career = new Career(CONFIG.career);
-const careerTracker = new CareerTracker(career);
+// --- careers: a username, its stats and achievements (src/career/; made up top) ---
 const achToast = new AchievementToast(() => sound.achievement());
 career.onUnlock = (a) => achToast.push(a);
+// GobbleGum: the pack you take into games, and Dr. Monty's Factory
+const gumsUI = new GumsUI(career, { back: () => menus.show('title') });
+document.getElementById('btn-gums').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); });
+careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
 career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
@@ -990,7 +1042,7 @@ function padFrame(fdt) {
     if (!padWoke || !audio.ready) { padWoke = true; firstGesture(); }
   }
   const playing = mode === 'play';
-  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) renderer.ending && renderer.ending.skip();
+  if ((mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film') && st && (st.pressed(BTN.A) || st.pressed(BTN.B) || st.pressed(BTN.MENU))) skipCutscene();
   // menus first (no menu is up while playing, so this only tracks the screen)
   nav.frame(st, fdt);
   if (!st || !playing) { input.padFrame(null, fdt); return; }
@@ -1048,7 +1100,7 @@ function frame(now) {
       input.enabled = false;
       input.releaseLock();
       hud.show(false);
-      menus.showGameOver(sim.teamName, sim.rounds.round, player, gameOverLine);
+      menus.showGameOver(sim.teamName, sim.rounds.round, player, gameOverLine, careerTracker.on && careerTracker.sim === sim ? careerTracker.divinium : 0);
       onlineOverButtons();
       if (sim.mode === 'zombies' && sim.rounds.round > progress.bestRound) { progress.bestRound = sim.rounds.round; saveProgress(progress); }
     }

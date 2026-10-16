@@ -59,6 +59,33 @@
   .si-tip b { color: var(--ink); font-weight: 600; }
   .menu .si-guest { font-size: 18px; color: var(--muted); }
   #career .stack { max-width: 640px; }
+  /* ---------------- GobbleGum ---------------- */
+  #gums .stack { max-width: 760px; }
+  .gm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .gm-div { margin: 0; font-family: var(--display); font-size: 26px; color: #5ad1e8; display: flex; align-items: center; gap: 8px; }
+  .gm-div small { font: 12px var(--mono); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .gm-vial { width: 14px; height: 26px; border-radius: 3px 3px 8px 8px; background: linear-gradient(#cfefff 0 18%, #5ad1e8 18% 100%); box-shadow: 0 0 10px #5ad1e8; display: inline-block; }
+  .gm-pack { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .gm-slot, .gm-gum { display: grid; justify-items: center; align-content: start; gap: 6px; padding: 10px 6px; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); font: 600 12px/1.25 var(--body, sans-serif); text-align: center; cursor: pointer; min-width: 0; }
+  .gm-slot[aria-pressed="true"], .gm-gum[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 0 18px color-mix(in srgb, var(--c) 50%, transparent); }
+  .gm-gum[disabled] { opacity: .35; cursor: default; }
+  .gm-gum.inpack { outline: 2px dashed color-mix(in srgb, var(--c) 70%, transparent); outline-offset: -5px; }
+  .gm-ball { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--c) 42%, color-mix(in srgb, var(--c) 45%, #000)); box-shadow: 0 0 10px var(--c), 0 2px 3px #000; }
+  .gm-slot .gm-ball { width: 52px; height: 52px; }
+  .gm-n { font: 700 11px var(--mono); color: var(--c); letter-spacing: 1px; }
+  .gm-detail { min-height: 64px; padding: 10px 14px; border-left: 3px solid var(--c, var(--line)); background: rgba(0,0,0,.35); }
+  .gm-detail b { font-family: var(--display); font-size: 20px; color: var(--c); letter-spacing: 1px; }
+  .gm-detail p { margin: 4px 0 0; color: var(--ink); }
+  .gm-detail small { color: var(--muted); font: 11px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  .gm-tier { margin: 6px 0 8px; font: 700 12px var(--mono); letter-spacing: 3px; text-transform: uppercase; color: var(--c); }
+  .gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .gm-fbtns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .gm-fbtns button { flex: 1 1 200px; }
+  .gm-reveal { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .gm-reveal .gm-gum { animation: gmPop .45s ease-out backwards; cursor: default; width: 104px; }
+  @keyframes gmPop { from { transform: scale(.3) rotate(-30deg); } to { transform: none; } }
+  .over-div { margin: 0; font-family: var(--display); font-size: 22px; color: #5ad1e8; letter-spacing: 1px; }
+  @media (max-width: 560px) { .gm-pack { grid-template-columns: repeat(3, 1fr); } }
   .cr-g { margin: -14px 0 0; display: flex; align-items: center; gap: 8px; font: 700 16px var(--mono); color: #eee; }
   .cr-gicon { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #eee; font: 800 12px var(--body); }
   .cr-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 18px; margin: 0; }
@@ -212,6 +239,14 @@
   #perks { position: absolute; left: max(16px, 2.2vw); bottom: calc(max(12px, 2vh) + min(130px, 17vw)); display: flex; gap: 8px; }
   #perks .perk { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; font-family: var(--display); font-size: 22px; color: #fff; text-shadow: 0 1px 2px #000;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 12px var(--c), 0 2px 4px #000; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 50%, #000)); animation: perkIn .45s ease-out; }
+  /* your GobbleGum: the ball (its tier's colour), its name, what's left of it */
+  #gum { position: absolute; left: max(16px, 2.2vw); bottom: calc(max(12px, 2vh) + min(130px, 17vw) + 50px); display: flex; align-items: center; gap: 9px; animation: perkIn .45s ease-out; }
+  #gum[hidden] { display: none; }
+  #gum .ball { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--c) 40%, color-mix(in srgb, var(--c) 45%, #000)); box-shadow: 0 0 12px var(--c), 0 2px 4px #000; position: relative; }
+  #gum .ball::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--f, 1) * 360deg), transparent 0); mask: radial-gradient(circle, transparent 18px, #000 19px); -webkit-mask: radial-gradient(circle, transparent 18px, #000 19px); }
+  #gum .nm { font-family: var(--display); font-size: 17px; letter-spacing: 1px; color: #fff; text-shadow: 0 1px 2px #000; }
+  #gum .st { font: 700 11px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--c); text-shadow: 0 1px 2px #000; }
+  #gum.ready .st { animation: puBlink .9s steps(2) infinite; }
   @keyframes perkIn { from { transform: scale(1.8); opacity: 0; } to { transform: none; opacity: 1; } }
   #toast { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; transition: opacity .4s; }
   #toast.on { opacity: 1; }
@@ -326,6 +361,8 @@
   #on-mapcode:focus-visible { border-color: var(--brass); }
   .on-maprow .note { margin: 0; color: var(--blood-hi); }
   .on-maprow[hidden] { display: none; }
+  .on-intro { display: flex; gap: 8px; align-items: center; margin: -6px 0 14px; color: var(--muted); font-size: 14px; }
+  .on-intro input { accent-color: var(--brass); }
   .on-chars .cs-card[disabled] { opacity: .35; cursor: default; }
   .online button.sm { all: unset; cursor: pointer; font: 700 13px var(--body); padding: 8px 14px; border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 1px; color: var(--ink); }
   .online button.sm:hover, .online button.sm:focus-visible { border-color: var(--blood-hi); color: #fff; }
@@ -736,6 +773,7 @@
   <div id="prompt"></div>
   <div id="promptsub"></div>
   <div id="perks"></div>
+  <div id="gum" hidden><div class="ball"></div><div class="txt"><div class="nm"></div><div class="st"></div></div></div>
   <div id="powerups"></div>
   <div id="toast"><div class="t1"></div><div class="t2"></div></div>
   <div id="downed" hidden><div class="big">You're down</div><div class="small"></div><div class="bar"><i></i></div></div>
@@ -885,6 +923,7 @@
       <button id="btn-explore" type="button">Explore</button>
       <button id="btn-chars" type="button">Characters</button>
       <button id="btn-career" type="button">Career &amp; Achievements</button>
+      <button id="btn-gums" type="button">GobbleGum</button>
       <button id="btn-trailer" type="button">Watch Trailer</button>
       <div id="trailer-pick" class="trailer-pick" hidden>
         <span>Graphics</span>
@@ -905,6 +944,7 @@
       <dt>G</dt><dd>Frag grenade (hold to cook, release to throw)</dd>
       <dt>Q</dt><dd>Stew Bomb or Maisy Dog, if the box gave you some</dd>
       <dt>X</dt><dd>Set down an LBD (wall buy): it goes off when zombies come near</dd>
+      <dt>H</dt><dd>Use your GobbleGum (the ones you set off yourself)</dd>
       <dt>F</dt><dd>Buy and use things · read notes · hold to rebuild barriers</dd>
       <dt>1 · 2 · wheel</dt><dd>Switch weapons</dd>
       <dt>Z</dt><dd>Explore mode: zombies on / off</dd>
@@ -947,6 +987,28 @@
     <p class="si-status" id="si-status" aria-live="polite"></p>
     <p class="note si-tip"><b>Use the same username every time you play.</b> Your career stats (kills, revives, rounds survived) and your achievements are saved to it, and pick up where you left off whenever you sign in with it again.<span id="si-pintip" hidden> The first time you use a name you'll make a 4-digit PIN, so only you can sign in as it.</span></p>
     <nav class="menu"><button id="btn-si-guest" type="button" class="si-guest">Play as a guest (nothing saved)</button></nav>
+  </div>
+</section>
+
+<!-- GobbleGum: build your pack of 5, see what you own, Dr. Monty's Factory (src/ui/gumsUI.js) -->
+<section id="gums" class="screen" hidden>
+  <div class="stack gums">
+    <span class="eyebrow">GobbleGum</span>
+    <div class="gm-head">
+      <h2>Your pack</h2>
+      <p class="gm-div" title="Liquid Divinium"><span class="gm-vial"></span><b id="gm-div">0</b> <small>Liquid Divinium</small></p>
+    </div>
+    <p class="note gm-tip" id="gm-tip"></p>
+    <div class="gm-pack" id="gm-pack"></div>
+    <div class="gm-detail" id="gm-detail"></div>
+    <div class="gm-factory" id="gm-factory">
+      <h3 class="set-head">Dr. Monty's Factory</h3>
+      <p class="note">Liquid Divinium in, Mega GobbleGums out: <span id="gm-odds"></span>. Earn vials by playing (the longer you last, the more).</p>
+      <div class="gm-fbtns"><button id="btn-gm-single" type="button"></button><button id="btn-gm-bundle" type="button"></button></div>
+      <div class="gm-reveal" id="gm-reveal" aria-live="polite"></div>
+    </div>
+    <div id="gm-list"></div>
+    <nav class="menu"><button id="btn-gums-back" type="button">Back</button></nav>
   </div>
 </section>
 
@@ -1032,6 +1094,7 @@
       <ol class="on-members" id="on-members" aria-label="Players"></ol>
       <span class="eyebrow">Map</span>
       <div class="on-maps" id="on-maps" role="radiogroup" aria-label="Map"></div>
+      <label class="on-intro" id="on-introrow"><input type="checkbox" id="on-intro" checked> <span id="on-introtxt">Play the map's intro first (you can skip it)</span></label>
       <div class="on-maprow" id="on-maprow" hidden>
         <input id="on-mapcode" type="password" maxlength="24" placeholder="Developer code" autocomplete="off" spellcheck="false">
         <button id="btn-on-mapcode" class="sm" type="button">Unlock</button>
@@ -1114,6 +1177,7 @@
       <div><dt>Points</dt><dd id="over-points">0</dd></div>
     </dl>
     <p class="over-erik" id="over-erik"></p>
+    <p class="over-div" id="over-div" hidden></p>
     <nav class="menu">
       <button id="btn-again" type="button">Play again</button>
       <button id="btn-over-title" type="button">Quit to title</button>

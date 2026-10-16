@@ -37,6 +37,7 @@ import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets 
 import { crustPowered } from './crustPower.js';
 import { finaleOn } from './zachBoss.js';
 import { setFloor } from './physics.js';
+import { createGums, GumMachineInteractable, updateGums, gumOnEvent, gumOnPoints, gumFree, setPlayerGums } from './gums.js';
 
 export class GameSim {
   constructor({ map, cfg = CONFIG, seed = (Date.now() & 0xffffffff) >>> 0, teamName = 'Stew', mode = 'zombies' } = {}) {
@@ -92,6 +93,9 @@ export class GameSim {
     ];
     this.shelling = createShelling(this);   // the guns over the Trench Front
     if (map.ceasefire) this.interactables.push(new CeasefireInteractable(map.ceasefire));
+    // GobbleGum machines (src/sim/gums.js): beside the perk machines
+    this.gums = mode === 'range' ? null : createGums(this);
+    if (this.gums) this.interactables.push(...this.gums.machines.map((m) => new GumMachineInteractable(m)));
     this.crustEgg = createCrustEgg(this);   // the titans (Call of the Crust)
     this.interactables.push(...crustEggInteractables(this));
     this.rides = createRides(map);   // ziplines and ice slides (Call of the Crust)
@@ -109,7 +113,8 @@ export class GameSim {
   }
 
   // --- players --------------------------------------------------------------
-  addPlayer(id, name, { character = 'kearns' } = {}) {
+  // gums: the GobbleGum pack they brought { pack: [5 ids], stock: { megaId: n } } (src/career/career.js)
+  addPlayer(id, name, { character = 'kearns', gums = null } = {}) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
     // (Call of the Crust: Pit's at his forge, not out fighting; whoever picked him plays someone free)
@@ -120,6 +125,7 @@ export class GameSim {
       this.emit('characterSwapped', { playerId: id, from: was, to: character });
     }
     p.character = character;   // who they're playing: what they say, what Erik calls them
+    setPlayerGums(this, p, gums);
     if (this.mode === 'explore') p.points = this.cfg.explore.points;
     p.region = this.nav.regionAt(p.pos);
     this.players.push(p);
@@ -177,10 +183,19 @@ export class GameSim {
 
   addPoints(p, amount, reason) {
     if (!amount) return;
-    if (amount > 0 && reason !== 'powerup' && powerupActive(this, 'doubleDough')) amount *= 2;
+    if (amount > 0 && reason !== 'powerup' && reason !== 'shared' && powerupActive(this, 'doubleDough')) amount *= 2;
+    if (this.gums && !this.replica) { amount = gumOnPoints(this, p, amount, reason); if (!amount) return; }
     notePointsEarned(this, amount);
     p.points += amount;
     this.emit('points', { playerId: p.id, amount, reason, total: p.points });
+  }
+
+  // Buy something: false (and a "can't afford") if they can't. (Shopping Free: it's on the house.)
+  pay(p, cost) {
+    if (cost > 0 && gumFree(p)) { this.emit('gumFreeBuy', { playerId: p.id, cost }); return true; }
+    if (p.points < cost) { this.emit('cantAfford', { playerId: p.id, cost }); return false; }
+    this.spendPoints(p, cost);
+    return true;
   }
 
   spendPoints(p, amount) {
@@ -333,6 +348,7 @@ export class GameSim {
     if (this.replica) return;   // an online client's copy: Erik and the quest live on the host
     if (this.pa && this.pa.enabled && type !== 'erikSays') this.pa.inbox.push(e); // Erik listens to everything
     if (this.quest) questOnEvent(this, e);
+    if (this.gums) gumOnEvent(this, e);
   }
   drainEvents() { const e = this.events; this.events = []; return e; }
 
@@ -349,6 +365,7 @@ export class GameSim {
       p.region = this.nav.regionAt(p.pos, p.region);
     }
     for (const it of this.interactables) if (it.update) it.update(this, dt);
+    if (this.gums && !this.replica) updateGums(this, dt);
     for (const p of this.players) if (p.downed) updateLastStand(this, p, dt);
     updateTraps(this, dt);
     updatePowerups(this, dt);

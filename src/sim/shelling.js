@@ -42,7 +42,7 @@ export function updateShelling(sim, dt) {
     for (const q of sim.players) {
       if (!q.alive || q.launch) continue;
       const d = Math.hypot(q.pos.x - sh.pos.x, q.pos.y + 1 - sh.pos.y, q.pos.z - sh.pos.z);
-      if (d < c.radius) sim.damagePlayer(q, c.damage * (1 - d / c.radius), { pos: { x: sh.pos.x, z: sh.pos.z } });
+      if (d < c.radius) sim.damagePlayer(q, c.damage * (1 - d / c.radius), { pos: { x: sh.pos.x, z: sh.pos.z }, explosive: true });
     }
   }
 }

@@ -5,21 +5,24 @@
 //  - Co-op: you bleed out unless a teammate holds [F] on you in time.
 // You lose your perks either way.
 // =============================================================================
-import { hasPerk, loseAllPerks, perkMult, weaponLimit } from './perks.js';
+import { hasPerk, loseAllPerks, perkMult, weaponLimit, givePerk } from './perks.js';
 import { makeSlot, cancelReload } from './weapons.js';
+import { gumOn, gumBledOut } from './gums.js';
 
 // Health ran out.
 export function goDown(sim, p) {
   const ls = sim.cfg.lastStand;
   const solo = sim.players.length === 1;
   const selfRevive = solo && hasPerk(p, 'secondHelping');
+  // (Self Medication: a last stand on your own too; kill a zombie to get up)
+  const selfMed = gumOn(p, 'selfMedication');
   p.downs = (p.downs || 0) + 1;
   p.sprinting = false;
   p.drinking = null;
   p.throwing = null;
   if (p.loadout.reloading) cancelReload(sim, p);
 
-  if (solo && !selfRevive) {
+  if (solo && !selfRevive && !selfMed) {
     p.alive = false;
     p.health = 0;
     sim.emit('playerDown', { playerId: p.id, final: true });
@@ -29,11 +32,13 @@ export function goDown(sim, p) {
 
   p.downed = {
     t: 0,
-    bleed: ls.bleedOut,
+    bleed: ls.bleedOut * (gumOn(p, 'coagulant') ? sim.cfg.gobblegum.gums.coagulant.bleedMult : 1),
     selfRevive: selfRevive ? sim.cfg.perks.list.secondHelping.selfReviveTime : null,
     revive: 0,            // seconds a teammate has held [F]
     reviverId: null,
     saved: null,
+    selfMed: solo && !selfRevive && selfMed,
+    perks: [...p.perks],  // (Aftertaste, Phoenix Up, Self Medication: you get them back)
   };
   p.health = 1;
   loseAllPerks(sim, p);
@@ -67,12 +72,16 @@ function giveLastStandPistol(sim, p) {
   sim.emit('weaponSwitch', { playerId: p.id, weapon: slot.id });
 }
 
-export function revive(sim, p, byId = null) {
+export function revive(sim, p, byId = null, { keepPerks = false } = {}) {
   if (!p.downed) return;
   const saved = p.downed.saved;
+  const perks = keepPerks || gumOn(p, 'aftertaste') ? p.downed.perks || [] : [];
   p.downed = null;
   const w = p.loadout;
   if (w.reloading) cancelReload(sim, p);
+  // (kept perks first: Milton Kick's third gun stays if it came back)
+  for (const id of perks) givePerk(sim, p, id);
+  if (perks.length) sim.emit('perksKept', { playerId: p.id, perks });
   if (saved) {
     w.slots = saved.slots;
     // Milton Kick went with your perks: the gun in the third slot is gone
@@ -105,6 +114,7 @@ export function updateLastStand(sim, p, dt) {
   if (d.reviverId == null) {
     d.bleed -= dt;
     if (d.bleed <= 0) {
+      gumBledOut(sim, p, d.saved);   // (Arms Grace, Impatient)
       p.downed = null;
       p.alive = false;
       sim.emit('playerDied', { playerId: p.id, bledOut: true });
@@ -118,5 +128,5 @@ export function reviveTimeFor(sim, reviver) {
 
 // True while at least one player is still up (or about to get back up).
 export function anyoneStanding(sim) {
-  return sim.players.some((p) => p.alive && (!p.downed || p.downed.selfRevive != null));
+  return sim.players.some((p) => p.alive && (!p.downed || p.downed.selfRevive != null || p.downed.selfMed));
 }

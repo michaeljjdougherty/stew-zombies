@@ -3,6 +3,7 @@
 // you go down. Effects are read through perkMult()/hasPerk() wherever they
 // apply (reload speed in weapons.js, health and sprint in player.js, ...).
 // =============================================================================
+import { gumOnPerk } from './gums.js';
 
 export function hasPerk(p, id) { return p.perks.includes(id); }
 
@@ -37,6 +38,7 @@ export function updateDrinking(sim, p, dt) {
   const id = p.drinking.perk;
   p.drinking = null;
   givePerk(sim, p, id);
+  if (!sim.replica) gumOnPerk(sim, p);   // (Soda Fountain: another one with it)
 }
 
 export function givePerk(sim, p, id) {

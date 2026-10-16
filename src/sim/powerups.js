@@ -7,7 +7,8 @@
 //   Shop Class       every barrier rebuilt, +200 each
 //   Clearance Sale   Mystery Box costs 10 (timed)
 // =============================================================================
-import { refillAll } from './weapons.js';
+import { refillAll, makeSlot } from './weapons.js';
+import { anyGumOn } from './gums.js';
 import { killZombie } from './zombies.js';
 import { dist2D } from '../core/math.js';
 
@@ -34,7 +35,7 @@ function pickType(sim) {
   const P = sim.powerups, list = sim.cfg.powerups.list;
   const anyBoardsDown = sim.windows.some((w) => w.boards < w.maxBoards);
   const pool = Object.entries(list).filter(([id]) => {
-    if (id === P.last) return false;
+    if (id === P.last || list[id].gumOnly) return false;
     if (id === 'shopClass' && !anyBoardsDown) return false;
     if (id === 'clearanceSale' && sim.box.totalUses === 0) return false;
     return true;
@@ -51,6 +52,7 @@ export function spawnPowerup(sim, type, pos) {
   P.drops.push(d);
   P.last = type;
   sim.emit('powerupSpawn', { id: d.id, ptype: type, pos: { ...d.pos } });
+  // (a GobbleGum's personal one: only its owner can take it, src/sim/gums.js sets d.owner)
   return d;
 }
 
@@ -66,15 +68,18 @@ export function maybeDrop(sim, z, info) {
     drop = true;
     P.step *= pc.thresholdGrowth;
     P.nextAt = P.earned + P.step;
-  } else if (sim.rng.chance(pc.randomChance)) drop = true;
+  } else if (sim.rng.chance(pc.randomChance * (anyGumOn(sim, 'powerVacuum') ? sim.cfg.gobblegum.gums.powerVacuum.chanceMult : 1))) drop = true;
   if (!drop) return;
   P.thisRound++;
   spawnPowerup(sim, pickType(sim), z.pos);
 }
 
+// How long timed ones last (Temporal Gift: longer)
+const duration = (sim) => sim.cfg.powerups.duration * (anyGumOn(sim, 'temporalGift') ? sim.cfg.gobblegum.gums.temporalGift.durationMult : 1);
+
 function apply(sim, type, p) {
   const pc = sim.cfg.powerups, d = pc.list[type];
-  if (d.timed) sim.powerups.active[type] = pc.duration;
+  if (d.timed) sim.powerups.active[type] = duration(sim);
   switch (type) {
     case 'fullPantry':
       for (const q of sim.players) {
@@ -107,12 +112,47 @@ function apply(sim, type, p) {
       }
       for (const q of sim.players) if (q.alive) sim.addPoints(q, d.points, 'powerup');
       break;
+    case 'extraCredit':
+      sim.addPoints(p, d.points, 'powerup');
+      break;
+    case 'deathMachine':
+      giveDeathMachine(sim, p, d);
+      break;
   }
-  sim.emit('powerupGrab', { ptype: type, playerId: p.id, duration: d.timed ? pc.duration : 0 });
+  sim.emit('powerupGrab', { ptype: type, playerId: p.id, duration: d.timed ? duration(sim) : type === 'deathMachine' ? d.time : 0 });
+}
+
+// The Death Machine: in your hands (an extra slot) till its time's up.
+function giveDeathMachine(sim, p, d) {
+  const w = p.loadout, have = w.slots.find((s) => s.deathMachine);
+  if (have) { have.deathMachine.until = sim.time + d.time; return; }
+  if (w.reloading) sim.cancelReload(p);
+  const s = makeSlot(sim, d.weapon);
+  s.deathMachine = { until: sim.time + d.time, back: w.current };
+  w.slots.push(s);
+  w.current = w.slots.length - 1;
+  w.drawTimer = sim.cfg.weapons[d.weapon].drawTime;
+  w.adsAmount = 0;
+  sim.emit('weaponGiven', { playerId: p.id, weapon: d.weapon, deathMachine: true });
+}
+function dropDeathMachine(sim, p) {
+  const w = p.loadout, i = w.slots.findIndex((s) => s.deathMachine);
+  if (i < 0) return;
+  const back = w.slots[i].deathMachine.back;
+  w.slots.splice(i, 1);
+  w.current = Math.min(back, w.slots.length - 1);
+  w.drawTimer = sim.cfg.weapons[w.slots[w.current].id].drawTime;
+  w.reloading = false;
+  sim.emit('weaponSwitch', { playerId: p.id, weapon: w.slots[w.current].id });
 }
 
 export function updatePowerups(sim, dt) {
   const P = sim.powerups, pc = sim.cfg.powerups;
+  for (const p of sim.players) {
+    if (p.downed && p.downed.saved) { const i = p.downed.saved.slots.findIndex((s) => s.deathMachine); if (i >= 0) { p.downed.saved.slots.splice(i, 1); p.downed.saved.current = 0; } }
+    const s = p.loadout.slots.find((q) => q.deathMachine);
+    if (s && sim.time >= s.deathMachine.until) dropDeathMachine(sim, p);
+  }
   for (const k of Object.keys(P.active)) {
     if (P.active[k] <= 0) continue;
     P.active[k] -= dt;
@@ -134,7 +174,7 @@ export function updatePowerups(sim, dt) {
     d.t -= dt;
     let taker = null;
     for (const p of sim.players) {
-      if (!p.alive || p.downed) continue;
+      if (!p.alive || p.downed || (d.owner && d.owner !== p.id)) continue;
       if (dist2D(p.pos, d.pos) < pc.pickupRange && Math.abs(p.pos.y - d.pos.y) < 1.6) { taker = p; break; }
     }
     if (taker) {

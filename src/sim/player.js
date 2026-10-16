@@ -10,6 +10,7 @@ import { goDown } from './laststand.js';
 import { updateLaunch } from './launchers.js';
 import { updateRide, checkSlides } from './rides.js';
 import { explode } from './projectiles.js';
+import { gumOn, gumPressed, gumSlide } from './gums.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -26,6 +27,7 @@ export function emptyCommand() {
     reloadPressed: false,
     meleePressed: false,
     use: false, usePressed: false,
+    gumPressed: false,                          // [H] use your GobbleGum
     weaponSlot: -1,           // -1 = no change
     weaponCycle: 0,
   };
@@ -124,14 +126,15 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (ml > 1) { mx /= ml; my /= ml; }
   const w = p.loadout;
   const wantsSprint = cmd.sprint && my > 0.3 && !p.crouching && !downed;
-  const interrupt = cmd.ads || cmd.fire || cmd.firePressed || cmd.meleePressed || cmd.grenadePressed || cmd.tacticalPressed || !!p.throwing || !!p.drinking;
+  const foac = gumOn(p, 'firingOnAllCylinders');   // (GobbleGum: shoot on the run)
+  const interrupt = cmd.ads || (!foac && (cmd.fire || cmd.firePressed)) || cmd.meleePressed || cmd.grenadePressed || cmd.tacticalPressed || !!p.throwing || !!p.drinking;
   if (p.sprinting) {
     if (!wantsSprint || p.stamina <= 0 || interrupt) {
       p.sprinting = false;
       p.sprintOutTimer = cfg.sprintToFireDelay;
       if (cmd.firePressed) p.fireBuffer = 0.3; // fire as soon as the gun comes up
     }
-  } else if (wantsSprint && !cmd.ads && !cmd.fire && !p.throwing && !p.drinking && p.stamina >= Math.min(cfg.sprintMinToStart, sprintMax) && p.melee.timer <= 0) {
+  } else if (wantsSprint && !cmd.ads && (foac || !cmd.fire) && !p.throwing && !p.drinking && p.stamina >= Math.min(cfg.sprintMinToStart, sprintMax) && p.melee.timer <= 0) {
     p.sprinting = true;
     if (w.reloading) sim.cancelReload(p);
   }
@@ -146,7 +149,7 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (!p.sprinting) {
     if (my < -0.1) speed *= cfg.backpedalMult;
     else if (Math.abs(mx) > Math.abs(my)) speed *= cfg.strafeMult;
-    speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;
+    if (!gumOn(p, 'alwaysDoneSwiftly')) speed *= 1 + ((def.adsMoveMult ?? 0.6) - 1) * w.adsAmount;   // (GobbleGum: full speed)
   }
   if (def.hammer && w.heavyT > 0) speed *= sim.cfg.crust.hammers.swing.slowMult;   // (mid-swing with a War Hammer)
   if (p.prone) speed = p.prone.up != null ? 0 : cfg.walkSpeed * PR.speedMult;
@@ -237,6 +240,8 @@ export function updatePlayer(sim, p, cmd, dt) {
 
   // --- weapons and knife
   updateWeapons(sim, p, cmd, dt);
+  // --- [H]: chew your activated GobbleGum (online, the host does it)
+  if (cmd.gumPressed) gumPressed(sim, p);
 
   // online, the host does the buying, prompts and health for you
   if (sim.replica) return;
@@ -278,6 +283,7 @@ function diveLand(sim, p) {
   const drop = p.dive.from - p.pos.y;
   p.dive.phase = 'prone'; p.dive.t = 0;
   sim.emit('diveLand', { playerId: p.id, pos: { ...p.pos }, drop });
+  if (gumOn(p, 'slaughterSlide')) { if (sim.replica) sim.netOut.push({ k: 'gumSlide' }); else gumSlide(sim, p); }
   const perk = p.perks.map((id) => sim.cfg.perks.list[id]).find((d) => d.diveBlast);
   if (!perk) return;
   // (only off something: a dive along flat ground just lands)
@@ -300,7 +306,8 @@ function updateUseAndHealth(sim, p, cmd, dt) {
   } else updateInteraction(sim, p, cmd, dt);
 
   // --- health regen
-  if (!downed && p.health < p.maxHealth && sim.time - p.lastDamageTime > cfg.regenDelay) {
+  const regenDelay = cfg.regenDelay * (gumOn(p, 'armamentalAccomplishment') ? sim.cfg.gobblegum.gums.armamentalAccomplishment.regenMult : 1);
+  if (!downed && p.health < p.maxHealth && sim.time - p.lastDamageTime > regenDelay) {
     p.health = Math.min(p.maxHealth, p.health + cfg.regenRate * dt);
   }
 }
@@ -356,6 +363,7 @@ export function damagePlayer(sim, p, amount, source) {
   // just picked back up: a few seconds where nothing touches you
   if (p.invulnUntil && sim.time < p.invulnUntil) return;
   if (p.launch) return;   // in the air over the ice
+  if (source && source.explosive && gumOn(p, 'dangerClosest')) return;   // (GobbleGum: no blast can touch you)
   if (p.boosts && p.boosts.defense) amount *= p.boosts.defense;
   p.health -= amount;
   p.lastDamageTime = sim.time;

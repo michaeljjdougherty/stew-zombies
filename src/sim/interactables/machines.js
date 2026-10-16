@@ -6,15 +6,12 @@ import { hasPerk, perkCost, startDrinking } from '../perks.js';
 import { reviveTimeFor, revive } from '../laststand.js';
 import { cancelReload, giveWeapon } from '../weapons.js';
 import { killZombie } from '../zombies.js';
+import { gumPerkLimit, rollAat } from '../gums.js';
 
 function flatDist(p, pos) { return Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z); }
 const up = (p) => p.alive && !p.downed;
 
-function pay(sim, p, cost) {
-  if (p.points < cost) { sim.emit('cantAfford', { playerId: p.id, cost }); return false; }
-  sim.spendPoints(p, cost);
-  return true;
-}
+const pay = (sim, p, cost) => sim.pay(p, cost);
 
 // ---------------------------------------------------------------------------
 export class PowerInteractable {
@@ -60,13 +57,13 @@ export class PerkInteractable {
     if (needsPower(sim, d, this.m.center)) return { text: 'The power must be on', cost: null, sub: sim.crustEgg && sim.crustEgg.power ? (sim.crustEgg.power.on.hub ? 'The power switch is by the launcher' : 'Pit has to fix the launchers\' relays first') : undefined };
     if (this.soloSoldOut(sim)) return { text: `${d.name} is sold out`, cost: null };
     if (hasPerk(p, this.m.perk)) return { text: `You already have ${d.name}`, cost: null };
-    if (p.perks.length >= sim.cfg.perks.limit) return { text: `You can only hold ${sim.cfg.perks.limit} perks`, cost: null };
+    if (p.perks.length >= gumPerkLimit(sim, p)) return { text: `You can only hold ${gumPerkLimit(sim, p)} perks`, cost: null };
     return { text: `Press [F] to buy ${d.name}`, cost: perkCost(sim, this.m.perk), sub: d.desc };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
     const d = this.def(sim);
-    if (needsPower(sim, d, this.m.center) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= sim.cfg.perks.limit) {
+    if (needsPower(sim, d, this.m.center) || this.soloSoldOut(sim) || hasPerk(p, this.m.perk) || p.perks.length >= gumPerkLimit(sim, p)) {
       sim.emit('useDenied', { playerId: p.id });
       return;
     }
@@ -114,7 +111,12 @@ export class MadDogInteractable {
     const slot = p.loadout.slots[p.loadout.current];
     if (!slot || slot.away) return { text: 'Hold a weapon to feed the Mad Dog', cost: null };
     const def = sim.cfg.weapons[slot.id];
-    if (def.upgraded) return { text: `${def.name} is already upgraded`, cost: null };
+    // (an upgraded gun again: a new bite, its alternate ammo)
+    if (def.upgraded) {
+      if (slot.ephemeral || !def.baseId) return { text: `${def.name} is already upgraded`, cost: null };
+      const A = sim.cfg.aat, now = A.types[slot.aat];
+      return { text: `Press [F] to give ${def.name} a new bite`, cost: A.rerollCost, sub: now ? `It has ${now.name} now` : null };
+    }
     if (!sim.cfg.weapons[slot.id + '+']) return { text: 'The Mad Dog won\'t eat that', cost: null };
     return { text: `Press [F] to feed ${def.name} to the Mad Dog`, cost: sim.cfg.madDog.cost };
   }
@@ -126,14 +128,16 @@ export class MadDogInteractable {
     const slot = w.slots[w.current];
     if (!slot || slot.away) return;
     const def = sim.cfg.weapons[slot.id];
-    if (def.upgraded || !sim.cfg.weapons[slot.id + '+']) { sim.emit('useDenied', { playerId: p.id }); return; }
-    if (!pay(sim, p, sim.cfg.madDog.cost)) return;
+    const reroll = def.upgraded && def.baseId && !slot.ephemeral;
+    if ((def.upgraded && !reroll) || (!def.upgraded && !sim.cfg.weapons[slot.id + '+'])) { sim.emit('useDenied', { playerId: p.id }); return; }
+    if (!pay(sim, p, reroll ? sim.cfg.aat.rerollCost : sim.cfg.madDog.cost)) return;
+    this.reroll = reroll ? slot.aat || null : false;
     if (w.reloading) cancelReload(sim, p);
     slot.away = true;
     this.state = 'working';
     this.timer = sim.cfg.madDog.workTime;
     this.ownerId = p.id;
-    this.weapon = slot.id;
+    this.weapon = reroll ? def.baseId : slot.id;
     this.slotRef = slot;
     w.adsAmount = 0;
     // switch to your other gun while this one is in the machine
@@ -155,6 +159,7 @@ export class MadDogInteractable {
     if (idx >= 0) {
       const s = w.slots[idx];
       s.id = upId; s.away = false; s.upgraded = true;
+      s.aat = rollAat(sim, this.reroll || null);   // (a new bite, never the one it had)
       s.clip = def.magSize; s.clipL = def.dual ? def.magSize : 0; s.reserve = def.reserve;
       w.current = idx;
       w.drawTimer = def.drawTime;
@@ -163,7 +168,8 @@ export class MadDogInteractable {
     } else {
       giveWeapon(sim, p, upId);
     }
-    sim.emit('madDogTaken', { playerId: p.id, weapon: upId });
+    const got = w.slots.find((q) => q.id === upId);
+    sim.emit('madDogTaken', { playerId: p.id, weapon: upId, aat: got ? got.aat : null });
     this.state = 'idle';
     this.ownerId = null;
     this.weapon = null;

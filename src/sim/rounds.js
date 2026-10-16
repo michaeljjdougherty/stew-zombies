@@ -258,6 +258,21 @@ function updateCheddarRound(sim, dt) {
   }
 }
 
+// Back from bleeding out: the starting pistol (or, with Arms Grace, the guns you had).
+export function respawnLoadout(sim, p) {
+  p.loadout = createLoadout(sim, sim.cfg.startingWeapon);
+  if (p.armsGrace) {
+    p.loadout.slots = p.armsGrace.slots.filter((s) => !s.loaner && !s.disorder).slice(0, sim.cfg.player.maxWeapons);
+    if (!p.loadout.slots.length) p.loadout = createLoadout(sim, sim.cfg.startingWeapon);
+    p.loadout.current = 0;
+    p.armsGrace = null;
+    sim.emit('gumArmsGrace', { playerId: p.id });
+  }
+  p.loadout.drawTimer = sim.cfg.weapons[p.loadout.slots[0].id].drawTime;
+  p.grenades = p.grenadeMax;
+  p.drinking = null; p.reviving = null; p.throwing = null;
+}
+
 // Co-op: anyone who bled out last round is back for this one, next to a
 // teammate who's still standing, with the starting pistol. (Their points stay.)
 export function respawnTheFallen(sim) {
@@ -274,9 +289,7 @@ export function respawnTheFallen(sim) {
     p.vel.x = p.vel.y = p.vel.z = 0;
     p.yaw = spot.yaw || 0;
     p.region = sim.nav.regionAt(p.pos);
-    p.loadout = createLoadout(sim, sim.cfg.startingWeapon);
-    p.grenades = p.grenadeMax;
-    p.drinking = null; p.reviving = null; p.throwing = null;
+    respawnLoadout(sim, p);
     p.tp = (p.tp || 0) + 1;     // online: tells their own copy it was moved
     sim.emit('playerRespawn', { playerId: p.id });
   }

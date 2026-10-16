@@ -456,6 +456,40 @@ export class Effects {
     this.placeDecal(this.scorches, 12, this.scorchMat, new THREE.Vector3(pos.x, y0 + 0.005, pos.z), UP, 1.6);
   }
 
+  // Electricity jumping from one point to the next (Dead Wire, Pop Shocks): a
+  // jagged line through them that flickers out.
+  arc(points, color = '#7fd8ff') {
+    if (!points || points.length < 2) return;
+    if (!this.arcs) { this.arcs = []; this.arcIdx = 0; }
+    const N = 64;
+    let a = this.arcs[this.arcIdx];
+    if (!a) {
+      const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(color).multiplyScalar(3), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+      const line = new THREE.Line(geo, mat); line.frustumCulled = false; line.visible = false;
+      this.scene.add(line);
+      a = this.arcs[this.arcIdx] = { line, mat, life: 0 };
+    }
+    this.arcIdx = (this.arcIdx + 1) % 6;
+    a.mat.color.set(color).multiplyScalar(3);
+    const arr = a.line.geometry.attributes.position.array, per = Math.floor((N - 1) / (points.length - 1));
+    let n = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p = points[i], q = points[i + 1];
+      for (let k = 0; k < per; k++) {
+        const t = k / per, j = k ? 0.35 : 0;
+        arr[n * 3] = p.x + (q.x - p.x) * t + (Math.random() - 0.5) * j; arr[n * 3 + 1] = p.y + (q.y - p.y) * t + (Math.random() - 0.5) * j; arr[n * 3 + 2] = p.z + (q.z - p.z) * t + (Math.random() - 0.5) * j;
+        n++;
+      }
+    }
+    const last = points[points.length - 1];
+    for (; n < N; n++) { arr[n * 3] = last.x; arr[n * 3 + 1] = last.y; arr[n * 3 + 2] = last.z; }
+    a.line.geometry.attributes.position.needsUpdate = true;
+    a.line.visible = true; a.life = 0.3;
+    for (const p of points) for (let i = 0; i < 6; i++) this.spawnParticle(new THREE.Vector3(p.x, p.y, p.z), new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 3, (Math.random() - 0.5) * 5), { life: 0.3, size: 0.012, color: [1.5, 2.5, 4], gravity: 6, drag: 1 });
+  }
+
   // Fucci Gun hit: a flash of colored plasma, rings of sparks, a scorch.
   energyBurst(pos, color = '#ffcf4a', radius = 2.4) {
     const p = new THREE.Vector3(pos.x, pos.y, pos.z);
@@ -736,6 +770,14 @@ export class Effects {
       else f.s.material.color.setRGB(3 - k * 1.5, 1.6 - k * 1.2, 0.6 - k * 0.5);
     }
     if (this.blastT > 0) { this.blastT -= dt; this.blastLight.intensity *= Math.exp(-dt * 9); if (this.blastT <= 0) this.blastLight.intensity = 0; }
+
+    // electric arcs
+    if (this.arcs) for (const a of this.arcs) {
+      if (!a || a.life <= 0) continue;
+      a.life -= dt;
+      a.mat.opacity = Math.max(0, a.life / 0.3) * (Math.random() < 0.35 ? 0.3 : 1);
+      if (a.life <= 0) a.line.visible = false;
+    }
 
     // lightning bolts
     if (this.bolts) {

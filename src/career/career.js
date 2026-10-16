@@ -14,6 +14,7 @@
 // =============================================================================
 import { ACHIEVEMENTS, ACH_BY_ID } from './achievements.js';
 import { PinAuth, pinOk, pinHash } from './auth.js';
+import { CONFIG } from '../config.js';
 
 const LS = 'stew-zombies-career-v1';
 export const STAT_KEYS = ['kills', 'revives', 'rounds', 'headshots', 'downs', 'games', 'bestRound'];
@@ -24,7 +25,11 @@ export const cleanName = (s) => String(s || '').replace(/\s+/g, ' ').trim().slic
 export const nameKey = (s) => cleanName(s).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
 
 const blankStats = () => Object.fromEntries(STAT_KEYS.map((k) => [k, 0]));
-const blankPending = () => ({ inc: {}, max: {}, ach: {} });
+const blankPending = () => ({ inc: {}, max: {}, ach: {}, gums: {} });
+// GobbleGum: Liquid Divinium, the Megas you own, and the pack of 5 you take into a game
+const GG = () => CONFIG.gobblegum;
+const isMegaId = (id) => { const d = GG().gums[id]; return !!d && d.tier !== 'classic' && d.tier !== 'whimsical'; };
+const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], started: false });
 
 export class Career {
   constructor(cfg = {}, { fetchFn = typeof fetch === 'function' ? fetch.bind(globalThis) : null, storage = (() => { try { return globalThis.localStorage; } catch { return null; } })() } = {}) {
@@ -58,7 +63,11 @@ export class Career {
   get pinsOn() { return !!this.auth; }
   get signedIn() { return !!this.profile; }
   get gamerscore() { return this.profile ? scoreOf(this.profile) : 0; }
-  pending() { return this.db.pending[this.key] || (this.db.pending[this.key] = blankPending()); }
+  pending() {
+    const p = this.db.pending[this.key] || (this.db.pending[this.key] = blankPending());
+    if (!p.gums) p.gums = {};
+    return p;
+  }
 
   // --- the database -----------------------------------------------------------
   async request(method, key, body) {
@@ -143,6 +152,12 @@ export class Career {
           for (const [k, n] of Object.entries(pend.inc)) c.stats[k] = (c.stats[k] || 0) + n;
           for (const [k, v] of Object.entries(pend.max)) c.stats[k] = Math.max(c.stats[k] || 0, v);
           for (const [id, t] of Object.entries(this.profile.achievements)) if (!c.achievements[id]) { c.achievements[id] = t; pend.ach[id] = t; }
+          // (GobbleGum: the database's, plus what's waiting here)
+          const pg = pend.gums || {};
+          c.gums.divinium = Math.max(0, c.gums.divinium + (pg.divinium || 0));
+          for (const [id, n] of Object.entries(pg.megas || {})) c.gums.megas[id] = Math.max(0, (c.gums.megas[id] || 0) + n);
+          if (pg.pack) c.gums.pack = [...pg.pack];
+          if (pg.started) c.gums.started = true;
           c.name = name;
           this.profile = c;
         } else {
@@ -152,10 +167,13 @@ export class Career {
             if (MAX_STATS.has(k)) { if (this.profile.stats[k]) pend.max[k] = this.profile.stats[k]; } else if (this.profile.stats[k]) pend.inc[k] = this.profile.stats[k];
           }
           pend.ach = { ...this.profile.achievements };
+          const G = this.profile.gums;
+          pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started };
           pend.fresh = true;
         }
         if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
         this.status = 'online';
+        this.giveStarter();
         this.saveLocal();
         this.changed();
         await this.flush();
@@ -163,7 +181,7 @@ export class Career {
         this.status = 'offline';
         this.changed();
       }
-    }
+    } else this.giveStarter();
     return { ok: true };
   }
 
@@ -221,12 +239,17 @@ export class Career {
     for (const [k, n] of Object.entries(p.inc)) if (n) body['stats/' + k] = { '.sv': { increment: n } };
     for (const [k, v] of Object.entries(p.max)) body['stats/' + k] = v;
     for (const [id, t] of Object.entries(p.ach)) body['achievements/' + id] = t;
+    const pg = p.gums || {};
+    if (pg.divinium) body['gums/divinium'] = { '.sv': { increment: pg.divinium } };
+    for (const [id, n] of Object.entries(pg.megas || {})) if (n) body['gums/megas/' + id] = { '.sv': { increment: n } };
+    if (pg.pack) body['gums/pack'] = pg.pack;
+    if (pg.started) body['gums/started'] = true;
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
     if (this.auth) body.uid = this.auth.session.uid;   // (the rules: only this account can change this career)
     // what's being sent now comes off the pile only once it's gone through
-    const sent = JSON.parse(JSON.stringify({ inc: p.inc, max: p.max, ach: p.ach }));
+    const sent = JSON.parse(JSON.stringify({ inc: p.inc, max: p.max, ach: p.ach, gums: pg }));
     this.flushing = true;
     try {
       await this.request('PATCH', key, body);
@@ -234,6 +257,11 @@ export class Career {
       for (const [k, n] of Object.entries(sent.inc)) { now.inc[k] = (now.inc[k] || 0) - n; if (!now.inc[k]) delete now.inc[k]; }
       for (const [k, v] of Object.entries(sent.max)) if (now.max[k] === v) delete now.max[k];
       for (const id of Object.keys(sent.ach)) delete now.ach[id];
+      const ng = now.gums || (now.gums = {}), sg = sent.gums || {};
+      if (sg.divinium) { ng.divinium = (ng.divinium || 0) - sg.divinium; if (!ng.divinium) delete ng.divinium; }
+      for (const [id, n] of Object.entries(sg.megas || {})) { if (!ng.megas) break; ng.megas[id] = (ng.megas[id] || 0) - n; if (!ng.megas[id]) delete ng.megas[id]; }
+      if (sg.pack && JSON.stringify(ng.pack) === JSON.stringify(sg.pack)) delete ng.pack;
+      if (sg.started) delete ng.started;
       delete now.fresh;
       this.status = 'online';
       this.saveLocal();
@@ -245,11 +273,108 @@ export class Career {
     }
   }
 
+  // --- GobbleGum ------------------------------------------------------------------
+  // Your Divinium, Megas and pack. Not signed in: the Classics, no Megas.
+  get gums() {
+    if (this.profile) return this.profile.gums;
+    if (!this.guestGums) {
+      let pack = null;
+      try { pack = JSON.parse(this.storage && this.storage.getItem(LS + '-guestpack')); } catch { pack = null; }
+      this.guestGums = { divinium: 0, megas: {}, pack: cleanPack(pack, {}, true), started: true };
+    }
+    return this.guestGums;
+  }
+  // What you've got: a Classic or Whimsical gum is always yours; a Mega, if you have any left.
+  owns(id) { return !!GG().gums[id] && (!isMegaId(id) || (this.profile && (this.gums.megas[id] || 0) > 0)); }
+  gumPending(kind, id, n) {
+    const pg = this.pending().gums;
+    if (kind === 'divinium') pg.divinium = (pg.divinium || 0) + n;
+    else { pg.megas = pg.megas || {}; pg.megas[id] = (pg.megas[id] || 0) + n; }
+  }
+  setPack(pack) {
+    const G = this.gums;
+    G.pack = cleanPack(pack, G.megas, !this.profile);
+    if (!this.profile) { try { this.storage && this.storage.setItem(LS + '-guestpack', JSON.stringify(G.pack)); } catch { /* */ } this.changed(); return G.pack; }
+    this.pending().gums.pack = [...G.pack];
+    this.saveLocal(); this.changed(); this.flush();
+    return G.pack;
+  }
+  addDivinium(n) {
+    if (!this.profile || !n) return;
+    this.profile.gums.divinium = Math.max(0, this.profile.gums.divinium + n);
+    this.gumPending('divinium', null, n);
+    this.saveLocal(); this.changed();
+  }
+  addMega(id, n = 1) {
+    if (!this.profile || !isMegaId(id)) return;
+    const M = this.profile.gums.megas;
+    M[id] = Math.max(0, (M[id] || 0) + n);
+    if (!M[id]) delete M[id];
+    this.gumPending('mega', id, n);
+  }
+  // One came out of a machine for you (a Mega's gone as it does)
+  useMega(id) {
+    if (!this.profile || !isMegaId(id) || !(this.profile.gums.megas[id] > 0)) return;
+    this.addMega(id, -1);
+    this.saveLocal(); this.changed();
+  }
+  // Dr. Monty's Factory: Divinium in, Megas out. kind 'single' | 'bundle'. Returns the gums you got (or null).
+  openFactory(kind, rand = Math.random) {
+    const F = GG().factory, deal = F[kind];
+    if (!this.profile || !deal || this.profile.gums.divinium < deal.cost) return null;
+    this.addDivinium(-deal.cost);
+    const byTier = {};
+    for (const [id, d] of Object.entries(GG().gums)) if (isMegaId(id)) (byTier[d.tier] = byTier[d.tier] || []).push(id);
+    const got = [];
+    for (let i = 0; i < deal.gums; i++) {
+      let r = rand(), tier = 'mega';
+      for (const [t, w] of Object.entries(F.odds)) { if (r < w) { tier = t; break; } r -= w; }
+      const list = byTier[tier] || byTier.mega;
+      const id = list[Math.floor(rand() * list.length)];
+      this.addMega(id, 1);
+      got.push(id);
+    }
+    this.saveLocal(); this.changed(); this.flush();
+    return got;
+  }
+  // The pack you take into a game: { pack: [5 ids], stock: { megaId: how many you own } }
+  packForGame() {
+    const G = this.gums, stock = {};
+    for (const id of G.pack) if (isMegaId(id)) stock[id] = G.megas[id] || 0;
+    return { pack: [...G.pack], stock };
+  }
+  // A new career gets a few vials to start with (once)
+  giveStarter() {
+    if (!this.profile || this.profile.gums.started) return;
+    this.profile.gums.started = true;
+    this.pending().gums.started = true;
+    this.addDivinium(GG().starter || 0);
+  }
+
   changed() { if (this.onChange) try { this.onChange(); } catch (e) { console.warn('career', e); } }
 }
 
+// A pack: 5 different gums you have (a Mega you've run out of can stay in it;
+// it just won't come out of a machine). Guests: Classics and Whimsicals only.
+export function cleanPack(pack, megas = {}, guest = false) {
+  const G = GG(), out = [];
+  for (const id of Array.isArray(pack) ? pack : []) {
+    if (!G.gums[id] || out.includes(id) || (guest && isMegaId(id))) continue;
+    out.push(id);
+    if (out.length >= G.packSize) break;
+  }
+  for (const id of G.defaultPack) if (out.length < G.packSize && !out.includes(id)) out.push(id);
+  return out;
+}
+
 function normalize(p, name) {
-  const out = { name: (p && p.name) || name, stats: blankStats(), achievements: {} };
+  const out = { name: (p && p.name) || name, stats: blankStats(), achievements: {}, gums: blankGums() };
+  if (p && p.gums && typeof p.gums === 'object') {
+    out.gums.divinium = Math.max(0, Math.floor(Number(p.gums.divinium) || 0));
+    for (const [id, n] of Object.entries(p.gums.megas || {})) if (isMegaId(id) && Number(n) > 0) out.gums.megas[id] = Math.floor(Number(n));
+    out.gums.pack = cleanPack(p.gums.pack, out.gums.megas);
+    out.gums.started = !!p.gums.started;
+  }
   if (p && p.stats) for (const k of STAT_KEYS) out.stats[k] = Number(p.stats[k]) || 0;
   if (p && p.achievements) for (const [id, t] of Object.entries(p.achievements)) if (ACH_BY_ID[id]) out.achievements[id] = t;
   return out;

@@ -138,6 +138,7 @@ export class Input {
     c.tactical = k.has('tactical') || P.keys.has('tactical');
     c.tacticalPressed = e.has('tactical');
     c.minePressed = e.has('mine');
+    c.gumPressed = e.has('gum');
     c.weaponSlot = e.has('weapon1') ? 0 : e.has('weapon2') ? 1 : e.has('weapon3') ? 2 : -1;
     c.weaponCycle = this.wheel !== 0 ? 1 : 0;
     this.wheel = 0;
@@ -189,6 +190,7 @@ export class Input {
     if (st.pressed(BTN.LB)) this.edges.add('tactical');
     if (st.down(BTN.LB)) P.keys.add('tactical'); else P.keys.delete('tactical');
     if (st.pressed(BTN.LEFT)) this.edges.add('mine');
+    if (st.pressed(BTN.DOWN)) this.edges.add('gum');   // (your GobbleGum)
 
     // --- look: right stick, with a response curve and a turn boost at full tilt
     const rx = st.rs.x, ry = st.rs.y;

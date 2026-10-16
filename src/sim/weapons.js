@@ -13,6 +13,9 @@ import { windBlast } from './wind.js';
 import { hammerSlam } from './hammers.js';
 import { flameBurst, flameHeat } from './flame.js';
 import { perkMult, weaponLimit } from './perks.js';
+import { gumOn, rollAat } from './gums.js';
+
+const GUM = (sim, id) => sim.cfg.gobblegum.gums[id];
 
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
 // host what it hit (src/net/host.js applies it).
@@ -23,11 +26,14 @@ const blast = (sim, pos, kind, ownerId) => (sim.replica ? netAct(sim, { k: 'boom
 
 // Perk-adjusted timings.
 const reloadMult = (sim, p) => perkMult(sim, p, 'reloadMult');
-const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult');
+// (Arsenal Accelerator: wonder weapons and War Hammers come round faster)
+const wonder = (def) => !!(def.hammer || def.wind || def.flame || def.wonder);
+const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult') / (wonder(def) && gumOn(p, 'arsenalAccelerator') ? GUM(sim, 'arsenalAccelerator').fireMult : 1);
 
 export function makeSlot(sim, id) {
   const def = sim.cfg.weapons[id];
-  return { id, clip: def.magSize, clipL: def.dual ? def.magSize : 0, reserve: def.reserve, upgraded: false };
+  // (a Mad Dog'd gun has a bite: its alternate ammo, src/sim/gums.js)
+  return { id, clip: def.magSize, clipL: def.dual ? def.magSize : 0, reserve: def.reserve, upgraded: !!def.upgraded, aat: def.upgraded ? rollAat(sim) : null };
 }
 
 export function createLoadout(sim, weaponId) {
@@ -85,10 +91,11 @@ export function updateWeapons(sim, p, cmd, dt) {
   let want = -1;
   if (cmd.weaponSlot >= 0 && cmd.weaponSlot < w.slots.length && cmd.weaponSlot !== w.current) want = cmd.weaponSlot;
   if (cmd.weaponCycle && w.slots.length > 1) want = (w.current + 1) % w.slots.length;
+  if (def.deathMachine) want = -1;   // (the Death Machine won't be put away)
   if (want >= 0 && p.melee.timer <= 0 && !p.throwing && !p.drinking) {
     if (w.reloading) cancelReload(sim, p);
     w.current = want;
-    w.drawTimer = sim.cfg.weapons[w.slots[want].id].drawTime;
+    w.drawTimer = sim.cfg.weapons[w.slots[want].id].drawTime * (gumOn(p, 'armamentalAccomplishment') ? GUM(sim, 'armamentalAccomplishment').drawMult : 1);
     w.adsAmount = 0;
     w.burstLeft = 0;
     sim.emit('weaponSwitch', { playerId: p.id, weapon: w.slots[want].id });
@@ -98,7 +105,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   // --- aim down sights (dual wield uses right click as the left trigger instead)
   const canAds = !def.dual && !def.noAds && !p.sprinting && !w.reloading && p.melee.timer <= 0 && !p.throwing && !p.drinking && !slot.away;
   const adsTarget = cmd.ads && canAds ? 1 : 0;
-  const adsStep = dt / Math.max(0.01, def.adsTime);
+  const adsStep = dt / Math.max(0.01, def.adsTime * (gumOn(p, 'alwaysDoneSwiftly') ? GUM(sim, 'alwaysDoneSwiftly').adsMult : 1));
   // (hold still once there: the old form stepped back down from 1 every other
   // tick, which made the sights pulse in and out)
   if (adsTarget > w.adsAmount) w.adsAmount = Math.min(adsTarget, w.adsAmount + adsStep);
@@ -125,7 +132,9 @@ export function updateWeapons(sim, p, cmd, dt) {
 
   // --- fire
   const shellReload = w.reloading && w.reload.style === 'shell' && slot.clip > 0;
-  const blocked = !p.alive || p.sprinting || p.sprintOutTimer > 0 || (w.reloading && !shellReload) || p.melee.timer > 0 || w.drawTimer > 0 || p.throwing || p.drinking || slot.away;
+  // (Firing On All Cylinders: shoot while you sprint)
+  const foac = gumOn(p, 'firingOnAllCylinders');
+  const blocked = !p.alive || (!foac && (p.sprinting || p.sprintOutTimer > 0)) || (w.reloading && !shellReload) || p.melee.timer > 0 || w.drawTimer > 0 || p.throwing || p.drinking || slot.away;
   if (cmd.firePressed && (blocked || w.fireCooldown > 0)) p.fireBuffer = Math.max(p.fireBuffer, 0.22);
   if (!cmd.fire) w.dryFireLatch = false;
 
@@ -191,7 +200,12 @@ function updateHammerSwing(sim, p, slot, def, dt) {
 function fire(sim, p, slot, def, side) {
   const w = p.loadout;
   if (side === 'L') { slot.clipL--; w.fireCooldownL = shotGap(sim, p, def); }
-  else { if (!def.infinite) slot.clip--; if (def.fireMode !== 'burst') w.fireCooldown = w.fireGap = shotGap(sim, p, def); }
+  else {
+    // (Stock Option: the round comes out of your stockpile while there's any)
+    if (def.infinite) { /* never runs dry */ } else if (gumOn(p, 'stockOption') && slot.reserve > 0 && !def.dual) slot.reserve--;
+    else slot.clip--;
+    if (def.fireMode !== 'burst') w.fireCooldown = w.fireGap = shotGap(sim, p, def);
+  }
   const dmgMult = perkMult(sim, p, 'damageMult');
   w.shotsFired++;
 
@@ -230,6 +244,7 @@ function fire(sim, p, slot, def, side) {
       for (const h of hits) {
         impacts.push(h);
         if (h.kind !== 'zombie') continue;
+        if (gumOn(p, 'headDrama')) h.part = 'head';   // (Head Drama: every hit's a headshot)
         let dmg = def.damage * dmgMult;
         if (h.t > def.falloffStart) {
           const f = clamp((h.t - def.falloffStart) / Math.max(1, def.range - def.falloffStart), 0, 1);
@@ -518,7 +533,7 @@ function updateMelee(sim, p, cmd, dt, def) {
       if (sim.crustEgg && sim.replica && sim.crustEgg.active === 'caves') netAct(sim, { k: 'titanKnife' });
       if (sim.crustEgg && !sim.replica && knifeTitan(sim, p)) sim.emit('meleeHit', { playerId: p.id, titan: true });
       else if (pick) {
-        const dmg = mc.damage * (def.meleeMult || 1);
+        const dmg = mc.damage * (def.meleeMult || 1) * (gumOn(p, 'swordFlay') ? GUM(sim, 'swordFlay').meleeMult : 1);
         hurt(sim, pick.z, dmg, { playerId: p.id, part: 'torso', kind: 'knife', dir: { x: -Math.sin(p.yaw), y: 0, z: -Math.cos(p.yaw) }, point: { x: pick.z.pos.x, y: pick.z.pos.y + (pick.z.crawler ? 0.35 : 1.2), z: pick.z.pos.z } });
         sim.emit('meleeHit', { playerId: p.id, zombieId: pick.z.id });
       } else {

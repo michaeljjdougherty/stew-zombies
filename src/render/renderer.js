@@ -20,6 +20,7 @@ import { BoxView } from './boxView.js';
 import { CauldronView } from './cauldronView.js';
 import { ProjectileViews } from './projectileView.js';
 import { MachinesView } from './machinesView.js';
+import { GumView } from './gumView.js';
 import { PowerupViews } from './powerupView.js';
 import { CheddarViews } from './cheddarView.js';
 import { LoreView } from './loreView.js';
@@ -91,6 +92,7 @@ export class GameRenderer {
         zombies: new ZombieViews(scene, effects, cfg),
         projectiles: new ProjectileViews(scene, effects, cfg),
         machines: new MachinesView(scene, sim, cfg, map),
+        gumMachines: new GumView(scene, sim, cfg, map),
         powerups: new PowerupViews(scene, cfg),
         cheddars: new CheddarViews(scene, effects, cfg),
         lore: new LoreView(scene, sim, cfg),
@@ -117,7 +119,7 @@ export class GameRenderer {
       this.worlds.set(sim.mapData.id, w);
     }
     w.scene.add(this.camera);
-    Object.assign(this, { forge: w.forge || null, zach: w.zach || null, titans: w.titans || null, scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
+    Object.assign(this, { forge: w.forge || null, zach: w.zach || null, titans: w.titans || null, scene: w.scene, map: w.map, box: w.box, saleBoxes: w.saleBoxes, cauldron: w.cauldron, effects: w.effects, puddles: w.puddles, zombies: w.zombies, projectiles: w.projectiles, machines: w.machines, gumMachines: w.gumMachines, powerups: w.powerups, cheddars: w.cheddars, lore: w.lore, quest: w.quest, teammates: w.teammates });
     if (!this.cheddars.onFootstep && this.onCheddarStep) this.cheddars.onFootstep = this.onCheddarStep;
     this.fogBase = new THREE.Color(sim.mapData.fog ? sim.mapData.fog.color : cfg.graphics.fogColor);
     this.fogDensity = sim.mapData.fog ? sim.mapData.fog.density : cfg.graphics.fogDensity;
@@ -136,6 +138,7 @@ export class GameRenderer {
     this.map.sim = sim;
     this.map.resetPower();
     if (this.machines) this.machines.reset(sim);
+    if (this.gumMachines) this.gumMachines.reset(sim);
     for (const [id, v] of this.map.windowViews) v.win = sim.windowById(id);
     for (const v of this.map.windowViews.values()) for (const p of v.planks) p.anim = null;
     this.box.setSim(sim);
@@ -236,6 +239,7 @@ export class GameRenderer {
       this.viewmodel.onEvent(e, id);
       this.projectiles.onEvent(e);
       this.machines.onEvent(e, this.effects);
+      if (this.gumMachines) this.gumMachines.onEvent(e, this.effects);
       this.powerups.onEvent(e, this.effects);
       this.cheddars.onEvent(e);
       this.lore.onEvent(e, this.effects);
@@ -270,6 +274,15 @@ export class GameRenderer {
           if (!e.projectile && Math.random() < 0.5) this.effects.tracer(from, end);
           break;
         }
+        // GobbleGum, and a Mad Dog'd gun's bite
+        case 'aatProc':
+          if (e.aat === 'blastFurnace') this.effects.energyBurst(e.pos, this.cfg.aat.types.blastFurnace.color, e.radius || 3);
+          else if (e.aat === 'deadWire') this.effects.arc(e.points, this.cfg.aat.types.deadWire.color);
+          else if (e.aat === 'thunderWall') this.effects.windBlast(e.pos, { x: e.dir.x, y: 0, z: e.dir.z }, e.range || 8, this.cfg.aat.types.thunderWall.angle);
+          break;
+        case 'gumShock': this.effects.arc(e.points, '#ff7ad0'); break;
+        case 'gumBurst': this.effects.energyBurst({ x: e.pos.x, y: e.pos.y + 0.8, z: e.pos.z }, '#ff7a1a', e.radius || 4); break;
+        case 'gumTeleport': for (let i = 0; i < 6; i++) this.effects.puff({ x: e.pos.x + (Math.random() - 0.5), y: e.pos.y + 0.3 + Math.random() * 1.4, z: e.pos.z + (Math.random() - 0.5) }, { color: 0xff7ad0, size: 0.4, grow: 2, life: 0.8, alpha: 0.5 }); break;
         case 'explosion': {
           if (this.cfg.explosions[e.etype]?.energy) this.effects.energyBurst(e.pos, this.cfg.explosions[e.etype].energy, e.radius);
           else if (this.cfg.explosions[e.etype]?.small) this.effects.smallExplosion(e.pos, e.radius);
@@ -479,6 +492,7 @@ export class GameRenderer {
     this.map.update(sdt, this.camera.position, { round: sim.rounds.round, kills: 0 });
     this.zombies.update(sim, sdt, 1, time);
     this.machines.update(sdt);
+    if (this.gumMachines) this.gumMachines.update(sdt);
     this.quest.update(sdt, this.camera);
     this.effects.update(sdt);
     const scene = this.ending.update(dt, time);
@@ -544,8 +558,17 @@ export class GameRenderer {
 
     // title screen: slow drift
     if (mode === 'title') {
-      this.camera.position.set(Math.sin(time * 0.05) * 3, 1.7 + Math.sin(time * 0.3) * 0.03, 6);
-      this.camera.rotation.set(0.12 + Math.sin(time * 0.17) * 0.02, Math.sin(time * 0.07) * 0.35, 0);
+      const T = this.cfg.title.cam;
+      if (sim.mapData.id === this.cfg.title.map) {
+        // (the title's map: a slow circle round it, high up)
+        const a = time * T.speed;
+        this.camera.position.set(T.center[0] + Math.cos(a) * T.radius, T.center[1] + T.height + Math.sin(time * 0.13) * T.bob, T.center[2] + Math.sin(a) * T.radius);
+        this.camera.lookAt(T.look[0], T.look[1], T.look[2]);
+        if (Math.abs(this.camera.fov - T.fov) > 0.5 && this.camera.aspect) { this.camera.fov = T.fov; this.camera.updateProjectionMatrix(); }
+      } else {
+        this.camera.position.set(Math.sin(time * 0.05) * 3, 1.7 + Math.sin(time * 0.3) * 0.03, 6);
+        this.camera.rotation.set(0.12 + Math.sin(time * 0.17) * 0.02, Math.sin(time * 0.07) * 0.35, 0);
+      }
     }
 
     this.map.update(dt, this.camera.position, { round: sim.rounds.round, kills: p ? p.kills : 0 });
@@ -561,6 +584,7 @@ export class GameRenderer {
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);
     this.machines.update(dt);
+    if (this.gumMachines) this.gumMachines.update(dt);
     this.powerups.update(dt, sim, this.camera);
     this.cheddars.update(sim, this.zombies.prev, dt, alpha, time);
     this.lore.update(dt);
