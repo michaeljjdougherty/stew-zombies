@@ -17,7 +17,7 @@ import { PinAuth, pinOk, pinHash } from './auth.js';
 import { CONFIG } from '../config.js';
 
 const LS = 'stew-zombies-career-v1';
-export const STAT_KEYS = ['kills', 'revives', 'rounds', 'headshots', 'downs', 'games', 'bestRound'];
+export const STAT_KEYS = ['kills', 'revives', 'rounds', 'headshots', 'downs', 'games', 'bestRound', 'wallBuys'];
 const MAX_STATS = new Set(['bestRound']);   // kept as the highest, not added up
 
 export const cleanName = (s) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 16);

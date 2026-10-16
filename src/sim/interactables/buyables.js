@@ -12,6 +12,8 @@ function flatDist(p, pos) { return Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z);
 
 // Try to pay; tells the HUD if you can't.
 const pay = (sim, p, cost) => sim.pay(p, cost);
+// Wall buys on the scoreboard: wall guns, their ammo, wall grenades, doors and debris
+const wallBought = (p) => { p.wallBuys = (p.wallBuys || 0) + 1; };
 // (Secret Shopper: any wall gun sells you ammo for the gun in your hands)
 function secretShop(sim, p, wb) {
   if (!gumOn(p, 'secretShopper')) return null;
@@ -52,7 +54,7 @@ export class DoorInteractable {
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
-    if (pay(sim, p, this.cost(sim))) sim.openDoor(this.door.id, p);
+    if (pay(sim, p, this.cost(sim))) { wallBought(p); sim.openDoor(this.door.id, p); }
   }
 }
 
@@ -98,6 +100,7 @@ export class WallBuyInteractable {
     if (eq) {
       if (p[eq.have] >= eq.perPurchase) return;
       if (pay(sim, p, eq.cost)) {
+        wallBought(p);
         p[eq.have] = eq.perPurchase;
         p[eq.max] = Math.max(p[eq.max] || 0, eq.perPurchase);
         sim.emit('wallBuy', { playerId: p.id, weapon: this.wb.weapon, equipment: true, id: this.wb.id });
@@ -109,14 +112,15 @@ export class WallBuyInteractable {
     const shop = !s && secretShop(sim, p, this.wb);
     if (shop) {
       if (shop.s.clip >= shop.d.magSize && shop.s.reserve >= shop.d.reserve) return;
-      if (pay(sim, p, shop.cost)) { giveWeapon(sim, p, shop.s.id); sim.emit('wallBuy', { playerId: p.id, weapon: shop.s.id, ammo: true, id: this.wb.id, secret: true }); }
+      if (pay(sim, p, shop.cost)) { wallBought(p); giveWeapon(sim, p, shop.s.id); sim.emit('wallBuy', { playerId: p.id, weapon: shop.s.id, ammo: true, id: this.wb.id, secret: true }); }
       return;
     }
     if (s) {
       const sd = sim.cfg.weapons[s.id];
       if (s.clip >= sd.magSize && s.reserve >= sd.reserve) return;
-      if (pay(sim, p, this.ammoCost(sim, s))) { giveWeapon(sim, p, s.id); sim.emit('wallBuy', { playerId: p.id, weapon: s.id, ammo: true, id: this.wb.id }); }
+      if (pay(sim, p, this.ammoCost(sim, s))) { wallBought(p); giveWeapon(sim, p, s.id); sim.emit('wallBuy', { playerId: p.id, weapon: s.id, ammo: true, id: this.wb.id }); }
     } else if (pay(sim, p, def.cost)) {
+      wallBought(p);
       const id = gumUpgradeBuy(sim, p, this.wb.weapon, 'wall');   // (Wall Power: comes Mad Dog'd)
       giveWeapon(sim, p, id);
       sim.emit('wallBuy', { playerId: p.id, weapon: id, ammo: false, id: this.wb.id });
