@@ -76,6 +76,13 @@ export class CareerTracker {
       case 'playerDown':
         if (e.playerId === localId) { C.add('downs'); this.cheddarClean = false; }
         break;
+      // wall guns (and their ammo), wall grenades, doors and debris: all "Wall buys"
+      case 'wallBuy':
+        if (e.playerId === localId) C.add('wallBuys');
+        break;
+      case 'doorOpened':
+        if (e.playerId === localId) C.add('wallBuys');
+        break;
       case 'roundStart':
         if (!alive) break;
         C.max('bestRound', e.round);
