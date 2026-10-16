@@ -897,6 +897,81 @@
   body[data-input="xbox"] input[type=checkbox]:focus, body[data-input="ps"] input[type=checkbox]:focus { outline-offset: 2px; }
   body[data-input="xbox"] #game, body[data-input="ps"] #game { cursor: none; }
 
+  /* --- the other menus as charred pages, to match the title's blades ---
+     Pause, settings, map select, the GobbleGum pack and the end screens: each
+     menu's panel (.page) is a burnt sheet of the same old book; #burn (top of
+     <body>) tears and singes its edge. */
+  :root {
+    --page-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .07 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    --page-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+  }
+  .screen.book { background: radial-gradient(ellipse 70% 40% at 30% 105%, rgba(255,90,20,.2), transparent 70%),
+    linear-gradient(90deg, rgba(4,3,2,.9) 0%, rgba(4,3,2,.75) 40%, rgba(4,3,2,.3) 78%, rgba(4,3,2,.12) 100%); }
+  .page { --paper: #d9c59b; --paper-lo: #c2a673; --char: #160c05; --ink-d: #23160b; --ink-r: #7e140e; --ink-m: #4a3520;
+    position: relative; isolation: isolate; color-scheme: light; color: var(--ink-d); padding: clamp(24px, 3.6vh, 38px) clamp(24px, 3.4vw, 44px); }
+  .page::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; will-change: transform;
+    filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35)) drop-shadow(0 18px 24px rgba(0,0,0,.7));
+    background: radial-gradient(ellipse 70px 20px at 90% 6%, rgba(120,14,10,.3), transparent 70%), radial-gradient(circle at 86% 9%, rgba(110,12,8,.42) 0 3px, transparent 4px),
+      radial-gradient(circle at 82% 88%, transparent 0 44px, rgba(110,66,26,.2) 45px 49px, transparent 51px),
+      radial-gradient(ellipse 40% 30% at 28% 18%, rgba(255,244,214,.35), transparent 70%),
+      var(--page-grain), var(--page-mottle), linear-gradient(170deg, var(--paper), var(--paper-lo));
+    box-shadow: inset 0 0 0 2px var(--char), inset 0 0 14px 7px rgba(22,12,5,.92), inset 0 0 46px 20px rgba(80,42,14,.55), inset 0 0 110px rgba(110,62,22,.35); }
+  .page :is(h2, .ms-title) { color: var(--ink-d); text-shadow: 0 0 1px rgba(35,22,11,.8), 1px 1px 0 rgba(35,22,11,.15); position: relative; justify-self: start; align-self: flex-start; }
+  .page :is(h2, .ms-title)::after { content: ""; position: absolute; left: -4px; right: -10px; bottom: .02em; height: .16em; z-index: -1; background: var(--ink-r); opacity: .78;
+    clip-path: polygon(0 40%, 6% 10%, 30% 30%, 55% 0, 80% 25%, 100% 15%, 97% 70%, 70% 90%, 40% 70%, 15% 100%, 2% 80%); }
+  .page :is(.eyebrow, .note, .ms-coderow label, .ms-moderow > span) { font-family: "American Typewriter", "Courier New", Courier, monospace; color: var(--ink-m); }
+  .page .note b { color: var(--ink-d); }
+  .page .menu button { color: var(--ink-d); }
+  .page .menu button:hover, .page .menu button:focus-visible, body :is(.page, .blade) .menu button:focus { color: var(--ink-r); }
+  .page .menu button::after { background: var(--ink-r); height: 4px; clip-path: polygon(0 30%, 40% 0, 100% 40%, 96% 100%, 50% 70%, 3% 100%); }
+  .page .menu button:focus-visible { outline: 1px dashed rgba(35,22,11,.45); }
+  .page .set-head { color: var(--ink-r); border-color: rgba(35,22,11,.3); }
+  /* settings */
+  .page .row output, .page .cycle-row output { color: var(--ink-m); }
+  .page input[type=range], .page input[type=checkbox], .page input[type=radio] { accent-color: var(--ink-r); }
+  .page .cycle-row .cycle { border-color: rgba(35,22,11,.4); background: rgba(60,35,12,.08); }
+  .page .cycle-row .cycle:hover, .page .cycle-row .cycle:focus-visible { border-color: var(--ink-r); color: var(--ink-r); }
+  /* game over and victory */
+  .page .over-big { color: var(--ink-d); text-shadow: 0 0 1px rgba(35,22,11,.6); }
+  .page .over-big em { color: var(--ink-r); }
+  .page .stats dt { color: var(--ink-m); }
+  .page .over-erik { color: #8a3e0c; }
+  .page :is(.over-div, .gm-div) { color: #14586a; }
+  .page .gm-div small { color: var(--ink-m); }
+  /* the GobbleGum pack: the gums' tier colours darkened to ink so they read on paper */
+  .page :is(.gm-slot, .gm-gum) { color: var(--ink-d); background: rgba(60,35,12,.1); border-color: rgba(35,22,11,.3); }
+  .page :is(.gm-n, .gm-tier, .gm-detail b) { color: color-mix(in srgb, var(--c) 55%, #23160b); }
+  .page .gm-detail { background: rgba(60,35,12,.1); border-left-color: color-mix(in srgb, var(--c, #23160b) 60%, #23160b); }
+  .page .gm-detail p { color: var(--ink-d); }
+  .page .gm-detail small { color: var(--ink-m); }
+  /* map select: the side panel is the page; the star chart stays beside it */
+  .mapscreen.book { --msw: clamp(300px, 34vw, 390px); grid-template-columns: var(--msw) 1fr; background: #0c0b09; }
+  .mapscreen.book .page { padding: 28px 28px 20px max(20px, 3vw); background: none; border: 0; }
+  .mapscreen.book .page::before { content: none; }
+  .mapscreen.book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--msw); z-index: 1; pointer-events: none; will-change: transform;
+    filter: url(#burn) drop-shadow(0 0 2px rgba(255,120,30,.75)) drop-shadow(0 0 7px rgba(255,70,10,.35)) drop-shadow(8px 0 18px rgba(0,0,0,.7));
+    background: radial-gradient(ellipse 40% 30% at 28% 18%, rgba(255,244,214,.35), transparent 70%), var(--page-grain), var(--page-mottle), linear-gradient(170deg, #d9c59b, #c2a673);
+    box-shadow: inset 0 0 0 2px #160c05, inset 0 0 14px 7px rgba(22,12,5,.92), inset 0 0 46px 20px rgba(80,42,14,.55), inset 0 0 110px rgba(110,62,22,.35); }
+  .page .ms-item { border-color: rgba(35,22,11,.3); background: rgba(60,35,12,.08); }
+  .page .ms-item b, .page .ms-item[aria-current="true"] b { color: var(--ink-d); }
+  .page .ms-item span, .page .ms-card li, .page .ms-moderow label small { color: var(--ink-m); }
+  .page .ms-item.soon b { color: #8a7656; }
+  .page .ms-item[aria-current="true"], .page .ms-moderow label:has(input:checked) { border-color: var(--ink-r); background: rgba(126,20,14,.12); }
+  .page .ms-card { border-color: rgba(35,22,11,.35); background: rgba(60,35,12,.08); }
+  .page .ms-card .ms-tag { color: var(--ink-r); }
+  .page .ms-card h3 { color: var(--ink-d); }
+  .page .ms-card p, .page .ms-moderow, .page .ms-introrow { color: var(--ink-d); }
+  .page .ms-card.soon p { color: var(--ink-m); }
+  .page .ms-card li, .page .ms-moderow label { border-color: rgba(35,22,11,.3); }
+  .page .ms-coderow input { background: rgba(60,35,12,.1); border-color: rgba(35,22,11,.4); color: var(--ink-d); }
+  .page .ms-coderow small { color: var(--ink-r); }
+  .page .ms-actions button { color: #f1e2c4; background: radial-gradient(ellipse at 30% 30%, #a3221a, #5e0e09 70%, #3a0805); box-shadow: inset 0 0 0 2px rgba(241,226,196,.3); }
+  .page .ms-actions button:hover, .page .ms-actions button:focus-visible { background: radial-gradient(ellipse at 30% 30%, #c22c20, #7a130c 70%, #4a0a06); outline-color: rgba(35,22,11,.5); }
+  .page .ms-actions button[disabled] { background: rgba(60,35,12,.2); color: #8a7656; box-shadow: none; }
+  .page .ms-actions button.ms-sec { color: var(--ink-d); background: none; border-color: rgba(35,22,11,.4); box-shadow: none; }
+  .page .ms-actions button.ms-sec:hover, .page .ms-actions button.ms-sec:focus-visible { border-color: var(--ink-r); color: var(--ink-r); background: none; }
+  @media (max-width: 820px) { .mapscreen.book { grid-template-columns: 1fr; } .mapscreen.book::before { top: 46vh; width: auto; right: 0; } }
+
   /* --- the Call of the Crust trailer ------------------------------------------------ */
   @font-face { font-family: 'Anton'; src: url('assets/fonts/anton.woff2') format('woff2'); font-display: block; }
   #trailer-ui { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
@@ -929,6 +1004,8 @@
 </script>
 </head>
 <body>
+<!-- #burn: the ragged, singed edge of the menus' charred pages (the title's blades and .page) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="burn" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.045" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <!-- boot splash (src/ui/splash.js): up from the first moment, while the game loads -->
 <div id="splash" tabindex="0" role="button" aria-label="Tiger Fish Interactive. Click or press any key">
   <div class="sp-logo"><img src="assets/ui/tigerfish.png" alt="Tiger Fish Interactive" width="446" height="430" decoding="sync"></div>
@@ -1066,8 +1143,8 @@
   </div>
 </div>
 
-<section id="mapselect" class="screen mapscreen" hidden>
-  <div class="ms-side">
+<section id="mapselect" class="screen mapscreen book" hidden>
+  <div class="ms-side page">
     <span class="eyebrow">Choose a world</span>
     <h2 class="ms-title">Map select</h2>
     <div class="ms-list" id="ms-list"></div>
@@ -1111,7 +1188,6 @@
        Extras, Settings side by side, as the charred pages of an old book; the
        open one shows what's in it, the rest stand as page edges either side.
        Left/right (or the bumpers) to flip between. -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="burn" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.045" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
   <div class="t-embers" aria-hidden="true"><i style="--x:45%;--s:5px;--t:13.0s;--d:-10.9s;--w:-8px"></i><i style="--x:84%;--s:3px;--t:8.3s;--d:-7.2s;--w:21px"></i><i style="--x:78%;--s:2px;--t:10.1s;--d:-2.0s;--w:6px"></i><i style="--x:87%;--s:2px;--t:11.2s;--d:-5.5s;--w:-8px"></i><i style="--x:73%;--s:3px;--t:11.4s;--d:-11.6s;--w:-70px"></i><i style="--x:5%;--s:3px;--t:11.2s;--d:-10.9s;--w:-28px"></i><i style="--x:59%;--s:3px;--t:10.6s;--d:-9.0s;--w:-0px"></i><i style="--x:66%;--s:4px;--t:11.6s;--d:-5.7s;--w:8px"></i><i style="--x:91%;--s:2px;--t:12.0s;--d:-4.4s;--w:-43px"></i><i style="--x:30%;--s:2px;--t:10.9s;--d:-1.5s;--w:-63px"></i><i style="--x:30%;--s:2px;--t:13.7s;--d:-11.9s;--w:-80px"></i><i style="--x:22%;--s:2px;--t:10.3s;--d:-13.7s;--w:-16px"></i><i style="--x:9%;--s:3px;--t:12.4s;--d:-3.8s;--w:-66px"></i><i style="--x:34%;--s:4px;--t:12.3s;--d:-1.7s;--w:-41px"></i><i style="--x:12%;--s:2px;--t:10.3s;--d:-6.8s;--w:29px"></i><i style="--x:20%;--s:5px;--t:8.3s;--d:-10.2s;--w:-59px"></i><i style="--x:64%;--s:2px;--t:9.8s;--d:-13.9s;--w:-80px"></i><i style="--x:85%;--s:5px;--t:9.1s;--d:-12.4s;--w:-46px"></i></div>
   <header class="t-head">
     <div class="t-brand">
@@ -1182,8 +1258,8 @@
   <p class="t-hint" id="t-hint">← → to flip between blades</p>
 </section>
 
-<section id="pause" class="screen" hidden>
-  <div class="stack">
+<section id="pause" class="screen book" hidden>
+  <div class="stack page">
     <h2>Paused</h2>
     <p class="note" id="pause-online" hidden>You're online: the game keeps going while this menu is open.</p>
     <nav class="menu">
@@ -1220,8 +1296,8 @@
 </section>
 
 <!-- GobbleGum: build your pack of 5, see what you own, Dr. Monty's Factory (src/ui/careerUI.js GumsUI) -->
-<section id="gums" class="screen" hidden>
-  <div class="stack gums">
+<section id="gums" class="screen book" hidden>
+  <div class="stack page gums">
     <span class="eyebrow">GobbleGum</span>
     <div class="gm-head">
       <h2>Your pack</h2>
@@ -1271,8 +1347,8 @@
   </div>
 </section>
 
-<section id="settings" class="screen" hidden>
-  <div class="stack">
+<section id="settings" class="screen book" hidden>
+  <div class="stack page">
     <h2>Settings</h2>
     <div class="settings">
       <h3 class="set-head">Controls &amp; sound</h3>
@@ -1411,8 +1487,8 @@
   </div>
 </section>
 
-<section id="gameover" class="screen" hidden>
-  <div class="stack">
+<section id="gameover" class="screen book" hidden>
+  <div class="stack page">
     <span class="eyebrow">Game over</span>
     <p class="over-big"><span id="over-team">Stew</span> survived <em id="over-rounds">0</em> <span id="over-round-word">rounds</span></p>
     <dl class="stats">
@@ -1438,8 +1514,8 @@
   <div class="skip"></div>
 </div>
 
-<section id="victory" class="screen" hidden>
-  <div class="stack">
+<section id="victory" class="screen book" hidden>
+  <div class="stack page">
     <span class="eyebrow" id="win-eyebrow">The Final Whistle · complete</span>
     <p class="over-big" id="win-big">Erik is <em>gone</em>. The season isn't.</p>
     <dl class="stats">
