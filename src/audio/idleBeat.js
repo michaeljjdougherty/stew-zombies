@@ -1,7 +1,8 @@
 // =============================================================================
 // The little bass beat that plays while James is twerking (his idle act, after
-// standing still a few seconds: the sim's p.idle). Synthesized, a bar at a time,
-// quiet. Your own plays in your ears; a teammate's comes from where they are.
+// standing still a few seconds: the sim's p.idle) and for the Jimmy Shimmy emote.
+// Synthesized, a bar at a time, quiet. Your own plays in your ears; a
+// teammate's comes from where they are.
 // =============================================================================
 const BPM = 105, BEAT = 60 / BPM, BAR = BEAT * 4;
 
@@ -52,13 +53,13 @@ export class IdleBeats {
     this.on = new Map();   // player id -> { next: when their next bar starts, outs: the bars playing }
   }
 
-  // hasBeat(character) says whose idle act has a beat; on = we're in a game.
-  update(sim, localId, hasBeat, on) {
+  // wants(player): are they doing something with a beat right now; on = we're in a game.
+  update(sim, localId, wants, on) {
     const A = this.A;
     if (!A || !A.ready || !sim) return;
     const now = A.now();
     for (const p of sim.players) {
-      if (!(on && p.alive && p.idle && hasBeat(p.character))) { this.cut(p.id); continue; }
+      if (!(on && p.alive && wants(p))) { this.cut(p.id); continue; }
       let s = this.on.get(p.id);
       if (!s) this.on.set(p.id, s = { next: now + 0.05, outs: [] });
       if (s.next < now) s.next = now + 0.05;

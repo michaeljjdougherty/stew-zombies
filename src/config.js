@@ -105,6 +105,7 @@ export const CONFIG = {
     eyeHeight: 1.64,
     crouchEyeHeight: 1.12,
     idleAfter: 3,          // s standing completely still before your character's idle act (James dances, Kyle judges)
+    emote: { maxTime: 15, camDist: 2.6, camHeight: 0.25, camIn: 0.35 },   // an emote: the longest one lasts (s); the camera pulled back in front of you (m), and how long it takes (s)
     stepHeight: 0.48,        // max ledge you walk up without jumping
 
     walkSpeed: 4.1,
@@ -230,6 +231,7 @@ export const CONFIG = {
       tactical: ['KeyQ'],
       mine: ['KeyX'],
       gum: ['KeyH'],             // use your GobbleGum
+      emote: ['KeyB'],           // hold for the emote wheel
     },
   },
 

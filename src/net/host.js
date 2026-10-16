@@ -109,6 +109,7 @@ export class NetHost {
     p.throwing = st.th; p.melee.timer = st.mt; p.melee.lunge = st.ml;
     p.distanceWalked = st.dw;
     p.idle = !!st.idl;
+    p.emote = typeof st.em === 'string' && st.em.length <= 24 ? st.em : null; p.emoteYaw = +st.emy || 0;
     const w = p.loadout;
     w.adsAmount = st.ads; w.reloading = st.rl;
     // what's in their guns, unless the host changed their guns since they last heard

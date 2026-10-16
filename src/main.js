@@ -20,6 +20,8 @@ import { Input } from './input/input.js';
 import { AudioEngine } from './audio/audio.js';
 import { SoundDirector } from './audio/director.js';
 import { IdleBeats } from './audio/idleBeat.js';
+import { EMOTES, EMOTE_BY_ID } from './career/emotes.js';
+import { EmoteWheel } from './ui/emoteWheel.js';
 import { sample } from './audio/sfx.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
@@ -96,6 +98,9 @@ for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorde
 if (CONFIG.cheddar.lineAudio) audio.preload({ cheddarLine: [CONFIG.cheddar.lineAudio] }, '', '');
 const sound = new SoundDirector(audio, sim, CONFIG);
 const idleBeats = new IdleBeats(audio, CONFIG);   // (James's bass beat while he twerks)
+const emoteWheel = new EmoteWheel();
+// the emotes on your wheel: the free ones and the ones you've bought (Skin Shop)
+const ownedEmotes = () => EMOTES.filter((e) => e.free || (career.ownsEmote ? career.ownsEmote(e.id) : true));
 sound.localId = localId;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
@@ -1108,6 +1113,10 @@ function frame(now) {
   last = now;
   time += fdt;
   padFrame(fdt);
+  safely('emoteWheel', () => {
+    const pick = emoteWheel.update(input, ownedEmotes(), mode === 'play' && !!player && player.alive && !player.downed);
+    if (pick) input.pendingEmote = pick;
+  });
   if (mode === 'play') renderer.frameTime(fdt, cap > 0 ? Math.min(cap, 60) : 60);   // auto resolution
 
   // (online the game goes on while you're in the pause menu)
@@ -1150,7 +1159,7 @@ function frame(now) {
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
-  safely('idleBeat', () => idleBeats.update(sim, localId, (ch) => !!(CHARACTERS[ch] && CHARACTERS[ch].idleBeat), mode === 'play' || onlineLive));
+  safely('idleBeat', () => idleBeats.update(sim, localId, (q) => (q.emote ? !!(EMOTE_BY_ID[q.emote] && EMOTE_BY_ID[q.emote].beat) : !!(q.idle && CHARACTERS[q.character] && CHARACTERS[q.character].idleBeat)), mode === 'play' || onlineLive));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
   rangeUI.update(fdt, sim, player, renderer.camera);
   if (menus.current === 'extras') extras.update();

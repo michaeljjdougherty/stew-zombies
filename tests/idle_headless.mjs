@@ -12,6 +12,7 @@ import { LoopbackHub } from '../src/net/transport.js';
 import { OnlineSession, LAUNCH } from '../src/net/online.js';
 import { playerState } from '../src/net/state.js';
 import { CREW } from '../src/lore/crew.js';
+import { EMOTES, EMOTE_BY_ID } from '../src/career/emotes.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
@@ -57,6 +58,28 @@ check(AFTER > 2 && AFTER < 4, `idle after about 3 s (${AFTER})`);
   check(!g.me.idle, 'not while crouched or prone');
 }
 
+// emotes from the wheel
+{
+  const g = game('kyle');
+  g.step({ emote: 'jimmyShimmy' }, 1);
+  check(g.me.emote === 'jimmyShimmy' && g.me.emoteYaw === g.me.yaw, 'an emote starts (anyone can do the Jimmy Shimmy)');
+  g.step({ yaw: g.me.yaw + 1 }, 60);
+  check(g.me.emote === 'jimmyShimmy' && !g.me.idle, 'it keeps going while you look around (and no idle act on top)');
+  g.step({ moveX: 1 }, 1);
+  check(g.me.emote === null, 'moving ends it');
+  g.step({ emote: 'floss' }, 1); g.step({ fire: true, firePressed: true }, 1);
+  check(g.me.emote === null, 'firing ends it');
+  g.step({}, 10); g.step({ emote: 'floss' }, 1);
+  g.step({}, Math.round((CONFIG.player.emote.maxTime + 0.5) * 60));
+  check(g.me.emote === null, `it runs out after ${CONFIG.player.emote.maxTime} s`);
+  g.step({ emote: 'floss', moveY: 1 }, 1);
+  check(g.me.emote === null, 'not while you\'re moving');
+  g.step({ emote: 'x'.repeat(40) }, 1);
+  check(g.me.emote === null, 'a junk emote id is ignored');
+}
+check(EMOTES.length >= 5 && EMOTE_BY_ID.jimmyShimmy && EMOTE_BY_ID.jimmyShimmy.name === 'Jimmy Shimmy' && EMOTE_BY_ID.jimmyShimmy.beat, 'five or more emotes, the Jimmy Shimmy (with the beat) among them');
+check(EMOTES.some((e) => e.free), 'some emotes are free');
+
 // state that goes online: the flag, not the timer
 {
   const g = game('kyle');
@@ -100,6 +123,12 @@ check(AFTER > 2 && AFTER < 4, `idle after about 3 s (${AFTER})`);
   check(!C.a.sim.playerById('h').idle, 'the host is moving: not idle');
   step(30, { a: { fire: true, firePressed: true } });
   check(!hostSim.playerById('a').idle && !C.b.sim.playerById('a').idle, 'Ann fires: it stops for everyone');
+  step(1, { b: { emote: 'jimmyShimmy' } });
+  step(30);
+  check(hostSim.playerById('b').emote === 'jimmyShimmy' && C.a.sim.playerById('b').emote === 'jimmyShimmy', 'Bo emotes: the host and Ann see it');
+  check(Math.abs(C.a.sim.playerById('b').emoteYaw - C.b.sim.playerById('b').emoteYaw) < 1e-6, '...facing the way he started it');
+  step(20, { b: { moveY: 1 } });
+  check(!hostSim.playerById('b').emote && !C.a.sim.playerById('b').emote, 'Bo walks off: it ends for everyone');
 }
 
 // the crew list and the online lobby

@@ -31,7 +31,7 @@ import { INTRO_SHOTS, ENDING_SHOTS, restoreCage } from './crustFilms.js';
 import { Showcase } from './showcase.js';
 import { Lineup } from './lineup.js';
 import { applyQuality, AutoRes } from './quality.js';
-import { TeammateViews } from './teammates.js';
+import { TeammateViews, Teammate } from './teammates.js';
 
 export class GameRenderer {
   constructor(canvas, sim, cfg, settings) {
@@ -154,6 +154,7 @@ export class GameRenderer {
     this.lore.reset(sim);
     this.quest.setSim(sim);
     this.teammates.clear();
+    this.emoteW = 0;
     if (this.titans) this.titans.setSim(sim);
     if (this.forge) { this.forge.setSim(sim); this.zach.setSim(sim); }
   }
@@ -390,6 +391,38 @@ export class GameRenderer {
     this.camera.lookAt(head.clone().addScaledVector(fwd, 6));
   }
 
+  // Your own emote: the camera pulls back round in front of you to watch you
+  // do it (your character drawn like a teammate's), and comes back when it ends.
+  // The mouse swings the camera round you.
+  emoteCam(p, pos, look, dt, time, mode) {
+    const E = this.cfg.player.emote;
+    const on = !!(p && p.alive && p.emote && !p.downed && mode === 'play');
+    this.emoteW = Math.max(0, Math.min(1, (this.emoteW || 0) + (on ? dt : -dt * 1.6) / E.camIn));
+    const v = this.selfView;
+    if (this.emoteW <= 0) { if (v) { v.root.visible = false; v.tag.visible = false; } return; }
+    if (!v || v.character !== p.character || this.selfScene !== this.scene) {
+      if (v) v.dispose(this.selfScene);
+      this.selfView = new Teammate(this.scene, p, this.cfg);
+      this.selfScene = this.scene;
+    }
+    const me = this.selfView;
+    me.update(p, pos, p.emoteYaw ?? look.yaw, 0, dt, time, this.camera);
+    me.tag.visible = false;
+    // where it wants to be: in front of you, a little up, pulled in off walls
+    const h = me.k.def.height || 1;
+    const target = new THREE.Vector3(pos.x, pos.y + 1.05 * h, pos.z);
+    const dir = new THREE.Vector3(-Math.sin(look.yaw), 0.18, -Math.cos(look.yaw)).normalize();
+    let dist = E.camDist;
+    const hit = this.sim.raycastWorld(target, dir, dist + 0.3);
+    if (hit) dist = Math.max(0.6, hit.t - 0.3);
+    const want = target.clone().addScaledVector(dir, dist);
+    want.y += E.camHeight;
+    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(want, target, new THREE.Vector3(0, 1, 0)));
+    const e = this.emoteW * this.emoteW * (3 - 2 * this.emoteW);
+    this.camera.position.lerp(want, e);
+    this.camera.quaternion.slerp(q, e);
+  }
+
   // Light level near the player (0..1), so the viewmodel isn't glowing in the dark.
   envLevel(pos) {
     let lvl = 0.2;
@@ -608,6 +641,7 @@ export class GameRenderer {
       this.camera.rotation.x = look.pitch * (1 - e) + 0.2 * e;
     } else this.deathT = 0;
     if (!watch) { this.specCam = null; this.specLook = null; }   // (online you come back next round)
+    this.emoteCam(p, pos, look, dt, time, mode);
 
     // title screen: slow drift
     if (mode === 'title') {
@@ -672,7 +706,7 @@ export class GameRenderer {
       const lvl = this.envLevel(pos);
       this.viewmodel.envLevel = lvl;
       this.viewmodel.update(dt, p, def, { dx: look.dx, dy: look.dy }, bob, aim);
-      this.viewmodel.root.visible = p.alive && mode === 'play' && !this.viewmodel.scoped;
+      this.viewmodel.root.visible = p.alive && mode === 'play' && !this.viewmodel.scoped && !(this.emoteW > 0);
     } else this.viewmodel.root.visible = false;
 
     this.damage = Math.max(0, this.damage - dt * 1.6);

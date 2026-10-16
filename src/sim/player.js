@@ -31,6 +31,7 @@ export function emptyCommand() {
     weaponSlot: -1,           // -1 = no change
     weaponCycle: 0,
     away: false,              // in a menu or a cutscene (not standing there idle)
+    emote: null,              // an emote picked on the wheel (its id, src/career/emotes.js)
   };
 }
 
@@ -78,6 +79,7 @@ export function createPlayer(sim, id, name, spawn) {
     distanceWalked: 0,
     idleT: 0,                 // s standing completely still
     idle: false,              // still long enough for your character's idle act (James dances...)
+    emote: null,              // doing an emote: its id (and emoteT: how long, emoteYaw: facing which way)
   };
 }
 
@@ -326,6 +328,7 @@ function diveLand(sim, p) {
 // Standing completely still (no moving, shooting, aiming, reloading, buttons,
 // not crouched, not in a menu or a cutscene) for a few seconds: p.idle, and
 // whoever you play does their idle act. Looking around doesn't count as moving.
+// Emotes from the wheel (cmd.emote) end the same way.
 function updateIdle(sim, p, cmd, dt) {
   const w = p.loadout;
   const busy = cmd.away || cmd.moveX || cmd.moveY || cmd.fire || cmd.ads || cmd.grenade || cmd.tactical || cmd.minePressed
@@ -333,7 +336,11 @@ function updateIdle(sim, p, cmd, dt) {
     || cmd.weaponSlot >= 0 || cmd.weaponCycle
     || p.downed || p.launch || p.ride || p.dive || p.prone || p.crouching || !p.grounded || p.throwing || p.drinking
     || (w && w.reloading) || (p.melee && p.melee.timer > 0) || Math.hypot(p.vel.x, p.vel.z) > 0.05;
-  p.idleT = busy ? 0 : (p.idleT || 0) + dt;
+  // an emote: anything that would stop an idle stops it (and it runs out)
+  const E = sim.cfg.player.emote;
+  if (cmd.emote && typeof cmd.emote === 'string' && cmd.emote.length <= 24 && !busy) { p.emote = cmd.emote; p.emoteT = 0; p.emoteYaw = p.yaw; }
+  else if (p.emote) { p.emoteT = (p.emoteT || 0) + dt; if (busy || p.emoteT > E.maxTime) p.emote = null; }
+  p.idleT = busy || p.emote ? 0 : (p.idleT || 0) + dt;
   p.idle = p.idleT >= sim.cfg.player.idleAfter;
 }
 
