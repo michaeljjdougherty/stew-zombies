@@ -89,34 +89,52 @@ export function updatePlayer(sim, p, cmd, dt) {
   if (!sim.replica) updateDrinking(sim, p, dt);   // (online: the host owns perks)
   const downed = !!p.downed;
 
-  // --- dolphin dive: crouch while sprinting
-  const crouchPressed = !!cmd.crouch && !p.crouchHeld;
-  p.crouchHeld = !!cmd.crouch;
-  if (p.diveCooldown > 0) p.diveCooldown -= dt;
-  if (downed || p.ride) { p.dive = null; p.prone = null; }
-  else if (crouchPressed && p.sprinting && p.grounded && !p.dive && !p.prone && !(p.diveCooldown > 0)) startDive(sim, p);
-
-  // --- prone: down on purpose (hold crouch), or where a dive leaves you; up with jump, crouch or sprint
+  // --- crouch, as in Black Ops: tap it to crouch (tap again to stand), hold it
+  // to go prone, and press it on the run for a dolphin dive. cmd.crouch is the
+  // button as it's held; which stance you're in lives here.
   const PR = cfg.prone;
+  const crouchPressed = !!cmd.crouch && !p.crouchHeld;
+  const crouchReleased = !cmd.crouch && !!p.crouchHeld;
+  p.crouchHeld = !!cmd.crouch;
+  const sprintPressed = !!cmd.sprint && !p.sprintHeld;
+  p.sprintHeld = !!cmd.sprint;
+  if (p.diveCooldown > 0) p.diveCooldown -= dt;
+  // (a moment after running off a ledge you can still dive: a dive at the lip counts)
+  if (p.grounded) p.airT = 0; else p.airT = (p.airT || 0) + dt;
+  if (downed || p.ride) { p.dive = null; p.prone = null; p.crouched = false; p.crouchPress = null; }
+  else if (crouchPressed && p.sprinting && p.airT <= cfg.dive.lipTime && !p.dive && !p.prone && !(p.diveCooldown > 0)) {
+    startDive(sim, p); p.crouchPress = null;
+  } else if (crouchPressed && !p.dive) {
+    if (p.prone) p.crouchPress = p.prone.up == null && p.prone.t >= PR.minTime ? { from: 'prone', t: 0 } : null;
+    else { p.crouchPress = { from: p.crouched ? 'crouch' : 'stand', t: 0 }; p.crouched = true; }   // (down at once: holding it takes you on to prone)
+  }
+  const cp = p.crouchPress;
+  if (cp && cmd.crouch) {
+    cp.t += dt;
+    if (cp.t >= PR.holdTime) {
+      p.crouchPress = null;
+      if (cp.from === 'prone') getUp(sim, p, false);              // held from prone: all the way up
+      else if (p.grounded && !p.dive) { p.prone = { t: 0 }; p.crouched = false; sim.emit('playerProne', { playerId: p.id }); }
+    }
+  } else if (cp && crouchReleased) {
+    p.crouchPress = null;
+    if (cp.from === 'crouch') p.crouched = false;                 // tapped while crouched: stand
+    else if (cp.from === 'prone') getUp(sim, p, true);            // tapped while prone: up to a crouch
+  }
+  // jump or sprint gets you up off your belly (all the way); from a crouch they stand you
+  if (p.prone && p.prone.up == null && p.prone.t >= PR.minTime && (cmd.jumpPressed || (cmd.sprint && cmd.moveY > 0.3))) { getUp(sim, p, false); p.crouchPress = null; }
+  let stoodUp = false;
+  if (!p.prone && p.crouched && !(p.crouchPress && cmd.crouch) && (cmd.jumpPressed || (sprintPressed && cmd.moveY > 0.3))) { p.crouched = false; stoodUp = !!cmd.jumpPressed; }
   if (p.prone) {
     p.prone.t += dt;
     if (p.prone.up != null) {
       p.prone.up -= dt;
-      if (p.prone.up <= 0) { p.prone = null; p.crouchHold = -1; sim.emit('playerStand', { playerId: p.id }); }
-    } else if (p.prone.t >= PR.minTime && (cmd.jumpPressed || crouchPressed || (cmd.sprint && cmd.moveY > 0.3))) {
-      p.prone.up = PR.getUpTime;
-      sim.emit('playerGetUp', { playerId: p.id });
-    }
-  } else if (!downed && !p.dive && p.grounded && cmd.crouch && !p.sprinting && !p.ride) {
-    if ((p.crouchHold ?? 0) >= 0) {
-      p.crouchHold = (p.crouchHold || 0) + dt;
-      if (p.crouchHold >= PR.holdTime) { p.prone = { t: 0 }; p.crouchHold = -1; sim.emit('playerProne', { playerId: p.id }); }
+      if (p.prone.up <= 0) { p.crouched = !!p.prone.toCrouch; p.prone = null; sim.emit('playerStand', { playerId: p.id }); }
     }
   }
-  if (!cmd.crouch) p.crouchHold = 0;
 
   // --- stance
-  p.crouching = downed || !!p.dive || !!p.prone || (cmd.crouch && p.grounded);
+  p.crouching = downed || !!p.dive || !!p.prone || (!!p.crouched && p.grounded);
   p.height = downed ? 0.8 : p.dive ? cfg.dive.height : p.prone ? PR.height : p.crouching ? cfg.crouchHeight : cfg.height;
   const sprintMax = cfg.sprintDuration * perkMult(sim, p, 'sprintMult');
 
@@ -179,7 +197,7 @@ export function updatePlayer(sim, p, cmd, dt) {
       const k = sp > 1e-4 ? Math.max(0, sp - cfg.dive.slideDecel * dt) / sp : 0;
       p.vel.x *= k; p.vel.z *= k;
       // the skid over, you're flat on the ground: get up yourself
-      if (p.dive.t >= cfg.dive.proneTime) { p.dive = null; p.diveCooldown = cfg.dive.cooldown; p.prone = { t: 0, dove: true }; p.crouchHold = -1; }
+      if (p.dive.t >= cfg.dive.proneTime) { p.dive = null; p.diveCooldown = cfg.dive.cooldown; p.prone = { t: 0, dove: true }; p.crouched = false; }
     }
   } else if (p.melee.lunge > 0 && p.melee.lungeDir) {
     p.vel.x = p.melee.lungeDir.x * sim.cfg.melee.lungeSpeed;
@@ -195,7 +213,7 @@ export function updatePlayer(sim, p, cmd, dt) {
 
   // --- jump
   if (p.jumpCooldown > 0) p.jumpCooldown -= dt;
-  if (cmd.jumpPressed && p.grounded && p.jumpCooldown <= 0 && !p.crouching && !downed) {
+  if (cmd.jumpPressed && !stoodUp && p.grounded && p.jumpCooldown <= 0 && !p.crouching && !downed) {
     p.vel.y = Math.sqrt(2 * cfg.gravity * cfg.jumpHeight * ((p.boosts && p.boosts.jump) || 1));
     p.grounded = false;
     p.jumpCooldown = cfg.jumpCooldown;
@@ -265,6 +283,13 @@ export function proneLevel(p, cfg) {
   if (!p.prone) return 0;
   if (p.prone.lvl != null) return p.prone.lvl;   // (a teammate online: as their browser said)
   return p.prone.up != null ? Math.max(0, p.prone.up / cfg.player.prone.getUpTime) : 1;
+}
+
+// Up off your belly (it takes getUpTime): to a crouch, or all the way.
+function getUp(sim, p, toCrouch) {
+  p.prone.up = sim.cfg.player.prone.getUpTime;
+  p.prone.toCrouch = toCrouch;
+  sim.emit('playerGetUp', { playerId: p.id });
 }
 
 // Dolphin dive: thrown flat out forward and a little up.

@@ -57,21 +57,63 @@ const sprintDive = (g) => { g.step({ moveY: 1, sprint: true }, 30); g.step({ mov
   check(g.me.health === g.me.maxHealth, 'a dive on the flat doesn\'t hurt');
 }
 
-// --- prone on purpose: hold crouch; crouch again or sprint to get up
+// --- crouch as in Black Ops: tap to crouch, tap again to stand, hold to go prone
 {
   const g = game();
-  g.step({ crouch: true }, 10);
-  check(g.me.crouching && !g.me.prone, 'tap crouch: just a crouch');
+  const tap = () => { g.step({ crouch: true }, 4); g.step({}, 2); };
+  tap();
+  check(g.me.crouching && !g.me.prone, 'tap crouch: you crouch');
+  g.step({}, 120);
+  check(g.me.crouching && !g.me.prone, '...and stay crouched after letting go (no prone)');
+  tap();
+  check(!g.me.crouching && g.me.height === g.sim.cfg.player.height, 'tap it again: you stand');
+  g.step({ crouch: true }, 1);
+  check(g.me.crouching && !g.me.prone, 'press it: down to a crouch at once');
   g.step({ crouch: true }, 30);
   check(!!g.me.prone && g.log.some((e) => e.type === 'playerProne'), 'hold it: down prone');
-  g.step({}, 10); g.step({ crouch: true }, 1);
-  check(g.me.prone && g.me.prone.up != null, 'crouch again: getting up');
-  g.step({ crouch: true }, 30);
-  check(!g.me.prone && g.me.crouching, '...to a crouch while you hold it (not straight back down)');
-  g.step({}, 5); g.step({ crouch: true }, 30);
-  check(!!g.me.prone, 'let go and hold again: prone again');
+  g.step({ crouch: true }, 60); g.step({}, 30);
+  check(!!g.me.prone, 'keep holding, let go: still prone');
+  tap();
+  check(g.me.prone && g.me.prone.up != null, 'tap crouch while prone: getting up');
+  g.step({}, 40);
+  check(!g.me.prone && g.me.crouching, '...to a crouch');
+  g.step({ crouch: true }, 40); g.step({}, 2);
+  check(!!g.me.prone, 'hold it from a crouch: prone');
+  g.step({ crouch: true }, 40); g.step({}, 40);
+  check(!g.me.prone && !g.me.crouching, 'hold it while prone: all the way up');
+  tap();
+  g.step({ jump: true, jumpPressed: true }, 1);
+  check(!g.me.crouching && g.me.grounded, 'jump while crouched: you stand (no hop)');
+  tap();
+  g.step({ moveY: 1, sprint: true }, 30);
+  check(!g.me.crouching && g.me.sprinting, 'sprint while crouched: up and running');
+  g.step({ moveY: 1, sprint: true, crouch: true }, 1);
+  check(!!g.me.dive, 'crouch on the run: a dive');
+  g.step({ crouch: true }, 120); g.step({}, 30);
+  check(!!g.me.prone && !g.me.dive, '...ending prone');
+  g.step({}, 5); tap(); g.step({}, 40);
+  check(!g.me.prone && g.me.crouching, 'tap crouch: up to a crouch');
+  tap(); g.step({}, 5);
+  g.step({ crouch: true }, 30); g.step({}, 2);
+  check(!!g.me.prone, 'hold from standing: prone');
   g.step({ moveY: 1, sprint: true }, 40);
   check(!g.me.prone, 'sprint: up and off');
+}
+
+// --- a dive right as you run off a ledge still counts
+{
+  const g = game();
+  g.step({ moveY: 1, sprint: true }, 30);
+  g.me.grounded = false; g.me.pos.y = 0.3;
+  g.step({ moveY: 1, sprint: true }, 6);
+  g.step({ moveY: 1, sprint: true, crouch: true }, 1);
+  check(!!g.me.dive, 'crouch just after running off the lip: a dive');
+  const g2 = game();
+  g2.step({ moveY: 1, sprint: true }, 30);
+  g2.me.pos.y = 8; g2.me.grounded = false;
+  g2.step({ moveY: 1, sprint: true }, 30);
+  g2.step({ moveY: 1, sprint: true, crouch: true }, 1);
+  check(!g2.me.dive, '...but not once you\'re well into the fall');
 }
 
 // --- no dive without sprinting
