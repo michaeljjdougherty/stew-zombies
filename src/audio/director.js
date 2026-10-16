@@ -10,6 +10,7 @@ import { baseWeaponId } from '../config.js';
 import { CREW } from '../lore/crew.js';
 import { voiceKey } from '../lore/voice.js';
 import { SCHNITZ_LINES, FAREWELL_SECS } from '../lore/erik.js';
+import { PartHum } from './partHum.js';
 
 const R = (a, b) => a + Math.random() * (b - a);
 
@@ -264,6 +265,7 @@ export class SoundDirector {
     this.jbKey = null;
     for (const n of this.ambNodes || []) { try { n.stop(); n.disconnect(); } catch (e) { /* already stopped */ } }
     this.ambNodes = [];
+    if (this.partHum) this.partHum.stop();
     this.buzzers = null;
     this.rumble = null;
     this.ambientStarted = false;
@@ -745,6 +747,12 @@ export class SoundDirector {
         this.blorpT = 0.18 + Math.random() * 0.5;
         A.play(S.stewBubble, {}, { pos: { x: cd.x + (Math.random() - 0.5), y: cd.rim, z: cd.z + (Math.random() - 0.5) }, ref: 1.5, rolloff: 1.4, reverb: 0.4, gain: 0.6, bus: 'ambient' });
       }
+    }
+
+    // Call of the Crust: the War Hammer's parts hum, louder as you close in on one
+    if (sim.crustEgg && this.ambientStarted && localPlayer) {
+      this.partHum = this.partHum || new PartHum(A, this.cfg);
+      this.partHum.update(sim, localPlayer.pos);
     }
 
     // stuck crossbow bolts beep faster and faster
