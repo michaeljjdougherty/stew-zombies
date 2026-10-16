@@ -3,7 +3,7 @@
 // single hard spotlight, in a dark school hallway haze. Drag to spin him.
 // =============================================================================
 import * as THREE from 'three';
-import { buildCharacter, idleCharacter, CHARACTERS } from './characters.js';
+import { buildCharacter, idleCharacter, idleAct, CHARACTERS } from './characters.js';
 import { applySkin } from '../career/skins.js';
 import { applySkinFx } from './skinFx.js';
 
@@ -99,6 +99,9 @@ export class Showcase {
 
   hide() { this.active = false; }
 
+  // the Skin Shop's emotes: he does it on the platform (null: just standing)
+  setEmote(act) { this.act = act || null; }
+
   // controller: right stick turns him (a = stick x * dt)
   turn(a) { this.spin += a * 3.2; this.spinVel = 0; this.heldT = 0.5; }
 
@@ -110,7 +113,7 @@ export class Showcase {
       this.spin += this.spinVel * dt;
     }
     this.turntable.rotation.y = this.spin;
-    if (this.char) idleCharacter(this.char, this.time);
+    if (this.char) { idleCharacter(this.char, this.time); if (this.act) idleAct(this.char, this.act, this.time, 1); }
     if (this.char && this.char.fxUpdate) this.char.fxUpdate(dt);
     this.dust.rotation.y += dt * 0.02;
     // frame him to the right of the menu on wide screens, centred on narrow ones

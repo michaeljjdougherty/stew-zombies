@@ -5,9 +5,15 @@
 // above the skins; buying a skin unlocks it for every character, and "Wear"
 // puts it on the one you're looking at. The Bucks and skins are your career's
 // (src/career/career.js), the skins themselves src/career/skins.js.
+// Under the skins, the emotes (src/career/emotes.js): pick one and he does it
+// on the platform; buy it once and the whole crew can do it from the wheel.
 // =============================================================================
 import { CONFIG } from '../config.js';
 import { SKINS, SKIN_BY_ID, rarityOf } from '../career/skins.js';
+import { EMOTES, EMOTE_BY_ID } from '../career/emotes.js';
+
+const EM = 'emote:';   // (emote tiles' ids in the grid)
+const emoteOf = (sel) => (typeof sel === 'string' && sel.startsWith(EM) ? EMOTE_BY_ID[sel.slice(EM.length)] : null);
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -74,6 +80,15 @@ export class ShopUI {
       const tag = s.id === worn ? 'Wearing' : own ? (s.unlock ? 'Unlocked' : 'Owned') : s.unlock ? this.unlockTag(s) : `${R.name} · ${R.price}`;
       tile(s.id, s.name, tag, R.color, own ? (s.id === worn ? 'owned wearing' : 'owned') : 'for-sale');
     }
+    // the emotes
+    const head = document.createElement('p');
+    head.className = 'eyebrow'; head.textContent = 'Emotes';
+    head.style.cssText = 'grid-column: 1 / -1; margin: 8px 0 0;';
+    grid.appendChild(head);
+    for (const e of EMOTES) {
+      const R = CONFIG.shop.rarities[e.rarity] || CONFIG.shop.rarities.common, own = C.ownsEmote(e.id);
+      tile(EM + e.id, e.name, e.free ? 'Free' : own ? 'Owned' : `${R.name} · ${R.price}`, R.color, own ? 'owned' : 'for-sale');
+    }
     this.info();
   }
 
@@ -86,6 +101,7 @@ export class ShopUI {
   }
 
   info() {
+    if (emoteOf(this.sel)) { this.emoteInfo(emoteOf(this.sel)); return; }
     const C = this.career, S = CONFIG.shop, worn = C.wornSkin(this.char) || '';
     const skin = SKIN_BY_ID[this.sel], name = this.charName();
     $('sh-name').textContent = skin ? skin.name : 'Own clothes';
@@ -112,6 +128,24 @@ export class ShopUI {
     this.h.preview(this.char, this.sel || null);
   }
 
+  // Looking at an emote: he does it (in whatever he's wearing)
+  emoteInfo(e) {
+    const C = this.career, S = CONFIG.shop, act = $('btn-sh-act');
+    $('sh-name').textContent = e.name;
+    $('sh-name').classList.toggle('long', e.name.length > 24);
+    let blurb = e.blurb + ' Hold [B] in a game for the emote wheel.';
+    if (C.ownsEmote(e.id)) { act.textContent = e.free ? 'Free for everyone' : 'Owned: on your emote wheel'; act.setAttribute('aria-disabled', 'true'); }
+    else if (!C.signedIn) { act.textContent = 'Sign in to buy emotes'; act.setAttribute('aria-disabled', 'true'); }
+    else {
+      const price = C.emotePrice(e.id), short = price - C.bucks;
+      act.textContent = `Buy for ${price} ${S.currency}`;
+      act.setAttribute('aria-disabled', String(short > 0));
+      if (short > 0) blurb += ` You need ${short} more.`;
+    }
+    $('sh-blurb').textContent = blurb;
+    this.h.preview(this.char, this.career.wornSkin(this.char), e.act);
+  }
+
   // (a controller's bumpers: the next or last character)
   cycleChar(dir) {
     const list = this.h.characters(), i = list.findIndex((c) => c.id === this.char);
@@ -127,8 +161,15 @@ export class ShopUI {
   charName() { const c = this.h.characters().find((x) => x.id === this.char); return c ? c.name : 'them'; }
 
   act() {
-    const C = this.career, skin = SKIN_BY_ID[this.sel];
+    const C = this.career, skin = SKIN_BY_ID[this.sel], emote = emoteOf(this.sel);
     if (!C.signedIn) { this.h.sound('deny'); return; }
+    if (emote) {
+      if (C.ownsEmote(emote.id)) return;
+      const r = C.buyEmote(emote.id);
+      this.h.sound(r.ok ? 'buy' : 'deny');
+      if (r.ok) { this.render(); $('btn-sh-act').focus({ preventScroll: true }); }
+      return;
+    }
     if (skin && !C.ownsSkin(skin.id, this.char)) {
       const r = C.buySkin(skin.id);
       if (!r.ok) { this.h.sound('deny'); return; }

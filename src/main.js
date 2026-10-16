@@ -249,7 +249,7 @@ const menus = new Menus(settings, {
   bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
-  preview: (id, shirt) => renderer.getShowcase().show(id, shirt, career.wornSkin(id)),
+  preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.show(id, shirt, career.wornSkin(id)); },
   questDone: () => !!progress.questDone,
   crustDone: () => !!progress.crustDone,
   done: (s) => {
@@ -1030,8 +1030,8 @@ function refreshGumBlade() {
 const shopUI = new ShopUI(career, {
   characters: () => Object.entries(CHARACTERS).filter(([id, c]) => c.playable || (c.unlock === 'quest' && progress.questDone) || (c.rescue === 'crust' && progress.crustDone)).map(([id, c]) => ({ id, name: c.name })),
   current: () => playableCharacter(),
-  preview: (id, skin) => renderer.getShowcase().show(id, settings.shirt, skin),
-  back: () => { renderer.showcase.hide(); setLook(playableCharacter()); mode = 'title'; menus.show('title'); },
+  preview: (id, skin, act = null) => { const S = renderer.getShowcase(); S.show(id, settings.shirt, skin); S.setEmote(act); },
+  back: () => { renderer.showcase.hide(); renderer.showcase.setEmote(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
 document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open(); });

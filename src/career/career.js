@@ -15,6 +15,7 @@
 import { ACHIEVEMENTS, ACH_BY_ID } from './achievements.js';
 import { PinAuth, pinOk, pinHash } from './auth.js';
 import { SKINS, SKIN_BY_ID, priceOf } from './skins.js';
+import { EMOTE_BY_ID } from './emotes.js';
 import { CONFIG } from '../config.js';
 
 const LS = 'stew-zombies-career-v1';
@@ -34,7 +35,7 @@ const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], 
 // The Skin Shop: your Stew Bucks, the skins you own, which one each character
 // wears, and the achievements that have paid out already
 const SHOP = () => CONFIG.shop;
-const blankShop = () => ({ bucks: 0, owned: {}, wear: {}, paid: {}, kills: {} });   // (kills: by character, for the skins kills unlock)
+const blankShop = () => ({ bucks: 0, owned: {}, wear: {}, paid: {}, kills: {}, emotes: {} });   // (kills: by character, for the skins kills unlock; emotes: the ones bought)
 
 export class Career {
   constructor(cfg = {}, { fetchFn = typeof fetch === 'function' ? fetch.bind(globalThis) : null, storage = (() => { try { return globalThis.localStorage; } catch { return null; } })() } = {}) {
@@ -191,6 +192,7 @@ export class Career {
           for (const [ch, id] of Object.entries(ps.wear || {})) { if (id) c.shop.wear[ch] = id; else delete c.shop.wear[ch]; }
           for (const id of Object.keys(ps.paid || {})) c.shop.paid[id] = true;
           for (const [ch, n] of Object.entries(ps.kills || {})) c.shop.kills[ch] = (c.shop.kills[ch] || 0) + n;
+          for (const id of Object.keys(ps.emotes || {})) if (EMOTE_BY_ID[id]) c.shop.emotes[id] = true;
           c.name = name;
           this.profile = c;
         } else {
@@ -203,7 +205,7 @@ export class Career {
           const G = this.profile.gums;
           pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started, gifts: { ...G.gifts } };
           const S = this.profile.shop;
-          pend.shop = { bucks: S.bucks, owned: { ...S.owned }, wear: { ...S.wear }, paid: { ...S.paid }, kills: { ...S.kills } };
+          pend.shop = { bucks: S.bucks, owned: { ...S.owned }, wear: { ...S.wear }, paid: { ...S.paid }, kills: { ...S.kills }, emotes: { ...S.emotes } };
           pend.fresh = true;
         }
         if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
@@ -291,6 +293,7 @@ export class Career {
     for (const [ch, id] of Object.entries(ps.wear || {})) body['shop/wear/' + ch] = id || null;
     for (const id of Object.keys(ps.paid || {})) body['shop/paid/' + id] = true;
     for (const [ch, n] of Object.entries(ps.kills || {})) if (n) body['shop/kills/' + ch] = { '.sv': { increment: n } };
+    for (const id of Object.keys(ps.emotes || {})) body['shop/emotes/' + id] = true;
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
@@ -315,6 +318,7 @@ export class Career {
       for (const id of Object.keys(ss.owned || {})) if (ns.owned) delete ns.owned[id];
       for (const [ch, id] of Object.entries(ss.wear || {})) if (ns.wear && ns.wear[ch] === id) delete ns.wear[ch];
       for (const id of Object.keys(ss.paid || {})) if (ns.paid) delete ns.paid[id];
+      for (const id of Object.keys(ss.emotes || {})) if (ns.emotes) delete ns.emotes[id];
       for (const [ch, n] of Object.entries(ss.kills || {})) { if (!ns.kills) break; ns.kills[ch] = (ns.kills[ch] || 0) - n; if (!ns.kills[ch]) delete ns.kills[ch]; }
       delete now.fresh;
       this.status = 'online';
@@ -499,6 +503,29 @@ export class Career {
     return { ok: true };
   }
 
+  // Emotes (src/career/emotes.js): the free ones are everyone's, guests too;
+  // the rest are bought once and every character can do them.
+  ownsEmote(id) {
+    const e = EMOTE_BY_ID[id];
+    if (!e) return false;
+    return !!e.free || !!(this.profile && this.profile.shop.emotes && this.profile.shop.emotes[id]);
+  }
+  emotePrice(id) { const e = EMOTE_BY_ID[id]; return e && !e.free ? (SHOP().rarities[e.rarity] || SHOP().rarities.common).price : 0; }
+  // Buy an emote: { ok } or { ok: false, code: 'guest' | 'owned' | 'broke' | 'unknown' }
+  buyEmote(id) {
+    if (!EMOTE_BY_ID[id]) return { ok: false, code: 'unknown' };
+    if (!this.profile) return { ok: false, code: 'guest' };
+    if (this.ownsEmote(id)) return { ok: false, code: 'owned' };
+    const price = this.emotePrice(id);
+    if (this.profile.shop.bucks < price) return { ok: false, code: 'broke' };
+    this.addBucks(-price);
+    (this.profile.shop.emotes || (this.profile.shop.emotes = {}))[id] = true;
+    const ps = this.shopPending();
+    ps.emotes = { ...(ps.emotes || {}), [id]: true };
+    this.saveLocal(); this.changed(); this.flush();
+    return { ok: true };
+  }
+
   // Put a skin you own on a character (null: back to their own clothes)
   wearSkin(charId, id) {
     if (!this.profile || (id && !this.ownsSkin(id, charId))) return false;
@@ -534,6 +561,7 @@ function normalize(p, name) {
     for (const [ch, id] of Object.entries(p.shop.wear || {})) if (id && SKIN_BY_ID[id]) out.shop.wear[ch] = id;
     for (const [id, v] of Object.entries(p.shop.paid || {})) if (v) out.shop.paid[id] = true;
     for (const [ch, n] of Object.entries(p.shop.kills || {})) if (Number(n) > 0) out.shop.kills[ch] = Math.floor(Number(n));
+    for (const [id, v] of Object.entries(p.shop.emotes || {})) if (v && EMOTE_BY_ID[id]) out.shop.emotes[id] = true;
   }
   if (p && p.gums && typeof p.gums === 'object') {
     out.gums.divinium = Math.max(0, Math.floor(Number(p.gums.divinium) || 0));

@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { buildHead, torsoSections, loft, neckGeometry, limb, shoeGeometry, SKIN, rng } from './human.js';
 import { buildHand } from './hands.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-export { idleCharacter, idleKearns, setGesture } from './characterAnim.js';
+export { idleCharacter, idleKearns, setGesture, idleAct } from './characterAnim.js';
 
 export const SHIRT_COLORS = {
   navy: { name: 'Navy', hex: '#26324c' },
