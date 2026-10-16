@@ -51,6 +51,7 @@ import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, g
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
 import { StoreBlade } from './ui/storeBlade.js';
+import { LoadoutPicker } from './ui/loadoutPicker.js';
 import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -294,7 +295,7 @@ const onlineUI = new OnlineUI(settings, {
   },
   pick: (ch) => { if (online) online.pick(ch, career.wornSkin(ch)); },
   // your skin in the lobby: the ones you have that fit who you're playing (it's what you wear on them from now on)
-  skins: (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))],
+  skins: (ch) => ownedSkins(ch),
   setSkin: (ch, id) => { if (career.wearSkin(ch, id || null) && online) online.setSkin(id || null); },
   setMap: (id) => { if (online) online.setMap(id); },
   setIntro: (on) => { if (online) online.setIntro(on); },
@@ -550,6 +551,7 @@ const mapSelect = new MapSelect({
 function openMapSelect() {
   menus.show('mapselect');
   mapSelect.open();
+  loadout.render();
 }
 
 // The intro: Erik getting cut, the bargain, tip-off. Then the game starts
@@ -1042,6 +1044,17 @@ const shopUI = new ShopUI(career, {
 const openShop = (tab, pick = null) => { mode = 'shop'; menus.show('shop'); shopUI.open(tab, pick); };
 document.getElementById('btn-shop').addEventListener('click', () => openShop('skins'));
 document.getElementById('btn-shop-emotes').addEventListener('click', () => openShop('emotes'));
+// "Playing as" on the map screen: who you are and what they're wearing (the same
+// choices as Characters and the Stew Store)
+const ownedSkins = (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))];
+const loadout = new LoadoutPicker({
+  characters: shopUI.h.characters,
+  current: () => playableCharacter(),
+  pickChar: (id) => { settings.character = id; saveSettings(settings); setLook(playableCharacter()); hud.localName = CHARACTERS[playableCharacter()].name; },
+  skins: ownedSkins,
+  worn: (ch) => career.wornSkin(ch) || '',
+  pickSkin: (ch, id) => { career.wearSkin(ch, id || null); setLook(playableCharacter()); },
+});
 // (the Stew Store blade: your Bucks, and Featured today)
 const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
 function refreshStoreBlade() { storeBlade.refresh(); }
