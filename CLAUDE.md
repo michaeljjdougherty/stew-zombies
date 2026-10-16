@@ -16,4 +16,5 @@ layout.
   merges it; never push to `master` yourself.
 - Run the headless tests before every push: `node tests/<name>_headless.mjs`,
   always including `tests/syntax_headless.mjs`.
-- Only one thread publishes the artifact, and only after Michael says which.
+- Only the MASTER LAUNCHER thread publishes the artifact. Other threads never
+  publish; their work reaches the game when Michael merges their pull request.
