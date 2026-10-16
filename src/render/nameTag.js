@@ -59,6 +59,7 @@ export class NameTag {
 
   // head: where the tag sits (world); chest: a second point to look for.
   // always: show it through walls anyway (a downed teammate you need to find).
+  // sim: the world to check against (none: always shown).
   place(head, chest, camera, sim, dt, { always = false, maxOpacity = 0.95 } = {}) {
     const s = this.sprite;
     s.position.set(head.x, head.y, head.z);
@@ -67,7 +68,7 @@ export class NameTag {
     this.check -= dt;
     if (this.check <= 0) {
       this.check = 0.1;
-      this.canSee = always || (sim && (clear(sim, cam, head) || clear(sim, cam, chest)));
+      this.canSee = always || !sim || clear(sim, cam, head) || clear(sim, cam, chest);
     }
     this.seen += ((this.canSee ? 1 : 0) - this.seen) * Math.min(1, dt * 12);
     const sc = Math.max(0.45, Math.min(2.8, dist * 0.055));
