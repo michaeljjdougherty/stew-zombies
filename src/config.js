@@ -947,7 +947,7 @@ export const CONFIG = {
   ],
 
   // ---------------------------------------------------------------------------
-  // GobbleGum (src/sim/gums.js, the menu: src/ui/gumsUI.js). As in Black Ops 3:
+  // GobbleGum (src/sim/gums.js, the menu: src/ui/careerUI.js GumsUI). As in Black Ops 3:
   // you take a pack of 5 into a game; a GobbleGum machine gives you one of them
   // at random (500 the first time in a round, then 1000, then 2000: 3 a round).
   // Classics never run out. Megas are used up as they come out of the machine,
@@ -970,7 +970,7 @@ export const CONFIG = {
     // a machine stands `offset` m beside a perk machine (`half` its half-width), `perMap` at most;
     // it goes dark after a few uses (`awayTime` s till it's back)
     machine: { range: 1.7, uses: [3, 5], awayTime: 25, offset: 1.5, half: 0.4, perMap: 6 },
-    // the machine (src/render/gumView.js): globe and gumball radius (m), how many
+    // the machine (src/render/machinesView.js GumView): globe and gumball radius (m), how many
     // balls in it, its paint and its light
     look: { globe: 0.3, ball: 0.035, balls: 70, body: '#c8246e', light: '#ff7ad0', lightI: 6 },
     defaultPack: ['alwaysDoneSwiftly', 'stockOption', 'swordFlay', 'inPlainSight', 'coagulant'],
