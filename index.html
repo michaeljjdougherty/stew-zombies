@@ -379,6 +379,26 @@
   #cs-swatches button[aria-checked="true"] { box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 0 0 3px var(--brass); }
   #cs-swatches button:focus-visible { outline: 1px dashed var(--muted); outline-offset: 4px; }
   .cs-hint { font-size: 12px; }
+  /* the Skin Shop (src/ui/shopUI.js): the character screen's layout, a grid of skins */
+  .shopscreen .stack { max-width: 460px; gap: 10px; max-height: 100%; overflow-y: auto; scrollbar-width: thin; }
+  .sh-bucks { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .sh-bucks b { font-family: var(--display); font-weight: 400; font-size: 28px; letter-spacing: 1px; color: #e8b13a; }
+  .sh-coin { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe08a, #c8901e 70%); color: #5a3a08; font-weight: 900; font-size: 14px; box-shadow: 0 0 0 1px #7a5410; }
+  .sh-chars { gap: 6px; }
+  .sh-chars .cs-card { min-width: 0; padding: 4px 9px; }
+  .sh-chars .cs-card b { font-size: 15px; }
+  .sh-chars .cs-card span { font-size: 9px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+  .shopscreen h2 { font-size: clamp(30px, 4vw, 44px); }
+  .shopscreen h2.long { font-size: clamp(20px, 2.4vw, 28px); }
+  .sh-skin { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 1px; padding: 6px 9px; min-width: 0; border: 1px solid var(--line); border-left: 4px solid var(--rc); background: rgba(255,255,255,.03); }
+  .sh-skin b { font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; letter-spacing: 1px; text-transform: uppercase; }
+  .sh-skin small { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .sh-skin.for-sale small { color: var(--rc); }
+  .sh-skin.wearing small { color: #e8b13a; }
+  .sh-skin[aria-selected="true"] { border-color: var(--brass); border-left-color: var(--rc); background: rgba(217,180,90,.1); }
+  .sh-skin:focus-visible { outline: 1px dashed var(--muted); outline-offset: 3px; }
+  #btn-sh-act[aria-disabled="true"] { opacity: .45; }
 
 
   /* ---------------- Character lineup ---------------- */
@@ -1223,6 +1243,7 @@
           <button id="btn-range" type="button">Firing Range</button>
           <button id="btn-explore" type="button">Explore</button>
           <button id="btn-chars" type="button">Characters</button>
+          <button id="btn-shop" type="button">Skin Shop</button>
         </nav>
       </div>
     </section>
@@ -1472,6 +1493,21 @@
   </div>
 </section>
 
+<section id="shop" class="screen charscreen shopscreen" hidden>
+  <div class="stack panel-ui">
+    <span class="eyebrow">Skin Shop</span>
+    <h2 id="sh-name">Own clothes</h2>
+    <p class="sh-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b> Stew Bucks</p>
+    <div class="cs-list sh-chars" id="sh-chars" role="tablist" aria-label="Try it on"></div>
+    <div class="sh-grid" id="sh-grid" role="listbox" aria-label="Skins"></div>
+    <p class="note" id="sh-blurb"></p>
+    <nav class="menu">
+      <button id="btn-sh-act" type="button">Wear</button>
+      <button id="btn-sh-back" type="button">Back</button>
+    </nav>
+    <p class="note cs-hint" id="sh-earn"></p>
+  </div>
+</section>
 
 <section id="lineup" class="screen lineupscreen" hidden>
   <div id="lu-tags" aria-hidden="true"></div>

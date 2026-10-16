@@ -3,7 +3,9 @@
 // single hard spotlight, in a dark school hallway haze. Drag to spin him.
 // =============================================================================
 import * as THREE from 'three';
-import { buildCharacter, idleCharacter } from './characters.js';
+import { buildCharacter, idleCharacter, CHARACTERS } from './characters.js';
+import { applySkin } from '../career/skins.js';
+import { applySkinFx } from './skinFx.js';
 
 export class Showcase {
   constructor(renderer) {
@@ -80,11 +82,14 @@ export class Showcase {
     window.addEventListener('pointerup', () => { this.dragging = false; });
   }
 
-  show(id = 'kearns', shirt = 'sage') {
-    const key = id + ':' + shirt;
+  // skin: one from the Skin Shop (src/career/skins.js), or null for their own clothes
+  show(id = 'kearns', shirt = 'sage', skin = null) {
+    const key = id + ':' + shirt + ':' + (skin || '');
     if (this.key !== key) {
       if (this.char) this.turntable.remove(this.char.root);
-      this.char = buildCharacter(id, { shirt });
+      const def = skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, skin) : null;
+      this.char = buildCharacter(def || id, { shirt });
+      if (def && def.skinFx) applySkinFx(this.char, def.skinFx);   // (the special skins' finish)
       this.char.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       this.turntable.add(this.char.root);
       this.key = key;
@@ -106,6 +111,7 @@ export class Showcase {
     }
     this.turntable.rotation.y = this.spin;
     if (this.char) idleCharacter(this.char, this.time);
+    if (this.char && this.char.fxUpdate) this.char.fxUpdate(dt);
     this.dust.rotation.y += dt * 0.02;
     // frame him to the right of the menu on wide screens, centred on narrow ones
     const cam = this.camera;

@@ -14,6 +14,7 @@
 // =============================================================================
 import { ACHIEVEMENTS, ACH_BY_ID } from './achievements.js';
 import { PinAuth, pinOk, pinHash } from './auth.js';
+import { SKINS, SKIN_BY_ID, priceOf } from './skins.js';
 import { CONFIG } from '../config.js';
 
 const LS = 'stew-zombies-career-v1';
@@ -25,11 +26,15 @@ export const cleanName = (s) => String(s || '').replace(/\s+/g, ' ').trim().slic
 export const nameKey = (s) => cleanName(s).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
 
 const blankStats = () => Object.fromEntries(STAT_KEYS.map((k) => [k, 0]));
-const blankPending = () => ({ inc: {}, max: {}, ach: {}, gums: {} });
+const blankPending = () => ({ inc: {}, max: {}, ach: {}, gums: {}, shop: {} });
 // GobbleGum: Liquid Divinium, the Megas you own, and the pack of 5 you take into a game
 const GG = () => CONFIG.gobblegum;
 const isMegaId = (id) => { const d = GG().gums[id]; return !!d && d.tier !== 'classic' && d.tier !== 'whimsical'; };
 const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], started: false, gifts: {} });
+// The Skin Shop: your Stew Bucks, the skins you own, which one each character
+// wears, and the achievements that have paid out already
+const SHOP = () => CONFIG.shop;
+const blankShop = () => ({ bucks: 0, owned: {}, wear: {}, paid: {}, kills: {} });   // (kills: by character, for the skins kills unlock)
 
 export class Career {
   constructor(cfg = {}, { fetchFn = typeof fetch === 'function' ? fetch.bind(globalThis) : null, storage = (() => { try { return globalThis.localStorage; } catch { return null; } })() } = {}) {
@@ -45,6 +50,9 @@ export class Career {
     this.onUnlock = null;       // (achievement) => toast
     this.onChange = null;       // () => refresh the title chip / career screen
     this.onGift = null;         // ({ divinium, megas, each }) => the welcome gift's pop-up
+    this.playingAs = null;      // the character you're playing as (main.js sets it each game), for per-character kills
+    this.onSkinUnlock = null;   // (skin, charId) => a skin kills unlocked
+    this.onBucks = null;        // (n, why) => Stew Bucks came in ('achievement' or 'backpay'; play's are quiet)
     this.flushing = false;
   }
 
@@ -67,6 +75,7 @@ export class Career {
   pending() {
     const p = this.db.pending[this.key] || (this.db.pending[this.key] = blankPending());
     if (!p.gums) p.gums = {};
+    if (!p.shop) p.shop = {};
     return p;
   }
 
@@ -157,7 +166,7 @@ export class Career {
     this.db.last = name;
     this.saveLocal();
     this.changed();
-    if (offline) { this.status = 'offline'; this.changed(); return { ok: true, offline: true }; }
+    if (offline) { this.status = 'offline'; this.payAchievements(); this.changed(); return { ok: true, offline: true }; }
     if (this.url) {
       try {
         const cloud = await this.request('GET', key);
@@ -175,6 +184,13 @@ export class Career {
           if (pg.pack) c.gums.pack = [...pg.pack];
           if (pg.started) c.gums.started = true;
           for (const id of Object.keys(pg.gifts || {})) c.gums.gifts[id] = true;
+          // (the Skin Shop: the same)
+          const ps = pend.shop || {};
+          c.shop.bucks = Math.max(0, c.shop.bucks + (ps.bucks || 0));
+          for (const id of Object.keys(ps.owned || {})) if (SKIN_BY_ID[id]) c.shop.owned[id] = true;
+          for (const [ch, id] of Object.entries(ps.wear || {})) { if (id) c.shop.wear[ch] = id; else delete c.shop.wear[ch]; }
+          for (const id of Object.keys(ps.paid || {})) c.shop.paid[id] = true;
+          for (const [ch, n] of Object.entries(ps.kills || {})) c.shop.kills[ch] = (c.shop.kills[ch] || 0) + n;
           c.name = name;
           this.profile = c;
         } else {
@@ -186,12 +202,15 @@ export class Career {
           pend.ach = { ...this.profile.achievements };
           const G = this.profile.gums;
           pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started, gifts: { ...G.gifts } };
+          const S = this.profile.shop;
+          pend.shop = { bucks: S.bucks, owned: { ...S.owned }, wear: { ...S.wear }, paid: { ...S.paid }, kills: { ...S.kills } };
           pend.fresh = true;
         }
         if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
         this.status = 'online';
         this.giveStarter();
         this.giveGift();
+        this.payAchievements();
         this.saveLocal();
         this.changed();
         await this.flush();
@@ -199,7 +218,7 @@ export class Career {
         this.status = 'offline';
         this.changed();
       }
-    } else { this.giveStarter(); this.giveGift(); }
+    } else { this.giveStarter(); this.giveGift(); this.payAchievements(); }
     return { ok: true };
   }
 
@@ -213,7 +232,9 @@ export class Career {
   // --- counting ---------------------------------------------------------------
   add(stat, n = 1) {
     if (!this.profile || !n) return;
-    this.profile.stats[stat] = (this.profile.stats[stat] || 0) + n;
+    const was = this.profile.stats[stat] || 0;
+    this.profile.stats[stat] = was + n;
+    this.earn(stat, was, was + n);
     const p = this.pending();
     p.inc[stat] = (p.inc[stat] || 0) + n;
     this.checkStats();
@@ -237,6 +258,7 @@ export class Career {
     this.pending().ach[id] = t;
     this.saveLocal();
     if (this.onUnlock) this.onUnlock(a);
+    this.payAchievements('achievement');
     this.changed();
     this.flush();
     return true;
@@ -263,12 +285,18 @@ export class Career {
     if (pg.pack) body['gums/pack'] = pg.pack;
     if (pg.started) body['gums/started'] = true;
     for (const id of Object.keys(pg.gifts || {})) body['gums/gifts/' + id] = true;
+    const ps = p.shop || {};
+    if (ps.bucks) body['shop/bucks'] = { '.sv': { increment: ps.bucks } };
+    for (const id of Object.keys(ps.owned || {})) body['shop/owned/' + id] = true;
+    for (const [ch, id] of Object.entries(ps.wear || {})) body['shop/wear/' + ch] = id || null;
+    for (const id of Object.keys(ps.paid || {})) body['shop/paid/' + id] = true;
+    for (const [ch, n] of Object.entries(ps.kills || {})) if (n) body['shop/kills/' + ch] = { '.sv': { increment: n } };
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
     if (this.auth) body.uid = this.auth.session.uid;   // (the rules: only this account can change this career)
     // what's being sent now comes off the pile only once it's gone through
-    const sent = JSON.parse(JSON.stringify({ inc: p.inc, max: p.max, ach: p.ach, gums: pg }));
+    const sent = JSON.parse(JSON.stringify({ inc: p.inc, max: p.max, ach: p.ach, gums: pg, shop: ps }));
     this.flushing = true;
     try {
       await this.request('PATCH', key, body);
@@ -282,6 +310,12 @@ export class Career {
       if (sg.pack && JSON.stringify(ng.pack) === JSON.stringify(sg.pack)) delete ng.pack;
       if (sg.started) delete ng.started;
       for (const id of Object.keys(sg.gifts || {})) if (ng.gifts) delete ng.gifts[id];
+      const ns = now.shop || (now.shop = {}), ss = sent.shop || {};
+      if (ss.bucks) { ns.bucks = (ns.bucks || 0) - ss.bucks; if (!ns.bucks) delete ns.bucks; }
+      for (const id of Object.keys(ss.owned || {})) if (ns.owned) delete ns.owned[id];
+      for (const [ch, id] of Object.entries(ss.wear || {})) if (ns.wear && ns.wear[ch] === id) delete ns.wear[ch];
+      for (const id of Object.keys(ss.paid || {})) if (ns.paid) delete ns.paid[id];
+      for (const [ch, n] of Object.entries(ss.kills || {})) { if (!ns.kills) break; ns.kills[ch] = (ns.kills[ch] || 0) - n; if (!ns.kills[ch]) delete ns.kills[ch]; }
       delete now.fresh;
       this.status = 'online';
       this.saveLocal();
@@ -389,6 +423,93 @@ export class Career {
     return got;
   }
 
+  // --- the Skin Shop ---------------------------------------------------------------
+  // Your Stew Bucks and skins. Not signed in: none (a guest can look, not buy).
+  get shop() { return this.profile ? this.profile.shop : (this.guestShop || (this.guestShop = blankShop())); }
+  get bucks() { return this.shop.bucks; }
+  // charId: who'd wear it (a skin that kills unlock is unlocked per character)
+  ownsSkin(id, charId = null) {
+    const s = SKIN_BY_ID[id];
+    if (!this.profile || !s) return false;
+    if (!s.unlock) return !!this.profile.shop.owned[id];
+    if (s.unlock.kind === 'free') return true;
+    if (s.unlock.kind === 'kills') return SHOP().opalAccounts.includes(this.key) || (!!charId && this.charKills(charId) >= s.unlock.need);
+    return false;
+  }
+  // Kills while playing as a character (counted from when the shop arrived)
+  charKills(charId) { return (this.profile && this.profile.shop.kills[charId]) || 0; }
+  // The skin a character wears (null: their own clothes)
+  wornSkin(charId) { const id = this.profile && this.profile.shop.wear[charId]; return id && this.ownsSkin(id, charId) ? id : null; }
+  shopPending() { return this.pending().shop; }
+
+  addBucks(n, why = null) {
+    if (!this.profile || !n) return;
+    const S = this.profile.shop;
+    S.bucks = Math.max(0, S.bucks + n);
+    const ps = this.shopPending();
+    ps.bucks = (ps.bucks || 0) + n;
+    this.dirty = true;
+    if (n > 0 && why && this.onBucks) try { this.onBucks(n, why); } catch (e) { console.warn('career', e); }
+  }
+
+  // Playing pays: every round you survive, and every few kills.
+  earn(stat, before, after) {
+    const E = SHOP();
+    if (stat === 'kills' && this.playingAs) {
+      const K = this.profile.shop.kills, ch = this.playingAs, ps = this.shopPending();
+      K[ch] = (K[ch] || 0) + (after - before);
+      ps.kills = { ...(ps.kills || {}), [ch]: ((ps.kills || {})[ch] || 0) + (after - before) };
+      for (const s of SKINS) if (s.unlock && s.unlock.kind === 'kills' && K[ch] >= s.unlock.need && K[ch] - (after - before) < s.unlock.need && this.onSkinUnlock) {
+        try { this.onSkinUnlock(s, ch); } catch (e) { console.warn('career', e); }
+      }
+    }
+    if (stat === 'rounds') this.addBucks((after - before) * E.perRound);
+    else if (stat === 'kills' && E.killsPerBuck > 0) this.addBucks(Math.floor(after / E.killsPerBuck) - Math.floor(before / E.killsPerBuck));
+  }
+
+  // Every achievement you have pays out once (its G x perGamerscore): the
+  // moment you get it, and ones from before the shop the first time you sign in.
+  payAchievements(why = 'backpay') {
+    if (!this.profile) return 0;
+    const S = this.profile.shop, ps = this.shopPending();
+    let n = 0;
+    for (const id of Object.keys(this.profile.achievements)) {
+      if (S.paid[id] || !ACH_BY_ID[id]) continue;
+      S.paid[id] = true;
+      ps.paid = { ...(ps.paid || {}), [id]: true };
+      n += ACH_BY_ID[id].g * SHOP().perGamerscore;
+    }
+    if (n) { this.addBucks(n, why); this.saveLocal(); this.changed(); }
+    return n;
+  }
+
+  // Buy a skin: { ok } or { ok: false, code: 'guest' | 'owned' | 'broke' | 'unknown' }
+  buySkin(id) {
+    if (!SKIN_BY_ID[id]) return { ok: false, code: 'unknown' };
+    if (!this.profile) return { ok: false, code: 'guest' };
+    if (SKIN_BY_ID[id].unlock) return { ok: false, code: 'unlock' };
+    if (this.ownsSkin(id)) return { ok: false, code: 'owned' };
+    const price = priceOf(id);
+    if (this.profile.shop.bucks < price) return { ok: false, code: 'broke' };
+    this.addBucks(-price);
+    this.profile.shop.owned[id] = true;
+    const ps = this.shopPending();
+    ps.owned = { ...(ps.owned || {}), [id]: true };
+    this.saveLocal(); this.changed(); this.flush();
+    return { ok: true };
+  }
+
+  // Put a skin you own on a character (null: back to their own clothes)
+  wearSkin(charId, id) {
+    if (!this.profile || (id && !this.ownsSkin(id, charId))) return false;
+    const W = this.profile.shop.wear;
+    if (id) W[charId] = id; else delete W[charId];
+    const ps = this.shopPending();
+    ps.wear = { ...(ps.wear || {}), [charId]: id || '' };
+    this.saveLocal(); this.changed(); this.flush();
+    return true;
+  }
+
   changed() { if (this.onChange) try { this.onChange(); } catch (e) { console.warn('career', e); } }
 }
 
@@ -406,7 +527,14 @@ export function cleanPack(pack, megas = {}, guest = false) {
 }
 
 function normalize(p, name) {
-  const out = { name: (p && p.name) || name, stats: blankStats(), achievements: {}, gums: blankGums() };
+  const out = { name: (p && p.name) || name, stats: blankStats(), achievements: {}, gums: blankGums(), shop: blankShop() };
+  if (p && p.shop && typeof p.shop === 'object') {
+    out.shop.bucks = Math.max(0, Math.floor(Number(p.shop.bucks) || 0));
+    for (const [id, v] of Object.entries(p.shop.owned || {})) if (v && SKIN_BY_ID[id]) out.shop.owned[id] = true;
+    for (const [ch, id] of Object.entries(p.shop.wear || {})) if (id && SKIN_BY_ID[id]) out.shop.wear[ch] = id;
+    for (const [id, v] of Object.entries(p.shop.paid || {})) if (v) out.shop.paid[id] = true;
+    for (const [ch, n] of Object.entries(p.shop.kills || {})) if (Number(n) > 0) out.shop.kills[ch] = Math.floor(Number(n));
+  }
   if (p && p.gums && typeof p.gums === 'object') {
     out.gums.divinium = Math.max(0, Math.floor(Number(p.gums.divinium) || 0));
     for (const [id, n] of Object.entries(p.gums.megas || {})) if (isMegaId(id) && Number(n) > 0) out.gums.megas[id] = Math.floor(Number(n));
