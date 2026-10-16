@@ -50,6 +50,7 @@ import { CareerTracker } from './career/tracker.js';
 import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
+import { StoreBlade } from './ui/storeBlade.js';
 import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -1038,10 +1039,12 @@ const shopUI = new ShopUI(career, {
   back: () => { const S = renderer.showcase; S.hide(); S.setEmote(null); S.setStyle(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); refreshStoreBlade(); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
-document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('skins'); });
-document.getElementById('btn-shop-emotes').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open('emotes'); });
-// (the Stew Store blade shows your Bucks)
-function refreshStoreBlade() { document.getElementById('b-bucks').textContent = career.bucks.toLocaleString(); }
+const openShop = (tab, pick = null) => { mode = 'shop'; menus.show('shop'); shopUI.open(tab, pick); };
+document.getElementById('btn-shop').addEventListener('click', () => openShop('skins'));
+document.getElementById('btn-shop-emotes').addEventListener('click', () => openShop('emotes'));
+// (the Stew Store blade: your Bucks, and Featured today)
+const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
+function refreshStoreBlade() { storeBlade.refresh(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
@@ -1191,6 +1194,8 @@ function frame(now) {
   const alpha = mode === 'play' || mode === 'dying' || mode === 'panel' || onlineLive ? acc / DT : 1;
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
+  // (the Stew Store blade's pictures are drawn by the store's platform, one a frame, before the title's own frame)
+  if (mode === 'title' && menus.blade === 'store' && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' || mode === 'shop' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));

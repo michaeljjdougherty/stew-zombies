@@ -1423,6 +1423,7 @@ export const CONFIG = {
     // earning (signed in, real zombies games only):
     perRound: 10,            // each round you survive
     killsPerBuck: 5,         // 1 buck for every this many kills
+    featured: 4,             // items in "Featured today" on the Stew Store blade (a new set each day)
     perGamerscore: 4,        // an achievement pays its G times this (a 25G one: 100), new ones included;
                              // achievements you already had are paid the first time you sign in
     rarities: {

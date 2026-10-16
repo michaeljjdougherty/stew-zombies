@@ -845,6 +845,14 @@
   .blade.open .blade-tab::before { filter: url(#burn) drop-shadow(0 0 3px var(--glow)) drop-shadow(0 0 14px color-mix(in srgb, var(--glow) 70%, transparent)) drop-shadow(0 22px 22px rgba(0,0,0,.6)); }
   .b-bucks { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: #4a3520; font: 13px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; }
   .b-bucks b { font: 400 26px var(--display); color: #8a5a08; letter-spacing: 1px; }
+  /* the Stew Store blade: the way in on the left, Featured today on the right (src/ui/storeBlade.js) */
+  .blade.open .blade-body.b-store { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.35fr); gap: clamp(16px, 2.6vw, 36px); align-items: start; }
+  .b-featured-wrap { min-width: 0; }
+  .b-featured-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 6px 0 10px; border-bottom: 1px solid rgba(35,22,11,.3); padding-bottom: 6px; }
+  .b-featured-head span { font: 400 clamp(20px, 2vw, 26px) var(--display); letter-spacing: 2px; text-transform: uppercase; color: var(--ink-r); }
+  .b-featured-head small { font: 12px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; color: #5a4630; }
+  .b-featured { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 420px; }
+  @media (max-width: 900px) { .blade.open .blade-body.b-store { grid-template-columns: 1fr; } .b-featured { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: none; } }
   .blade:first-child .blade-tab { margin-left: 0; }
   .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 25px; letter-spacing: 4px; text-transform: uppercase; color: var(--ink-d); opacity: .85; text-shadow: 0 0 1px rgba(35,22,11,.7); }
   .blade-tab:hover, .blade-tab:focus-visible { filter: brightness(1.12); outline: none; }
@@ -1315,14 +1323,20 @@
     </section>
     <section class="blade" data-blade="store">
       <button class="blade-tab" type="button" data-blade-tab="store"><span>Stew Store</span></button>
-      <div class="blade-body">
-        <h2 class="b-title">Stew Store</h2>
-        <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks.</p>
-        <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
-        <nav class="menu b-menu">
-          <button id="btn-shop" type="button">Skins</button>
-          <button id="btn-shop-emotes" type="button">Emotes</button>
-        </nav>
+      <div class="blade-body b-store">
+        <div class="b-store-main">
+          <h2 class="b-title">Stew Store</h2>
+          <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks.</p>
+          <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
+          <nav class="menu b-menu">
+            <button id="btn-shop" type="button">Skins</button>
+            <button id="btn-shop-emotes" type="button">Emotes</button>
+          </nav>
+        </div>
+        <section class="b-featured-wrap" aria-label="Featured today">
+          <div class="b-featured-head"><span>Featured today</span><small id="b-featured-when"></small></div>
+          <div class="b-featured" id="b-featured"></div>
+        </section>
       </div>
     </section>
     <section class="blade" data-blade="extras">

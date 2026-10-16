@@ -140,3 +140,16 @@ await K.signIn('Killer'); K.playingAs = 'pit'; K.add('kills', 40); await settle(
 check(db.killer.shop.kills.pit === 40, 'kills as each character go up to the database');
 const op = applySkin(kearns, 'kearns', 'opal');
 check(op.skinFx === 'opal' && op.armSkin && applySkin(kearns, 'rocco', 'sexyFucci').skinFx === 'bikini', 'the special skins carry their finish');
+
+// --- the Stew Store blade's Featured today ---
+const { featuredItems, dayNumber, untilTomorrow } = await import('../src/ui/storeBlade.js');
+const crew = ['kearns', 'ryan', 'rocco', 'pit', 'james', 'kyle'].map((id) => ({ id, name: id }));
+const today = featuredItems(dayNumber(new Date(2026, 9, 16, 12)), crew, null);
+check(today.length === S.featured && today.filter((x) => x.kind === 'emote').length === 1, `Featured today: ${S.featured} items, one an emote`);
+check(today.filter((x) => x.kind === 'skin').every((x) => SKIN_BY_ID[x.id] && !SKIN_BY_ID[x.id].unlock && !SKIN_BY_ID[x.id].vault && (!SKIN_BY_ID[x.id].only || SKIN_BY_ID[x.id].only === x.char)), 'only skins that are for sale, on someone who can wear them');
+check(new Set(today.filter((x) => x.kind === 'skin').map((x) => x.char)).size === S.featured - 1, 'each on a different character');
+check(JSON.stringify(featuredItems(dayNumber(new Date(2026, 9, 16, 1)), crew, null)) === JSON.stringify(today), 'the same all day');
+const days = new Set(); for (let d = 0; d < 7; d++) days.add(JSON.stringify(featuredItems(dayNumber(new Date(2026, 9, 16 + d, 12)), crew, null)));
+check(days.size >= 6, `a new set most days (${days.size} different in a week)`);
+check(featuredItems(1, [{ id: 'kearns', name: 'Kearns' }], null).every((x) => x.char === 'kearns'), 'with only Kearns unlocked: all for Kearns');
+check(untilTomorrow(new Date(2026, 9, 16, 22, 30)) === '1h 30m', 'new items in 1h 30m (at 10:30 pm)');

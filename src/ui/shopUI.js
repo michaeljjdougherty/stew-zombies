@@ -34,19 +34,21 @@ export class ShopUI {
     for (const b of document.querySelectorAll('.st-tabs button')) b.addEventListener('click', () => this.setTab(b.dataset.tab));
   }
 
-  open(tab = 'skins') {
+  // pick: open on one item ({ kind: 'skin' | 'emote', id, char }: the blade's Featured today)
+  open(tab = 'skins', pick = null) {
     const list = this.h.characters();
+    if (pick && list.some((c) => c.id === pick.char)) this.char = pick.char;
     if (!list.some((c) => c.id === this.char)) this.char = this.h.current();
     if (!list.some((c) => c.id === this.char)) this.char = list[0] && list[0].id;
     this.buildChars(list);
-    this.setTab(tab, true);
+    this.setTab(tab, true, pick ? (pick.kind === 'emote' ? EM + pick.id : pick.id) : null);
   }
 
-  setTab(tab, force = false) {
+  setTab(tab, force = false, sel = null) {
     if (this.tab === tab && !force) return;
     this.tab = tab;
     for (const b of document.querySelectorAll('.st-tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    this.sel = tab === 'emotes' ? EM + EMOTES[0].id : this.career.wornSkin(this.char) || '';
+    this.sel = sel != null ? sel : tab === 'emotes' ? EM + EMOTES[0].id : this.career.wornSkin(this.char) || '';
     this.render();
     setTimeout(() => { const b = $('sh-grid').querySelector('[aria-selected="true"]'); if (b) b.focus({ preventScroll: true }); }, 30);
   }
