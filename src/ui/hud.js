@@ -6,6 +6,7 @@ import { gumIconURL } from '../render/gumIcons.js';
 import { TallyCounter } from './tally.js';
 import { glyphify, glyph } from '../input/glyphs.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
+import { playerColor } from '../render/nameTag.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
 import { questObjective } from '../sim/quest.js';
 import { crustEggObjective } from '../sim/crustEgg.js';
@@ -414,6 +415,7 @@ export class HUD {
       tr.className = [q.id === this.localId ? 'you' : '', q.downed ? 'down' : q.alive ? '' : 'out'].join(' ').trim();
       const name = document.createElement('td');
       name.textContent = q.name;
+      if (sim.players.length > 1 && !q.downed) name.style.color = playerColor(this.cfg, sim, q.id);   // (the colour of their name over their head)
       const sub = document.createElement('small');
       sub.textContent = (CH && CH[q.character] ? CH[q.character].name : '') + (q.downed ? ' · down' : q.alive ? '' : ' · out');
       name.appendChild(sub);
@@ -439,6 +441,7 @@ export class HUD {
       const row = document.createElement('div');
       row.className = q.downed ? 'down' : q.alive ? '' : 'out';
       const n = document.createElement('span'); n.textContent = q.name;
+      if (!q.downed) n.style.color = playerColor(this.cfg, sim, q.id);
       const v = document.createElement('b'); v.textContent = q.downed ? 'down' : q.alive ? String(q.points) : 'out';
       row.append(n, v);
       el.appendChild(row);

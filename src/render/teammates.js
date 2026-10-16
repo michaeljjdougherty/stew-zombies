@@ -3,8 +3,8 @@
 // holding their current gun. Simple procedural animation on the character rig:
 // walking and sprinting strides, crouching, aiming up and down with the view,
 // lowering the gun to reload or sprint, and sitting on the floor when downed.
-// A name tag floats over each of them (through walls, so you can find them),
-// and turns red while they need a revive.
+// A name tag in their colour floats over each of them while you can see them
+// (src/render/nameTag.js), and turns red (through walls) while they need a revive.
 // =============================================================================
 import * as THREE from 'three';
 import { buildCharacter, rigidSkin, CHARACTERS } from './characters.js';
@@ -13,6 +13,7 @@ import { applySkinFx } from './skinFx.js';
 import { proneLevel } from '../sim/player.js';
 import { idleCharacter, idleAct, IDLE_ACTS, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
+import { NameTag, playerColor } from './nameTag.js';
 import { HAND_POSES } from './hands.js';
 import { EMOTE_BY_ID } from '../career/emotes.js';
 
@@ -25,21 +26,6 @@ function lerpAngle(a, b, k) {
 }
 const approach = (v, t, rate, dt) => v + (t - v) * Math.min(1, rate * dt);
 const sm = (x) => x * x * (3 - 2 * x);
-
-function tagTexture(text, color) {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
-  const g = c.getContext('2d');
-  g.font = '600 30px system-ui, -apple-system, Segoe UI, sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.85)';
-  g.strokeText(text, 128, 34);
-  g.fillStyle = color;
-  g.fillText(text, 128, 34);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
 
 // who they look like: the character and their skin (a change rebuilds them)
 export const lookOf = (p) => p.character + ':' + (p.skin || '');
@@ -65,12 +51,10 @@ export class Teammate {
     this.down = 0;
     this.raise = 1.35;
     this.lastPos = null;
-    this.tagMat = new THREE.SpriteMaterial({ depthTest: false, depthWrite: false, transparent: true, fog: false });
-    this.tag = new THREE.Sprite(this.tagMat);
-    this.tag.renderOrder = 999;
-    scene.add(this.tag);
-    this.tagKey = '';
+    this.nameTag = new NameTag(scene);
+    this.tag = this.nameTag.sprite;   // (hide it with tag.visible = false after update)
     this.muzzlePos = new THREE.Vector3();
+    this.tagHead = new THREE.Vector3(); this.tagChest = new THREE.Vector3();
   }
 
   setGun(id) {
@@ -98,24 +82,20 @@ export class Teammate {
     this.pistol = def && def.class === 'pistol';
   }
 
-  setTag(p) {
-    const downed = !!p.downed;
-    const key = p.name + '|' + downed;
-    if (key === this.tagKey) return;
-    this.tagKey = key;
-    if (this.tagMat.map) this.tagMat.map.dispose();
-    this.tagMat.map = tagTexture(downed ? `${p.name} · down!` : p.name, downed ? '#ff5a40' : '#f2ead8');
-    this.tagMat.needsUpdate = true;
+  // their name in their colour (the scoreboard's), red while they need a revive
+  setTag(p, color) {
+    if (p.downed) this.nameTag.set(`${p.name} · down!`, '#ff5a40');
+    else this.nameTag.set(p.name, color || '#f2ead8');
   }
 
-  update(p, pos, yaw, pitch, dt, time, camera) {
+  // sim: to check you can see them (no sim: always shown); color: their name's colour
+  update(p, pos, yaw, pitch, dt, time, camera, sim = null, color = null) {
     const k = this.k;
     this.root.visible = p.alive;
-    this.tag.visible = p.alive;
-    if (!p.alive) return;
+    if (!p.alive) { this.nameTag.hide(); return; }
     const w = p.loadout;
     this.setGun(w.slots[w.current].id);
-    this.setTag(p);
+    this.setTag(p, color);
 
     // speed from how far they moved (smoothed)
     if (this.lastPos && dt > 0) {
@@ -267,13 +247,12 @@ export class Teammate {
       idleAct(k, name, time, sm(this.idleW));
     }
 
-    // name tag over their head, about the same size on screen at any distance
+    // name tag over their head: only while you can see them, but a downed
+    // teammate's shows through walls so you can find them to revive
     const headY = pos.y + (1.95 - 0.35 * c - 1.1 * dn) * (k.def.height || 1);
-    this.tag.position.set(pos.x, headY + 0.28, pos.z);
-    const dist = camera.position.distanceTo(this.tag.position);
-    const sc = Math.max(0.45, Math.min(2.8, dist * 0.055));
-    this.tag.scale.set(sc * 2, sc * 0.5, 1);
-    this.tagMat.opacity = downed ? 1 : Math.max(0.35, Math.min(0.95, 1.2 - dist / 40));
+    this.tagHead.set(pos.x, headY + 0.28, pos.z);
+    this.tagChest.set(pos.x, pos.y + (1.2 - 0.3 * c - 0.7 * dn) * (k.def.height || 1), pos.z);
+    this.nameTag.place(this.tagHead, this.tagChest, camera, sim, dt, { always: downed });
   }
 
   // Arms with no gun in them: hanging, or cheering (both up, bouncing),
@@ -300,9 +279,7 @@ export class Teammate {
 
   dispose(scene) {
     scene.remove(this.root);
-    scene.remove(this.tag);
-    if (this.tagMat.map) this.tagMat.map.dispose();
-    this.tagMat.dispose();
+    this.nameTag.dispose();
   }
 }
 
@@ -331,7 +308,7 @@ export class TeammateViews {
       }
       const a = this.prev.get(p.id) || { x: p.pos.x, y: p.pos.y, z: p.pos.z, yaw: p.yaw, pitch: p.pitch };
       const pos = { x: lerp(a.x, p.pos.x, alpha), y: lerp(a.y, p.pos.y, alpha), z: lerp(a.z, p.pos.z, alpha) };
-      v.update(p, pos, lerpAngle(a.yaw, p.yaw, alpha), lerp(a.pitch, p.pitch, alpha), dt, time, camera);
+      v.update(p, pos, lerpAngle(a.yaw, p.yaw, alpha), lerp(a.pitch, p.pitch, alpha), dt, time, camera, sim, playerColor(this.cfg, sim, p.id));
     }
     for (const [id, v] of this.views) if (!seen.has(id)) { v.dispose(this.scene); this.views.delete(id); this.prev.delete(id); }
   }
