@@ -1421,6 +1421,8 @@ export const CONFIG = {
       { key: 'trailerPerk1', name: 'PHD Gaylor', color: '#9b4dff', glyph: 'P' },
       { key: 'trailerPerk2', name: 'Milton Kick', color: '#3fdc5a', glyph: 'M' },
     ],
+    // the gums whose logos fly out of the machine in the GobbleGum shot
+    gums: ['perkaholic', 'anywhereButHere', 'killingTime', 'shoppingFree', 'idleEyes', 'headDrama', 'inPlainSight', 'wallPower'],
     // the guns in the "7 NEW GUNS" montage, and who fires each
     guns: [['Komando', 'ryan'], ['SPAZ-13', 'brian'], ['HK22', 'kearns'], ['Dragunoff', 'rocco'], ['Galill', 'rocco'], ['AK-75u', 'ryan'], ['L97A1', 'brian']],
     // everyone's gun when they're just fighting
@@ -1462,8 +1464,9 @@ export const CONFIG = {
       { id: 'hammers', beat: 35 },
       { id: 'zachStomp', beat: 39 },
       { id: 'kearnsHero', beat: 41 },
-      { id: 'brianHero', beat: 44 },
-      { id: 'zachSwing', beat: 47 },
+      { id: 'brianHero', beat: 43.5 },
+      { id: 'gums', beat: 45.5 },
+      { id: 'zachSwing', beat: 47.5 },
       { id: 'finale', beat: 49 },
       { id: 'black', beat: 55 },
     ],
@@ -1481,6 +1484,7 @@ export const CONFIG = {
       { text: '2 NEW PERK MACHINES', style: 'overlay', beat: 25, beats: 2 },
       { text: '2 NEW EXPLOSIVES', sub: 'MAISY DOG · LBD', style: 'overlay', beat: 28.5, beats: 4.5 },
       { text: '4 WAR HAMMERS', sub: 'WITH ELEMENTAL UPGRADES', style: 'overlay', beat: 35, beats: 4 },
+      { text: '64 GOBBLEGUMS', sub: 'BUILD YOUR PACK', style: 'overlay', beat: 45.5, beats: 2 },
       { text: 'CALL OF THE CRUST', style: 'title', beat: 56, beats: 2 },
       { text: 'DROPPING THIS SATURDAY', style: 'title', beat: 58, beats: 1.9 },
     ],
