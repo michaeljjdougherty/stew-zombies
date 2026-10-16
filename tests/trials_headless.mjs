@@ -43,7 +43,7 @@ function game(seed = 5) {
     step({}, 3);
   };
   const use = () => { step({ use: true, usePressed: true }); step({}, 2); };
-  const swing = () => { step({ fire: true, firePressed: true }); step({}, 100); };
+  const swing = () => { step({ fire: true, firePressed: true }); step({}, Math.ceil(CONFIG.crust.hammers.charged.every * 60) + 2); };   // (a charged slam, then the wait till the next)
   const E = () => sim.crustEgg;
   // all four forged; take this element's hammer from its socket
   const take = (el) => {
@@ -176,7 +176,7 @@ const tempered = (g, el) => { g.bench(); g.use(); g.step({}, 60 * (CONFIG.crust.
   for (const b of T.buoys) {
     me.pos.x = b.x; me.pos.z = b.z + CONFIG.crust.trials.wind.out; me.pos.y = groundHeight(me.pos.x, me.pos.z, 0.3, 60, [sim.world.solids, sim.world.terrain]) + 0.02;
     me.vel.x = me.vel.y = me.vel.z = 0; me.yaw = Math.atan2(-(b.x - me.pos.x), -(b.z - me.pos.z));
-    step(0.4); step(0.1, { fire: true }); step(1.2);
+    step(0.4); step(0.1, { fire: true }); step(CONFIG.crust.hammers.charged.every);
   }
   check(T.state === 'done', `her swings count on the host (${T.buoys.filter((b) => b.hit).length} of 3)`);
   check(sim.crustEgg.trials.wind.state === 'done', '...and her copy knows');

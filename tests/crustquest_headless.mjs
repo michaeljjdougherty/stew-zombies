@@ -45,7 +45,7 @@ function game(seed = 3, character = 'kearns') {
 const E = (g) => g.sim.crustEgg;
 const addZ = (g, x, z, hp = 3000) => { const zz = makeZombie(g.sim, { pos: { x, y: F.y, z }, health: hp, state: 'chase' }); zz.speed = 0; g.sim.zombies.push(zz); return zz; };
 // (a swing winds up, lands, and the hammer comes back round: one whole swing)
-const SWING = Math.ceil(60 * 60 / CONFIG.weapons['Fire Hammer'].rpm) + 2;
+const SWING = Math.ceil(60 * CONFIG.crust.hammers.charged.every) + 2;   // (a charged slam, and the wait till the next)
 const swing = (g) => { g.step({ fire: true, firePressed: true }); g.step({}, SWING); };
 const forgeAll = (g) => {
   for (const id of ['ship', 'research', 'caves', 'trench']) {
@@ -176,11 +176,12 @@ const forgeAll = (g) => {
     giveWeapon(g.sim, g.me, HAMMER_IDS[el] + '+'); g.step({}, 50);
     g.at(0, 11, 0, 30);
     near = addZ(g, 0, 12.6); mid = addZ(g, 1.5, 15); far = addZ(g, -3, 16.5);
+    const inline = el === 'lightning' ? addZ(g, 0, 17.5) : null;   // (the Wunderwaffe's bolt goes down your aim)
     n0 = g.log.length;
     swing(g);
     L = g.log.slice(n0);
     const left = g.sim.projectiles.find((p) => p.type === { fire: 'hfire', ice: 'hice', wind: 'hwind', lightning: 'hbolt' }[el]);
-    check(near.state === 'dead' && !!left, `${el}+: smashes, and leaves its ${left && left.type} behind`);
+    if (el !== 'lightning') check(near.state === 'dead' && !!left, `${el}+: smashes, and leaves its ${left && left.type} behind`);
     if (el === 'fire') {
       check(L.some((e) => e.type === 'explosion' && e.etype === 'hammerFireUp'), '  fire: a burst of flame where it lands');
       const walker = addZ(g, left.pos.x + 6, left.pos.z); walker.speed = 0;
@@ -211,10 +212,9 @@ const forgeAll = (g) => {
       check(Math.abs(left.pos.z - z0) < 0.5 && side.state === 'dead', `  ...and a whirlwind stays where it landed (${(left.pos.z - z0).toFixed(1)} m), dragging one in`);
     }
     if (el === 'lightning') {
-      check(L.some((e) => e.type === 'hammerChain' && e.points.length >= 3) && far.state === 'dead', '  lightning: a bolt jumping zombie to zombie');
-      const later = addZ(g, left.pos.x + 4, left.pos.z + 3);
-      g.step({}, 60);
-      check(later.state === 'dead' && g.log.slice(n0).some((e) => e.type === 'hammerZap'), '  ...and the ball of lightning strikes one that comes near');
+      const zaps = L.filter((e) => e.type === 'hammerZap').length;
+      check(near.state === 'dead' && L.some((e) => e.type === 'hammerChain') && inline.state === 'dead', 'lightning+: smashes, and the Wunderwaffe\'s bolt hits the one down your aim');
+      check(mid.state === 'dead' && far.state === 'dead' && zaps >= 2 && !left, `  ...then its ball of lightning jumps zombie to zombie (${zaps} jumps) and it's done`);
     }
     g.step({}, 60 * 8);
     check(!g.sim.projectiles.some((p) => p === left), '  ...then it\'s gone');

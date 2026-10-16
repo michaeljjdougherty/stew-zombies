@@ -30,6 +30,8 @@ const reloadMult = (sim, p) => perkMult(sim, p, 'reloadMult');
 // (Arsenal Accelerator: wonder weapons and War Hammers come round faster)
 const wonder = (def) => !!(def.hammer || def.wind || def.flame || def.wonder);
 const shotGap = (sim, p, def) => 60 / def.rpm / perkMult(sim, p, 'fireRateMult') / (wonder(def) && gumOn(p, 'arsenalAccelerator') ? GUM(sim, 'arsenalAccelerator').fireMult : 1);
+// (a War Hammer's quick swing, and its charged slam's special: Double Tap and Arsenal Accelerator speed them too)
+const hammerGap = (sim, p, secs) => secs / perkMult(sim, p, 'fireRateMult') / (gumOn(p, 'arsenalAccelerator') ? GUM(sim, 'arsenalAccelerator').fireMult : 1);
 
 export function makeSlot(sim, id) {
   const def = sim.cfg.weapons[id];
@@ -86,6 +88,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   if (w.fireCooldownL > 0) w.fireCooldownL -= dt;
   if (w.drawTimer > 0) w.drawTimer -= dt;
   if (w.heavyT > 0) w.heavyT -= dt;
+  for (const sl of w.slots) if (sl.hammerCd > 0) sl.hammerCd -= dt;   // (each War Hammer's charged slam coming back)
   updateHammerSwing(sim, p, slot, def, dt);
 
   // --- weapon switching
@@ -136,7 +139,7 @@ export function updateWeapons(sim, p, cmd, dt) {
   // (Firing On All Cylinders: shoot while you sprint)
   const foac = gumOn(p, 'firingOnAllCylinders');
   const blocked = !p.alive || (!foac && (p.sprinting || p.sprintOutTimer > 0)) || (w.reloading && !shellReload) || p.melee.timer > 0 || w.drawTimer > 0 || p.throwing || p.drinking || slot.away;
-  if (cmd.firePressed && (blocked || w.fireCooldown > 0)) p.fireBuffer = Math.max(p.fireBuffer, 0.22);
+  if (cmd.firePressed && (blocked || w.fireCooldown > 0 || (def.hammer && slot.hammerCd > 0))) p.fireBuffer = Math.max(p.fireBuffer, 0.22);
   if (!cmd.fire) w.dryFireLatch = false;
 
   let wantsFire = false;
@@ -149,6 +152,9 @@ export function updateWeapons(sim, p, cmd, dt) {
 
   // the flamethrower: no ammo, but it heats up (and locks out when it's too hot)
   if (def.flame && !flameHeat(sim, p, slot, def, wantsFire && !blocked, dt)) wantsFire = false;
+
+  // (a War Hammer's charged slam waits for its special to come back round)
+  if (def.hammer && (slot.hammerCd > 0 || w.hammerSwing)) wantsFire = false;
 
   if (wantsFire && !blocked && w.fireCooldown <= 0) {
     p.fireBuffer = 0;
@@ -176,6 +182,9 @@ export function updateWeapons(sim, p, cmd, dt) {
     }
   }
 
+  // a War Hammer's quick swing (right click / left trigger): a sweep across you
+  if (def.hammer && cmd.adsPressed && !blocked && w.fireCooldown <= 0 && !w.hammerSwing) quickSwing(sim, p, slot, def);
+
   // auto reload once the magazine(s) run dry
   const dry = def.dual ? slot.clip === 0 && slot.clipL === 0 : slot.clip === 0;
   if (dry && slot.reserve > 0 && !w.reloading && !blocked && w.fireCooldown <= 0) tryReload(sim, p);
@@ -188,13 +197,25 @@ function updateHammerSwing(sim, p, slot, def, dt) {
   if (!sw) return;
   sw.t += dt;
   if (slot.id !== sw.weapon || !def.hammer || p.downed || !p.alive) { w.hammerSwing = null; return; }
-  if (sw.t < sim.cfg.crust.hammers.swing.windup) return;
+  const H = sim.cfg.crust.hammers;
+  if (sw.t < (sw.quick ? H.quick.windup : H.swing.windup)) return;
   w.hammerSwing = null;
   const eye = sim.eyePosition(p);
   const dir = lookDir(p.yaw + w.recoilYaw + w.swayYaw, p.pitch + w.recoilPitch + w.swayPitch);
   // (online: the host works out what it smashes)
-  if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id });
-  else hammerSlam(sim, p, eye, dir, def, slot.id);
+  if (sim.replica) netAct(sim, { k: 'hammer', origin: eye, dir, weapon: slot.id, quick: sw.quick });
+  else hammerSlam(sim, p, eye, dir, def, slot.id, sw.quick);
+}
+
+// A War Hammer's quick swing: drawn back to your left, then swept across to the
+// right (it lands in updateHammerSwing). The same on every hammer.
+function quickSwing(sim, p, slot, def) {
+  const w = p.loadout, Q = sim.cfg.crust.hammers.quick;
+  w.fireCooldown = w.fireGap = hammerGap(sim, p, Q.every);
+  w.hammerSwing = { t: 0, weapon: slot.id, quick: true };
+  w.heavyT = Math.max(w.heavyT || 0, Q.slowFor);
+  w.shotsFired++;
+  sim.emit('shot', { playerId: p.id, weapon: slot.id, origin: sim.eyePosition(p), dir: lookDir(p.yaw, p.pitch), side: 'R', quick: true, impacts: [], clip: slot.clip, action: null, projectile: null, pellets: 1 });
 }
 
 // ---------------------------------------------------------------------------
@@ -219,9 +240,10 @@ function fire(sim, p, slot, def, side) {
   if (def.hammer) {
     // a War Hammer: up over your shoulder first; it comes down (and smashes)
     // once it's wound up (updateHammerSwing), and you're slowed while you swing
-    const S = sim.cfg.crust.hammers.swing;
-    w.hammerSwing = { t: 0, weapon: slot.id };
-    w.heavyT = S.slowFor;
+    const H = sim.cfg.crust.hammers;
+    w.hammerSwing = { t: 0, weapon: slot.id, quick: false };
+    w.heavyT = H.swing.slowFor;
+    slot.hammerCd = slot.hammerGap = hammerGap(sim, p, H.charged.every);
   } else if (def.flame) {
     // the flamethrower: a burst of the jet (the host works out what catches)
     if (sim.replica) netAct(sim, { k: 'flame', origin: eye, dir, weapon: slot.id });

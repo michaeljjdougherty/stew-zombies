@@ -72,11 +72,11 @@ function gun(cls, stats) {
 // A War Hammer (Call of the Crust): Pit forges one from each titan's core. Never in
 // the box or on a wall: you take it from its socket on the Anvil. Every swing
 // smashes what's in front of you and its element goes off where it lands
-// (src/sim/hammers.js); no ammo, no sights.
+// (src/sim/hammers.js); no ammo, no sights: right click is a quick swing instead.
 function warHammer(element, stats) {
   return gun('launcher', {
     hammer: element, wonder: true, noAds: true, infinite: true,
-    fireMode: 'semi', rpm: 40, damage: 0, magSize: 1, reserve: 0,   // (rpm 40: a swing every 1.5 s, wind-up and all)
+    fireMode: 'semi', rpm: 55, damage: 0, magSize: 1, reserve: 0,   // (rpm 55: back round 1.1 s after a charged slam; its special waits crust.hammers.charged.every)
     reloadStyle: 'mag', reloadTime: 1, drawTime: 0.8, moveSpeedMult: 0.82,
     spread: { hipBase: 0, hipMax: 0, perShot: 0, ads: 0, adsPerShot: 0 },
     recoil: { pitch: 0, yaw: 0, recovery: 6, adsMult: 1, viewKick: 0 },
@@ -1848,11 +1848,20 @@ export const CONFIG = {
       angle: 70,             // degrees either side of where you look
       maxKills: 8,           // zombies one swing kills outright
       landAt: 2.2,           // m ahead of you the head comes down (where the element goes off)
-      // heavy: a swing winds up over your shoulder first (windup s, then it lands),
-      // and you're slowed to slowMult for slowFor s from the click; the next swing's
-      // the weapon's rpm (40: every 1.5 s). Where it lands the view nods down (nod,
-      // like a dive's landNod), dips (dip) and shakes; the HUD shows it coming back round.
-      swing: { windup: 0.34, slowFor: 0.85, slowMult: 0.5, nod: 95, dip: 4, shake: 0.45 },
+      // two attacks. Left click / right trigger, the charged slam: wound up over your
+      // shoulder (windup s, then it lands), the smash and the hammer's element; you're
+      // slowed to slowMult for slowFor s from the click; any swing's back round after the
+      // weapon's rpm (55: 1.1 s), but the next charged slam waits charged.every s (Double
+      // Tap and Arsenal Accelerator bring it round faster; the HUD's bar shows it). Where
+      // it lands the view nods down (nod, like a dive's landNod), dips (dip) and shakes.
+      swing: { windup: 0.5, slowFor: 1.0, slowMult: 0.5, nod: 95, dip: 4, shake: 0.45 },
+      charged: { every: 3.2 },
+      // Right click / left trigger, the quick swing: a sweep from left to right across
+      // you, the same on every hammer (no element, and Big Evil Zach shrugs it off).
+      // Lands windup s after the click; the next one every `every` s. It smashes up to
+      // maxKills within reach m and angle degrees either side, flinging them fling m
+      // to the right; the view swings with it (yaw) and shakes a little.
+      quick: { windup: 0.16, every: 0.7, slowFor: 0.3, reach: 3.0, angle: 80, maxKills: 4, fling: 3, yaw: 22, shake: 0.15 },
       titanDamage: 0,        // (the titans each have their own way down)
       tempered: {
         maxKills: 12,
@@ -1868,9 +1877,12 @@ export const CONFIG = {
         // down (like the Origins wind staff's: it stays put, speed 0) dragging zombies
         // in and throwing them; one caught on something on the way is torn apart in grind s
         wind: { range: 16, angle: 36, near: 2.2, maxKills: 30, tornado: { speed: 0, time: 5, pull: 8, pullSpeed: [3, 9], catch: 1.5, grind: 2.5, max: 30 } },
-        // a bolt jumping zombie to zombie, and a ball of lightning that drifts on,
-        // striking anything near it
-        lightning: { chains: 14, hop: 7.5, reach: 12, orb: { time: 6, speed: 1.8, height: 1.6, every: 0.3, reach: 7, max: 24 } },
+        // the Wunderwaffe DG-2: a bolt down your aim into the first zombie within range m
+        // and aim m of the line, then a ball of lightning jumping on to the nearest one it
+        // hasn't had (within hop m) every `every` s, killing each: `forged` in all before
+        // Pit tempers it, `chains` after (the DG-3 JZ). (orb: the ball's look, and how
+        // long it can last)
+        lightning: { waffe: { range: 40, aim: 1.4, hop: 10, every: 0.1, forged: 10, chains: 24 }, orb: { time: 4, height: 0 } },
       },
       // how they look (src/render/warHammer.js): the downloaded hammer, sized so the
       // haft's butt sits at z `butt` and the head's centre at z `headAt` (metres),

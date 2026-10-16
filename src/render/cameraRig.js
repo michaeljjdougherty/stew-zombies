@@ -41,6 +41,8 @@ export class CameraRig {
     if (e.type === 'playerHit') { this.shake = 1; }
     // a War Hammer coming down: the weight of it goes through you
     if (e.type === 'hammerSlam') { const S = this.cfg.crust.hammers.swing; this.punch.pv -= S.nod; this.dipVel -= S.dip; this.shake = Math.max(this.shake, S.shake); }
+    // ...and its quick swing sweeping across: the view rolls with it
+    if (e.type === 'hammerSweep') { const Q = this.cfg.crust.hammers.quick; this.punch.rv -= Q.yaw; this.shake = Math.max(this.shake, Q.shake); }
     if (e.type === 'shot') {
       const def = this.cfg.weapons[e.weapon];
       if (!def) return;

@@ -32,10 +32,10 @@ const ring = (sim, at, r, n = 6) => Array.from({ length: n }, (_, i) => {
 });
 
 // --- each tempered hammer's leftover effect, with zombies brought to it after the swing
-for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hice', 2.5], ['Wind Hammer+', 'hwind', 4.5], ['Lightning Hammer+', 'hbolt', 4]]) {
+for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hice', 2.5], ['Wind Hammer+', 'hwind', 4.5]]) {
   const g = game(CRUST);
   g.step(30); giveWeapon(g.sim, g.me, id); g.step(60);
-  g.step(1, { fire: true, firePressed: true }); g.step(30);
+  g.step(1, { fire: true, firePressed: true }); g.step(40);
   const pr = g.sim.projectiles.find((p) => p.type === type);
   check(!!pr, `${id}: leaves its ${type} behind`);
   if (!pr) continue;
@@ -45,11 +45,49 @@ for (const [id, type, r] of [['Fire Hammer+', 'hfire', 2.5], ['Ice Hammer+', 'hi
   check(dead === zs.length, `${id}: it kills what comes into it, high round or not (${dead}/${zs.length} in 4 s)`);
 }
 
+// --- the Lightning Hammer is the Wunderwaffe: a bolt down your aim, then a ball of
+// lightning jumping zombie to zombie, killing each (10 forged, 24 tempered)
+for (const id of ['Lightning Hammer', 'Lightning Hammer+']) {
+  const g = game(CRUST);
+  g.step(30); giveWeapon(g.sim, g.me, id); g.step(60);
+  const fx = -Math.sin(g.me.yaw), fz = -Math.cos(g.me.yaw);
+  const zs = [];
+  for (let i = 0; i < 30; i++) {
+    const f = 7 + (i % 6) * 1.2, s = ((i / 6 | 0) - 2) * 1.5;
+    const z = ring(g.sim, { x: g.me.pos.x + fx * f - fz * s, y: g.me.pos.y, z: g.me.pos.z + fz * f + fx * s }, 0, 1)[0];
+    z.speed = 0.01; zs.push(z);   // (stood still, so none walks out of its reach)
+  }
+  const n0 = g.log.length;
+  g.step(1, { fire: true, firePressed: true }); g.step(4 * 60);
+  const W = CONFIG.crust.hammers.tempered.lightning.waffe, want = id.endsWith('+') ? W.chains : W.forged;
+  const dead = zs.filter((z) => z.state === 'dead').length;
+  check(dead === want && g.log.slice(n0).some((e) => e.type === 'hammerChain'), `${id}: the Wunderwaffe kills ${dead} of 30 at round-30 health (wants ${want})`);
+  check(!g.sim.projectiles.length, '...and then the ball\'s gone');
+}
+
+// --- the quick swing (right click): a sweep in front of you, the same on every
+// hammer; no element and nothing left behind
+for (const id of ['War Hammer', 'Fire Hammer+', 'Ice Hammer+', 'Wind Hammer+', 'Lightning Hammer+']) {
+  const g = game(CRUST);
+  const Q = CONFIG.crust.hammers.quick;
+  g.step(30); giveWeapon(g.sim, g.me, id); g.step(60);
+  const fx = -Math.sin(g.me.yaw), fz = -Math.cos(g.me.yaw), rx = -fz, rz = fx;
+  const at = (f, r) => ({ x: g.me.pos.x + fx * f + rx * r, y: g.me.pos.y, z: g.me.pos.z + fz * f + rz * r });
+  const front = [at(1.6, -1), at(1.8, 0), at(1.6, 1), at(2.2, -0.4), at(2.2, 0.4), at(2.4, 0)].map((q) => ring(g.sim, q, 0, 1)[0]);
+  const behind = ring(g.sim, at(-2, 0), 0, 1)[0];
+  const n0 = g.log.length;
+  g.step(1, { ads: true, adsPressed: true }); g.step(Math.ceil(Q.windup * 60) + 2);
+  const L = g.log.slice(n0);
+  const dead = front.filter((z) => z.state === 'dead').length;
+  check(dead === Q.maxKills && behind.state !== 'dead', `${id}, right click: the sweep smashes ${dead} in front of you (not the one behind)`);
+  check(!L.some((e) => ['hammerSlam', 'explosion', 'hammerFreeze', 'windBlast', 'hammerChain'].includes(e.type)) && !g.sim.projectiles.length && !front.some((z) => z.frozen > 0), '...and that\'s all: no element, nothing left behind');
+}
+
 // --- the whirlwind stays where it landed and drags zombies in from further out
 {
   const g = game(CRUST);
   g.step(30); giveWeapon(g.sim, g.me, 'Wind Hammer+'); g.step(60);
-  g.step(1, { fire: true, firePressed: true }); g.step(30);
+  g.step(1, { fire: true, firePressed: true }); g.step(40);
   const pr = g.sim.projectiles.find((p) => p.type === 'hwind');
   const at = { ...pr.pos };
   g.step(60);
