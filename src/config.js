@@ -104,6 +104,7 @@ export const CONFIG = {
     crouchHeight: 1.2,
     eyeHeight: 1.64,
     crouchEyeHeight: 1.12,
+    idleAfter: 3,          // s standing completely still before your character's idle act (James dances, Kyle judges)
     stepHeight: 0.48,        // max ledge you walk up without jumping
 
     walkSpeed: 4.1,

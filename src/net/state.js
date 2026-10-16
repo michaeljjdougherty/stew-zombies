@@ -36,7 +36,7 @@ export function clean(v, skip = null) {
 const byId = (list, fn) => { const o = {}; for (const x of list) o[x.id] = fn(x); return o; };
 
 // --- what the host sends ----------------------------------------------------
-const PLAYER_SKIP = new Set(['useTarget']);
+const PLAYER_SKIP = new Set(['useTarget', 'idleT']);   // (idle goes; its timer stays home)
 const ZOMBIE_SKIP = new Set(['region', 'stuckT', 'avoidSign', 'sidestep', 'sideSign', 'speed', 'radius', 'stepHeight', 'height', 'targetId']);
 const PROJ_SKIP = new Set(['hitIds', 'gravity', 'bounce', 'friction', 'chill', 'hit']);
 const WINDOW_KEYS = ['boards', 'climbing', 'rebuild', 'queue'];

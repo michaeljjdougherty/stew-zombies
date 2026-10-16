@@ -108,6 +108,7 @@ export class NetHost {
     p.moveSpeed = st.ms; p.height = st.h; p.stamina = st.sta;
     p.throwing = st.th; p.melee.timer = st.mt; p.melee.lunge = st.ml;
     p.distanceWalked = st.dw;
+    p.idle = !!st.idl;
     const w = p.loadout;
     w.adsAmount = st.ads; w.reloading = st.rl;
     // what's in their guns, unless the host changed their guns since they last heard

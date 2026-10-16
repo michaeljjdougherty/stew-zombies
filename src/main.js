@@ -19,6 +19,7 @@ import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
 import { AudioEngine } from './audio/audio.js';
 import { SoundDirector } from './audio/director.js';
+import { IdleBeats } from './audio/idleBeat.js';
 import { sample } from './audio/sfx.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
@@ -94,6 +95,7 @@ for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorde
 // the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
 if (CONFIG.cheddar.lineAudio) audio.preload({ cheddarLine: [CONFIG.cheddar.lineAudio] }, '', '');
 const sound = new SoundDirector(audio, sim, CONFIG);
+const idleBeats = new IdleBeats(audio, CONFIG);   // (James's bass beat while he twerks)
 sound.localId = localId;
 const hud = new HUD(CONFIG);
 hud.roomNames = Object.fromEntries(SCHOOL.rooms.map((r) => [r.id, r.id === 'quad' ? 'the Quad' : r.id === 'principal' ? "the teachers' lounge" : 'the ' + r.name.replace(/^The /, '')]));
@@ -1115,7 +1117,7 @@ function frame(now) {
     let steps = 0;
     while (acc >= DT && steps < CONFIG.sim.maxStepsPerFrame) {
       const cmd = input.buildCommand();
-      tick(mode === 'play' ? cmd : mode === 'dying' || mode === 'panel' ? { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0 } : { ...emptyCommand(), yaw: input.yaw, pitch: input.pitch });
+      tick(mode === 'play' ? cmd : mode === 'dying' || mode === 'panel' ? { ...cmd, fire: false, firePressed: false, moveX: 0, moveY: 0, away: true } : { ...emptyCommand(), yaw: input.yaw, pitch: input.pitch, away: true });
       acc -= DT;
       steps++;
     }
@@ -1148,6 +1150,7 @@ function frame(now) {
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));
+  safely('idleBeat', () => idleBeats.update(sim, localId, (ch) => !!(CHARACTERS[ch] && CHARACTERS[ch].idleBeat), mode === 'play' || onlineLive));
   safely('hud', () => hud.update(fdt, sim, player, renderer.camera, settings.showFps));
   rangeUI.update(fdt, sim, player, renderer.camera);
   if (menus.current === 'extras') extras.update();
@@ -1170,7 +1173,7 @@ if (pump) pump.onmessage = () => {
   time += fdt;
   acc += fdt;
   let steps = 0;
-  while (acc >= DT && steps < 20) { tick({ ...emptyCommand(), yaw: input.yaw, pitch: input.pitch }); acc -= DT; steps++; }
+  while (acc >= DT && steps < 20) { tick({ ...emptyCommand(), yaw: input.yaw, pitch: input.pitch, away: true }); acc -= DT; steps++; }
   if (steps >= 20) acc = 0;
   if (mode === 'dying') { dyingT += fdt; }
 };

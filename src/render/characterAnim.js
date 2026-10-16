@@ -358,6 +358,101 @@ function fingers(k, A, t) {
 }
 
 // =============================================================================
+// the stink (Kyle): lines drift up off him, flies buzz round his head
+// =============================================================================
+function stink(k, t) {
+  const S = k.stink;
+  S.map.offset.y = -t * 0.35;
+  for (const L of S.lines) {
+    const a = t * 0.9 + L.ph;
+    L.g.rotation.y = Math.sin(a * 0.5) * 0.6;
+    L.g.rotation.z = Math.sin(a) * 0.12;
+    L.g.scale.y = 0.85 + 0.2 * Math.sin(a * 0.7);
+  }
+  for (const F of S.flies) {
+    const a = t * F.speed + F.ph;
+    // a loopy, jittery orbit round his head and shoulders
+    F.f.position.set(Math.cos(a) * F.r + Math.sin(a * 3.1) * 0.05, F.y + Math.sin(a * 2.3) * 0.08 + Math.sin(a * 7) * 0.015, Math.sin(a) * F.r + Math.cos(a * 2.7) * 0.05);
+    F.f.rotation.y = -a;
+    const flap = Math.sin(t * 90 + F.ph) * 0.9;
+    F.wings[0].rotation.z = flap; F.wings[1].rotation.z = -flap;
+  }
+}
+
+// =============================================================================
+// idle acts: what someone does after standing completely still in a game
+// (the sim's p.idle; drawn on teammates, src/render/teammates.js). Each runs
+// over whatever pose they're already in, blended in by w (0..1).
+//   turn: they face away from where they're looking
+//   hideGun: the gun's put away for it
+// A new character only needs `idleAct: '<name>'` in CHARACTERS and a run here.
+// =============================================================================
+const lerp = (a, b, k) => a + (b - a) * k;
+export const IDLE_ACTS = {
+  // James: turns round, hands on his knees, and twerks
+  twerk: { turn: true, hideGun: true, run(k, t, w) {
+    const beat = t * Math.PI * 2 * (105 / 60);           // (on the bass beat)
+    const pop = Math.max(0, Math.sin(beat * 2)) ** 1.5;
+    const tilt = 0.45 + 0.3 * pop;                        // pelvis tipping, the twerk itself
+    const thigh = -0.95, shin = 0.5;                      // a deep squat, feet flat
+    k.hips.position.y = lerp(k.hips.position.y, 0.95 - 0.24 + 0.025 * pop, w);
+    k.hips.position.x = lerp(k.hips.position.x, Math.sin(beat) * 0.015, w);
+    k.hips.rotation.x = lerp(k.hips.rotation.x, tilt, w);
+    k.hips.rotation.z = lerp(k.hips.rotation.z, Math.sin(beat) * 0.05, w);
+    k.torso.rotation.x = lerp(k.torso.rotation.x, 0.3 - (tilt - 0.45) * 0.7, w);
+    k.torso.rotation.z = lerp(k.torso.rotation.z, -Math.sin(beat) * 0.03, w);
+    for (const [L, s] of [[k.legL, 1], [k.legR, -1]]) {
+      L.hip.rotation.x = lerp(L.hip.rotation.x, thigh - tilt, w);
+      L.hip.rotation.z = lerp(L.hip.rotation.z, s * 0.16, w);
+      L.knee.rotation.x = lerp(L.knee.rotation.x, shin - thigh, w);
+      L.ankle.rotation.x = lerp(L.ankle.rotation.x, -shin, w);
+    }
+    // looking back over his shoulder, unbothered
+    k.head.rotation.x = lerp(k.head.rotation.x, -0.55, w);
+    k.head.rotation.y = lerp(k.head.rotation.y, 0.45 + Math.sin(t * 0.6) * 0.1, w);
+    k.head.rotation.z = lerp(k.head.rotation.z, 0.08, w);
+    // hands on his knees
+    k.root.updateMatrixWorld(true);
+    for (const [arm, leg, s] of [[k.armL, k.legL, 1], [k.armR, k.legR, -1]]) {
+      const knee = leg.knee.getWorldPosition(new THREE.Vector3());
+      const target = k.torso.worldToLocal(knee).add(V(-s * 0.01, 0.06, 0.05));
+      const sol = solveArm(arm, target, V(s * 1, -0.2, -0.4));
+      applyArm(arm, sol, orientHand(arm, sol.q, sol.bend, V(0, -1, 0.35), V(0, -0.3, -1)), w);
+      if (arm.hand && arm.hand.set && w > 0.4) arm.hand.set(HAND_POSES.cupped || HAND_POSES.relaxed);
+    }
+  } },
+  // Kyle: arms crossed, the judgmental squint
+  judge: { hideGun: true, run(k, t, w) {
+    // weight on one leg, leaning back a touch
+    k.hips.rotation.z = lerp(k.hips.rotation.z, 0.05, w);
+    k.hips.position.x = lerp(k.hips.position.x, 0.02, w);
+    k.torso.rotation.x = lerp(k.torso.rotation.x, -0.05, w);
+    k.torso.rotation.z = lerp(k.torso.rotation.z, -0.04, w);
+    // chin down, head cocked, a slow disapproving shake now and then
+    const shake = Math.sin(t * 5) * 0.12 * sm(0, 0.3, Math.sin(t * 0.45) - 0.7);
+    k.head.rotation.x = lerp(k.head.rotation.x, 0.06, w);
+    k.head.rotation.y = lerp(k.head.rotation.y, 0.1 + shake, w);
+    k.head.rotation.z = lerp(k.head.rotation.z, 0.12, w);
+    k.root.updateMatrixWorld(true);
+    const y = k.armL.shoulderY - 0.21, z = 0.21;
+    // left forearm under, hand tucked by the right elbow; right forearm over it
+    const solL = solveArm(k.armL, V(-0.1, y, z), V(1, -0.6, 0.1));
+    applyArm(k.armL, solL, orientHand(k.armL, solL.q, solL.bend, V(-1, 0.05, -0.1), V(0, 0, -1)), w);
+    const solR = solveArm(k.armR, V(0.1, y + 0.025, z + 0.035), V(-1, -0.6, 0.1));
+    applyArm(k.armR, solR, orientHand(k.armR, solR.q, solR.bend, V(1, 0.05, -0.1), V(0, 0, -1)), w);
+    for (const a of [k.armL, k.armR]) if (a.hand && a.hand.set && w > 0.4) a.hand.set(HAND_POSES.relaxed);
+    // the squint: upper lids come down
+    for (const e of k.face.eyes) { const u = e.userData; if (u.upper) u.upper.rotation.x += 0.28 * w; }
+  } },
+};
+
+// Pose an idle act over the current pose (w 0..1). Unknown names do nothing.
+export function idleAct(k, name, t, w) {
+  const act = IDLE_ACTS[name];
+  if (act && w > 0) act.run(k, t + k.phase, Math.min(1, w));
+}
+
+// =============================================================================
 export function idleCharacter(k, t) {
   t += k.phase;
   const A = k.anim || (k.anim = {
@@ -371,5 +466,6 @@ export function idleCharacter(k, t) {
   gestures(k, A, t);
   life(k, A, t, dt);
   fingers(k, A, t);
+  if (k.stink) stink(k, t);
 }
 export function idleKearns(k, t) { idleCharacter(k, t); }

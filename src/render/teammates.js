@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { buildCharacter, rigidSkin } from './characters.js';
 import { proneLevel } from '../sim/player.js';
-import { idleCharacter, solveArm, orientHand, applyArm } from './characterAnim.js';
+import { idleCharacter, idleAct, IDLE_ACTS, solveArm, orientHand, applyArm } from './characterAnim.js';
 import { buildGun } from './gunModels.js';
 import { HAND_POSES } from './hands.js';
 
@@ -21,6 +21,7 @@ function lerpAngle(a, b, k) {
   return a + d * k;
 }
 const approach = (v, t, rate, dt) => v + (t - v) * Math.min(1, rate * dt);
+const sm = (x) => x * x * (3 - 2 * x);
 
 function tagTexture(text, color) {
   const c = document.createElement('canvas');
@@ -238,6 +239,17 @@ export class Teammate {
 
     // look up and down with the head too
     k.head.rotation.x = -pt * 0.45;
+
+    // standing still a while: their character's idle act (James dances,
+    // Kyle crosses his arms). Snaps off the moment they move or fire.
+    const act = IDLE_ACTS[k.def.idleAct];
+    const still = !!(act && p.idle && !downed && !p.unarmed);
+    this.idleW = still ? approach(this.idleW || 0, 1, 3.5, dt) : 0;
+    if (this.idleW > 0) {
+      if (act.turn) this.root.rotation.y += Math.PI * sm(this.idleW);
+      if (act.hideGun && this.holder) this.holder.visible = this.idleW < 0.3;
+      idleAct(k, k.def.idleAct, time, sm(this.idleW));
+    }
 
     // name tag over their head, about the same size on screen at any distance
     const headY = pos.y + (1.95 - 0.35 * c - 1.1 * dn) * (k.def.height || 1);

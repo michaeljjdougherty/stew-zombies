@@ -97,7 +97,7 @@ export const CHARACTERS = {
   brian: {
     name: 'Brian', unlock: 'quest',
     blurb: 'Brian Luke. Came through a portal like it was nothing. Never panics, never misses. Unlocked by finishing The Final Whistle.',
-    height: 1.02, headScale: 1.04,
+    height: 0.88, headScale: 1.1,   // (Rocco's size, a touch taller)
     body: { shoulders: 0.212, chest: 0.168, waist: 0.14, hips: 0.152, depth: 0.11, build: 0.35 }, limbs: 1.06, armsOut: 0.13,
     skin: 'ivory',
     face: { width: 0.073, height: 0.12, cheekbones: 0.016, cheeks: 0.04, jaw: 0.32, jawAngle: 0.6, smirk: 0.7, browThick: 1.25, nose: 0.022, noseBridge: 0.002, beard: 0.35 },
@@ -109,6 +109,38 @@ export const CHARACTERS = {
     chain: { metal: 'silver', drop: 0.07 },
     watch: { side: 'left', kind: 'silver' },
     idle: 'big', gesture: 'fistPalm',
+  },
+  james: {
+    name: 'James', playable: true,
+    blurb: 'Calm. Unbothered. Always that little half smile, like he knows something you don\'t. Stand still long enough and he starts dancing.',
+    height: 1.03, headScale: 1.06,
+    body: { shoulders: 0.22, chest: 0.174, waist: 0.14, hips: 0.152, depth: 0.112, build: 0.42 }, limbs: 1.08, armsOut: 0.13,
+    skin: 'light',
+    face: { width: 0.074, height: 0.121, jaw: 0.38, jawAngle: 0.6, chin: 0.013, cheekbones: 0.012, cheeks: 0.04, smirk: 0.35, smile: 0.15, browThick: 1.55, beard: 0.3 },
+    look: { beard: 0.15, stubble: 0.65 }, beardLine: -0.05, squint: 0.4, eyes: '#7d8a52',
+    hair: { style: 'wavyCurls', color: [56, 37, 24] },
+    top: { type: 'tee', color: '#5e4129' },
+    layer: { type: 'flannel', color: '#6b4a2f', check: '#22304c', line: '#efebe2', zipTo: 0.86, buttons: '#e9e4d8' },
+    pants: 'darkJeans', shoes: 'sneaker',
+    idle: 'relaxed', gesture: 'wave',
+    // standing still: turns round and twerks, with a little bass beat
+    idleAct: 'twerk', idleBeat: true,
+  },
+  kyle: {
+    name: 'Kyle', playable: true,
+    blurb: 'Judging you. Yes, you. Smells about as good as he looks impressed. Stand still and he crosses his arms and squints until you feel bad about yourself.',
+    height: 1.0, headScale: 1.08,
+    body: { shoulders: 0.226, chest: 0.184, waist: 0.17, hips: 0.172, depth: 0.126, build: 0.45, belly: 0.25 }, limbs: 1.14, armsOut: 0.16,
+    skin: 'light',
+    face: { width: 0.08, height: 0.118, depth: 0.1, jaw: 0.12, jawAngle: 0.74, cheeks: 0.1, smile: -0.2, browRaise: 0.65, browThick: 1.6, beard: 1.1 },
+    look: { beard: 1, stubble: 0.3 }, beardLine: -0.04, squint: 0.9,
+    hair: { style: 'sweptBack', color: [50, 34, 22], grey: 0.07 },
+    top: { type: 'tee', color: '#f4f3ef', vneck: true },
+    layer: { type: 'dress', color: '#f6f5f1', zipTo: 0.78, buttons: '#e2e0da' },
+    pants: 'suit', shoes: 'dress',
+    idle: 'big',
+    // standing still: arms crossed, the squint; and he always stinks
+    idleAct: 'judge', stink: true,
   },
   regs: {
     name: 'Regs', blurb: 'A big, lovable teddy bear. Everyone\'s best buddy.',
@@ -170,7 +202,7 @@ export const CHARACTERS = {
 };
 
 // The order they stand in for the lineup (Erik apart, at the end).
-export const LINEUP = ['chops', 'regs', 'ryan', 'kearns', 'p', 'zach', 'brian', 'pit', 'rocco', 'erik'];
+export const LINEUP = ['chops', 'regs', 'kyle', 'ryan', 'kearns', 'p', 'zach', 'james', 'brian', 'pit', 'rocco', 'erik'];
 
 // --- textures -----------------------------------------------------------------
 function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
@@ -324,6 +356,8 @@ function torsoTexture(def, shirtHex, seed = 4) {
     g.strokeStyle = shade(color, 0.65);
     for (let x = 0; x < W; x += 3) { g.beginPath(); g.moveTo(x, vy(0.985)); g.lineTo(x, vy(0.93)); g.stroke(); }
     g.fillStyle = skinCol; g.fillRect(0, 0, W, vy(0.985));
+    // open collar: a V of skin down the front
+    if (top.vneck) { g.beginPath(); g.moveTo(cx - 40, vy(1)); g.lineTo(cx + 40, vy(1)); g.lineTo(cx, vy(0.84)); g.closePath(); g.fill(); }
   }
   if (top.type === 'suit') { g.fillStyle = top.shirt; g.fillRect(0, 0, W, vy(0.975)); g.fillStyle = skinCol; g.fillRect(0, 0, W, vy(0.995)); }
   sideShade(g, W, H, 0.25);
@@ -367,7 +401,7 @@ function layerTexture(L, seed = 21) {
     g.globalAlpha = 0.6; g.fillStyle = L.check;
     for (let x = 0; x < W; x += 40) g.fillRect(x, 0, 16, H);
     for (let y = 0; y < H; y += 40) g.fillRect(0, y, W, 16);
-    g.globalAlpha = 0.25; g.fillStyle = '#8a8c90';
+    g.globalAlpha = L.line ? 0.5 : 0.25; g.fillStyle = L.line || '#8a8c90';
     for (let x = 22; x < W; x += 40) g.fillRect(x, 0, 2, H);
     for (let y = 22; y < H; y += 40) g.fillRect(0, y, W, 2);
     g.globalAlpha = 1;
@@ -385,6 +419,10 @@ function layerTexture(L, seed = 21) {
     for (let i = 0; i < 4000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.07)'; g.fillRect(R() * W, R() * H, 2, 2); }
     g.strokeStyle = 'rgba(255,255,255,0.05)';
     for (let y = 0; y < H; y += 4) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y + 2); g.stroke(); }
+  } else if (L.type === 'dress') {
+    // crisp cotton dress shirt: faint weave, a few soft creases
+    fabricNoise(g, W, H, R, 0.025);
+    folds(g, W, H, R, 8, 0.5);
   } else {
     // zip-up: smooth nylon/cotton with soft creases
     fabricNoise(g, W, H, R, 0.05);
@@ -530,6 +568,54 @@ function braceletMesh(r, { colors, chunky }) {
   return g;
 }
 
+// --- the stink (Kyle) ------------------------------------------------------------------
+// Wavy green stink lines drifting up off him and a few flies buzzing round his
+// head. Each line is a pair of crossed see-through planes whose wavy texture
+// scrolls upward; idleCharacter (characterAnim.js) moves them and the flies.
+function stinkTexture() {
+  const [c, g] = canvas(64, 256);
+  g.lineCap = 'round';
+  for (const [x0, w, a] of [[20, 5, 0.85], [42, 4, 0.6]]) {
+    g.strokeStyle = `rgba(140,168,52,${a})`; g.lineWidth = w * 1.4;
+    g.beginPath();
+    for (let y = 0; y <= 256; y += 4) { const x = x0 + Math.sin((y / 256) * Math.PI * 4 + x0) * 9; if (y) g.lineTo(x, y); else g.moveTo(x, y); }
+    g.stroke();
+  }
+  const t = tex(c, true);
+  return t;
+}
+function stinkFade() {
+  // fades in at the bottom and out at the top (stays put while the lines scroll)
+  const [c, g] = canvas(4, 64);
+  const grd = g.createLinearGradient(0, 64, 0, 0);
+  grd.addColorStop(0, '#000'); grd.addColorStop(0.25, '#fff'); grd.addColorStop(0.6, '#bbb'); grd.addColorStop(1, '#000');
+  g.fillStyle = grd; g.fillRect(0, 0, 4, 64);
+  return new THREE.CanvasTexture(c);
+}
+function stinkCloud(root) {
+  const map = stinkTexture();
+  const mat = new THREE.MeshBasicMaterial({ map, alphaMap: stinkFade(), transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.9, fog: true });
+  const lines = [];
+  for (const [x, z, h, ph] of [[-0.2, 0.06, 0.75, 0], [0.22, -0.02, 0.85, 2.1], [0.02, -0.2, 0.7, 4.2], [-0.08, 0.2, 0.6, 1.3]]) {
+    const g = new THREE.Group(); g.position.set(x, 0.95, z); root.add(g);
+    for (const ry of [0, Math.PI / 2]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.16, h).translate(0, h / 2, 0), mat);
+      m.rotation.y = ry; m.castShadow = false; m.renderOrder = 2; g.add(m);
+    }
+    lines.push({ g, ph });
+  }
+  const flyMat = new THREE.MeshStandardMaterial({ color: '#141412', roughness: 0.4, metalness: 0.2 });
+  const wingMat = new THREE.MeshBasicMaterial({ color: '#d8e0e8', transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+  const flies = [];
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Group(); root.add(f);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 4), flyMat); b.scale.set(1, 0.8, 1.5); f.add(b);
+    const wings = [-1, 1].map((s) => { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.008).translate(s * 0.007, 0, 0), wingMat); w.position.y = 0.004; f.add(w); return w; });
+    flies.push({ f, wings, ph: i * 1.7, r: 0.22 + i * 0.05, y: 1.45 + (i % 2) * 0.35, speed: 2.2 + i * 0.6 });
+  }
+  return { map, lines, flies };
+}
+
 // --- body building ------------------------------------------------------------------
 const cache = new Map();
 
@@ -596,7 +682,17 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
     collar.scale.set(1, 1.05, 1);
     torso.add(collar);
     // zipper pull on the work jacket
-    if (L.zipTo != null) {
+    if (L.zipTo != null && L.buttons) {
+      // a button-up: a row of buttons up the placket, to where it's open
+      const bm = new THREE.MeshStandardMaterial({ color: L.buttons, roughness: 0.35 });
+      const y0 = js[0].y, y1 = js[0].y + (js[n - 1].y - js[0].y) * L.zipTo;
+      for (let k = 0; k < 5; k++) {
+        const y = y0 + 0.03 + (y1 - y0 - 0.05) * (k / 4);
+        const T = torsoAt(js, y);
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.002, 8), bm);
+        b.rotation.x = Math.PI / 2; b.position.set(0, y, (T.z || 0) + T.rz + 0.002); torso.add(b);
+      }
+    } else if (L.zipTo != null) {
       const T = torsoAt(js, js[0].y + (js[n - 1].y - js[0].y) * L.zipTo);
       const zp = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.016, 0.003), new THREE.MeshStandardMaterial({ color: '#b8b6ae', metalness: 0.3, roughness: 0.4 }));
       zp.position.set(0, js[0].y + (js[n - 1].y - js[0].y) * L.zipTo - 0.01, (T.z || 0) + T.rz + 0.004); torso.add(zp);
@@ -623,7 +719,7 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
     shape: { ...def.face, beardLine: def.beardLine || 0 },
     look: { skin, seed: 11 + id.length * 13, size: Math.round(1024 * Math.min(1, detail)), blush: def.blush ?? 1, ...def.look, brows: 1 },
     hair: { style: hairStyle.style, seed: 5 + id.length, detail, countScale: detail },
-    hairColor: hairStyle.color, eyeColor: def.eyes || EYES_BROWN, squint: def.squint ?? 0.3, detail,
+    hairColor: hairStyle.color, hairGrey: hairStyle.grey || 0, eyeColor: def.eyes || EYES_BROWN, squint: def.squint ?? 0.3, detail,
   });
   H.group.position.y = 0.1;
   H.group.scale.setScalar(def.headScale || 1.08);
@@ -696,7 +792,9 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
 
   root.scale.setScalar(def.height || 1);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  return { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10 };
+  const k = { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10 };
+  if (def.stink) k.stink = stinkCloud(root);
+  return k;
 }
 
 // One draw per material instead of one per part. A person is ~80 little meshes

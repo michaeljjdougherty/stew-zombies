@@ -30,6 +30,7 @@ export function emptyCommand() {
     gumPressed: false,                          // [H] use your GobbleGum
     weaponSlot: -1,           // -1 = no change
     weaponCycle: 0,
+    away: false,              // in a menu or a cutscene (not standing there idle)
   };
 }
 
@@ -75,12 +76,15 @@ export function createPlayer(sim, id, name, spawn) {
     melee: { timer: 0, cooldown: 0, lunge: 0, lungeDir: null, targetId: null, hitPending: false, hitAt: 0 },
     moveSpeed: 0,             // horizontal speed, for camera bob / audio
     distanceWalked: 0,
+    idleT: 0,                 // s standing completely still
+    idle: false,              // still long enough for your character's idle act (James dances...)
   };
 }
 
 export function updatePlayer(sim, p, cmd, dt) {
-  if (!p.alive) return;
+  if (!p.alive) { p.idleT = 0; p.idle = false; return; }
   const cfg = sim.cfg.player;
+  updateIdle(sim, p, cmd, dt);
   p.yaw = cmd.yaw;
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
   // flying between islands (a launcher): nothing else happens till you land
@@ -317,6 +321,20 @@ function diveLand(sim, p) {
   const pos = { x: p.pos.x, y: p.pos.y + 0.3, z: p.pos.z };
   if (sim.replica) sim.netOut.push({ k: 'boom', pos, kind });
   else explode(sim, pos, kind, p.id);
+}
+
+// Standing completely still (no moving, shooting, aiming, reloading, buttons,
+// not crouched, not in a menu or a cutscene) for a few seconds: p.idle, and
+// whoever you play does their idle act. Looking around doesn't count as moving.
+function updateIdle(sim, p, cmd, dt) {
+  const w = p.loadout;
+  const busy = cmd.away || cmd.moveX || cmd.moveY || cmd.fire || cmd.ads || cmd.grenade || cmd.tactical || cmd.minePressed
+    || cmd.jumpPressed || cmd.reloadPressed || cmd.meleePressed || cmd.use || cmd.gumPressed || cmd.crouch || cmd.sprint
+    || cmd.weaponSlot >= 0 || cmd.weaponCycle
+    || p.downed || p.launch || p.ride || p.dive || p.prone || p.crouching || !p.grounded || p.throwing || p.drinking
+    || (w && w.reloading) || (p.melee && p.melee.timer > 0) || Math.hypot(p.vel.x, p.vel.z) > 0.05;
+  p.idleT = busy ? 0 : (p.idleT || 0) + dt;
+  p.idle = p.idleT >= sim.cfg.player.idleAfter;
 }
 
 // Interaction prompts and health regen. Online, the host runs only this part

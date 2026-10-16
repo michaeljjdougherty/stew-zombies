@@ -14,7 +14,7 @@ import { CONFIG } from '../config.js';
 
 export const PROTOCOL = 2;   // (2: the lobby picks the map)
 export const MAX_PLAYERS = 4;
-export const LAUNCH = ['kearns', 'ryan', 'pit', 'rocco'];
+export const LAUNCH = ['kearns', 'ryan', 'pit', 'rocco', 'james', 'kyle'];
 const CODE_CHARS = 'BCDFGHJKMNPQRSTVWXZ23456789';
 
 export function makeCode(rand = Math.random) {

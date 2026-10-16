@@ -551,6 +551,7 @@ export const HAIR_STYLES = {
   curlyFringe: { flow: [0, -0.6, 1], volume: 1.4, sides: 0.3, count: 300, length: 1.3, messy: 1.4, curls: 1, fringe: 1 },
   curlyTop: { flow: [0, 0.6, -0.3], volume: 1.25, sides: 0.05, count: 300, length: 1.0, messy: 1.1, curls: 1, forelock: 1 },
   wildCurls: { flow: [0, 0.8, -0.7], volume: 1.7, sides: 0.5, count: 380, length: 1.5, messy: 1.6, curls: 1, strays: 8 },
+  wavyCurls: { flow: [0.1, 0.6, -0.5], volume: 1.15, sides: 0.05, count: 340, length: 0.95, messy: 1.5, curls: 1, waves: 1, forelock: 1, strays: 6 },
 };
 
 export function hairGeometry(head, opt = {}) {
@@ -634,7 +635,8 @@ export function hairGeometry(head, opt = {}) {
   return mergeGeometries(parts);
 }
 
-export function hairTexture(color = [44, 30, 20]) {
+// grey: how much of it has gone grey (a few light strands mixed in)
+export function hairTexture(color = [44, 30, 20], grey = 0) {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 128;
   const g = c.getContext('2d');
@@ -643,6 +645,12 @@ export function hairTexture(color = [44, 30, 20]) {
     const x = Math.random() * 64, l = 0.6 + Math.random() * 0.8;
     g.strokeStyle = `rgba(${Math.round(color[0] * l * 1.4)},${Math.round(color[1] * l * 1.4)},${Math.round(color[2] * l * 1.4)},0.6)`;
     g.lineWidth = 0.6 + Math.random();
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + (Math.random() - 0.5) * 6, 128); g.stroke();
+  }
+  for (let i = 0; i < 160 * grey; i++) {
+    const x = Math.random() * 64, l = 150 + Math.random() * 60;
+    g.strokeStyle = `rgba(${l},${l},${l + 4},0.75)`;
+    g.lineWidth = 0.5 + Math.random() * 0.6;
     g.beginPath(); g.moveTo(x, 0); g.lineTo(x + (Math.random() - 0.5) * 6, 128); g.stroke();
   }
   // darker at the roots
@@ -661,7 +669,7 @@ export function hairTexture(color = [44, 30, 20]) {
 export function buildHead(opts = {}) {
   const {
     shape = {}, look = {}, hair = null, eyeColor = '#4a3420', zombie = false, squint = 0, detail = 1,
-    skinMaterial = null, hairColor = [44, 30, 20],
+    skinMaterial = null, hairColor = [44, 30, 20], hairGrey = 0,
   } = opts;
   const head = headGeometry(shape, { detail, split: zombie });
   const p = head.params;
@@ -763,7 +771,7 @@ export function buildHead(opts = {}) {
   let hairMesh = null;
   if (hair) {
     const hg = hairGeometry(head, hair);
-    const ht = hairTexture(hairColor);
+    const ht = hairTexture(hairColor, hairGrey);
     const hm = new THREE.MeshStandardMaterial({ map: ht, bumpMap: ht, bumpScale: 2, roughness: 0.58, metalness: 0.0, side: THREE.DoubleSide });
     hairMesh = new THREE.Mesh(hg, hm);
     group.add(hairMesh);
