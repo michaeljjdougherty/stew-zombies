@@ -82,6 +82,7 @@ const at = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.P
 // --- out of the pit: clear the debris, up the ramp to the terrace, on up to the rim, jump back down
 {
   const { sim, me, step, put, face, use, walk } = game();
+  sim.rounds.timer = 1e9;   // (just the climb: no zombies in the way)
   me.points = 1e6;
   const d = sim.world.doors.find((x) => x.id === 'debris_hub_west');
   put(d.x + 1.5, d.z, 0.4); face(d.center);

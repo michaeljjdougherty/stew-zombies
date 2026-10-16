@@ -77,6 +77,7 @@ const has = (said, text) => said.some((s) => s.text === text);
 {
   const g = game(3, 'ryan');
   powerAllOn(g.sim);
+  g.sim.rounds.timer = 1e9;   // (just the talk: no zombies crowding you)
   g.step(150);   // (past the opening)
   const beats = [
     ['relayPulled', { id: 'relay_n', playerId: 'p1' }, 'relay'],

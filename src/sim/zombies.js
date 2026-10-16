@@ -19,14 +19,15 @@ export function zcfg(sim, z) {
   return sim._cheddarCfg;
 }
 
+// Black Ops 1's roll: moveSpeed (1 on round 1, round x 8 after) up to moveSpeed+35;
+// up to 35 walks, up to 70 runs, more sprints. Numbers: CONFIG.zombie.
 export function pickZombieType(sim, round) {
   const c = sim.cfg.zombie;
-  const runner = Math.min(c.runnerMax, Math.max(0, (round - c.runnerStartRound + 1) * c.runnerPerRound));
-  const sprinter = Math.min(c.sprinterMax, Math.max(0, (round - c.sprinterStartRound + 1) * c.sprinterPerRound));
-  const r = sim.rng.next();
-  if (r < sprinter) return 'sprinter';
-  if (r < sprinter + runner * (1 - sprinter)) return 'runner';
-  return 'walker';
+  const base = round <= 1 ? 1 : round * c.moveSpeedPerRound;
+  const roll = base + Math.floor(sim.rng.next() * c.moveSpeedRoll);
+  if (roll <= c.walkUpTo) return 'walker';
+  if (roll <= c.runUpTo) return 'runner';
+  return 'sprinter';
 }
 
 export function spawnZombie(sim, win, round) {
