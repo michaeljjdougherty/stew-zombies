@@ -7,6 +7,11 @@ layout.
 
 ## Working in parallel
 
+- Before editing any file, read the work board at
+  `/mnt/project-files/coordination/WORKBOARD.md` and follow its rules: sign
+  out the files you'll change, wait (and list yourself as waiting) if another
+  thread has them, and pass the baton with `send_message` when you're done.
+
 - Several Claude threads work on this repo at once. Stay inside the files your
   thread owns (the table in `docs/HANDOFF.md`). The hotspot files listed there
   get small edits only.
