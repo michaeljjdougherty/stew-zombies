@@ -33,7 +33,7 @@ import { voiceSprites } from './lore/voice.js';
 import { ExploreUI } from './ui/explore.js';
 import { questSkipTo, QUEST_SKIPS, QUEST_STEPS } from './sim/quest.js';
 import { exploreJumpToRound } from './sim/rounds.js';
-import { wakeTitan } from './sim/crustEgg.js';
+import { wakeTitan, titanApproach } from './sim/crustEgg.js';
 import { forgeAllNow } from './sim/forge.js';
 import { startFinale } from './sim/zachBoss.js';
 import { Pads, BTN } from './input/gamepad.js';
@@ -148,11 +148,11 @@ function exploreTitan(id) {
   const T = E.titans[id];
   if (T.state === 'dead') { T.state = 'asleep'; Object.assign(T.pos, T.home); }
   const p = player;
-  // stand back from it, facing it (the Captain: on the north shore)
-  const w = s.wake, back = id === 'ship' ? 0 : w.r + 4;
-  p.pos.x = w.x + back; p.pos.z = w.z + (id === 'ship' ? 2 : 0); p.pos.y = (w.y || 0) + 1.5;
+  // stand back from it on solid ground, facing it (the Captain: on the north shore; the Fiend: at a field gun)
+  const at = titanApproach(sim, id);
+  p.pos.x = at.x; p.pos.z = at.z; p.pos.y = at.y + 0.3;
   p.vel.x = p.vel.y = p.vel.z = 0; p.region = null;
-  input.setLook(Math.atan2(-(T.home.x - p.pos.x), -(T.home.z - p.pos.z)), 0.15);
+  input.setLook(at.yaw, 0.15);
   wakeTitan(sim, id, p);
 }
 

@@ -125,6 +125,22 @@ export function moveBody(body, dt, boxLists, gravity, floorY = FLOOR) {
   return { landed, impact };
 }
 
+// Push a body back out of any wall it's been put into (it was shoved by something
+// that isn't a wall: a titan's bulk). Sideways only; nothing it could step onto.
+export function outOfWalls(body, boxLists) {
+  const p = body.pos, r = body.radius, h = body.height;
+  for (let iter = 0; iter < 3; iter++) {
+    let moved = false;
+    for (const list of boxLists) {
+      for (const b of boxesNear(list, p.x, p.z, r)) {
+        if (!overlapsY(b, p.y, h) || b.maxY - p.y <= (body.stepHeight || 0)) continue;
+        if (pushOut(p, null, r, b)) moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+}
+
 // Push circle A out of circle B (only A moves). Returns true if they overlapped.
 export function separateCircles(a, ar, b, br, strength = 1) {
   const dx = a.x - b.x, dz = a.z - b.z;

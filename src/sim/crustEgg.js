@@ -24,7 +24,7 @@
 // =============================================================================
 import { zombieHealthForRound } from '../config.js';
 import { makeZombie, pickZombieType } from './zombies.js';
-import { moveBody, groundHeight } from './physics.js';
+import { moveBody, groundHeight, outOfWalls } from './physics.js';
 import { explode } from './projectiles.js';
 import { spawnPowerup } from './powerups.js';
 import { angleWrap, lookDir } from '../core/math.js';
@@ -126,9 +126,10 @@ export function feelTitans(sim, p, dt) {
   if (p.shove) { const k = Math.exp(-c.pushDecay * dt); p.shove.x *= k; p.shove.z *= k; if (Math.abs(p.shove.x) + Math.abs(p.shove.z) < 0.05) p.shove = null; }
   if (p.slowUntil && sim.time > p.slowUntil) { p.slowUntil = 0; p.slowMult = 1; }
   if (!p.alive || p.launch) return;
+  let pushed = false;
   const out = (x, z, r) => {
     const dx = p.pos.x - x, dz = p.pos.z - z, dd = Math.hypot(dx, dz), rr = r + p.radius;
-    if (dd < rr && dd > 1e-4) { p.pos.x = x + (dx / dd) * rr; p.pos.z = z + (dz / dd) * rr; }
+    if (dd < rr && dd > 1e-4) { p.pos.x = x + (dx / dd) * rr; p.pos.z = z + (dz / dd) * rr; pushed = true; }
   };
   for (const T of Object.values(E.titans)) {
     // (it's solid, asleep or awake)
@@ -136,6 +137,9 @@ export function feelTitans(sim, p, dt) {
   }
   const F = E.finale, f = sim.cfg.crust.finale;
   if (F && F.state !== 'off' && F.state !== 'done' && F.state !== 'freed' && Math.abs(p.pos.y - F.pos.y) <= ZACH_H * F.scale) out(F.pos.x, F.pos.z, f.bulk * F.scale / f.scale[0]);
+  // (never through a wall: up against one, the wall wins. Pinned in a cave
+  // passage by the Golem, you used to be shoved out through the rock)
+  if (pushed) outOfWalls(p, [sim.world.solids, sim.world.terrain]);
 }
 
 // damage everyone within r of (x,z) (and near enough in height), falling off to `edge` at the rim
@@ -147,6 +151,33 @@ function blastPlayers(sim, pos, r, dmg, edge = 0.4, push = 0) {
     sim.damagePlayer(p, dmg * (1 - (1 - edge) * (d / r)), { pos: { x: pos.x, z: pos.z } });
     if (push) shove(sim, p, pos.x, pos.z, push);
   }
+}
+
+// Where to stand to take a titan on (Explore's "Fight" buttons): on walkable
+// ground near where it's woken, about level with it, facing it. The Fiend's
+// woken from a field gun, so beside one of those.
+export function titanApproach(sim, id) {
+  const s = sim.mapData.titans.find((t) => t.id === id);
+  const E = sim.crustEgg, lists = [sim.world.solids, sim.world.terrain];
+  const face = (x, z, to) => Math.atan2(-(to.x - x), -(to.z - z));
+  if (!s.wake) {
+    const g = E.guns[1] || E.guns[0];
+    const x = g.x - 2, z = g.z - 2;
+    return { x, y: groundHeight(x, z, 0.3, g.y + 2, lists), z, yaw: face(x, z, s.home) };
+  }
+  const w = s.wake, y0 = w.y || 0;
+  if (id === 'ship') return { x: w.x, y: y0, z: w.z + 2, yaw: face(w.x, w.z + 2, s.home) };
+  for (const r of [w.r + 4, w.r + 2.5, w.r + 6, w.r + 8, w.r + 1]) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, x = w.x + Math.cos(a) * r, z = w.z + Math.sin(a) * r;
+      const y = groundHeight(x, z, 0.4, y0 + 1.5, lists);
+      if (Math.abs(y - y0) > 1.2 || sim.nav.regionAt({ x, y, z }) == null) continue;
+      // (not with rock over your head)
+      if (groundHeight(x, z, 0.4, y + 40, lists) > y + 2.5) continue;
+      return { x, y, z, yaw: face(x, z, s.home) };
+    }
+  }
+  return { x: w.x, y: y0, z: w.z, yaw: 0 };
 }
 
 // --- waking --------------------------------------------------------------------
