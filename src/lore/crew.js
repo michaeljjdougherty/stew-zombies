@@ -41,6 +41,18 @@ export const CREW = {
     voice: { f0: 104, grit: 0.4, rate: 0.9 },
     bio: 'Brian Luke. Came through a portal. Does not panic. Does not miss.',
   },
+  james: {
+    name: 'James',
+    nick: ['James'],
+    voice: { f0: 108, grit: 0.3, rate: 0.92 },
+    bio: 'Calm, unbothered, half a smile. Stand still long enough and he starts dancing.',
+  },
+  kyle: {
+    name: 'Kyle',
+    nick: ['Kyle'],
+    voice: { f0: 100, grit: 0.38, rate: 0.95 },
+    bio: 'Judging you. Smells like it, too.',
+  },
   zach: {
     name: 'Zach',
     nick: ['Zach', 'Big Zach'],

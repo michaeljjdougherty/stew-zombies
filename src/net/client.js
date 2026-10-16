@@ -95,6 +95,8 @@ export class NetClient {
       inv: p.invRev, cur: w.current, slots: w.slots.map((s) => ({ id: s.id, clip: s.clip, clipL: s.clipL || 0, reserve: s.reserve })),
       g: p.grenades, sb: p.stewBombs, md: p.maisyDogs, lb: p.lbds,
       rd: p.ride ? p.ride.id : null,   // (on a zipline or an ice slide: which)
+      idl: !!p.idle,                   // (stood still: their idle act)
+      em: p.emote || null, emy: p.emoteYaw || 0,   // (an emote, and the way they faced to start it)
     });
   }
 
