@@ -981,6 +981,9 @@ export const CONFIG = {
     // `every` rounds, never more than `max` a game
     divinium: { fromRound: 2, chance: 0.1, every: 10, max: 5 },
     starter: 3,                  // vials a new career starts with
+    // a welcome gift, once per username, for signing in before `until`: `divinium`
+    // vials and `megas` of every Mega (Classics and Whimsicals never run out anyway)
+    gift: { id: 'welcome-2026-10', until: '2026-10-30T23:59:59-04:00', divinium: 30, megas: 1 },
     // Dr. Monty's Factory (src/ui/factoryUI.js), as in Black Ops 3: three vats and
     // three buttons. Button n powers up n vats for vats[n-1].cost vials and they
     // brew vats[n-1].gums Megas between them (each one's tier by `odds`).

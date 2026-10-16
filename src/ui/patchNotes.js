@@ -23,6 +23,10 @@ export const PATCH = {
     ] },
     { title: 'Stew Zombies 2.0', items: [
       'A whole new main menu: four blades, the charred pages of an old book. Play (every way to play), GobbleGum (your pack and your Liquid Divinium), Extras (your career, the trailer, the story) and Settings. Flip between them with the arrow keys, the bumpers, or a click.',
+      'Can\'t remember your username exactly? The sign-in screen lists every username so far: pick yours, then type your PIN.',
+      'Welcome gift: sign in before October 31 and you get 30 Liquid Divinium and one of every Mega GobbleGum (once per username).',
+      'Flipping between the main menu\'s blades is smoother now, and turns like a page (with the sound of one).',
+      'The rest of the menus are pages from the same burnt book now: pause, settings, map select, your GobbleGum pack, and the game over and victory screens.',
       'Dr. Monty\'s Factory is its own room now, like Black Ops 3\'s: pick 1, 2 or 3 vats, pour in that many vials of Liquid Divinium, and watch the vats brew your Mega GobbleGums.',
       'Two maps, two writers: Stew Leonard High by James Amarante, Call of the Crust by Michael Dougherty.',
       'New menu music: The Kettle Liturgy. Miss the old theme? Settings › Menu music brings it back.',

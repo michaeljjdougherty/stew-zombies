@@ -19,6 +19,7 @@ import { GameRenderer } from './render/renderer.js';
 import { Input } from './input/input.js';
 import { AudioEngine } from './audio/audio.js';
 import { SoundDirector } from './audio/director.js';
+import { sample } from './audio/sfx.js';
 import { HUD } from './ui/hud.js';
 import { Menus } from './ui/menu.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
@@ -43,7 +44,7 @@ import { PatchNotes } from './ui/patchNotes.js';
 import { Splash } from './ui/splash.js';
 import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
-import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI } from './ui/careerUI.js';
+import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -87,6 +88,7 @@ audio.preloadPack(SAMPLE_PACK, GUN_SAMPLES);
 // Gear sounds (thunder gun, knife, launcher, blasts); each falls back to its built-in synth sound until loaded
 audio.preload({ g_laser: ['g_laser'], g_launch: ['g_launch'], g_land: ['g_land'], g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
 audio.preload({ g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
+audio.preload({ pageTurn: ['page_turn'] }, 'assets/sfx/ui/');   // (the title's blades turning, like pages)
 audio.preloadSprite(CONFIG.crust.hammers.sound.url, CONFIG.crust.hammers.sound.segs);   // the War Hammers
 for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)
 // the Cheddars' "Wanna play 2K?", if a recording has been dropped in (CONFIG.cheddar.lineAudio)
@@ -227,7 +229,7 @@ const menus = new Menus(settings, {
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
-  bladeOpened: (id) => { if (id === 'gums') refreshGumBlade(); },
+  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => renderer.getShowcase().show(id, shirt),
@@ -251,6 +253,7 @@ const extras = new Extras(CONFIG, {
   progress: () => progress,
   watchEnding: () => watchEnding(),
   watchIntro: () => startIntro('extras'),
+  watchFilm: (name) => startFilm(name, 'extras'),   // (Call of the Crust's intro and ending)
   playSong: () => { audio.init(); audio.applyVolumes(); titleMusic.stop(0.6); jukebox.start('music', 0.75); },
   stopSong: () => { jukebox.stop(0.5); startTitleMusic(); },
   songLyric: () => jukebox.lyric(),
@@ -692,6 +695,7 @@ function finishFilm() {
   trailerUI.hide();
   const then = filmThen; filmThen = null;
   if (then === 'victory') { showCrustVictory(); return; }
+  if (then === 'extras') { restart('zombies', TITLE_MAP); mode = 'title'; menus.show('extras'); extras.open('story'); startTitleMusic(); return; }
   if (!progress.crustIntroSeen) { progress.crustIntroSeen = true; saveProgress(progress); }
   if (then === 'play') { restart('zombies', 'crust'); startPlaying(); return; }
   restart('zombies', TITLE_MAP);
@@ -980,6 +984,7 @@ const EXTRA_TABS = ['story', 'notes', 'howto', 'jukebox', 'patch', 'credits'];
 // --- careers: a username, its stats and achievements (src/career/; made up top) ---
 const achToast = new AchievementToast(() => sound.achievement());
 career.onUnlock = (a) => achToast.push(a);
+career.onGift = (g) => achToast.push(giftToast(g));
 // GobbleGum: the pack you take into games, and Dr. Monty's Factory
 const gumsUI = new GumsUI(career, { back: () => menus.show('title') });
 document.getElementById('btn-gums').addEventListener('click', () => { gumsUI.open(); menus.show('gums'); });
@@ -996,7 +1001,11 @@ document.getElementById('btn-gm-factory').addEventListener('click', () => openFa
 function refreshGumBlade() {
   const el = document.getElementById('b-pack');
   if (!el) return;
-  el.innerHTML = career.gums.pack.map((id) => `<img alt="${CONFIG.gobblegum.gums[id].name}" title="${CONFIG.gobblegum.gums[id].name}" src="${gumIconURL(id, 116)}">`).join('');
+  const pack = career.gums.pack.join();
+  if (el.dataset.pack !== pack) {   // (only when it's changed: no re-decoding the logos on every flip)
+    el.dataset.pack = pack;
+    el.innerHTML = career.gums.pack.map((id) => `<img alt="${CONFIG.gobblegum.gums[id].name}" title="${CONFIG.gobblegum.gums[id].name}" src="${gumIconURL(id, 116)}">`).join('');
+  }
   document.getElementById('b-div').textContent = String(career.gums.divinium);
 }
 // Settings blade: switch username (then back to the title)

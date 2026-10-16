@@ -63,15 +63,48 @@ export class Menus {
       e.preventDefault();
       this.flipBlade(e.key === 'ArrowLeft' ? -1 : 1);
     });
+    this.row = document.getElementById('blades');
+    // (the sheet's place, again whenever the row changes size or comes back into view)
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => this.placeSheet()).observe(this.row);
     this.openBlade(this.blades[0].dataset.blade);
   }
 
   openBlade(id, focusIn = false) {
     if (this.blade === id && !focusIn) return;
+    const flip = !!this.blade && this.blade !== id;
     this.blade = id;
+    // the tabs glide to where they're going (where they were, then let go)
+    const tabs = this.blades.map((b) => b.querySelector('.blade-tab'));
+    const was = flip ? tabs.map((t) => t.getBoundingClientRect().left) : null;
     for (const b of this.blades) b.classList.toggle('open', b.dataset.blade === id);
-    if (this.h.bladeOpened) this.h.bladeOpened(id);
+    if (was) {
+      tabs.forEach((t, i) => {
+        const dx = was[i] - t.getBoundingClientRect().left;
+        if (!dx) return;
+        t.style.transition = 'none'; t.style.translate = `${dx}px 0`;
+        void t.offsetWidth;
+        t.style.transition = ''; t.style.translate = '';
+      });
+    }
+    this.placeSheet();
+    if (this.h.bladeOpened) this.h.bladeOpened(id, flip);
     if (focusIn) { const first = document.querySelector(`#blades .blade[data-blade="${id}"] .blade-body button`); if (first) first.focus({ preventScroll: true }); }
+  }
+
+  // The open page is one sheet that slides under the open blade's body (moving
+  // it is cheap; re-drawing its burnt edge at a new size every frame wasn't).
+  placeSheet() {
+    const open = this.blades.find((b) => b.dataset.blade === this.blade);
+    const body = open && open.querySelector('.blade-body');
+    if (!body || !this.row) return;
+    const row = this.row.getBoundingClientRect(), r = body.getBoundingClientRect(), o = open.getBoundingClientRect();
+    if (!row.width || !r.width) return;   // (hidden)
+    const x = Math.round(r.left - row.left - 6), w = Math.round(o.right - r.left + 6);
+    if (!this.row.dataset.sheet) this.row.style.setProperty('--sheet-x', `${x}px`);   // (the first time: just be there)
+    void this.row.offsetWidth;
+    this.row.style.setProperty('--sheet-x', `${x}px`);
+    if (this.row.style.getPropertyValue('--sheet-w') !== `${w}px`) this.row.style.setProperty('--sheet-w', `${w}px`);
+    this.row.dataset.sheet = '1';
   }
 
   flipBlade(dir) {
