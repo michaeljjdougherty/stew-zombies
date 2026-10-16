@@ -15,6 +15,7 @@ import { buildWarHammer, hammerClock, temperedColor } from './warHammer.js';
 import { maisyDog, lbdBaby, blackHole, updateHole } from './gadgetView.js';
 import { ridePoint } from '../sim/rides.js';
 import { makeZombie } from '../sim/zombies.js';
+import { INTRO_SHOTS } from './crustFilms.js';
 import * as T from './textures.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -557,6 +558,23 @@ export const SHOTS = {
       T.light(0.8, '#ffd0a0', [30, 30, 10]);
     },
   },
+
+  // The five islands, one each, its name slammed over it (CONFIG.trailer.cards):
+  // a slow circle high over the Anvil, then the intro's look at each of the
+  // other four (src/render/crustFilms.js).
+  isleAnvil: {
+    frame(T, u, d, k) {
+      T.far = 600;
+      for (const id of CREW) T.hide(id);
+      const a = lerp(0.35, 0.95, k), r = lerp(62, 54, k);
+      T.light(0.7, '#ffd8b0', [Math.cos(a) * r, 40, Math.sin(a) * r]);
+      T.look(Math.cos(a) * r, lerp(32, 26, k), Math.sin(a) * r, 0, 5, 0, 50);
+    },
+  },
+  isleShip: INTRO_SHOTS.tour_ship,
+  isleResearch: INTRO_SHOTS.tour_research,
+  isleTrench: INTRO_SHOTS.tour_trench,
+  isleCaves: INTRO_SHOTS.tour_caves,
 
   // Rocco Fucci: walking at you in slow motion, reloading, then the gun snaps up.
   roccoHero: {
