@@ -1,5 +1,7 @@
 # Stew Zombies
 
+> **Picking this up in a new Claude thread?** Read [docs/HANDOFF.md](docs/HANDOFF.md) first: what's been built since this README, how we work, and what's next.
+
 An original round-based zombies game for the browser. Everything you see and
 hear (models, textures, sounds) is generated in code. The only library is
 [three.js](https://threejs.org) (r160), loaded from a CDN.
