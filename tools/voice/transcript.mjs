@@ -160,6 +160,10 @@ list('11. The War Hammers', 'All four hammers forged', 'pit', F.allForged);
 convo('11. The War Hammers', 'All four hammers forged', CT.allForged);
 list('11. The War Hammers', 'Pit nudging you', 'pit', F.nudge);
 add('11. The War Hammers', 'Tempering starts', 'pit', F.temperStart);
+// shooting Pit at his bench: the more you do it, the less he likes it
+const PS = C.PIT_SHOT || {};
+const SHOT = { first: 'Shooting Pit (the first few times)', again: 'Shooting Pit again', lots: 'Shooting Pit a lot', working: 'Shooting Pit while he forges' };
+for (const [k, ls] of Object.entries(PS)) list('11. The War Hammers', SHOT[k] || 'Shooting Pit', 'pit', ls);
 for (const [el, t] of Object.entries(F.tempered)) add('11. The War Hammers', `${ELEM[el]} hammer tempered`, 'pit', t);
 convo('11. The War Hammers', 'A hammer is tempered', CT.tempered);
 add('12. Big Evil Zach', 'The ring is ready', 'pit', F.ring);
