@@ -239,6 +239,25 @@ const PIECES = {
     add(g, new THREE.SphereGeometry(0.01, 8, 6), m, 0, 0.152, -0.004);
     squashHair(k, 0.65);
   },
+  // a fast-food visor: a band round the head (the top open), a bill, and the name on the front
+  visor(k, o) {
+    const H = k.face.group, col = o.color || '#c8202a';
+    const t = canvasTex(512, 28, (g, w, h) => {
+      g.fillStyle = col; g.fillRect(0, 0, w, h);
+      g.fillStyle = o.trim || '#ffc72a'; g.fillRect(0, 0, w, 3); g.fillRect(0, h - 3, w, 3);
+      if (o.text) {
+        g.font = '900 17px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = 3; g.strokeStyle = o.edge || '#5a1208'; g.strokeText(o.text, w / 2, h / 2 + 1);
+        g.fillStyle = o.trim || '#ffc72a'; g.fillText(o.text, w / 2, h / 2 + 1);
+      }
+    });
+    // (thetaStart PI: the middle of the picture lands on the front)
+    const band = add(H, new THREE.CylinderGeometry(0.108, 0.11, 0.04, 32, 1, true, Math.PI, Math.PI * 2), mat('#fff', 0.7, 0, { map: t, side: THREE.DoubleSide }), 0, 0.075, -0.004);
+    band.scale.z = 1.08;
+    const bill = add(H, new THREE.CylinderGeometry(0.08, 0.08, 0.008, 20, 1, false, -Math.PI / 2, Math.PI), mat(col, 0.7), 0, 0.058, 0.09);
+    bill.scale.set(1, 1, 1.1); bill.rotation.x = 0.16;
+    squashHair(k, 0.85);
+  },
   cowboyHat(k, o) {
     const H = k.face.group, m = mat(o.color || '#6b4626', 0.85, 0, { side: THREE.DoubleSide });
     // the brim curls up at the sides
@@ -366,6 +385,19 @@ const PIECES = {
     st.rotation.x = Math.PI / 2;
     const st2 = add(T, new THREE.CylinderGeometry(0.022, 0.022, 0.004, 5), st.material, x, y, chestZ(k, y) + 0.016);
     st2.rotation.set(Math.PI / 2, Math.PI / 5, 0);
+  },
+  // a name tag pinned on the chest: the company on top, their name under it
+  nameTag(k, o) {
+    const T = k.torso, y = k.neckY - 0.13, x = -0.065;
+    const name = String((k.def && k.def.name) || '').toUpperCase();
+    const t = canvasTex(128, 64, (g, w, h) => {
+      g.fillStyle = '#f6f4ee'; g.fillRect(0, 0, w, h);
+      g.fillStyle = o.color || '#c8202a'; g.fillRect(0, 0, w, 24);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = o.trim || '#ffc72a'; g.font = '900 17px Impact, "Arial Black", sans-serif'; g.fillText(o.text || '', w / 2, 13);
+      g.fillStyle = '#1a1a1e'; g.font = '900 24px Impact, "Arial Black", sans-serif'; g.fillText(name, w / 2, 45);
+    });
+    add(T, new THREE.BoxGeometry(0.07, 0.035, 0.004), mat('#fff', 0.5, 0, { map: t }), x, y, chestZ(k, y) + 0.01);
   },
   carton(k) {
     // a milk carton round the body: MISSING on the front, his face on the side

@@ -421,6 +421,16 @@
   .st-tile:hover { filter: brightness(1.1); transform: translateY(-2px); }
   .st-tile[aria-selected="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 0 0 3px #fff, 0 0 18px color-mix(in srgb, var(--rc) 70%, #fff); transform: translateY(-2px) scale(1.02); }
   .st-tile:focus-visible { outline: 3px solid #ffe32b; outline-offset: 2px; }
+  /* the Battle Pass tab: your tier and the bar to the next */
+  .st-pass { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; margin-right: 16px; padding: 10px 14px; border-radius: 6px; background: rgba(4,10,40,.65); box-shadow: inset 0 0 0 2px rgba(255,227,43,.45); }
+  .st-pass[hidden] { display: none; }
+  .st-pass b { font: italic 400 24px/1 Anton, var(--display); letter-spacing: 1px; text-transform: uppercase; color: #ffe32b; }
+  .st-pass-bar { height: 12px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
+  .st-pass-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ffb02a, #ffe32b); box-shadow: 0 0 10px rgba(255,227,43,.6); }
+  .st-pass span { grid-column: 1 / -1; font-size: 12px; letter-spacing: .5px; color: #cfe0ff; }
+  .st-art.st-bucks { display: grid; place-items: center; }
+  .st-art.st-bucks .sh-coin { width: 46%; height: auto; aspect-ratio: 1; font-size: clamp(28px, 3vw, 44px); }
+  .st-tile:has(.st-lock) .st-art { filter: grayscale(.55) brightness(.75); }
   .st-earn { margin: 0; padding-right: 16px; font-size: 12px; line-height: 1.45; color: #a9c0f0; max-width: 70ch; }
   .st-detail { position: absolute; right: max(16px, 3vw); bottom: max(18px, 4vh); width: min(330px, 32vw); display: grid; gap: 10px; justify-items: start; cursor: default; }
   .st-rarity { padding: 3px 10px 2px; border-radius: 3px; background: var(--rc, #9fb4c8); color: #0a0a10; font: italic 400 14px Anton, var(--display); letter-spacing: 1.5px; text-transform: uppercase; }
@@ -1345,11 +1355,12 @@
       <div class="blade-body b-store">
         <div class="b-store-main">
           <h2 class="b-title">Stew Store</h2>
-          <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks.</p>
+          <p class="b-sub">Costumes for each of the crew, the team kit, and emotes everyone can do. Paid for in Stew Bucks, or free in the Battle Pass.</p>
           <p class="b-bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="b-bucks">0</b> Stew Bucks</p>
           <nav class="menu b-menu">
             <button id="btn-shop" type="button">Skins</button>
             <button id="btn-shop-emotes" type="button">Emotes</button>
+            <button id="btn-shop-pass" type="button">Battle Pass</button>
           </nav>
         </div>
         <section class="b-featured-wrap" aria-label="Featured today">
@@ -1602,10 +1613,16 @@
       <nav class="st-tabs" role="tablist" aria-label="Store">
         <button type="button" role="tab" data-tab="skins" id="st-tab-skins">Skins</button>
         <button type="button" role="tab" data-tab="emotes" id="st-tab-emotes">Emotes</button>
+        <button type="button" role="tab" data-tab="pass" id="st-tab-pass">Battle Pass</button>
       </nav>
       <p class="st-wallet" aria-label="Your Stew Bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b></p>
     </header>
     <div class="st-chars" id="sh-chars" role="tablist" aria-label="Whose skins"></div>
+    <div class="st-pass" id="sh-pass" role="status" hidden>
+      <b id="sh-pass-tier">Tier 0 of 20</b>
+      <div class="st-pass-bar" aria-hidden="true"><i id="sh-pass-fill"></i></div>
+      <span id="sh-pass-xp"></span>
+    </div>
     <div class="st-grid" id="sh-grid" role="listbox" aria-label="Items"></div>
     <p class="st-earn" id="sh-earn"></p>
   </div>

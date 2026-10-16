@@ -1434,6 +1434,19 @@ export const CONFIG = {
     },
     // usernames (as database keys) that have the Pink Diamond Galaxy Opal skin on every character
     opalAccounts: ['phat_chops'],
+    // The Battle Pass (src/career/battlepass.js): free for everyone signed in.
+    // Pass XP comes from playing (real zombies games only); every tier's prize
+    // (a skin or emote any character can use, or Stew Bucks) is yours when you reach it.
+    pass: {
+      name: 'Season 1',
+      tiers: 20,
+      xpPerTier: 1000,       // XP from one tier to the next
+      perRound: 100,         // XP for each round you survive
+      perKill: 5,            // XP for each kill
+      perGame: 250,          // XP for each game you play (once round 1 starts)
+      // the tiers that pay Stew Bucks (the rest are the skins and emotes that say which tier they're on)
+      bucks: { 2: 100, 6: 150, 8: 150, 12: 200, 14: 200, 18: 300, 19: 500 },
+    },
   },
 
   // ---------------------------------------------------------------------------

@@ -502,6 +502,57 @@ export const IDLE_ACTS = {
     }
     k.head.rotation.z = lerp(k.head.rotation.z, swing * 0.08, w);
   } },
+  // the dab (Battle Pass): face in the left elbow, right arm thrown out and up; hit it, hold it, hit it again
+  dab: { hideGun: true, run(k, t, w) {
+    const c = t % 2.4, hit = sm(0, 0.18, c) * (1 - sm(1.9, 2.3, c));   // (snaps in, holds, eases out)
+    const v = w * hit;
+    k.hips.position.y = lerp(k.hips.position.y, 0.93, w);
+    k.torso.rotation.z = lerp(k.torso.rotation.z, 0.12 * hit, w);
+    k.torso.rotation.x = lerp(k.torso.rotation.x, 0.1 * hit, w);
+    k.head.rotation.x = lerp(k.head.rotation.x, 0.55 * hit, w);
+    k.head.rotation.y = lerp(k.head.rotation.y, 0.55 * hit, w);
+    k.root.updateMatrixWorld(true);
+    const L = k.armL, R = k.armR, SL = L.shoulder.position, SR = R.shoulder.position;
+    // right arm: straight, out and up
+    const solR = solveArm(R, V(SR.x - 0.42, SR.y + 0.32, SR.z + 0.12), V(0, -1, -0.2));
+    applyArm(R, solR, orientHand(R, solR.q, solR.bend, V(-1, 0.75, 0.2), V(0, -0.5, 0.5)), Math.max(w * 0.25, v));
+    // left arm: elbow up by the face, forearm across it
+    const solL = solveArm(L, V(SR.x + 0.02, SR.y + 0.16, SL.z + 0.2), V(0.6, 1, 0.3));
+    applyArm(L, solL, orientHand(L, solL.q, solL.bend, V(-1, 0.3, 0), V(0, 0, -1)), Math.max(w * 0.25, v));
+    for (const a of [L, R]) if (a.hand && a.hand.set && w > 0.4) a.hand.set(HAND_POSES.open);
+  } },
+  // the robot (Battle Pass): elbows at right angles, moving one stiff step at a time
+  robot: { hideGun: true, run(k, t, w) {
+    const POSES = [[-0.2, -0.2, 0], [-0.9, -0.2, 0.35], [-0.9, -0.9, 0], [-0.2, -0.9, -0.35], [-0.55, -0.55, 0.6], [-0.55, -0.55, -0.6]];
+    const step = Math.floor(t * 2.6), f = (t * 2.6) % 1, e = sm(0, 0.25, f);   // (a quick tick, then still)
+    const a = POSES[step % POSES.length], b = POSES[(step + 1) % POSES.length];
+    const P = a.map((x, i) => x + (b[i] - x) * e);
+    k.hips.position.y = lerp(k.hips.position.y, 0.93 - 0.012 * (step % 2), w);
+    k.torso.rotation.y = lerp(k.torso.rotation.y, P[2] * 0.35, w);
+    k.head.rotation.y = lerp(k.head.rotation.y, P[2] * 0.6, w);
+    k.head.rotation.z = lerp(k.head.rotation.z, 0, w);
+    for (const [arm, s, x] of [[k.armL, 1, P[0]], [k.armR, -1, P[1]]]) {
+      arm.shoulder.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, 0, s * 0.18)), w);
+      arm.elbow.rotation.x = lerp(arm.elbow.rotation.x, -1.57, w);
+      arm.wrist.rotation.set(0, 0, 0);
+      if (arm.hand && arm.hand.set && w > 0.4) arm.hand.set(HAND_POSES.open);
+    }
+  } },
+  // a salute (Battle Pass): stand straight, right hand snaps to the brow
+  salute: { hideGun: true, run(k, t, w) {
+    k.torso.rotation.x = lerp(k.torso.rotation.x, -0.04, w);
+    k.head.rotation.x = lerp(k.head.rotation.x, -0.05, w);
+    k.head.rotation.y = lerp(k.head.rotation.y, 0, w);
+    for (const L of [k.legL, k.legR]) { L.hip.rotation.z = lerp(L.hip.rotation.z, 0, w); L.hip.rotation.x = lerp(L.hip.rotation.x, 0, w); L.knee.rotation.x = lerp(L.knee.rotation.x, 0, w); }
+    k.root.updateMatrixWorld(true);
+    const snap = sm(0, 0.2, t % 3.2) * (1 - sm(2.6, 3.0, t % 3.2));
+    const arm = k.armR, brow = headPoint(k, -0.075, 0.06, 0.1);
+    const sol = solveArm(arm, brow, V(-1, -0.2, 0.2));
+    applyArm(arm, sol, orientHand(arm, sol.q, sol.bend, V(0.8, 0.45, 0.1), V(-0.2, -0.4, 1)), w * Math.max(0.3, snap));
+    if (arm.hand && arm.hand.set && w > 0.4) arm.hand.set(HAND_POSES.open);
+    k.armL.shoulder.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.06)), w);
+    k.armL.elbow.rotation.x = lerp(k.armL.elbow.rotation.x, -0.05, w);
+  } },
 };
 
 // Pose an idle act over the current pose (w 0..1). Unknown names do nothing.

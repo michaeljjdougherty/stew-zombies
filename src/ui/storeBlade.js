@@ -27,7 +27,7 @@ export function featuredItems(day, chars, career, n = CONFIG.shop.featured) {
   if (!ids.length) return [];
   const forSale = SKINS.filter((s) => !s.vault && !s.unlock && Number.isFinite(priceOf(s.id)) && (!s.only || ids.includes(s.only)));
   const skins = shuffle(forSale, R).map((s) => ({ kind: 'skin', id: s.id, char: s.only || ids[Math.floor(R() * ids.length)] }));
-  const emotes = shuffle(EMOTES.filter((e) => !e.free), R).map((e) => ({ kind: 'emote', id: e.id, char: ids[Math.floor(R() * ids.length)] }));
+  const emotes = shuffle(EMOTES.filter((e) => !e.free && !e.pass), R).map((e) => ({ kind: 'emote', id: e.id, char: ids[Math.floor(R() * ids.length)] }));
   const owned = (it) => (career ? (it.kind === 'skin' ? career.ownsSkin(it.id, it.char) : career.ownsEmote(it.id)) : false);
   const fresh = (list) => [...list.filter((x) => !owned(x)), ...list.filter(owned)];
   const out = [], used = new Set();
@@ -59,6 +59,8 @@ export class StoreBlade {
   refresh() {
     const C = this.career;
     document.getElementById('b-bucks').textContent = C.bucks.toLocaleString();
+    const pass = document.getElementById('btn-shop-pass');
+    if (pass) pass.textContent = C.signedIn ? `Battle Pass · Tier ${C.passTier}` : 'Battle Pass';
     if (!this.box) return;
     const chars = this.h.characters(), day = dayNumber();
     const items = featuredItems(day, chars, C);

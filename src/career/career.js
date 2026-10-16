@@ -16,6 +16,7 @@ import { ACHIEVEMENTS, ACH_BY_ID } from './achievements.js';
 import { PinAuth, pinOk, pinHash } from './auth.js';
 import { SKINS, SKIN_BY_ID, priceOf } from './skins.js';
 import { EMOTE_BY_ID } from './emotes.js';
+import { passTiers, tierOf, passXpFor } from './battlepass.js';
 import { CONFIG } from '../config.js';
 
 const LS = 'stew-zombies-career-v1';
@@ -35,7 +36,7 @@ const blankGums = () => ({ divinium: 0, megas: {}, pack: [...GG().defaultPack], 
 // The Skin Shop: your Stew Bucks, the skins you own, which one each character
 // wears, and the achievements that have paid out already
 const SHOP = () => CONFIG.shop;
-const blankShop = () => ({ bucks: 0, owned: {}, wear: {}, paid: {}, kills: {}, emotes: {} });   // (kills: by character, for the skins kills unlock; emotes: the ones bought)
+const blankShop = () => ({ bucks: 0, owned: {}, wear: {}, paid: {}, kills: {}, emotes: {}, passXp: 0 });   // (kills: by character, for the skins kills unlock; emotes: the ones bought; passXp: the Battle Pass)
 
 export class Career {
   constructor(cfg = {}, { fetchFn = typeof fetch === 'function' ? fetch.bind(globalThis) : null, storage = (() => { try { return globalThis.localStorage; } catch { return null; } })() } = {}) {
@@ -54,6 +55,7 @@ export class Career {
     this.playingAs = null;      // the character you're playing as (main.js sets it each game), for per-character kills
     this.onSkinUnlock = null;   // (skin, charId) => a skin kills unlocked
     this.onBucks = null;        // (n, why) => Stew Bucks came in ('achievement' or 'backpay'; play's are quiet)
+    this.onPassTier = null;     // (tier) => a Battle Pass tier reached (an entry of passTiers())
     this.flushing = false;
   }
 
@@ -193,6 +195,7 @@ export class Career {
           for (const id of Object.keys(ps.paid || {})) c.shop.paid[id] = true;
           for (const [ch, n] of Object.entries(ps.kills || {})) c.shop.kills[ch] = (c.shop.kills[ch] || 0) + n;
           for (const id of Object.keys(ps.emotes || {})) if (EMOTE_BY_ID[id]) c.shop.emotes[id] = true;
+          c.shop.passXp = Math.max(0, c.shop.passXp + (ps.passXp || 0));
           c.name = name;
           this.profile = c;
         } else {
@@ -205,7 +208,7 @@ export class Career {
           const G = this.profile.gums;
           pend.gums = { divinium: G.divinium, megas: { ...G.megas }, pack: [...G.pack], started: G.started, gifts: { ...G.gifts } };
           const S = this.profile.shop;
-          pend.shop = { bucks: S.bucks, owned: { ...S.owned }, wear: { ...S.wear }, paid: { ...S.paid }, kills: { ...S.kills }, emotes: { ...S.emotes } };
+          pend.shop = { bucks: S.bucks, owned: { ...S.owned }, wear: { ...S.wear }, paid: { ...S.paid }, kills: { ...S.kills }, emotes: { ...S.emotes }, passXp: S.passXp };
           pend.fresh = true;
         }
         if (this.auth) pend.fresh = true;   // (stamp the account on it, so it's yours)
@@ -294,6 +297,7 @@ export class Career {
     for (const id of Object.keys(ps.paid || {})) body['shop/paid/' + id] = true;
     for (const [ch, n] of Object.entries(ps.kills || {})) if (n) body['shop/kills/' + ch] = { '.sv': { increment: n } };
     for (const id of Object.keys(ps.emotes || {})) body['shop/emotes/' + id] = true;
+    if (ps.passXp) body['shop/passXp'] = { '.sv': { increment: ps.passXp } };
     if (!Object.keys(body).length && !p.fresh) return;
     body.name = this.profile.name;
     body.updated = { '.sv': 'timestamp' };
@@ -315,6 +319,7 @@ export class Career {
       for (const id of Object.keys(sg.gifts || {})) if (ng.gifts) delete ng.gifts[id];
       const ns = now.shop || (now.shop = {}), ss = sent.shop || {};
       if (ss.bucks) { ns.bucks = (ns.bucks || 0) - ss.bucks; if (!ns.bucks) delete ns.bucks; }
+      if (ss.passXp) { ns.passXp = (ns.passXp || 0) - ss.passXp; if (!ns.passXp) delete ns.passXp; }
       for (const id of Object.keys(ss.owned || {})) if (ns.owned) delete ns.owned[id];
       for (const [ch, id] of Object.entries(ss.wear || {})) if (ns.wear && ns.wear[ch] === id) delete ns.wear[ch];
       for (const id of Object.keys(ss.paid || {})) if (ns.paid) delete ns.paid[id];
@@ -439,6 +444,7 @@ export class Career {
     if (!s.unlock) return !!this.profile.shop.owned[id];
     if (s.unlock.kind === 'free') return true;
     if (s.unlock.kind === 'kills') return SHOP().opalAccounts.includes(this.key) || (!!charId && this.charKills(charId) >= s.unlock.need);
+    if (s.unlock.kind === 'pass') return this.passTier >= s.unlock.tier;
     return false;
   }
   // Kills while playing as a character (counted from when the shop arrived)
@@ -470,6 +476,39 @@ export class Career {
     }
     if (stat === 'rounds') this.addBucks((after - before) * E.perRound);
     else if (stat === 'kills' && E.killsPerBuck > 0) this.addBucks(Math.floor(after / E.killsPerBuck) - Math.floor(before / E.killsPerBuck));
+    this.addPassXp(passXpFor(stat, after - before));
+  }
+
+  // --- the Battle Pass (src/career/battlepass.js) ---------------------------------------
+  get passXp() { return (this.profile && this.profile.shop.passXp) || 0; }
+  get passTier() { return tierOf(this.passXp); }
+  addPassXp(n) {
+    if (!this.profile || !(n > 0)) return;
+    const S = this.profile.shop, was = tierOf(S.passXp);
+    S.passXp = (S.passXp || 0) + n;
+    const ps = this.shopPending();
+    ps.passXp = (ps.passXp || 0) + n;
+    this.dirty = true;
+    const now = tierOf(S.passXp);
+    if (now > was) {
+      this.payPass();
+      if (this.onPassTier) for (const t of passTiers()) if (t.tier > was && t.tier <= now) try { this.onPassTier(t); } catch (e) { console.warn('career', e); }
+    }
+  }
+  // The Bucks tiers you've reached pay out once each (here, or the first time you sign in)
+  payPass() {
+    if (!this.profile) return 0;
+    const S = this.profile.shop, ps = this.shopPending(), tier = this.passTier;
+    let n = 0;
+    for (const t of passTiers()) {
+      const id = 'pass' + t.tier;
+      if (t.kind !== 'bucks' || t.tier > tier || S.paid[id]) continue;
+      S.paid[id] = true;
+      ps.paid = { ...(ps.paid || {}), [id]: true };
+      n += t.n;
+    }
+    if (n) this.addBucks(n);
+    return n;
   }
 
   // Every achievement you have pays out once (its G x perGamerscore): the
@@ -478,13 +517,15 @@ export class Career {
     if (!this.profile) return 0;
     const S = this.profile.shop, ps = this.shopPending();
     let n = 0;
+    const pass = this.payPass();
     for (const id of Object.keys(this.profile.achievements)) {
       if (S.paid[id] || !ACH_BY_ID[id]) continue;
       S.paid[id] = true;
       ps.paid = { ...(ps.paid || {}), [id]: true };
       n += ACH_BY_ID[id].g * SHOP().perGamerscore;
     }
-    if (n) { this.addBucks(n, why); this.saveLocal(); this.changed(); }
+    if (n) this.addBucks(n, why);
+    if (n || pass) { this.saveLocal(); this.changed(); }
     return n;
   }
 
@@ -509,13 +550,15 @@ export class Career {
   ownsEmote(id) {
     const e = EMOTE_BY_ID[id];
     if (!e) return false;
+    if (e.pass) return !!this.profile && this.passTier >= e.pass;   // (the Battle Pass's: reach its tier)
     return !!e.free || !!(this.profile && this.profile.shop.emotes && this.profile.shop.emotes[id]);
   }
-  emotePrice(id) { const e = EMOTE_BY_ID[id]; return e && !e.free ? (SHOP().rarities[e.rarity] || SHOP().rarities.common).price : 0; }
+  emotePrice(id) { const e = EMOTE_BY_ID[id]; return e && !e.free && !e.pass ? (SHOP().rarities[e.rarity] || SHOP().rarities.common).price : 0; }
   // Buy an emote: { ok } or { ok: false, code: 'guest' | 'owned' | 'broke' | 'unknown' }
   buyEmote(id) {
     if (!EMOTE_BY_ID[id]) return { ok: false, code: 'unknown' };
     if (!this.profile) return { ok: false, code: 'guest' };
+    if (EMOTE_BY_ID[id].pass) return { ok: false, code: 'unlock' };
     if (this.ownsEmote(id)) return { ok: false, code: 'owned' };
     const price = this.emotePrice(id);
     if (this.profile.shop.bucks < price) return { ok: false, code: 'broke' };
@@ -563,6 +606,7 @@ function normalize(p, name) {
     for (const [id, v] of Object.entries(p.shop.paid || {})) if (v) out.shop.paid[id] = true;
     for (const [ch, n] of Object.entries(p.shop.kills || {})) if (Number(n) > 0) out.shop.kills[ch] = Math.floor(Number(n));
     for (const [id, v] of Object.entries(p.shop.emotes || {})) if (v && EMOTE_BY_ID[id]) out.shop.emotes[id] = true;
+    out.shop.passXp = Math.max(0, Math.floor(Number(p.shop.passXp) || 0));
   }
   if (p && p.gums && typeof p.gums === 'object') {
     out.gums.divinium = Math.max(0, Math.floor(Number(p.gums.divinium) || 0));

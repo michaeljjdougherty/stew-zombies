@@ -1044,6 +1044,7 @@ const shopUI = new ShopUI(career, {
 const openShop = (tab, pick = null) => { mode = 'shop'; menus.show('shop'); shopUI.open(tab, pick); };
 document.getElementById('btn-shop').addEventListener('click', () => openShop('skins'));
 document.getElementById('btn-shop-emotes').addEventListener('click', () => openShop('emotes'));
+document.getElementById('btn-shop-pass').addEventListener('click', () => openShop('pass'));
 // "Playing as" on the map screen: who you are and what they're wearing (the same
 // choices as Characters and the Stew Store)
 const ownedSkins = (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))];
@@ -1059,6 +1060,8 @@ const loadout = new LoadoutPicker({
 const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
 function refreshStoreBlade() { storeBlade.refresh(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
+// a Battle Pass tier: what it gave you
+career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
   if (why === 'backpay') achToast.push({ head: 'Stew Store', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
