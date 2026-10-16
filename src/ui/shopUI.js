@@ -70,8 +70,9 @@ export class ShopUI {
     };
     tile('', 'Own clothes', worn === '' ? 'Wearing' : 'Free', '#8a8170', worn === '' ? 'owned wearing' : 'owned');
     for (const s of SKINS) {
-      const R = rarityOf(s), own = C.ownsSkin(s.id);
-      tile(s.id, s.name, s.id === worn ? 'Wearing' : own ? 'Owned' : `${R.name} · ${R.price}`, R.color, own ? (s.id === worn ? 'owned wearing' : 'owned') : 'for-sale');
+      const R = rarityOf(s), own = C.ownsSkin(s.id, this.char);
+      const tag = s.id === worn ? 'Wearing' : own ? (s.unlock ? 'Unlocked' : 'Owned') : s.unlock ? this.unlockTag(s) : `${R.name} · ${R.price}`;
+      tile(s.id, s.name, tag, R.color, own ? (s.id === worn ? 'owned wearing' : 'owned') : 'for-sale');
     }
     this.info();
   }
@@ -88,12 +89,17 @@ export class ShopUI {
     const C = this.career, S = CONFIG.shop, worn = C.wornSkin(this.char) || '';
     const skin = SKIN_BY_ID[this.sel], name = this.charName();
     $('sh-name').textContent = skin ? skin.name : 'Own clothes';
+    $('sh-name').classList.toggle('long', !!skin && skin.name.length > 24);
     const act = $('btn-sh-act');
     let blurb = skin ? skin.blurb : `${name}'s own outfit.`;
     if (!C.signedIn) { act.textContent = 'Sign in to buy skins'; act.setAttribute('aria-disabled', 'true'); }
     else if (this.sel === worn) { act.textContent = `${name} is wearing this`; act.setAttribute('aria-disabled', 'true'); }
-    else if (!skin || C.ownsSkin(skin.id)) { act.textContent = `Wear on ${name}`; act.removeAttribute('aria-disabled'); }
-    else {
+    else if (!skin || C.ownsSkin(skin.id, this.char)) { act.textContent = `Wear on ${name}`; act.removeAttribute('aria-disabled'); }
+    else if (skin.unlock) {
+      act.textContent = this.unlockTag(skin);
+      act.setAttribute('aria-disabled', 'true');
+      if (skin.unlock.kind === 'kills') blurb += ` Unlock it for ${name} with ${skin.unlock.need} kills as ${name}: ${Math.min(C.charKills(this.char), skin.unlock.need)} so far.`;
+    } else {
       const price = rarityOf(skin).price, short = price - C.bucks;
       act.textContent = `Buy for ${price} ${S.currency}`;
       act.setAttribute('aria-disabled', String(short > 0));
@@ -115,12 +121,15 @@ export class ShopUI {
     this.render();
   }
 
+  // how a skin that isn't for sale is unlocked
+  unlockTag(s) { return s.unlock.kind === 'kills' ? `${s.unlock.need} kills as ${this.charName()}` : 'Free'; }
+
   charName() { const c = this.h.characters().find((x) => x.id === this.char); return c ? c.name : 'them'; }
 
   act() {
     const C = this.career, skin = SKIN_BY_ID[this.sel];
     if (!C.signedIn) { this.h.sound('deny'); return; }
-    if (skin && !C.ownsSkin(skin.id)) {
+    if (skin && !C.ownsSkin(skin.id, this.char)) {
       const r = C.buySkin(skin.id);
       if (!r.ok) { this.h.sound('deny'); return; }
       this.h.sound('buy');

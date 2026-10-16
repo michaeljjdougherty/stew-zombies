@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { buildCharacter, idleCharacter, CHARACTERS } from './characters.js';
 import { applySkin } from '../career/skins.js';
+import { applySkinFx } from './skinFx.js';
 
 export class Showcase {
   constructor(renderer) {
@@ -86,7 +87,9 @@ export class Showcase {
     const key = id + ':' + shirt + ':' + (skin || '');
     if (this.key !== key) {
       if (this.char) this.turntable.remove(this.char.root);
-      this.char = buildCharacter(skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, skin) : id, { shirt });
+      const def = skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, skin) : null;
+      this.char = buildCharacter(def || id, { shirt });
+      if (def && def.skinFx) applySkinFx(this.char, def.skinFx);   // (the special skins' finish)
       this.char.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       this.turntable.add(this.char.root);
       this.key = key;
@@ -108,6 +111,7 @@ export class Showcase {
     }
     this.turntable.rotation.y = this.spin;
     if (this.char) idleCharacter(this.char, this.time);
+    if (this.char && this.char.fxUpdate) this.char.fxUpdate(dt);
     this.dust.rotation.y += dt * 0.02;
     // frame him to the right of the menu on wide screens, centred on narrow ones
     const cam = this.camera;

@@ -113,3 +113,28 @@ const C4 = new Career({ firebaseUrl: 'https://x.firebaseio.com' }, { fetchFn: fa
 await C4.signIn('Vet'); await settle(C4);
 check(db.vet.shop.owned.jersey && db.vet.shop.wear.kearns === 'jersey' && C4.ownsSkin('tux') && C4.ownsSkin('jersey'), 'back online: what waited goes up, and nothing is lost');
 check(Object.values(SKIN_BY_ID).every((s) => priceOf(s.id) > 0), 'every skin has a price');
+
+// --- the special skins: Sexy Fucci (free) and the Opal (1000 kills as that character) ---
+const OP = SKIN_BY_ID.opal;
+check(OP.name === 'Pink Diamond Galaxy Opal Drippy Face Build Skin', 'the Opal skin has its full name');
+const F = new Career({}, { fetchFn: null, storage: store() });
+await F.signIn('Fresh');
+check(F.ownsSkin('sexyFucci', 'kearns') && F.wearSkin('ryan', 'sexyFucci') && F.wornSkin('ryan') === 'sexyFucci', 'everyone has Sexy Fucci, on anyone, for free');
+check(!F.buySkin('sexyFucci').ok && !F.buySkin('opal').ok, 'neither is for sale');
+check(!F.ownsSkin('opal', 'ryan') && !F.wearSkin('ryan', 'opal'), 'no Opal before the kills');
+const unlockedSkins = [];
+F.onSkinUnlock = (s, ch) => unlockedSkins.push(s.id + ':' + ch);
+F.playingAs = 'ryan';
+F.add('kills', OP.unlock.need - 1);
+check(!F.ownsSkin('opal', 'ryan'), `${OP.unlock.need - 1} kills as Ryan: not yet`);
+F.add('kills', 1);
+check(F.ownsSkin('opal', 'ryan') && !F.ownsSkin('opal', 'kearns') && unlockedSkins.join() === 'opal:ryan', `${OP.unlock.need} kills as Ryan: Ryan's Opal (and only his), with a pop-up`);
+const PC = new Career({}, { fetchFn: null, storage: store() });
+await PC.signIn('PHAT CHOPS');
+check(['kearns', 'ryan', 'pit', 'chops', 'james'].every((ch) => PC.ownsSkin('opal', ch)) && PC.wearSkin('pit', 'opal'), 'PHAT CHOPS has the Opal on every character');
+// per-character kills sync like the rest
+const K = new Career({ firebaseUrl: 'https://x.firebaseio.com' }, { fetchFn: fakeFetch, storage: store() });
+await K.signIn('Killer'); K.playingAs = 'pit'; K.add('kills', 40); await settle(K);
+check(db.killer.shop.kills.pit === 40, 'kills as each character go up to the database');
+const op = applySkin(kearns, 'kearns', 'opal');
+check(op.skinFx === 'opal' && op.armSkin && applySkin(kearns, 'kearns', 'sexyFucci').skinFx === 'bikini', 'the special skins carry their finish');

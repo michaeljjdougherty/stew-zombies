@@ -1415,7 +1415,10 @@ export const CONFIG = {
       common: { name: 'Common', price: 300, color: '#9fb4c8' },
       rare: { name: 'Rare', price: 750, color: '#5aa0ff' },
       legendary: { name: 'Legendary', price: 1500, color: '#e8b13a' },
+      exclusive: { name: 'Exclusive', price: 0, color: '#ff4fc8' },   // (not for sale: unlocked)
     },
+    // usernames (as database keys) that have the Pink Diamond Galaxy Opal skin on every character
+    opalAccounts: ['phat_chops'],
   },
 
   // ---------------------------------------------------------------------------

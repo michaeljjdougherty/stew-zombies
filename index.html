@@ -387,11 +387,12 @@
   .sh-chars { gap: 6px; }
   .sh-chars .cs-card { min-width: 0; padding: 4px 9px; }
   .sh-chars .cs-card b { font-size: 15px; }
-  .sh-chars .cs-card span { font-size: 9px; }
+  .sh-chars .cs-card span { font-size: 9px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
   .shopscreen h2 { font-size: clamp(30px, 4vw, 44px); }
+  .shopscreen h2.long { font-size: clamp(20px, 2.4vw, 28px); }
   .sh-skin { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 1px; padding: 6px 9px; min-width: 0; border: 1px solid var(--line); border-left: 4px solid var(--rc); background: rgba(255,255,255,.03); }
-  .sh-skin b { font-family: var(--display); font-weight: 400; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1px; text-transform: uppercase; }
+  .sh-skin b { font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; letter-spacing: 1px; text-transform: uppercase; }
   .sh-skin small { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
   .sh-skin.for-sale small { color: var(--rc); }
   .sh-skin.wearing small { color: #e8b13a; }

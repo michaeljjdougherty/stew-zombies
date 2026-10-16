@@ -33,12 +33,22 @@ export const SKINS = [
     look: { top: { type: 'suit', color: '#5a0e12', shirt: '#121214', tie: '#050506' }, layer: null, pants: 'suit', shoes: 'dress', hairColor: [26, 14, 12] } },
   { id: 'golden', name: 'Golden Ladle', rarity: 'legendary', blurb: 'A gold suit and bleached hair. Everyone will know you can afford it.',
     look: { top: { type: 'suit', color: '#b28a2c', shirt: '#141416', tie: '#d8b84a' }, layer: null, pants: 'suit', shoes: 'dress', hairColor: [214, 186, 120] } },
+  // --- not for sale: `unlock` says how you get them -----------------------------------
+  // free: every username has it. kills: `need` kills while playing as that
+  // character unlocks it for them (and CONFIG.shop.opalAccounts have it on everyone).
+  // fx: a finish applied after the character's built (src/render/skinFx.js).
+  { id: 'sexyFucci', name: 'Sexy Fucci', rarity: 'exclusive', unlock: { kind: 'free' }, fx: 'bikini',
+    blurb: 'A Fucci bikini in black lacquer and gold. Free to everyone for playing Stew Zombies 2.0.',
+    look: { top: { type: 'tank', color: '#111113' }, layer: null, pants: 'chinos', shoes: 'whiteSneaker' } },
+  { id: 'opal', name: 'Pink Diamond Galaxy Opal Drippy Face Build Skin', rarity: 'exclusive', unlock: { kind: 'kills', need: 1000 }, fx: 'opal',
+    blurb: 'Head to toe in glowing pink opal and diamond, with a galaxy swirling round them.',
+    look: { top: { type: 'tee', color: '#ff7ad8' }, layer: null, pants: 'chinos', shoes: 'whiteSneaker', hairColor: [255, 170, 230], armSkin: [255, 160, 228] } },
 ];
 
 export const SKIN_BY_ID = Object.fromEntries(SKINS.map((s) => [s.id, s]));
 
 export const rarityOf = (skin) => CONFIG.shop.rarities[skin.rarity] || CONFIG.shop.rarities.common;
-export const priceOf = (id) => (SKIN_BY_ID[id] ? rarityOf(SKIN_BY_ID[id]).price : Infinity);
+export const priceOf = (id) => (SKIN_BY_ID[id] && !SKIN_BY_ID[id].unlock ? rarityOf(SKIN_BY_ID[id]).price : Infinity);
 
 // A character definition wearing a skin: hand it to buildCharacter() in place
 // of the id. (No skin, or one we don't know: their own outfit.)
@@ -50,5 +60,7 @@ export function applySkin(def, charId, skinId) {
   if (L.pants) out.pants = L.pants;
   if (L.shoes) out.shoes = L.shoes;
   if (L.hairColor && def.hair) out.hair = { ...def.hair, color: L.hairColor };
+  if (L.armSkin) out.armSkin = L.armSkin;   // (your arms in first person)
+  if (s.fx) out.skinFx = s.fx;
   return out;
 }

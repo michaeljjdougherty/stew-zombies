@@ -275,7 +275,7 @@ export class Viewmodel {
   // (id can be a whole definition: a character wearing a skin from the shop)
   setCharacter(id) {
     const def = id && typeof id === 'object' ? id : CHARACTERS[id] || CHARACTERS.kearns;
-    const sk = (SKIN[def.skin] || SKIN.light).base;
+    const sk = def.armSkin || (SKIN[def.skin] || SKIN.light).base;   // (armSkin: a skin from the shop)
     // the game's lighting is warmer than the showcase: deepen the tone a touch
     const skin = sk.map((v) => Math.round(v * 0.8));
     let sleeve = null;

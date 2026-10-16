@@ -795,6 +795,7 @@ function installSim(s) {
   player = sim.playerById(localId);
   renderer.localId = sound.localId = hud.localId = rangeUI.localId = localId;
   hud.localCharacter = sound.localCharacter = player.character;
+  career.playingAs = player.character;   // (kills as them count toward their Opal skin)
   // (Call of the Crust: Pit's at his forge, so whoever picked him is someone else there)
   if (!renderer.character || renderer.character.id !== player.character) setLook(player.character);
   hud.localName = CHARACTERS[player.character] ? CHARACTERS[player.character].name : hud.localName;
@@ -1027,6 +1028,7 @@ const shopUI = new ShopUI(career, {
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
 });
 document.getElementById('btn-shop').addEventListener('click', () => { mode = 'shop'; menus.show('shop'); shopUI.open(); });
+career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
   if (why === 'backpay') achToast.push({ head: 'Skin Shop', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
