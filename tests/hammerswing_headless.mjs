@@ -1,5 +1,7 @@
 // The War Hammers are heavy: a swing winds up before it lands, slows you while
 // you swing, and the next one has to wait for the hammer to come back round.
+// Left click is the charged slam (its element; a long wait for the next one),
+// right click the quick sweep.
 // Run: node tests/hammerswing_headless.mjs
 import { CONFIG } from '../src/config.js';
 import { GameSim } from '../src/sim/sim.js';
@@ -29,14 +31,28 @@ check(!!s1 && Math.abs(s1.at - t0 - S.windup) < 0.05, `...it comes down ${s1 ? (
 // straight away again: still coming back round
 step(1, { fire: true, firePressed: true }); step(40);
 check(slams() === 1, 'clicking again right away: nothing (the hammer\'s still coming back round)');
-const gap = 60 / CONFIG.weapons['Fire Hammer'].rpm;
+const gap = 60 / CONFIG.weapons['Fire Hammer'].rpm, Q = CONFIG.crust.hammers.quick, every = CONFIG.crust.hammers.charged.every;
+const sweeps = () => log.filter((e) => e.type === 'hammerSweep').length;
 step(Math.ceil(gap * 60));
 step(1, { fire: true, firePressed: true }); step(Math.ceil(S.windup * 60) + 2);
-check(slams() === 2, `after ${gap.toFixed(1)} s it swings again`);
+check(slams() === 1, `after ${gap.toFixed(1)} s the charged slam still isn't back (it waits ${every} s)`);
+// the quick swing (right click): back round already, and it lands fast
+const tq = sim.time;
+step(1, { ads: true, adsPressed: true }); step(Math.ceil(Q.windup * 60) + 1);
+const q1 = log.find((e) => e.type === 'hammerSweep');
+check(!!q1 && slams() === 1 && Math.abs(q1.at - tq - Q.windup) < 0.05, `right click: a quick sweep ${q1 ? (q1.at - tq).toFixed(2) : '?'} s later (no element)`);
+step(2, { ads: true, adsPressed: true }); step(20);
+check(sweeps() === 1, '...and not another straight away');
+step(Math.ceil(Q.every * 60));
+step(1, { ads: true, adsPressed: true }); step(Math.ceil(Q.windup * 60) + 1);
+check(sweeps() === 2, `...but again after ${Q.every} s`);
+step(Math.ceil(every * 60));
+step(1, { fire: true, firePressed: true }); step(Math.ceil(S.windup * 60) + 2);
+check(slams() === 2, `after ${every} s the charged slam is back`);
 
 // heavy: slower carrying it, slower still mid-swing
 const speedOver = (secs, c) => { const x0 = me.pos.x, z0 = me.pos.z; step(Math.round(secs * 60), c); return Math.hypot(me.pos.x - x0, me.pos.z - z0) / secs; };
-step(Math.ceil(gap * 60));
+step(Math.ceil(every * 60));
 const walk = speedOver(0.6, { moveY: 1 });
 step(1, { moveY: 1, fire: true, firePressed: true });
 const swinging = speedOver(0.5, { moveY: 1 });
@@ -47,6 +63,7 @@ check(walk < pistol * 0.9, `carrying it you're slower than with a pistol (${walk
 
 // put it away mid-swing: it never lands
 giveWeapon(sim, me, 'Ice Hammer'); step(Math.ceil(gap * 60) + 60);
+step(Math.ceil(every * 60));
 const n = slams();
 step(1, { fire: true, firePressed: true }); step(3, { weaponCycle: 1 }); step(60);
 check(slams() === n, 'switching away mid-swing: it never lands');

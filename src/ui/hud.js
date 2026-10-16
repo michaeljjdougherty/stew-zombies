@@ -256,7 +256,7 @@ export class HUD {
         this.toast('The War Hammer', 'whole · take one each from the stand', '#ffc860', 4);
         break;
       case 'warHammerTaken':
-        if (e.playerId === this.localId) this.toast('War Hammer', 'swing it: no ammo, no sights · a titan\'s core makes it elemental', '#ffc860', 3.5);
+        if (e.playerId === this.localId) this.toast('War Hammer', 'right click (LT): a quick swing · left click (RT): the charged slam · a titan\'s core makes it elemental', '#ffc860', 4);
         break;
       case 'hammerTempered':
         this.toast(e.name, 'tempered by Pit', HAMMER_HUE[e.element], 3.5);
@@ -635,9 +635,10 @@ export class HUD {
       this.el.cross.style.setProperty('--gap', `${Math.max(4, Math.min(80, gap)).toFixed(1)}px`);
     }
 
-    // a War Hammer: a bar under the crosshair filling back up till you can swing again
+    // a War Hammer: a bar under the crosshair filling back up till its charged slam's ready again
     if (this.el.swing) {
-      const cd = def.hammer && p.alive ? Math.max(0, w.fireCooldown || 0) : 0, gap = w.fireGap || 1;
+      const hs = w.slots[w.current] || {};
+      const cd = def.hammer && p.alive ? Math.max(0, hs.hammerCd || 0) : 0, gap = hs.hammerGap || 1;
       this.swingShow = cd > 0 ? 0.35 : Math.max(0, (this.swingShow || 0) - dt);   // (stays a moment, full, once it's back)
       this.set('swingHidden', this.el.swing, !(def.hammer && this.swingShow > 0), 'hidden');
       if (this.swingShow > 0) {

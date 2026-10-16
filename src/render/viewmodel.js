@@ -146,6 +146,7 @@ export class Viewmodel {
     this.currentId = id;
     this.currentKey = key;
     this.hammerT = -1;
+    this.hammerQ = -1;   // (its quick swing)
     this.reload = null;
     this.slideLocked = false;
     this.actionT = -1;
@@ -287,7 +288,7 @@ export class Viewmodel {
     const def = this.currentId ? this.cfg.weapons[this.currentId] : null;
     switch (e.type) {
       case 'shot': {
-        if (def && def.hammer) { this.hammerT = 0; break; }   // a War Hammer: the overhead swing (update)
+        if (def && def.hammer) { if (e.quick) this.hammerQ = 0; else this.hammerT = 0; break; }   // a War Hammer: the overhead swing, or the quick sweep (update)
         const side = e.side === 'L' ? 'L' : 'R';
         const k = ((def && def.recoil.viewKick) || 1) * ((this.cfg.recoil && this.cfg.recoil.gunKick) ?? 1);
         if (side === 'L') this.kickL.v += 5.5 * Math.sqrt(k);
@@ -774,6 +775,15 @@ export class Viewmodel {
       if (s > 0) { o.rx += s * 0.75; o.y += s * 0.1; o.z += s * 0.09; o.rz -= s * 0.2; o.x += s * 0.03; }
       else { o.rx += s * 1.45; o.y += s * 0.2; o.x += s * 0.12; o.z += s * 0.08; o.rz -= s * 0.45; }
       if (this.hammerT >= end) this.hammerT = -1;
+    }
+    // ...its quick swing: drawn back to your left, swept hard across to the right,
+    // then brought back to the middle
+    if (this.hammerQ >= 0) {
+      this.hammerQ += dt;
+      const Q = this.cfg.crust.hammers.quick, W = Q.windup, end = Q.every - 0.05;
+      const s = keyPath(this.hammerQ, [[0, 0], [W * 0.85, -1], [W, -1.04], [W + 0.09, 1], [W + 0.2, 0.9], [end, 0]]);
+      o.x += s * 0.2; o.ry -= s * 0.95; o.rz -= s * 0.35; o.rx += Math.abs(s) * 0.25; o.y += Math.abs(s) * 0.04;
+      if (this.hammerQ >= end) this.hammerQ = -1;
     }
 
     // --- place the gun(s)

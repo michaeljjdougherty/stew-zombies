@@ -25,7 +25,8 @@ const center = (z) => ({ x: z.pos.x, y: z.pos.y + (z.crawler ? 0.3 : 1.0), z: z.
 export const HAMMER_ELEMENTS = ['wind', 'lightning', 'ice', 'fire'];
 export const HAMMER_IDS = { wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' };
 
-export function hammerSlam(sim, p, eye, dir, def, weapon) {
+export function hammerSlam(sim, p, eye, dir, def, weapon, quick = false) {
+  if (quick) { hammerSweep(sim, p, eye, dir, def, weapon); return; }
   const H = sim.cfg.crust.hammers, el = def.hammer, up = !!def.upgraded;
   const E = H.tempered[el];
   let fx = dir.x, fz = dir.z;
@@ -105,4 +106,31 @@ export function hammerSlam(sim, p, eye, dir, def, weapon) {
   zachHammerHit(sim, p, el, land, { x: fx, z: fz });
   // (an untempered one: does it count for its trial? hammerTrials.js)
   if (!up) trialSlam(sim, p, el, land, { x: fx, z: fz }, { smashed: Math.min(hits.length, maxKills), frozen });
+}
+
+// The quick swing (right click): a sweep from left to right across you, the same
+// on every hammer. No element, and it doesn't count against Big Evil Zach.
+export function hammerSweep(sim, p, eye, dir, def, weapon) {
+  const Q = sim.cfg.crust.hammers.quick;
+  let fx = dir.x, fz = dir.z;
+  const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+  const rx = -fz, rz = fx;   // (to your right)
+  const cosA = Math.cos(Q.angle * DEG);
+  const hits = [];
+  for (const z of sim.zombies) {
+    if (!alive(z)) continue;
+    const dx = z.pos.x - p.pos.x, dz = z.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+    if (d > Q.reach + 0.4 || Math.abs(z.pos.y - p.pos.y) > 2.4) continue;
+    if (d > 0.8 && (dx * fx + dz * fz) / d < cosA) continue;
+    const c = center(z);
+    const ex = c.x - eye.x, ey = c.y - eye.y, ez = c.z - eye.z, el2 = Math.hypot(ex, ey, ez);
+    if (el2 > 0.6 && sim.raycastWorld(eye, { x: ex / el2, y: ey / el2, z: ez / el2 }, el2 - 0.4, true)) continue;
+    hits.push({ z, d, c });
+  }
+  hits.sort((a, b) => a.d - b.d);
+  for (const { z, c } of hits.slice(0, Q.maxKills)) {
+    const kx = rx * 0.75 + fx * 0.25, kz = rz * 0.75 + fz * 0.25;
+    damageZombie(sim, z, 1e6, { playerId: p.id, part: 'torso', kind: 'hammer', dir: { x: kx, y: 0.3, z: kz }, point: c, force: 1, weapon, fling: { x: kx, z: kz, dist: Q.fling, up: 1 } });
+  }
+  sim.emit('hammerSweep', { playerId: p.id, element: def.hammer, pos: { x: p.pos.x + fx * 1.4, y: p.pos.y + 1, z: p.pos.z + fz * 1.4 }, dir: { x: fx, z: fz }, smashed: Math.min(hits.length, Q.maxKills), weapon });
 }

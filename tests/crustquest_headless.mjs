@@ -45,7 +45,7 @@ function game(seed = 3, character = 'kearns') {
 const E = (g) => g.sim.crustEgg;
 const addZ = (g, x, z, hp = 3000) => { const zz = makeZombie(g.sim, { pos: { x, y: F.y, z }, health: hp, state: 'chase' }); zz.speed = 0; g.sim.zombies.push(zz); return zz; };
 // (a swing winds up, lands, and the hammer comes back round: one whole swing)
-const SWING = Math.ceil(60 * 60 / CONFIG.weapons['Fire Hammer'].rpm) + 2;
+const SWING = Math.ceil(60 * CONFIG.crust.hammers.charged.every) + 2;   // (a charged slam, and the wait till the next)
 const swing = (g) => { g.step({ fire: true, firePressed: true }); g.step({}, SWING); };
 const forgeAll = (g) => {
   for (const id of ['ship', 'research', 'caves', 'trench']) {

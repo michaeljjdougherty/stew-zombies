@@ -439,6 +439,8 @@ export class SoundDirector {
       case 'titanWave': A.play(e.cleared ? S.roundEndSting : S.roundStartSting, {}, { bus: 'music', gain: 0.9, reverb: 0.5 }); break;
       case 'titanDown': A.play(S.titanRoar, { f0: 34, dur: 3.5 }, { pos: { ...e.pos, y: (e.pos.y || 0) + 5 }, ref: 40, gain: 1.5, reverb: 0.9 }); A.play(S.explosion, { big: 2 }, { pos: e.pos, ref: 30, gain: 1.2, reverb: 0.8, delay: 1.2 }); break;
       // --- Call of the Crust: the War Hammers, Pit's forge, Big Evil Zach
+      // (its quick sweep: the plain iron hit, lighter, only when it smashes something)
+      case 'hammerSweep': if (e.smashed) A.play(S.hammerImpact, { element: 'iron' }, e.playerId === this.localId ? { gain: 0.6, reverb: 0.3 } : { pos: e.pos, ref: 3, gain: 0.6, reverb: 0.4 }); break;
       case 'hammerSlam': A.play(S.hammerImpact, { element: e.element, upgraded: !!e.upgraded }, e.playerId === this.localId ? { gain: 1.0, reverb: 0.4 } : { pos: e.pos, ref: 4, reverb: 0.5 }); break;
       // (the tempered Lightning Hammer's thunderclap is already in its slam)
       case 'hammerChain': if (!A.hasSample('g_ham_lightning')) A.play(S.thunder, { near: 0.35 }, { pos: e.points[0], ref: 6, gain: 0.6, reverb: 0.4 }); break;
