@@ -71,6 +71,25 @@ build step), by **Michael Dougherty** and **James Amarante** (GitHub
 - **The README is out of date.** It stops at Phase 9 and doesn't cover the Crust, careers, GobbleGum or the 2.0 menu.
 - **Hotspot files** that most work touches: `index.html` (all markup and CSS), `src/config.js`, `src/main.js`, `src/audio/director.js`, `src/sim/sim.js` and `src/ui/patchNotes.js`. Parallel threads will conflict here, so keep each one's edits small and pull often.
 
+## Threads that can run side by side
+
+Run two or three at a time. Give each one its own area of the code, and let
+only one thread publish the artifact or push at a time.
+
+| Thread | Owns | Notes |
+| --- | --- | --- |
+| **Call of the Crust release** | `src/map/crust*`, `src/render/crust*`, `src/sim/crustEgg.js`, `crustPower.js`, `src/net/` | Playtest fixes, balance, taking online out of beta. Michael decides when the dev-code lock comes off. |
+| **Menus and UI** | `index.html` (markup and CSS), `src/ui/` | Only one thread at a time should edit `index.html`. |
+| **Weapons** (tweaks and new guns) | the `weapons` section and the class defaults at the top of `src/config.js`, plus the `recoil`, `madDog` and `aat` sections; `src/sim/weapons.js`; `src/render/gunModels.js` and `viewmodel.js`; `src/audio/gunSamples.js` | Try changes in the Firing Range. Tests: `newguns`, `phase3`, `ads`, `range`. On the Crust each wall gun appears only once and the box contents differ, so check balance on both maps. Keep all gun work in this one thread. |
+| **Audio** | `src/audio/` (except `gunSamples.js`), `assets/sfx`, `assets/music`, `assets/voice` | Fairly independent of the other threads. |
+| **Performance** | `src/render/` (not the Crust files), `src/render/quality.js`, the `graphics` section of `config.js` | Overlaps with the Crust visuals, so run it after the Crust thread or stay out of the Crust files. |
+| **Docs** | `README.md`, `docs/` | Never conflicts with anything. |
+
+Other new content (gums, perks, power-ups) goes through `config.js` and the
+sim. Do those one at a time. Git merges line by line, so two threads editing
+different sections of `config.js` won't conflict; two threads editing the same
+lines will.
+
 ## Ideas on the table (not built yet)
 
 - Releasing the Crust publicly (removing the dev-code lock), and taking its online play out of beta.
