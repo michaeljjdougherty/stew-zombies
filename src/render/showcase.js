@@ -146,10 +146,10 @@ export class Showcase {
   }
 
   // the thumb scene on a rarity's glow
-  thumbBg(color) {
+  thumbBg(color, soft = false) {
     const c = document.createElement('canvas'); c.width = c.height = 128;
     const g = c.getContext('2d'), grd = g.createRadialGradient(64, 40, 4, 64, 60, 90);
-    grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.25, color || '#5aa0ff'); grd.addColorStop(1, '#0a0a14');
+    grd.addColorStop(0, soft ? color || '#5aa0ff' : '#ffffff'); grd.addColorStop(soft ? 0.5 : 0.25, color || '#5aa0ff'); grd.addColorStop(1, '#0a0a14');   // (soft: no white hot spot, for the guns)
     g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
     const bg = new THREE.CanvasTexture(c); bg.colorSpace = THREE.SRGBColorSpace;
     return bg;
@@ -161,14 +161,15 @@ export class Showcase {
     const { spec } = job, ts = this.thumbScene;
     if (!job.built) { job.built = buildGun(spec.gun, { skin: spec.gunSkin || null }); job.t0 = performance.now(); }
     const G = job.built;
-    if (REAL_GUNS[spec.gun] && !G.real && performance.now() - job.t0 < 8000) { this.thumbQueue.push(job); return; }
+    if (REAL_GUNS[spec.gun] && !G.real && performance.now() - job.t0 < 15000) { this.thumbQueue.push(job); return; }
     const holder = new THREE.Group();
     holder.add(G.group);
-    G.group.rotation.set(0, -Math.PI / 2, 0.12);   // (barrel to the right, nose up a touch)
+    G.group.rotation.set(0, -Math.PI / 2, 0);
+    holder.rotation.z = 0.55;   // (barrel to the right and up: a long gun fills a tall tile that way)
     ts.add(holder);
     const box = new THREE.Box3().setFromObject(holder), mid = box.getCenter(new THREE.Vector3()), dim = box.getSize(new THREE.Vector3());
     holder.position.sub(mid);
-    const bg = this.thumbBg(spec.color);
+    const bg = this.thumbBg(spec.color, true);
     ts.background = bg;
     const cam = this.thumbCam;
     cam.fov = 24; cam.updateProjectionMatrix();
@@ -240,7 +241,7 @@ export class Showcase {
       G.group.position.set(-c.x, -c.y, -c.z);   // (turning round its middle, not the grip)
       pivot.rotation.y = -Math.PI / 2;
       pivot.add(G.group); holder.add(pivot);
-      holder.scale.setScalar(1.6);
+      holder.scale.setScalar(1.15);
       holder.position.set(0, 1.0, 0);
       holder.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       this.turntable.add(holder);
