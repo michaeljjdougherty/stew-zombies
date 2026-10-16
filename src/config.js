@@ -1167,6 +1167,9 @@ export const CONFIG = {
       pullSpeed: [2.2, 8],   // m/s at the edge, and right by the hole
       killRadius: 1.3,       // m from the hole: gone
       maxKills: 48,          // per dog
+      // dolphin dive into the hole and it spits you out somewhere else on the map
+      // (Ascension's Gersh device): within radius m of it; invuln s safe once you land
+      diveWarp: { radius: 2.4, invuln: 2 },
       holeY: 1.1,            // m: the hole hangs this high over her
     },
     // The LBD (wall buy, [X]): a sleeping baby you set down like a Bouncing
@@ -1820,14 +1823,18 @@ export const CONFIG = {
       titanDamage: 0,        // (the titans each have their own way down)
       tempered: {
         maxKills: 12,
-        // a burst of flame, and a pool of fire where it landed: anything that walks in catches
-        fire: { blast: 'hammerFireUp', pool: { radius: 4.2, time: 7, burnKill: 2.4, max: 30 } },
+        // a burst of flame, and a pool of fire where it landed: anything in it burns
+        // down where it stands (killTime s, whatever the round), and anything that gets
+        // out is still alight (burnKill s)
+        fire: { blast: 'hammerFireUp', pool: { radius: 4.2, time: 7, killTime: 1.2, burnKill: 2.4, max: 30 } },
         // everything round you frozen solid (a frozen one shatters at the next hit), and a
-        // blizzard left behind that freezes whatever comes in
-        ice: { radius: 10, freeze: 9, maxFrozen: 40, storm: { radius: 5.5, time: 6, freeze: 3.5, max: 30 } },
-        // a gale down the line you swung along, and a tornado that carries on down it,
-        // dragging zombies in and throwing them
-        wind: { range: 16, angle: 36, near: 2.2, maxKills: 30, tornado: { speed: 3.4, time: 5, pull: 6, pullSpeed: [3, 9], catch: 1.5, max: 30 } },
+        // blizzard left behind that freezes whatever comes in, and shatters it once it's
+        // been in it shatterAfter s
+        ice: { radius: 10, freeze: 9, maxFrozen: 40, storm: { radius: 5.5, time: 6, freeze: 3.5, shatterAfter: 1.2, max: 30 } },
+        // a gale down the line you swung along, and a whirlwind where the head came
+        // down (like the Origins wind staff's: it stays put, speed 0) dragging zombies
+        // in and throwing them; one caught on something on the way is torn apart in grind s
+        wind: { range: 16, angle: 36, near: 2.2, maxKills: 30, tornado: { speed: 0, time: 5, pull: 8, pullSpeed: [3, 9], catch: 1.5, grind: 2.5, max: 30 } },
         // a bolt jumping zombie to zombie, and a ball of lightning that drifts on,
         // striking anything near it
         lightning: { chains: 14, hop: 7.5, reach: 12, orb: { time: 6, speed: 1.8, height: 1.6, every: 0.3, reach: 7, max: 24 } },
