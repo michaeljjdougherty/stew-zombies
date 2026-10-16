@@ -2,18 +2,20 @@
 // The thrown and planted gadgets (they ride on the projectile list, so they
 // replicate online like any grenade):
 //   maisy  the Maisy Dog: lands, howls, and a black hole opens over her that
-//          drags every zombie round it in and swallows it; then her too
+//          drags every zombie round it in and swallows it; then her too. Dive
+//          into it and you come out somewhere else on the map
 //   lbd    the LBD: a sleeping baby set down like a Bouncing Betty; a zombie
 //          comes near, it wakes, pops up and goes off
 // ...and what a tempered War Hammer leaves behind where it lands (hammers.js):
-//   hfire  a pool of fire: anything that walks in catches and burns down
-//   hice   a blizzard: anything that comes in freezes solid
-//   hwind  a tornado carrying on down the line of the swing, dragging zombies in
+//   hfire  a pool of fire: anything in it burns down where it stands
+//   hice   a blizzard: anything that comes in freezes solid, then shatters
+//   hwind  a whirlwind where the head came down, dragging zombies in
 //   hbolt  a ball of lightning drifting on, striking anything near it
 // =============================================================================
 import { damageZombie } from './zombies.js';
 import { explode } from './projectiles.js';
 import { ignite } from './flame.js';
+import { teleport, randomSpot } from './gums.js';
 
 export const GADGETS = new Set(['maisy', 'lbd', 'hfire', 'hice', 'hwind', 'hbolt']);
 
@@ -54,17 +56,36 @@ function updateHammerFx(sim, pr, dt) {
     sim.emit('projectileGone', { id: pr.id, hammerFx: pr.type, pos: { ...pr.pos } });
     return;
   }
+  // (whatever's standing in it takes this much of its health a tick: it's dead
+  // in `s` seconds whatever the round)
+  const sear = (z, s, kind) => {
+    damageZombie(sim, z, z.maxHealth * dt / s, { playerId: pr.ownerId, part: 'torso', kind, dir: { x: 0, y: 1, z: 0 }, point: { x: z.pos.x, y: z.pos.y + 1, z: z.pos.z }, weapon: pr.weapon, quiet: true });
+    if (z.state === 'dead') pr.kills++;
+  };
   if (pr.type === 'hfire') {
-    // anything that walks into the fire catches
-    for (const z of within(sim, pr, C.radius)) if (!z.burn) { ignite(sim, z, pr.ownerId, { burnKill: C.burnKill }, pr.weapon); pr.kills++; }
+    // anything in the fire burns down where it stands (killTime), and walks out
+    // still alight (burnKill)
+    for (const z of within(sim, pr, C.radius)) { ignite(sim, z, pr.ownerId, { burnKill: C.burnKill }, pr.weapon); sear(z, C.killTime, 'fire'); }
   } else if (pr.type === 'hice') {
-    for (const z of within(sim, pr, C.radius)) if (!(z.frozen > 0)) { z.frozen = C.freeze; pr.kills++; sim.emit('zombieFrozen', { id: z.id, pos: { ...z.pos } }); }
+    // anything in the blizzard freezes solid, and shatters once it's been in it shatterAfter s
+    pr.chill = pr.chill || {};
+    for (const z of within(sim, pr, C.radius)) {
+      if (!(z.frozen > 0)) { z.frozen = C.freeze; sim.emit('zombieFrozen', { id: z.id, pos: { ...z.pos } }); }
+      pr.chill[z.id] = (pr.chill[z.id] || 0) + dt;
+      if (pr.chill[z.id] < C.shatterAfter) continue;
+      damageZombie(sim, z, 1e6, { playerId: pr.ownerId, part: 'torso', kind: 'hammer', dir: { x: 0, y: 1, z: 0 }, point: { x: z.pos.x, y: z.pos.y + 1, z: z.pos.z }, force: 1, weapon: pr.weapon });
+      if (z.state === 'dead') pr.kills++;
+    }
   } else if (pr.type === 'hwind') {
-    // the tornado carries on down the line; whatever's near is dragged in and thrown
+    // the whirlwind (it can drift on down the line at `speed`; 0 stays where it
+    // landed): whatever's near is dragged in and thrown, and torn apart (grind)
+    // if it's caught on something on the way
     const step = C.speed * dt;
-    const ahead = sim.raycastWorld({ x: pr.pos.x, y: pr.pos.y + 1.2, z: pr.pos.z }, { x: pr.dir.x, y: 0, z: pr.dir.z }, step + 0.6);
-    if (!ahead) { const g = sim.raycastWorld({ x: pr.pos.x + pr.dir.x * step, y: pr.pos.y + 1.2, z: pr.pos.z + pr.dir.z * step }, { x: 0, y: -1, z: 0 }, 3); if (g) pr.pos.y = g.point.y; }
-    if (!ahead) { pr.pos.x += pr.dir.x * step; pr.pos.z += pr.dir.z * step; }
+    const ahead = step > 0 && sim.raycastWorld({ x: pr.pos.x, y: pr.pos.y + 1.2, z: pr.pos.z }, { x: pr.dir.x, y: 0, z: pr.dir.z }, step + 0.6);
+    if (step > 0 && !ahead) {
+      const g = sim.raycastWorld({ x: pr.pos.x + pr.dir.x * step, y: pr.pos.y + 1.2, z: pr.pos.z + pr.dir.z * step }, { x: 0, y: -1, z: 0 }, 3); if (g) pr.pos.y = g.point.y;
+      pr.pos.x += pr.dir.x * step; pr.pos.z += pr.dir.z * step;
+    }
     for (const z of within(sim, pr, C.pull)) {
       const dx = pr.pos.x - z.pos.x, dz = pr.pos.z - z.pos.z, d = Math.hypot(dx, dz);
       if (d < C.catch) {
@@ -73,6 +94,7 @@ function updateHammerFx(sim, pr, dt) {
         damageZombie(sim, z, 1e6, { playerId: pr.ownerId, part: 'torso', kind: 'wind', dir: { x: Math.cos(a), y: 1, z: Math.sin(a) }, point: { ...z.pos }, force: 1, weapon: pr.weapon, fling: { x: Math.cos(a), z: Math.sin(a), dist: 5 + Math.random() * 5, up: 4 + Math.random() * 2 } });
         continue;
       }
+      sear(z, C.grind, 'wind');
       if (z.state !== 'chase') continue;
       const k = 1 - d / C.pull;
       z.pull = { x: pr.pos.x, z: pr.pos.z, speed: C.pullSpeed[0] + (C.pullSpeed[1] - C.pullSpeed[0]) * k, ttl: 0.15 };
@@ -110,6 +132,20 @@ function updateMaisy(sim, pr, dt) {
     sim.emit('maisyClose', { id: pr.id, pos: hole, kills: pr.hole.kills, ownerId: pr.ownerId });
     sim.emit('projectileGone', { id: pr.id });
     return;
+  }
+  // dolphin dive into it and it throws you out somewhere else on the map (the
+  // Gersh device's trick, from Ascension)
+  const W = C.diveWarp;
+  if (W) for (const p of sim.players) {
+    if (!p.alive || p.downed || !p.dive || p.ride || p.launch) continue;
+    if (Math.hypot(p.pos.x - hole.x, p.pos.z - hole.z) > W.radius || Math.abs(p.pos.y - pr.pos.y) > 2.5) continue;
+    const spot = randomSpot(sim, p);
+    if (!spot) continue;
+    const from = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+    teleport(sim, p, spot);
+    p.dive = null;
+    p.invulnUntil = Math.max(p.invulnUntil || 0, sim.time + W.invuln);
+    sim.emit('maisyWarp', { id: pr.id, playerId: p.id, from, to: { ...p.pos } });
   }
   for (const z of sim.zombies) {
     if (z.state === 'dead' || z.state === 'rising' || z.state === 'spawning' || z.state === 'dummy') continue;

@@ -111,6 +111,8 @@ export class MadDogInteractable {
     const slot = p.loadout.slots[p.loadout.current];
     if (!slot || slot.away) return { text: 'Hold a weapon to feed the Mad Dog', cost: null };
     const def = sim.cfg.weapons[slot.id];
+    // (a War Hammer's only upgrade is Pit tempering it, like the Origins staffs)
+    if (def.hammer) return { text: 'The Mad Dog won\'t eat a War Hammer. Only Pit can temper it', cost: null };
     // (an upgraded gun again: a new bite, its alternate ammo)
     if (def.upgraded) {
       if (slot.ephemeral || !def.baseId) return { text: `${def.name} is already upgraded`, cost: null };
@@ -129,7 +131,7 @@ export class MadDogInteractable {
     if (!slot || slot.away) return;
     const def = sim.cfg.weapons[slot.id];
     const reroll = def.upgraded && def.baseId && !slot.ephemeral;
-    if ((def.upgraded && !reroll) || (!def.upgraded && !sim.cfg.weapons[slot.id + '+'])) { sim.emit('useDenied', { playerId: p.id }); return; }
+    if (def.hammer || (def.upgraded && !reroll) || (!def.upgraded && !sim.cfg.weapons[slot.id + '+'])) { sim.emit('useDenied', { playerId: p.id }); return; }
     if (!pay(sim, p, reroll ? sim.cfg.aat.rerollCost : sim.cfg.madDog.cost)) return;
     this.reroll = reroll ? slot.aat || null : false;
     if (w.reloading) cancelReload(sim, p);
