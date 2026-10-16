@@ -83,7 +83,7 @@ input.setLook(player.yaw, 0);
 const audio = new AudioEngine(CONFIG);
 audio.preloadPack(SAMPLE_PACK, GUN_SAMPLES);
 // Gear sounds (thunder gun, knife, launcher, blasts); each falls back to its built-in synth sound until loaded
-audio.preload({ g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
+audio.preload({ g_laser: ['g_laser'], g_launch: ['g_launch'], g_land: ['g_land'], g_thunder: ['g_thunder'], g_knife_swing: ['g_knife_swing'], g_knife_hit: ['g_knife_hit'], g_launcher: ['g_launcher'], g_ray: ['g_ray'], g_boom: ['g_boom'] }, 'assets/sfx/gear/');
 audio.preload({ g_boom_small: ['g_boom_small'] }, 'assets/sfx/gear/', '.ogg');
 audio.preloadSprite(CONFIG.crust.hammers.sound.url, CONFIG.crust.hammers.sound.segs);   // the War Hammers
 for (const v of voiceSprites()) audio.preloadSprite(v.url, v.segs);   // recorded voice lines (src/lore/voiceLines.js)

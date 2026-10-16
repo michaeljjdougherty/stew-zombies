@@ -65,6 +65,8 @@ export function gunshot(A, out, t, p = {}) {
     packSizzle(A, out, t, p);
     return dur;
   }
+  // (a gun with a recording of its own: the Fucci Gun Mk 2's laser)
+  if (p.sample && A.hasSample(p.sample)) return sample(A, out, t, { key: p.sample, gain: p.sampleGain ?? 0.6, rate: p.upgraded ? 0.92 : 1 });
   if (p.voice && A.hasSample(Array.isArray(p.voice.s) ? p.voice.s[0] : p.voice.s)) return recordedShot(A, out, t, p);
   if (p.kind === 'launcher') return launcherFire(A, out, t, p);
   if (p.kind === 'crossbow') return crossbowFire(A, out, t, p);

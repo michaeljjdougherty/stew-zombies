@@ -843,7 +843,7 @@ export const CONFIG = {
       projectile: { type: 'beam', speed: 110, gravity: 0, impactDamage: 1050, headMult: 1.5, life: 1.2 },
       spread: { hipBase: 1.2, hipMax: 3, perShot: 0.25, ads: 0.1, adsPerShot: 0.05 },
       recoil: { pitch: 0.9, yaw: 0.25, recovery: 10, adsMult: 0.6, viewKick: 0.6 },
-      sound: { kind: 'beam', body: 0, thump: 0, crack: 0, tail: 0.3, pitch: 1.5 },
+      sound: { kind: 'beam', body: 0, thump: 0, crack: 0, tail: 0.3, pitch: 1.5, sample: 'g_laser', sampleGain: 0.55 },   // (a recorded laser: assets/sfx/gear)
       view: { model: 'fucci2', flash: 0.8, flashColor: '#7ae8ff' },
       upgrade: { name: 'Fucci Runway Edition', color: '#00ffc8', burstCount: 5, magSize: 40, impactMult: 2.2 },
     }),
