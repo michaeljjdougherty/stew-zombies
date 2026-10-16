@@ -121,12 +121,14 @@ export const CONFIG = {
     landSlowdownTime: 0.22,  // brief speed penalty after landing
     landSlowdownMult: 0.6,
 
-    // dolphin dive: sprint, then crouch. You launch up and out (about 0.7 m up,
+    // dolphin dive: sprint, then crouch (or crouch just as you run off a ledge:
+    // up to lipTime s after). You launch up and out (about 0.7 m up,
     // 4 m through the air), come down belly first with a thud, skid a short way,
     // then you're crouched. (A low hop and a long skid read as a slide.)
-    dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6 },
-    // prone: flat on your belly. A dive ends in it (you have to get up); hold
-    // crouch to go down on purpose. Jump, crouch or sprint gets you up again
+    dive: { speed: 8.2, up: 5.2, height: 0.7, airEyeHeight: 1.45, proneEyeHeight: 0.5, proneTime: 0.5, slideDecel: 24, cooldown: 0.6, lipTime: 0.2 },
+    // crouch as in Black Ops: tap it to crouch, tap again to stand; hold it
+    // (holdTime) to go prone. Prone: flat on your belly, and a dive ends in it.
+    // Tap crouch to get up to a crouch, hold it (or jump, or sprint) to stand
     // (it takes getUpTime). You crawl at speedMult, and hold your aim steadier.
     prone: { height: 0.6, eyeHeight: 0.42, speedMult: 0.22, holdTime: 0.4, getUpTime: 0.4, minTime: 0.2, spreadMult: 0.6, swayMult: 0.5,
       reach: 0.95,           // m lying flat, your head's ahead of you (and your feet behind): kept out of walls and rails
@@ -1269,7 +1271,7 @@ export const CONFIG = {
       phdGaylor: {
         name: 'PHD Gaylor', cost: 2000, color: '#9b4dff', power: true, glyph: 'P',
         desc: 'Your own explosions and falls can\'t hurt you, and a dolphin dive off a ledge lands with a purple blast (the higher, the bigger).',
-        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', minDrop: 1.2, highDrop: 2.5,
+        noSelfBlast: true, noFall: true, diveBlast: 'phd', diveBlastHigh: 'phdHigh', minDrop: 0.7, highDrop: 2.5,
       },
       marathonMinestrone: {
         name: 'Marathon Minestrone', cost: 2000, color: '#e8742c', power: true, glyph: 'M',
@@ -1612,12 +1614,13 @@ export const CONFIG = {
       near: [5, 20],         // m: puffs fade out closer than this to you (no fog in your face)
       drift: 2.2,            // m a puff wanders
     },
-    // guard rails along the ledges (src/map/terrain.js), but for the marked places to dive off
+    // guard rails (src/map/terrain.js) round each island's rim, over nothing
     rails: {
-      drop: 1.3,             // m: a ledge higher than this gets a rail
+      rimOnly: true,         // the ledges on an island are open: dive off any of them (false: railed, but for the marked dive spots)
+      drop: 1.3,             // m: a ledge higher than this gets a rail (with rimOnly: false)
       h: 1.1,                // m: the rail's height (more than you can jump)
       t: 0.14,               // m: its thickness, on the high side of the edge
-      diveR: 2.2,            // m: the gap left in the rail at a dive spot (radius)
+      diveR: 2.2,            // m: the gap left in the rail at a dive spot (radius, with rimOnly: false)
     },
     mudSpeed: 0.6,           // walking speed in deep mud (x); duckboards don't slow you
     spawnRadius: 42,         // zombies only rise this close to someone...

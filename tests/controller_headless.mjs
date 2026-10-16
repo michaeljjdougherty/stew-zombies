@@ -92,10 +92,14 @@ input.hasPrompt = () => false;
 // face buttons, bumpers, sticks
 press(BTN.A); frame(); c = input.buildCommand(); press(BTN.A, false); frame();
 check(c.jumpPressed, 'A jumps');
+press(BTN.B); frame(); c = input.buildCommand();
+check(c.crouch, 'B: crouch while it\'s held (the game makes a tap a toggle, a hold prone)');
+press(BTN.B, false); frame(); c = input.buildCommand();
+check(!c.crouch, '...and let go when it\'s let go');
 press(BTN.B); frame(); press(BTN.B, false); frame(); c = input.buildCommand();
-check(c.crouch, 'B toggles crouch on');
-press(BTN.B); frame(); press(BTN.B, false); frame(); c = input.buildCommand();
-check(!c.crouch, 'B toggles crouch off');
+check(c.crouch, 'a tap quicker than a tick still reaches the game');
+c = input.buildCommand();
+check(!c.crouch, '...once');
 press(BTN.Y); frame(); c = input.buildCommand(); press(BTN.Y, false); frame();
 check(c.weaponCycle !== 0, 'Y switches weapons');
 press(BTN.RS); frame(); c = input.buildCommand(); press(BTN.RS, false); frame();

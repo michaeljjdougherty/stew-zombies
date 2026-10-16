@@ -209,8 +209,9 @@ export class Terrain {
   physWalk(c) { return this.kind[c] === K.GROUND || this.kind[c] === K.BLOCK; }
 
   // --- guard rails: along every ledge you'd fall more than `minDrop` off (and the
-  // island's edge, over nothing), except where skip(x, z) says it's a place to dive
-  guardRails(minDrop = RAIL_DROP, skip = () => false) {
+  // island's edge, over nothing), except where skip(x, z) says it's a place to dive.
+  // rimOnly: just the island's edge (the ledges on it are left open)
+  guardRails(minDrop = RAIL_DROP, skip = () => false, rimOnly = false) {
     this.rail.fill(0);
     this.railRuns = null;
     for (let iz = 0; iz < this.nz; iz++) for (let ix = 0; ix < this.nx; ix++) {
@@ -222,6 +223,7 @@ export class Terrain {
         const n = this.i(jx, jz);
         let drop;
         if (this.kind[n] === K.SEA) { if (!this.openEdges) continue; drop = Infinity; }
+        else if (rimOnly) continue;
         else if (this.walkable(n)) drop = this.h[c] - this.h[n];
         else if (this.kind[n] === K.ROCK && this.noFence[n]) drop = this.h[c] - this.h[n];   // (a slope you'd tumble down)
         else continue;      // (rock: its invisible fence already stops you)

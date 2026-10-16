@@ -84,11 +84,11 @@ export function legend(screen, dev = device) {
 // The controls list for the title screen.
 export function controlsList(dev = device) {
   const rows = dev === 'kbm' ? [
-    ['move', 'Move'], ['look', 'Look · left click fires · right click aims'], ['sprint', 'Sprint (hold)'], ['jump', 'Jump'], ['crouch', 'Crouch'],
+    ['move', 'Move'], ['look', 'Look · left click fires · right click aims'], ['sprint', 'Sprint (hold)'], ['jump', 'Jump'], ['crouch', 'Crouch (tap) · prone (hold) · sprint and crouch to dive'],
     ['reload', 'Reload (sprint to cancel)'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'], ['tactical', 'Stew Bomb'], ['gum', 'Use your GobbleGum'],
     ['use', 'Buy and use things · hold to rebuild barriers'], ['swap', 'Switch weapons (or the wheel)'], ['zombies', 'Explore mode: zombies on / off (B: the menu)'], ['scores', 'Scoreboard'], ['pause', 'Pause'],
   ] : [
-    ['move', 'Move'], ['look', 'Look'], ['fire', 'Fire'], ['ads', 'Aim down sights'], ['sprint', 'Sprint (click)'], ['jump', 'Jump'], ['crouch', 'Crouch (toggle)'],
+    ['move', 'Move'], ['look', 'Look'], ['fire', 'Fire'], ['ads', 'Aim down sights'], ['sprint', 'Sprint (click)'], ['jump', 'Jump'], ['crouch', 'Crouch (tap) · prone (hold) · sprint and crouch to dive'],
     ['use', 'Buy and use things · reload when there\'s nothing to buy · hold to rebuild'], ['melee', 'Knife'], ['grenade', 'Frag grenade (hold to cook)'],
     ['tactical', 'Stew Bomb'], ['gum', 'Use your GobbleGum'], ['swap', 'Switch weapons'], ['zombies', 'Explore mode: the menu · Firing range: weapons panel'], ['scores', 'Scoreboard (zombies)'], ['pause', 'Pause'],
   ];

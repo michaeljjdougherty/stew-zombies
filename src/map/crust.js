@@ -1051,10 +1051,13 @@ for (const I of ISLES) {
     const [x0, z0, x1, z1] = s.region.rect;
     t.paint(shape.rect(x0 + 0.01, z0 + 0.01, x1 - 0.01, z1 - 0.01), { kind: K.ROOM, spawn: false, only: (k, c) => k === K.GROUND && Math.abs(t.h[c] - s.region.y0) <= STEP + 0.05 });
   }
-  // guard rails along the ledges, but for the places to dive off
+  // guard rails round the island's rim, over nothing (but for the holes left to
+  // drop through). The ledges inside it are open, as in Black Ops: run off any
+  // of them, and dive off any of them (PHD Gaylor's blast); the marked dive
+  // spots are only the best ones.
   const RL = CONFIG.crust.rails;
-  const inGap = (x, z) => I.dives.some((d) => Math.hypot(x - d.x, z - d.z) <= (d.r ?? RL.diveR)) || I.railGaps.some((g) => x >= g[0] && x <= g[2] && z >= g[1] && z <= g[3]);
-  t.guardRails(RL.drop, inGap);
+  const inGap = (x, z) => (!RL.rimOnly && I.dives.some((d) => Math.hypot(x - d.x, z - d.z) <= (d.r ?? RL.diveR))) || I.railGaps.some((g) => x >= g[0] && x <= g[2] && z >= g[1] && z <= g[3]);
+  t.guardRails(RL.drop, inGap, RL.rimOnly);
   // the ground's nav
   // wired-off ground (no-man's-land): an invisible fence wherever it meets
   // ground you can stand on at its own height, gone when its gate opens
