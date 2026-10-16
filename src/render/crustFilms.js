@@ -26,8 +26,9 @@
 //             hang there forever
 //   step      Rocco steps up to the edge to take a look
 //   push      Kearns shoves him off. He's gone
-//   cheer     a beat of silence. Then everybody's thrilled
-//   release   "...That works." The cage comes down; the boys walk out
+//   cheer     nobody's sad. Everybody's thrilled: hopping, arms up, confetti,
+//             all round Kearns. Even the Schnitz: "Good shit."
+//   release   a deal's a deal. The cage comes down; the boys walk out cheering
 //   portal    a portal opens; they all go through (Pit says bye to his forge).
 //             Where to, nobody knows
 // =============================================================================
@@ -362,14 +363,25 @@ export const ENDING_SHOTS = {
   cheer: {
     frame(Tr, u, d, k) {
       Tr.hide('rocco');
-      const go = k > 0.3;
+      // straight into it: arms up, hopping, turning to Kearns; he takes a bow
       for (const [id, x] of Object.entries(ROW)) {
         if (id === 'rocco') continue;
-        Tr.pose(id, { x: id === 'kearns' ? 0.5 : x, z: id === 'kearns' ? -42.7 : ROWZ, gesture: go ? 'cheer' : null });
-        Tr.face(id, 0.5, -49);
-        Tr.crew[id].pitch = go ? -0.15 : 0.35;
+        const hero = id === 'kearns';
+        const px = hero ? 0.5 : x, pz = hero ? -42.7 : ROWZ;
+        const hop = Math.abs(Math.sin(Tr.t * 7 + x * 1.7)) * 0.32 * sm(0.02, 0.08, k);
+        Tr.pose(id, { x: px, z: pz, y: Tr.ground(px, pz) + (hero ? 0 : hop), gesture: 'cheer' });
+        if (hero) { Tr.face(id, 0.5, -49); Tr.crew[id].pitch = k > 0.5 && k < 0.7 ? -0.6 : 0.3; }   // (a bow)
+        else { Tr.face(id, 0.5, -42.7); Tr.crew[id].pitch = 0.15; }
       }
-      Tr.light(0.9, '#ffe8c8', [0, 6, -48]);
+      // confetti (well: sparks of every colour), a burst every so often over them
+      const pop = Math.floor(k * 5);
+      if (pop !== Tr.popped) {
+        Tr.popped = pop;
+        const cols = [[3, 0.6, 0.6], [0.6, 3, 0.8], [0.7, 1, 3.2], [3, 2.6, 0.5], [2.6, 0.7, 3]];
+        const at = V(-1.5 + (pop % 3) * 1.6, 3.2, ROWZ - 0.4);
+        for (let i = 0; i < 40; i++) Tr.fx.spawnParticle(at, V((Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6), { life: 1.4, size: 0.02, color: cols[i % cols.length], gravity: 3, drag: 1.2 });
+      }
+      Tr.light(1.0, '#ffe8c8', [0, 6, -48]);
       // out over the void, looking back at them
       Tr.look(lerp(0.4, 0.8, k), 2.4, -49.5, 0.2, 1.6, -42, lerp(46, 40, k));
     },
@@ -392,7 +404,7 @@ export const ENDING_SHOTS = {
       // everyone backs up the slope out of its way
       for (const [id, x] of Object.entries(ROW)) {
         if (id === 'rocco') continue;
-        Tr.pose(id, { x: x * 1.25, z: lerp(id === 'kearns' ? -42.7 : ROWZ, -39.2, sm(0.05, 0.35, k)) });
+        Tr.pose(id, { x: x * 1.25, z: lerp(id === 'kearns' ? -42.7 : ROWZ, -39.2, sm(0.05, 0.35, k)), gesture: k < 0.08 || k > 0.72 ? 'cheer' : null });
         Tr.face(id, 0, -43);
       }
       // the boys walk out
@@ -402,7 +414,7 @@ export const ENDING_SHOTS = {
       for (const [id, [x0, xe]] of Object.entries(boys)) {
         if (!free) { Tr.hide(id); continue; }
         const f = sm(0.7 + (id === 'regs' ? 0.04 : id === 'p' ? 0.08 : 0), 0.95, k);
-        walk(Tr, id, [x0, P.ledge.z], [xe, -40.6], f);
+        walk(Tr, id, [x0, P.ledge.z], [xe, -40.6], f, { gesture: 'cheer' });
         if (f >= 1) Tr.face(id, 0, -38);
       }
       Tr.light(0.9, '#c8ffd8', [6, 7, -38]);

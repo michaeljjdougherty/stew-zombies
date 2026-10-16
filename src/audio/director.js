@@ -104,6 +104,7 @@ export class SoundDirector {
       case 'tear': A.play(S.thunder, { near: 0.6 }, { gain: 1, reverb: 0.8 }); A.play(S.powerDown, {}, { gain: 0.9, reverb: 0.9 }); break;
       case 'shove': A.play(S.boxThud, {}, { gain: 0.8, reverb: 0.2 }); break;
       case 'scream': break;
+      case 'party': A.play(S.crowdCheer, { dur: 7 }, { gain: 0.55, reverb: 0.6 }); break;   // (the ending: everybody thrilled Rocco's gone)
       case 'chain': for (let i = 0; i < 6; i++) A.play(S.creak, {}, { gain: 0.5, reverb: 0.7, delay: i * 0.9 }); break;
       case 'cageDoor': A.play(S.creak, {}, { gain: 1.1, reverb: 0.6 }); A.play(S.bang, {}, { gain: 0.8, reverb: 0.6, delay: 0.8 }); break;
       case 'brian': A.play(S.stewTalk, { text: 'You guys coming?', dur: 1.6 }, { gain: 1.1, reverb: 0.3, bus: 'voice' }); break;
