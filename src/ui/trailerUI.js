@@ -3,8 +3,11 @@
 // intro's text cards, the words themselves (fading in on black, slamming onto
 // the action, a hero's name beside them), and a Skip button that only shows
 // while the mouse is moving. Driven by the trailer's own clock (not the wall
-// clock), so a recorded export comes out exactly like playback.
+// clock), so a recorded export comes out exactly like playback. A cutscene's
+// subtitles (the Crust's intro and ending) show here too: the cutscene overlay
+// is hidden while this one's up.
 // =============================================================================
+import { NAMES } from './cutscene.js';
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export class TrailerUI {
@@ -15,6 +18,7 @@ export class TrailerUI {
       <div class="tr-black"></div>
       <div class="tr-card"><div class="tr-text"></div><div class="tr-sub"></div></div>
       <div class="tr-bar tr-top"></div><div class="tr-bar tr-bottom"></div>
+      <div class="tr-line" style="position:absolute;left:50%;transform:translateX(-50%);width:min(760px,86vw);text-align:center;font-size:clamp(16px,1.8vw,22px);color:#efe6d2;text-shadow:0 1px 3px #000,0 0 10px #000;opacity:0;transition:opacity .15s"><b style="display:block;font-size:.62em;letter-spacing:4px;text-transform:uppercase;color:#7fe08a;margin-bottom:4px"></b><span></span></div>
       <button type="button" class="tr-skip">Skip ▸</button>`;
     document.body.appendChild(el);
     this.black = el.querySelector('.tr-black');
@@ -25,6 +29,10 @@ export class TrailerUI {
     this.skipBtn.addEventListener('click', () => onSkip && onSkip());
     this.top = el.querySelector('.tr-top');
     this.bottom = el.querySelector('.tr-bottom');
+    this.lineEl = el.querySelector('.tr-line');
+    this.lineWho = this.lineEl.querySelector('b');
+    this.lineText = this.lineEl.querySelector('span');
+    this.said = null;
     this.moved = -1e9;
     this.onMove = () => { this.moved = performance.now(); };
     window.addEventListener('mousemove', this.onMove);
@@ -36,8 +44,17 @@ export class TrailerUI {
     this.el.hidden = false;
     document.body.classList.add('trailer-on');
     this.moved = -1e9;
+    this.said = null;
   }
-  hide() { this.el.hidden = true; document.body.classList.remove('trailer-on'); }
+  hide() { this.el.hidden = true; document.body.classList.remove('trailer-on'); this.said = null; }
+
+  // A subtitle: who's talking and what they say, on screen for secs from t
+  // (the film's clock).
+  say(who, text, secs, t) {
+    this.said = { t0: t, t1: t + secs };
+    this.lineWho.textContent = NAMES[who] || who;
+    this.lineText.textContent = text;
+  }
 
   update(tr, recording = false) {
     const W = window.innerWidth, H = window.innerHeight;
@@ -47,6 +64,10 @@ export class TrailerUI {
     this.skipBtn.classList.toggle('on', moving);
     document.body.classList.toggle('trailer-moved', moving);
     const t = tr.t, C = tr.C;
+    // the subtitle, just above the bottom bar
+    const on = this.said && t >= this.said.t0 && t < this.said.t1;
+    this.lineEl.style.bottom = (bar + 18) + 'px';
+    this.lineEl.style.opacity = on ? 1 : 0;
     const cards = tr.times.cards.filter((c) => t >= c.t0 && t < c.t1);
     const c = cards[cards.length - 1];
     // black: the intro's cards, black shots, and the fade at the very end
