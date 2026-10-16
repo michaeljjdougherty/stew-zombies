@@ -125,20 +125,27 @@ export function moveBody(body, dt, boxLists, gravity, floorY = FLOOR) {
   return { landed, impact };
 }
 
-// Push a body back out of any wall it's been put into (it was shoved by something
-// that isn't a wall: a titan's bulk). Sideways only; nothing it could step onto.
-export function outOfWalls(body, boxLists) {
-  const p = body.pos, r = body.radius, h = body.height;
-  for (let iter = 0; iter < 3; iter++) {
-    let moved = false;
-    for (const list of boxLists) {
-      for (const b of boxesNear(list, p.x, p.z, r)) {
-        if (!overlapsY(b, p.y, h) || b.maxY - p.y <= (body.stepHeight || 0)) continue;
-        if (pushOut(p, null, r, b)) moved = true;
-      }
+// A body was shoved from `from` by something that isn't a wall (a crowd of
+// zombies, a titan's bulk). If that put it inside a wall or a cliff face (one too
+// tall to step onto), slide it along one axis instead, or put it back: pushing it
+// out box by box can wedge it in a corner of rock, and it falls through the ground.
+export function outOfWalls(body, from, boxLists) {
+  const p = body.pos;
+  if (!inWall(body, p.x, p.z, boxLists)) return;
+  const x = p.x, z = p.z;
+  if (!inWall(body, x, from.z, boxLists)) p.z = from.z;
+  else if (!inWall(body, from.x, z, boxLists)) p.x = from.x;
+  else if (!inWall(body, from.x, from.z, boxLists)) { p.x = from.x; p.z = from.z; }
+}
+
+function inWall(body, x, z, boxLists) {
+  const y = body.pos.y, r = body.radius - 0.01;
+  for (const list of boxLists) {
+    for (const b of boxesNear(list, x, z, r)) {
+      if (overlapsY(b, y, body.height) && b.maxY - y > (body.stepHeight || 0) && circleOverlapsXZ(x, z, r, b)) return true;
     }
-    if (!moved) break;
   }
+  return false;
 }
 
 // Push circle A out of circle B (only A moves). Returns true if they overlapped.
