@@ -227,6 +227,10 @@ function hub() {
   I.later.push(() => {
     I.wallBuys.push({ weapon: 'M15', zone: PIT, room: PIT, ...rockFace(t, -4, -8, 0, -1, F) });
     I.wallBuys.push({ weapon: 'Olympus', zone: PIT, room: PIT, ...rockFace(t, 4, 8, 0, 1, F) });
+    // Second Helping (the Quick Revive) right behind where you start: backed up
+    // against the rubble at the foot of the west ramp, facing the dais
+    const qr = rockFace(t, -4.8, 8, 0, 1, F, 2);
+    I.revive = { x: qr.pos.x, y: F, z: qr.pos.z, normal: qr.normal };
   });
   I.boxSpots.push({ id: 'box_pit', room: PIT, x: -11, z: 7.5, yaw: Math.PI * 0.75 });
   I.prop('wreck', 9, 9.5, 13, 12.5, 1.4);
@@ -1324,7 +1328,8 @@ export const CRUST = {
   ceasefire: out.ceasefire,      // the field telephone in the fort
   titans: out.titans,            // each island's titan, for the egg (src/sim/crustEgg.js)
   // perk machines: one on each island, each running off its island's power
-  // (src/sim/crustPower.js)
+  // (src/sim/crustPower.js), and Second Helping in the pit where you start
+  // (it needs no power)
   perkMachines: [
     { perk: 'miltonKick', room: 'depot', side: 'n', at: 24.4 },
     { perk: 'phdGaylor', room: 'fort1', side: 's', at: -3.5 },
@@ -1332,6 +1337,8 @@ export const CRUST = {
     { perk: 'doubleLadle', room: 'genhall', side: 's', at: 151.5 },
     // (out in the open at the Mine Works: backed up against the shed)
     { perk: 'beefcakeBroth', room: 'mineworks', free: { x: -167.5, y: 0.8, z: 40.5, normal: { x: 1, z: 0 } } },
+    // (added last so the other machines keep their ids)
+    { perk: 'secondHelping', room: 'pit', free: HUB.revive },
   ],
   relays: out.relays,              // the Anvil's launchers' junction boxes
   powerSwitches: out.powerSwitches, // each other island's power switch
