@@ -492,6 +492,7 @@ function buildSky(out, group, fog, space = false) {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(205, 64, 32), new THREE.MeshBasicMaterial({ map: space ? spaceTexture() : skyTexture(fog), side: THREE.BackSide, fog: false, depthWrite: false }));
   dome.renderOrder = -10;
   sky.add(dome);
+  out.skyDome = dome;
   const planet = (kind, dir, size, ring = false) => {
     const d = new THREE.Vector3(...dir).normalize().multiplyScalar(190);
     const m = new THREE.Mesh(new THREE.CircleGeometry(size, 48), new THREE.MeshBasicMaterial({ map: planetTexture(kind), transparent: true, fog: false, depthWrite: false }));
@@ -1518,7 +1519,7 @@ function setupAtmosphere(W, map, group) {
   W.shellGeo = new THREE.RingGeometry(0.9, 1.25, 32).rotateX(-Math.PI / 2);
 }
 
-function islandAt(A, eye) {
+function islandAt(A, eye, margin = 20) {
   let best = null, bd = Infinity;
   for (const I of A.islands) {
     const [x0, z0, x1, z1] = I.b;
@@ -1526,7 +1527,7 @@ function islandAt(A, eye) {
     const d = Math.hypot(dx, dz);
     if (d < bd) { bd = d; best = I.id; }
   }
-  return bd < 20 ? best : 'void';
+  return bd <= margin ? best : 'void';
 }
 
 function updateAtmosphere(W, dt, eye, time) {
@@ -1538,6 +1539,12 @@ function updateAtmosphere(W, dt, eye, time) {
   A.fog.lerp(new THREE.Color(tgt.fog), k); A.sky.lerp(new THREE.Color(tgt.sky), k); A.ground.lerp(new THREE.Color(tgt.ground), k);
   A.density += (tgt.density - A.density) * k; A.amb += (tgt.amb - A.amb) * k;
   A.cur = id;
+  // the sky takes on the island's element once you're on it (not from the Anvil, looking across)
+  const on = islandAt(A, eye, 0);
+  const tint = new THREE.Color((ATMOS[on] && ATMOS[on].skyTint) || '#ffffff');
+  if (!A.tint) A.tint = tint;
+  A.tint.lerp(tint, Math.min(1, dt * 0.6));
+  if (W.skyDome) W.skyDome.material.color.copy(A.tint);
   // lightning lights the sky up for a moment
   A.flash = Math.max(0, A.flash - dt * 6);
   // (the renderer takes the fog from here; the map view the light's strength)

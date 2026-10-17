@@ -918,20 +918,12 @@ export const CONFIG = {
   // Doors, debris and the mystery box
   // ---------------------------------------------------------------------------
   doors: {
-    // Call of the Crust: the hub
-    debris_hub_west: 750, debris_hub_south: 750, door_obs_w: 1000, door_obs_n: 1000,
-    door_depot_n: 1000, door_depot_e: 1000, debris_camp_e: 1000, debris_camp_s: 1000,
-    // the Ship Graveyard
-    debris_ship_square: 1000, debris_ship_harbor: 1000, door_ship_netshed: 750, door_ship_trawler: 1000,
-    door_ship_smokehouse: 750, door_ship_keeper: 750, door_ship_hold: 1250, door_ship_engine: 1250,
-    // the Research Base
-    door_res_airlock: 1000, door_res_decon: 750, door_res_gen: 1250, door_res_lab: 1000,
-    door_res_server: 1000, door_res_dome: 1250, debris_res_tesla: 1250,
-    // the Trench Front
-    debris_tr_west: 1000, debris_tr_east: 1000, door_tr_bunker: 750, door_tr_hospital: 750,
-    debris_tr_battery: 1000, debris_tr_farm: 1250,
-    // the Ice Caves
-    debris_cave_gallery: 1000, door_cave_summit: 1250, debris_cave_mine: 1000,
+    // Call of the Crust: every door and debris pile is 750
+    debris_hub_west: 750, debris_hub_east: 750, door_hub_depot: 750,
+    door_ship_netshed: 750, door_ship_smokehouse: 750, door_ship_capsized: 750,
+    door_res_lab: 750, door_res_garage: 750, door_res_airlock: 750, door_res_gen: 750, door_res_dome: 750,
+    door_tr_fort: 750,
+    // Stew School
     door_hall: 750,
     door_cafe: 1000,
     debris_office: 1250,
@@ -1708,6 +1700,7 @@ export const CONFIG = {
     fogDensity: 0.0115,
     thunderEvery: [7, 16],   // s between distant thunderclaps
     artilleryEvery: [3, 9],  // s between far-off shells landing
+    partHum: { range: 40, gain: 0.55 },   // the War Hammer's parts hum where they lie (src/audio/partHum.js): heard from this many m off, loudest on top of it
     brightness: 1.35,        // exposure x on this map (it read too dark)
     boxBeam: { height: 220, width: 3.2, opacity: 0.5 },   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
