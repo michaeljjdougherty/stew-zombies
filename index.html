@@ -846,6 +846,7 @@
   .blade[data-blade="play"], .blades[data-open="play"] { --glow: #ff6a1a; }
   .blade[data-blade="gums"], .blades[data-open="gums"] { --glow: #ff4fc8; }
   .blade[data-blade="store"], .blades[data-open="store"] { --glow: #ffc21a; }
+  .blade[data-blade="arsenal"], .blades[data-open="arsenal"] { --glow: #ff3a3a; }
   .blade[data-blade="extras"], .blades[data-open="extras"] { --glow: #5cff5a; }
   .blade[data-blade="settings"], .blades[data-open="settings"] { --glow: #3ab8ff; }
   .blade-tab::before, .blade.open::after, .blades::before { content: ""; position: absolute; z-index: -1; pointer-events: none; transition: filter .34s;
@@ -860,7 +861,7 @@
   .blade-tab::before { inset: 0; border-radius: 3px; --paper: #c9b183; --paper-lo: #a98d5a; }
   .blade:nth-child(1) .blade-tab { transform: rotate(-.5deg); } .blade:nth-child(2) .blade-tab { transform: rotate(.6deg); }
   .blade:nth-child(3) .blade-tab { transform: rotate(-.3deg); } .blade:nth-child(4) .blade-tab { transform: rotate(.4deg); }
-  .blade:nth-child(5) .blade-tab { transform: rotate(-.5deg); }
+  .blade:nth-child(5) .blade-tab { transform: rotate(-.5deg); } .blade:nth-child(6) .blade-tab { transform: rotate(.3deg); }
   .blade.open .blade-tab::before { filter: url(#burn) drop-shadow(0 0 3px var(--glow)) drop-shadow(0 0 14px color-mix(in srgb, var(--glow) 70%, transparent)) drop-shadow(0 22px 22px rgba(0,0,0,.6)); }
   .b-bucks { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: #4a3520; font: 13px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; }
   .b-bucks b { font: 400 26px var(--display); color: #8a5a08; letter-spacing: 1px; }
@@ -871,6 +872,24 @@
   .b-featured-head span { font: 400 clamp(20px, 2vw, 26px) var(--display); letter-spacing: 2px; text-transform: uppercase; color: var(--ink-r); }
   .b-featured-head small { font: 12px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1px; text-transform: uppercase; color: #5a4630; }
   .b-featured { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: min(100%, 40vh, 340px); }
+  /* the Arsenal blade: the guns by kind on the left, the skins for the one picked on the right (src/ui/arsenal.js) */
+  .blade.open .blade-body.b-arsenal { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.25fr); gap: clamp(16px, 2.6vw, 36px); align-items: start; }
+  .ar-main, .ar-side { min-width: 0; }
+  .ar-guns { max-height: calc(min(64vh, 560px) - 220px); overflow-y: auto; padding: 2px 8px 6px 2px; scrollbar-width: thin; scrollbar-color: rgba(35,22,11,.4) transparent; }
+  .ar-head { margin: 10px 0 5px; font: 12px "American Typewriter", "Courier New", Courier, monospace; letter-spacing: 1.5px; text-transform: uppercase; color: #5a4630; }
+  .ar-head:first-child { margin-top: 4px; }
+  .ar-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ar-gun { all: unset; cursor: pointer; padding: 4px 9px 3px; border: 1px solid rgba(35,22,11,.35); border-radius: 3px; font: 400 14px var(--display); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-d); }
+  .ar-gun:hover, .ar-gun:focus-visible { background: rgba(35,22,11,.1); outline: none; }
+  .ar-gun:focus-visible { box-shadow: 0 0 0 2px var(--ink-r); }
+  .ar-gun[aria-pressed="true"] { background: var(--ink-r); border-color: var(--ink-r); color: #f6ead0; }
+  .ar-gun.skinned::after { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 2px 6px; border-radius: 50%; background: #e8a81a; vertical-align: middle; }
+  .ar-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(88px, 8.5vw, 116px), 1fr)); gap: 8px; max-height: calc(min(64vh, 560px) - 160px); overflow-y: auto; padding: 4px; scrollbar-width: thin; scrollbar-color: rgba(35,22,11,.4) transparent; }
+  .ar-tile .st-info b { font-size: clamp(12px, 1.1vw, 15px); }
+  .ar-tile[aria-pressed="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 0 0 3px var(--ink-r); }
+  .ar-tile.ar-focus { outline: 3px solid #ffe32b; outline-offset: 2px; }
+  .ar-hint { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: #5a4630; }
+  @media (max-width: 900px) { .blade.open .blade-body.b-arsenal { grid-template-columns: 1fr; } .ar-guns, .ar-skins { max-height: none; } }
   @media (max-width: 900px) { .blade.open .blade-body.b-store { grid-template-columns: 1fr; } .b-featured { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: none; } }
   .blade:first-child .blade-tab { margin-left: 0; }
   .blade-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--display); font-size: 25px; letter-spacing: 4px; text-transform: uppercase; color: var(--ink-d); opacity: .85; text-shadow: 0 0 1px rgba(35,22,11,.7); }
@@ -1360,12 +1379,28 @@
           <nav class="menu b-menu">
             <button id="btn-shop" type="button">Skins</button>
             <button id="btn-shop-emotes" type="button">Emotes</button>
+            <button id="btn-shop-guns" type="button">Gun skins</button>
             <button id="btn-shop-pass" type="button">Battle Pass</button>
           </nav>
         </div>
         <section class="b-featured-wrap" aria-label="Featured today">
           <div class="b-featured-head"><span>Featured today</span><small id="b-featured-when"></small></div>
           <div class="b-featured" id="b-featured"></div>
+        </section>
+      </div>
+    </section>
+    <section class="blade" data-blade="arsenal">
+      <button class="blade-tab" type="button" data-blade-tab="arsenal"><span>Arsenal</span></button>
+      <div class="blade-body b-arsenal">
+        <div class="ar-main">
+          <h2 class="b-title">Arsenal</h2>
+          <p class="b-sub">Every gun in the game and the skins it can wear. Pick a gun, then a skin.</p>
+          <nav class="ar-guns" id="ar-guns" aria-label="Guns"></nav>
+        </div>
+        <section class="ar-side" aria-label="Skins for this gun">
+          <div class="b-featured-head"><span id="ar-name">SCAR-H</span><small id="ar-sub"></small></div>
+          <div class="ar-skins" id="ar-skins"></div>
+          <p class="ar-hint" id="ar-hint"></p>
         </section>
       </div>
     </section>
@@ -1613,6 +1648,7 @@
       <nav class="st-tabs" role="tablist" aria-label="Store">
         <button type="button" role="tab" data-tab="skins" id="st-tab-skins">Skins</button>
         <button type="button" role="tab" data-tab="emotes" id="st-tab-emotes">Emotes</button>
+        <button type="button" role="tab" data-tab="guns" id="st-tab-guns">Gun skins</button>
         <button type="button" role="tab" data-tab="pass" id="st-tab-pass">Battle Pass</button>
       </nav>
       <p class="st-wallet" aria-label="Your Stew Bucks"><span class="sh-coin" aria-hidden="true">$</span><b id="sh-bucks">0</b></p>

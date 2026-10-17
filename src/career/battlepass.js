@@ -3,8 +3,9 @@
 // Rounds, kills and games give pass XP (CONFIG.shop.pass); every
 // `xpPerTier` XP is a tier, and each tier's prize is yours the moment you reach it.
 //
-// The prizes are the skins (src/career/skins.js, `unlock: { kind: 'pass', tier }`)
-// and emotes (src/career/emotes.js, `pass: tier`) that say which tier they're on,
+// The prizes are the skins (src/career/skins.js, `unlock: { kind: 'pass', tier }`),
+// gun skins (src/career/gunSkins.js, the same) and emotes (src/career/emotes.js,
+// `pass: tier`) that say which tier they're on,
 // plus the Stew Bucks tiers in CONFIG.shop.pass.bucks. Every skin and emote in
 // the pass fits every character. The top tier is Burger Bros.
 //
@@ -13,16 +14,19 @@
 import { CONFIG } from '../config.js';
 import { SKINS } from './skins.js';
 import { EMOTES } from './emotes.js';
+import { GUN_SKINS } from './gunSkins.js';
 
 const P = () => CONFIG.shop.pass;
 
-// Every tier, in order: { tier, kind: 'skin' | 'emote' | 'bucks', id?, n?, item? }
+// Every tier, in order: { tier, kind: 'skin' | 'gunSkin' | 'emote' | 'bucks', id?, n?, item? }
 export function passTiers() {
   const out = [];
   for (let t = 1; t <= P().tiers; t++) {
     const skin = SKINS.find((s) => s.unlock && s.unlock.kind === 'pass' && s.unlock.tier === t);
     const emote = EMOTES.find((e) => e.pass === t);
+    const gun = GUN_SKINS.find((s) => s.unlock && s.unlock.kind === 'pass' && s.unlock.tier === t);
     if (skin) out.push({ tier: t, kind: 'skin', id: skin.id, item: skin });
+    else if (gun) out.push({ tier: t, kind: 'gunSkin', id: gun.id, item: gun });
     else if (emote) out.push({ tier: t, kind: 'emote', id: emote.id, item: emote });
     else if (P().bucks[t]) out.push({ tier: t, kind: 'bucks', n: P().bucks[t] });
     else out.push({ tier: t, kind: 'none' });

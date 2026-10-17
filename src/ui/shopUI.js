@@ -10,17 +10,23 @@
 // the wheel. The Bucks, skins and emotes are your career's (src/career/career.js).
 // Battle Pass (src/career/battlepass.js): its 20 tiers in order, how far you've
 // got, and what each one gives; its skins and emotes fit every character.
+// Guns (src/career/gunSkins.js): gun skins, every one shown on the SCAR-H; once
+// you own one, you put it on a gun in the Arsenal (src/ui/arsenal.js).
 // =============================================================================
 import { CONFIG } from '../config.js';
 import { SKIN_BY_ID, rarityOf, skinsFor } from '../career/skins.js';
 import { EMOTES, EMOTE_BY_ID } from '../career/emotes.js';
 import { passTiers, passProgress } from '../career/battlepass.js';
+import { GUN_SKINS, GUN_SKIN_BY_ID, gunSkinPrice, SHOWCASE_GUN } from '../career/gunSkins.js';
 
 const EM = 'emote:';   // (emote tiles' ids in the grid)
 const emoteOf = (sel) => (typeof sel === 'string' && sel.startsWith(EM) ? EMOTE_BY_ID[sel.slice(EM.length)] : null);
 const BK = 'bucks:';   // (a Battle Pass tier of Stew Bucks, by its tier)
 const bucksOf = (sel) => (typeof sel === 'string' && sel.startsWith(BK) ? passTiers().find((t) => t.tier === Number(sel.slice(BK.length))) : null);
-const passIdOf = (t) => (t.kind === 'emote' ? EM + t.id : t.kind === 'bucks' ? BK + t.tier : t.id);
+const GN = 'gun:';   // (gun skins' ids in the grid)
+const gunOf = (sel) => (typeof sel === 'string' && sel.startsWith(GN) ? GUN_SKIN_BY_ID[sel.slice(GN.length)] : null);
+const showcaseModel = () => CONFIG.weapons[SHOWCASE_GUN].view.model;
+const passIdOf = (t) => (t.kind === 'emote' ? EM + t.id : t.kind === 'bucks' ? BK + t.tier : t.kind === 'gunSkin' ? GN + t.id : t.id);
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -47,7 +53,7 @@ export class ShopUI {
     if (!list.some((c) => c.id === this.char)) this.char = this.h.current();
     if (!list.some((c) => c.id === this.char)) this.char = list[0] && list[0].id;
     this.buildChars(list);
-    this.setTab(tab, true, pick ? (pick.kind === 'emote' ? EM + pick.id : pick.id) : null);
+    this.setTab(tab, true, pick ? (pick.kind === 'emote' ? EM + pick.id : pick.kind === 'gun' ? GN + pick.id : pick.id) : null);
   }
 
   setTab(tab, force = false, sel = null) {
@@ -55,7 +61,7 @@ export class ShopUI {
     this.tab = tab;
     if (tab === 'pass') this.char = this.h.current();   // (its items are tried on whoever you play as)
     for (const b of document.querySelectorAll('.st-tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    this.sel = sel != null ? sel : tab === 'emotes' ? EM + EMOTES[0].id : tab === 'pass' ? this.passStart() : this.career.wornSkin(this.char) || '';
+    this.sel = sel != null ? sel : tab === 'emotes' ? EM + EMOTES[0].id : tab === 'pass' ? this.passStart() : tab === 'guns' ? GN + GUN_SKINS[0].id : this.career.wornSkin(this.char) || '';
     this.render();
     setTimeout(() => { const b = $('sh-grid').querySelector('[aria-selected="true"]'); if (b) b.focus({ preventScroll: true }); }, 30);
   }
@@ -102,6 +108,14 @@ export class ShopUI {
       if (special.length) { head('Specials'); for (const s of special) this.skinTile(s, worn); }
       if (pass.length) { head('Battle Pass'); for (const s of pass) this.skinTile(s, worn); }
       if (vault.length) { head('From the vault'); for (const s of vault) this.skinTile(s, worn); }
+    } else if (this.tab === 'guns') {
+      const every = GUN_SKINS.filter((g) => !g.only && !g.unlock), one = GUN_SKINS.filter((g) => g.only && !g.unlock), pass = GUN_SKINS.filter((g) => g.unlock);
+      head('Gun skins: every gun');
+      for (const g of every) this.gunTile(g);
+      head('Made for one gun');
+      for (const g of one) this.gunTile(g);
+      head('Battle Pass');
+      for (const g of pass) this.gunTile(g);
     } else if (this.tab === 'pass') {
       for (const t of passTiers()) this.passTile(t, C.wornSkin(this.char) || '');
     } else {
@@ -148,6 +162,31 @@ export class ShopUI {
     this.tile(passIdOf(t), t.item, got ? { own: true, label, flag } : { lock: 'Locked', flag });
   }
 
+  gunTile(g) {
+    const C = this.career, own = C.ownsGunSkin(g.id);
+    const st = own ? { own: true, label: g.unlock ? 'Unlocked' : 'Owned' } : g.unlock ? { lock: `Pass tier ${g.unlock.tier}` } : { price: gunSkinPrice(g.id) };
+    if (g.only) st.flag = g.only;
+    this.tile(GN + g.id, g, st);
+  }
+
+  // Looking at a gun skin: it goes on the SCAR-H
+  gunInfo(g) {
+    const C = this.career, S = CONFIG.shop;
+    this.detail(g);
+    let blurb = g.blurb + (g.only ? ` Made for the ${g.only} only (shown on the ${SHOWCASE_GUN}).` : ' Fits every gun.');
+    if (C.ownsGunSkin(g.id)) this.button('Equip in the Arsenal', true);
+    else if (g.unlock) { this.button(`Battle Pass tier ${g.unlock.tier}`, false); blurb += ` ${this.passHint(g.unlock.tier, 'use it on any gun').replace('Every character can', 'You can')}`; }
+    else if (!C.signedIn) this.button('Sign in to buy', false);
+    else {
+      const price = gunSkinPrice(g.id), short = price - C.bucks;
+      this.button(`Purchase · ${price.toLocaleString()}`, short <= 0);
+      if (short > 0) blurb += ` You need ${short.toLocaleString()} more ${S.currency}.`;
+    }
+    $('sh-blurb').textContent = blurb;
+    this.earn();
+    if (this.h.previewGun) this.h.previewGun(showcaseModel(), g.id);
+  }
+
   skinTile(s, worn) {
     const C = this.career, own = C.ownsSkin(s.id, this.char);
     const st = own ? { own: true, label: s.unlock ? 'Unlocked' : 'Owned' } : s.unlock ? { lock: this.unlockTag(s) } : { price: rarityOf(s).price };
@@ -173,7 +212,8 @@ export class ShopUI {
     $('sh-grid').appendChild(b);
     const e = emoteOf(id), pic = b.querySelector('.st-art');
     if (!art) { pic.classList.add('ready', 'st-bucks'); pic.innerHTML = '<i class="sh-coin" aria-hidden="true">$</i>'; return; }
-    const spec = e ? { char: this.char, skin: this.career.wornSkin(this.char), act: e.act, color: R.color } : { char: this.char, skin: id || null, color: R.color };
+    const gs = gunOf(id);
+    const spec = gs ? { gun: showcaseModel(), gunSkin: gs.id, color: R.color } : e ? { char: this.char, skin: this.career.wornSkin(this.char), act: e.act, color: R.color } : { char: this.char, skin: id || null, color: R.color };
     if (this.h.thumb) this.h.thumb(spec, (url) => { pic.style.backgroundImage = `url(${url})`; pic.classList.add('ready'); });
   }
 
@@ -202,6 +242,7 @@ export class ShopUI {
   info() {
     if (emoteOf(this.sel)) { this.emoteInfo(emoteOf(this.sel)); return; }
     if (bucksOf(this.sel)) { this.bucksInfo(bucksOf(this.sel)); return; }
+    if (gunOf(this.sel)) { this.gunInfo(gunOf(this.sel)); return; }
     const C = this.career, S = CONFIG.shop, worn = C.wornSkin(this.char) || '';
     const skin = SKIN_BY_ID[this.sel], name = this.charName();
     this.detail(skin || OWN);
@@ -284,8 +325,16 @@ export class ShopUI {
   charName() { const c = this.h.characters().find((x) => x.id === this.char); return c ? c.name : 'them'; }
 
   act() {
-    const C = this.career, skin = SKIN_BY_ID[this.sel], emote = emoteOf(this.sel);
+    const C = this.career, skin = SKIN_BY_ID[this.sel], emote = emoteOf(this.sel), gun = gunOf(this.sel);
     if (!C.signedIn || bucksOf(this.sel)) { this.h.sound('deny'); return; }
+    if (gun) {
+      // owned: off to the Arsenal to put it on a gun (one made for a gun: that gun)
+      if (C.ownsGunSkin(gun.id)) { if (this.h.arsenal) this.h.arsenal(gun.only || SHOWCASE_GUN, gun.id); return; }
+      const r = C.buyGunSkin(gun.id);
+      this.h.sound(r.ok ? 'buy' : 'deny');
+      if (r.ok) { this.render(); this.refocus(); }
+      return;
+    }
     if (emote) {
       if (C.ownsEmote(emote.id)) return;
       const r = C.buyEmote(emote.id);

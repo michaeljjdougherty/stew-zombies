@@ -12,6 +12,7 @@
 import { hostPeer, joinPeer, localHost, localJoin } from './peer.js';
 import { CONFIG } from '../config.js';
 import { fits } from '../career/skins.js';
+import { gunSkinFits } from '../career/gunSkins.js';
 
 export const PROTOCOL = 2;   // (2: the lobby picks the map)
 export const MAX_PLAYERS = 4;
@@ -38,6 +39,13 @@ function cleanGums(g) {
 }
 // The skin they're wearing (src/career/skins.js): a real one that fits who they play, or none
 const cleanSkin = (skin, ch) => (typeof skin === 'string' && skin.length <= 24 && fits(skin, ch) ? skin : null);
+// The gun skins they've got on ({ gun id: skin id }, src/career/gunSkins.js): real guns, skins that fit them
+function cleanGunSkins(g) {
+  if (!g || typeof g !== 'object') return null;
+  const out = {};
+  for (const [gun, id] of Object.entries(g).slice(0, 64)) if (CONFIG.weapons[gun] && typeof id === 'string' && gunSkinFits(id, gun)) out[gun] = id;
+  return Object.keys(out).length ? out : null;
+}
 
 export class OnlineSession {
   // opts: { name, character, skin, brian (unlocked?), local (BroadcastChannel test mode),
@@ -71,7 +79,7 @@ export class OnlineSession {
       }
     }
     this.you = 'p1';
-    this.members = [{ id: 'p1', peer: null, name: this.o.name, character: this.o.character, skin: cleanSkin(this.o.skin, this.o.character), brian: !!this.o.brian, gums: cleanGums(this.o.gums) }];
+    this.members = [{ id: 'p1', peer: null, name: this.o.name, character: this.o.character, skin: cleanSkin(this.o.skin, this.o.character), gunSkins: cleanGunSkins(this.o.gunSkins), brian: !!this.o.brian, gums: cleanGums(this.o.gums) }];
     this.ep.onOpen = () => {};
     this.ep.onMessage = (from, m) => this.hostMessage(from, m);
     this.ep.onClose = (peer) => this.hostLost(peer);
@@ -88,7 +96,7 @@ export class OnlineSession {
       if (this.members.some((x) => x.peer === from)) return;
       const ids = ['p2', 'p3', 'p4'];
       const id = ids.find((i) => !this.members.some((x) => x.id === i));
-      const member = { id, peer: from, name: String(m.name || 'Friend').slice(0, 16), character: null, brian: !!m.brian, gums: cleanGums(m.gums) };
+      const member = { id, peer: from, name: String(m.name || 'Friend').slice(0, 16), character: null, brian: !!m.brian, gums: cleanGums(m.gums), gunSkins: cleanGunSkins(m.gunSkins) };
       member.character = this.freeCharacter(m.character, member);
       member.skin = cleanSkin(m.skin, member.character);
       this.members.push(member);
@@ -108,6 +116,10 @@ export class OnlineSession {
     if (m.t === 'skin') {   // a different skin on the same character
       const skin = cleanSkin(m.skin, member.character);
       if (!this.inGame && skin !== member.skin) { member.skin = skin; this.lobbyChanged(); }
+      return;
+    }
+    if (m.t === 'gunSkins') {   // they put a different skin on a gun
+      if (!this.inGame) { member.gunSkins = cleanGunSkins(m.gunSkins); this.lobbyChanged(); }
       return;
     }
     if (this.inGame && this.o.onGame) this.o.onGame(from, m);
@@ -144,7 +156,7 @@ export class OnlineSession {
   }
 
   lobby() {
-    return { code: this.code, map: this.map, intro: this.intro, members: this.members.map(({ id, name, character, skin, brian, gums }) => ({ id, name, character, skin: skin || null, brian, gums })) };
+    return { code: this.code, map: this.map, intro: this.intro, members: this.members.map(({ id, name, character, skin, gunSkins, brian, gums }) => ({ id, name, character, skin: skin || null, gunSkins: gunSkins || null, brian, gums })) };
   }
 
   // the host: play the map's intro first, or not
@@ -176,6 +188,15 @@ export class OnlineSession {
       const me = this.members[0], s = me && cleanSkin(skin, me.character);
       if (me && !this.inGame && s !== me.skin) { me.skin = s; this.lobbyChanged(); }
     } else if (this.ep) this.ep.send(this.ep.host, { t: 'skin', skin });
+  }
+
+  // the skins on your guns (so your friends see them on the gun you're holding)
+  setGunSkins(g) {
+    const clean = cleanGunSkins(g), key = JSON.stringify(clean);
+    if (this.inGame || key === this.gunSkinsKey) return;
+    this.gunSkinsKey = key;
+    if (this.isHost) { if (this.members[0]) { this.members[0].gunSkins = clean; this.lobbyChanged(); } }
+    else if (this.ep) this.ep.send(this.ep.host, { t: 'gunSkins', gunSkins: clean });
   }
 
   // Brian just got unlocked on this browser (The Final Whistle is done): let
@@ -212,7 +233,7 @@ export class OnlineSession {
     this.ep.onMessage = (from, m) => this.friendMessage(m);
     this.ep.onClose = () => this.end('The host left the game.');
     this.ep.onError = () => {};
-    this.ep.send(this.ep.host, { t: 'hello', v: PROTOCOL, name: this.o.name, character: this.o.character, skin: this.o.skin || null, brian: !!this.o.brian, gums: cleanGums(this.o.gums) });
+    this.ep.send(this.ep.host, { t: 'hello', v: PROTOCOL, name: this.o.name, character: this.o.character, skin: this.o.skin || null, gunSkins: cleanGunSkins(this.o.gunSkins), brian: !!this.o.brian, gums: cleanGums(this.o.gums) });
     // wait for the first lobby (or a no)
     await new Promise((res, rej) => {
       const timer = setTimeout(() => rej(new Error('The host didn\'t answer.')), 12000);

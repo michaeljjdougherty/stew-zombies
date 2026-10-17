@@ -57,12 +57,14 @@ export class Teammate {
     this.tagHead = new THREE.Vector3(); this.tagChest = new THREE.Vector3();
   }
 
-  setGun(id) {
-    if (id === this.gunId) return;
-    this.gunId = id;
+  // skin: the gun skin they've got on it (src/career/gunSkins.js; a Pack-a-Punch camo wins)
+  setGun(id, skin = null) {
+    if (id + '~' + skin === this.gunId) return;
+    this.gunId = id + '~' + skin;
     if (this.gun) { this.gun.group.parent.remove(this.gun.group); }
     const def = this.cfg.weapons[id];
-    this.gun = buildGun(def && def.view ? def.view.model : 'pistol', { camo: def && def.view ? def.view.camo || null : null });
+    const camo = def && def.view ? def.view.camo || null : null;
+    this.gun = buildGun(def && def.view ? def.view.model : 'pistol', { camo, skin: camo ? null : skin });
     const g = this.gun.group;
     // the gun hangs off the chest (in a holder that aims it); the hands reach
     // for its grips. The models point down -Z with the grip under the hand
@@ -94,7 +96,8 @@ export class Teammate {
     this.root.visible = p.alive;
     if (!p.alive) { this.nameTag.hide(); return; }
     const w = p.loadout;
-    this.setGun(w.slots[w.current].id);
+    const gid = w.slots[w.current].id, gdef = this.cfg.weapons[gid];
+    this.setGun(gid, (p.gunSkins && p.gunSkins[(gdef && gdef.baseId) || gid]) || null);
     this.setTag(p, color);
 
     // speed from how far they moved (smoothed)

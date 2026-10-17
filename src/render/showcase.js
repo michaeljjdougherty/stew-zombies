@@ -7,6 +7,7 @@ import { buildCharacter, idleCharacter, idleAct, CHARACTERS } from './characters
 import { IDLE_ACTS } from './characterAnim.js';
 import { applySkin } from '../career/skins.js';
 import { applySkinFx } from './skinFx.js';
+import { buildGun, REAL_GUNS } from './gunModels.js';
 
 export class Showcase {
   constructor(renderer) {
@@ -98,7 +99,7 @@ export class Showcase {
   // colour, for a store tile. done(url) once it's drawn (one a frame, before the
   // platform's own frame: it borrows the corner of the screen, then copies it out).
   thumb(spec, done) {
-    const key = [spec.char, spec.skin || '', spec.act || '', spec.color || ''].join(':');
+    const key = spec.gun ? ['gun', spec.gun, spec.gunSkin || '', spec.color || ''].join(':') : [spec.char, spec.skin || '', spec.act || '', spec.color || ''].join(':');
     if (this.thumbs.has(key)) { done(this.thumbs.get(key)); return; }
     const q = this.thumbQueue.find((x) => x.key === key);
     if (q) q.done.push(done);
@@ -117,6 +118,7 @@ export class Showcase {
       this.thumbCam = new THREE.PerspectiveCamera(24, 5 / 6, 0.05, 20);
     }
     const ts = this.thumbScene;
+    if (spec.gun) { this.drawGunThumb(job); return; }
     const id = spec.char, def = spec.skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, spec.skin) : null;
     const k = buildCharacter(def || id, { detail: 0.7 });
     if (def && def.skinFx) applySkinFx(k, def.skinFx, { light: false });
@@ -125,17 +127,65 @@ export class Showcase {
     k.root.rotation.y += spec.act ? 0 : -0.35;
     ts.add(k.root);
     // a rarity's glow behind them
-    const c = document.createElement('canvas'); c.width = c.height = 128;
-    const g = c.getContext('2d'), grd = g.createRadialGradient(64, 40, 4, 64, 60, 90);
-    grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.25, spec.color || '#5aa0ff'); grd.addColorStop(1, '#0a0a14');
-    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-    const bg = new THREE.CanvasTexture(c); bg.colorSpace = THREE.SRGBColorSpace;
+    const bg = this.thumbBg(spec.color);
     ts.background = bg;
     const h = (k.def.height || 1);
     const cam = this.thumbCam;
     if (spec.act) { cam.fov = 26; cam.position.set(0, 1.0 * h, 4.4 * h); cam.lookAt(0, 0.9 * h, 0); }
     else { cam.fov = 22; cam.position.set(0, 1.45 * h, 3.6 * h); cam.lookAt(0, 1.2 * h, 0); }
     cam.updateProjectionMatrix();
+    const url = this.snap(ts, cam);
+    ts.remove(k.root);
+    // (all of it: a picture each, they'd add up)
+    const mats = new Set();
+    k.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); for (const m of [].concat(o.material || [])) mats.add(m); });
+    for (const m of mats) { for (const key of ['map', 'bumpMap', 'alphaMap', 'emissiveMap', 'normalMap']) if (m[key]) m[key].dispose(); m.dispose(); }
+    bg.dispose();
+    this.thumbs.set(job.key, url);
+    for (const d of job.done) d(url);
+  }
+
+  // the thumb scene on a rarity's glow
+  thumbBg(color, soft = false) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(64, 40, 4, 64, 60, 90);
+    grd.addColorStop(0, soft ? color || '#5aa0ff' : '#ffffff'); grd.addColorStop(soft ? 0.5 : 0.25, color || '#5aa0ff'); grd.addColorStop(1, '#0a0a14');   // (soft: no white hot spot, for the guns)
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    const bg = new THREE.CanvasTexture(c); bg.colorSpace = THREE.SRGBColorSpace;
+    return bg;
+  }
+
+  // A gun in a gun skin (the Stew Store's Guns tab, the Arsenal). The downloaded
+  // model loads first (a few seconds at most: until then the job waits its turn).
+  drawGunThumb(job) {
+    const { spec } = job, ts = this.thumbScene;
+    if (!job.built) { job.built = buildGun(spec.gun, { skin: spec.gunSkin || null }); job.t0 = performance.now(); }
+    const G = job.built;
+    if (REAL_GUNS[spec.gun] && !G.real && performance.now() - job.t0 < 15000) { this.thumbQueue.push(job); return; }
+    const holder = new THREE.Group();
+    holder.add(G.group);
+    G.group.rotation.set(0, -Math.PI / 2, 0);
+    holder.rotation.z = 0.55;   // (barrel to the right and up: a long gun fills a tall tile that way)
+    ts.add(holder);
+    const box = new THREE.Box3().setFromObject(holder), mid = box.getCenter(new THREE.Vector3()), dim = box.getSize(new THREE.Vector3());
+    holder.position.sub(mid);
+    const bg = this.thumbBg(spec.color, true);
+    ts.background = bg;
+    const cam = this.thumbCam;
+    cam.fov = 24; cam.updateProjectionMatrix();
+    const half = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    const dist = Math.max(dim.x / 2 / (half * cam.aspect), dim.y / 2 / half) * 1.18 + dim.z / 2;
+    cam.position.set(0, dist * 0.18, dist); cam.lookAt(0, 0, 0);
+    const url = this.snap(ts, cam);
+    ts.remove(holder);
+    bg.dispose();
+    this.thumbs.set(job.key, url);
+    for (const d of job.done) d(url);
+  }
+
+  // render the thumb scene into the corner of the screen and copy it out
+  snap(ts, cam) {
+    const r = this.renderer;
     const W = 200, H = 240, pr = r.getPixelRatio(), size = r.getSize(new THREE.Vector2());
     r.setRenderTarget(null);
     r.setViewport(0, 0, W / pr, H / pr); r.setScissor(0, 0, W / pr, H / pr); r.setScissorTest(true);
@@ -145,15 +195,7 @@ export class Showcase {
     tc.clearRect(0, 0, W, H);
     tc.drawImage(r.domElement, 0, r.domElement.height - H, W, H, 0, 0, W, H);
     r.setScissorTest(false); r.setViewport(0, 0, size.x, size.y);
-    ts.remove(k.root);
-    // (all of it: a picture each, they'd add up)
-    const mats = new Set();
-    k.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); for (const m of [].concat(o.material || [])) mats.add(m); });
-    for (const m of mats) { for (const key of ['map', 'bumpMap', 'alphaMap', 'emissiveMap', 'normalMap']) if (m[key]) m[key].dispose(); m.dispose(); }
-    bg.dispose();
-    const url = this.thumbCanvas.toDataURL('image/webp', 0.85);
-    this.thumbs.set(job.key, url);
-    for (const d of job.done) d(url);
+    return this.thumbCanvas.toDataURL('image/webp', 0.85);
   }
 
   bindDrag() {
@@ -175,6 +217,7 @@ export class Showcase {
   show(id = 'kearns', shirt = 'sage', skin = null) {
     const key = id + ':' + shirt + ':' + (skin || '');
     if (this.key !== key) {
+      this.clearGun();
       if (this.char) this.turntable.remove(this.char.root);
       const def = skin && CHARACTERS[id] ? applySkin(CHARACTERS[id], id, skin) : null;
       this.char = buildCharacter(def || id, { shirt });
@@ -185,6 +228,29 @@ export class Showcase {
     }
     this.active = true;
   }
+
+  // A gun on the platform instead (the Stew Store's gun skins: always on the SCAR-H)
+  showGun(model, skin = null) {
+    const key = 'gun:' + model + ':' + (skin || '');
+    if (this.key !== key) {
+      this.clearGun();
+      if (this.char) { this.turntable.remove(this.char.root); this.char = null; }
+      const G = buildGun(model, { skin });
+      const holder = new THREE.Group(), pivot = new THREE.Group();
+      const c = G.procBox.getCenter(new THREE.Vector3());
+      G.group.position.set(-c.x, -c.y, -c.z);   // (turning round its middle, not the grip)
+      pivot.rotation.y = -Math.PI / 2;
+      pivot.add(G.group); holder.add(pivot);
+      holder.scale.setScalar(1.15);
+      holder.position.set(0, 1.0, 0);
+      holder.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      this.turntable.add(holder);
+      this.gun = { holder, G };
+      this.key = key;
+    }
+    this.active = true;
+  }
+  clearGun() { if (this.gun) { this.turntable.remove(this.gun.holder); this.gun = null; } }
 
   hide() { this.active = false; }
 

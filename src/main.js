@@ -52,6 +52,7 @@ import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
 import { StoreBlade } from './ui/storeBlade.js';
 import { LoadoutPicker } from './ui/loadoutPicker.js';
+import { Arsenal } from './ui/arsenal.js';
 import { applySkin, SKINS } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
@@ -253,7 +254,7 @@ const menus = new Menus(settings, {
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
   career: () => { renderCareer(career); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
-  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (id === 'store') refreshStoreBlade(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
+  bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (id === 'store') refreshStoreBlade(); if (id === 'arsenal') refreshArsenal(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
 const charSelect = new CharSelect(settings, {
   preview: (id, shirt) => { const S = renderer.getShowcase(); S.setEmote(null); S.setStyle(null); S.show(id, shirt, career.wornSkin(id)); },
@@ -312,7 +313,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(), gunSkins: career.gunSkinsWorn(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -385,7 +386,7 @@ function beginOnlineGame(st) {
   localId = st.you;
   // (the map the host picked: an older host never says, and that was always the school)
   const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
-  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null, gunSkins: m.gunSkins || null });
   stopOnlineGame();
   installSim(s);
   if (online.isHost) {
@@ -1045,8 +1046,20 @@ const shopUI = new ShopUI(career, {
   thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),
   back: () => { const S = renderer.showcase; S.hide(); S.setEmote(null); S.setStyle(null); setLook(playableCharacter()); mode = 'title'; menus.show('title'); refreshStoreBlade(); },
   sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
+  // (gun skins: always on the SCAR-H; an owned one: off to the Arsenal to put it on a gun)
+  previewGun: (model, skin) => { const S = renderer.getShowcase(); S.setStyle('store'); S.setEmote(null); S.showGun(model, skin); },
+  arsenal: (gun, skin) => { shopUI.h.back(); menus.openBlade('arsenal'); arsenal.open(gun, skin); },
 });
 const openShop = (tab, pick = null) => { mode = 'shop'; menus.show('shop'); shopUI.open(tab, pick); };
+// The Arsenal blade: every gun and its skins (and what each gun has on in your hands)
+const arsenal = new Arsenal(career, {
+  thumb: (spec, done) => renderer.getShowcase().thumb(spec, done),
+  store: (id) => openShop('guns', { kind: 'gun', id }),
+  sound: (k) => sound.factory(k === 'deny' ? 'deny' : 'open', 0),
+});
+function refreshArsenal() { arsenal.refresh(); }
+renderer.viewmodel.gunSkin = (gun) => career.gunSkin(gun);
+document.getElementById('btn-shop-guns').addEventListener('click', () => openShop('guns'));
 document.getElementById('btn-shop').addEventListener('click', () => openShop('skins'));
 document.getElementById('btn-shop-emotes').addEventListener('click', () => openShop('emotes'));
 document.getElementById('btn-shop-pass').addEventListener('click', () => openShop('pass'));
@@ -1066,7 +1079,7 @@ const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thu
 function refreshStoreBlade() { storeBlade.refresh(); }
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 // a Battle Pass tier: what it gave you
-career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });
+career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : t.kind === 'gunSkin' ? 'New gun skin' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });
 career.onBucks = (n, why) => {
   const C = CONFIG.shop;
   if (why === 'backpay') achToast.push({ head: 'Stew Store', badge: `${n} ${C.currency}`, title: 'For the achievements you already have' });
@@ -1078,7 +1091,7 @@ document.getElementById('btn-title-signin').addEventListener('click', () => {
   menus.show('signin'); signIn.open();
 });
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
-career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); };
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); if (menus.blade === 'arsenal') refreshArsenal(); if (online && !online.inGame) online.setGunSkins(career.gunSkinsWorn()); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
   // your username is your name online too
@@ -1216,7 +1229,7 @@ function frame(now) {
   const look = { yaw: input.yaw, pitch: input.pitch, dx: input.frameDX, dy: input.frameDY };
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
   // (the Stew Store blade's pictures are drawn by the store's platform, one a frame, before the title's own frame)
-  if (mode === 'title' && menus.blade === 'store' && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
+  if (mode === 'title' && (menus.blade === 'store' || menus.blade === 'arsenal') && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' || mode === 'shop' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));

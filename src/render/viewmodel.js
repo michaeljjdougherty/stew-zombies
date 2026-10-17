@@ -12,6 +12,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { perkBottleModel } from './propModels.js';
 import { handModel } from './handModel.js';
 import { realGunMaterials, setFpClip, buildGun, gunMaterials, animateCamo, setArmLook, fpHand } from './gunModels.js';
+import { animateGunSkins } from './gunSkins.js';
 import { CHARACTERS } from './characters.js';
 import { SKIN } from './human.js';
 
@@ -117,20 +118,29 @@ export class Viewmodel {
     this.currentKey = null;
   }
 
+  // The gun skin on a weapon (main.js sets gunSkin(id) -> skin id or null:
+  // the one you picked in the Arsenal; a camo, Pack-a-Punch's or Eye Candy's, wins)
+  skinFor(id, camo) {
+    const def = this.cfg.weapons[id];
+    if (camo || !def || def.view.camo || !this.gunSkin) return null;
+    return this.gunSkin(def.baseId || id) || null;
+  }
+  weaponKey(id, camo) { const skin = this.skinFor(id, camo); return (camo ? id + '#' + camo : id) + (skin ? '~' + skin : ''); }
+
   // Show the model(s) for a weapon id (built on first use).
   // (camo: a colour of its own, Eye Candy's paint)
   setWeapon(id, camo = null) {
-    const key = camo ? id + '#' + camo : id;
+    const key = this.weaponKey(id, camo), skin = this.skinFor(id, camo);
     if (key === this.currentKey) return;
     const def = this.cfg.weapons[id];
     let pair = this.models.get(key);
     if (!pair) {
       camo = camo || def.view.camo || null;
-      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual || !!def.hammer, camo });
+      const R = buildGun(def.view.model, { withHands: true, rightOnly: !!def.dual || !!def.hammer, camo, skin });
       this.root.add(R.group);
       pair = { R };
       if (def.dual) {
-        const L = buildGun(def.view.model, { withHands: true, rightOnly: true, camo });
+        const L = buildGun(def.view.model, { withHands: true, rightOnly: true, camo, skin });
         L.group.scale.x = -1;           // mirrored copy for the left hand
         this.root.add(L.group);
         pair.L = L;
@@ -356,7 +366,7 @@ export class Viewmodel {
     this.time += dt;
     const w = p.loadout;
     const slot = w.slots[w.current];
-    if ((slot.camo ? slot.id + '#' + slot.camo : slot.id) !== this.currentKey) this.setWeapon(slot.id, slot.camo || null);
+    if (this.weaponKey(slot.id, slot.camo || null) !== this.currentKey) this.setWeapon(slot.id, slot.camo || null);
     const pair = this.current;
     const M = pair.R;
     const dual = !!def.dual;
@@ -383,6 +393,7 @@ export class Viewmodel {
     const ly = this.landY.update(dt);
 
     animateCamo(this.time);
+    animateGunSkins(this.time);
 
     // --- common offsets (bob, breathing, sprint, recoil, sway, draw)
     const o = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 };

@@ -1440,8 +1440,8 @@ export const CONFIG = {
       perRound: 100,         // XP for each round you survive
       perKill: 5,            // XP for each kill
       perGame: 250,          // XP for each game you play (once round 1 starts)
-      // the tiers that pay Stew Bucks (the rest are the skins and emotes that say which tier they're on)
-      bucks: { 2: 100, 6: 150, 8: 150, 12: 200, 14: 200, 18: 300, 19: 500 },
+      // the tiers that pay Stew Bucks (the rest are the skins, gun skins and emotes that say which tier they're on)
+      bucks: { 2: 100, 8: 150, 14: 200, 19: 500 },
     },
   },
 

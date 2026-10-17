@@ -15,6 +15,7 @@ import { gltfLoader, fetchGlb as fetchModel } from './gltfLite.js';
 import { addShaderPatch } from './shaderPatch.js';
 import { buildWarHammer } from './warHammer.js';
 import { CONFIG } from '../config.js';
+import { gunSkinMaterial } from './gunSkins.js';
 
 // --- real gun models ----------------------------------------------------------
 // Downloaded models (shrunk by tools/guns/convert_gun.py) replace the built-in
@@ -163,6 +164,7 @@ function attachRealGun(spec, model) {
     const off = R.off || [0, 0, 0];
     obj.position.set((own.min.x + own.max.x) / 2 + off[0], own.max.y - real.size.y * k / 2 + off[1], (own.min.z + own.max.z) / 2 + off[2]);
     if (spec.camo) obj.traverse((o) => { if (o.isMesh) o.material = camoMaterial(o.material, spec.camo); });
+    else if (spec.skin) { const sm = gunSkinMaterial(spec.skin); if (sm) obj.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = sm; }); }
     if (spec.fp) obj.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fpMaterial) : fpMaterial(o.material); });
     spec.group.add(obj);
     for (const m of spec.procMeshes) m.visible = false;
@@ -1289,7 +1291,8 @@ export function animateCamo(t) {
 }
 
 // Build a gun. withHands: add first-person hands and sleeves. camo: Mad Dog color.
-export function buildGun(model, { withHands = false, rightOnly = false, camo = null } = {}) {
+// skin: a gun skin (src/career/gunSkins.js; a camo wins over it, so Pack-a-Punched guns keep theirs)
+export function buildGun(model, { withHands = false, rightOnly = false, camo = null, skin = null } = {}) {
   const m = gunMaterials();
   const spec = (BUILDERS[model] || pistol)(m);
   if (camo && spec.hammerH) {
@@ -1304,6 +1307,11 @@ export function buildGun(model, { withHands = false, rightOnly = false, camo = n
       else if (!skip.has(o.material) && !o.material.transparent && !(o.material.isMeshBasicMaterial)) o.material = camoMaterial(o.material, camo);
     });
     spec.camo = camo;
+  } else if (skin && gunSkinMaterial(skin) && !spec.hammerH) {
+    const sm = gunSkinMaterial(skin), skip = new Set([m.glove, m.sleeve, m.skin]);
+    const swap = (mm) => (skip.has(mm) || mm.transparent || mm.isMeshBasicMaterial ? mm : sm);
+    spec.group.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material); });
+    spec.skin = skin;
   }
   const muzzle = new THREE.Object3D();
   muzzle.position.set(...spec.muzzleAt);
