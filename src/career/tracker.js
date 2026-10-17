@@ -17,6 +17,7 @@ export class CareerTracker {
     this.flushT = 0;
     this.divinium = 0;
     this.onDivinium = null;     // (n) => tell the player they got a vial
+    this.onFinish = null;       // ({ map, coop, round }) => a game played to the end (the leaderboards)
   }
 
   // Called every simulation step, before that step's events.
@@ -31,9 +32,11 @@ export class CareerTracker {
       this.divinium = 0;         // vials of Liquid Divinium earned this game
       this.crust = !!(sim.mapData && sim.mapData.id === 'crust');
       this.launches = 0; this.flameKills = 0; this.hammerKills = 0;   // Call of the Crust, this game
+      this.squad = 0;            // the most players in it at once (2+: co-op)
     }
     if (!this.on) return;
     const C = this.career;
+    this.squad = Math.max(this.squad, sim.players ? sim.players.length : 1);
     if (!this.counted && sim.rounds && sim.rounds.round >= 1) { this.counted = true; C.add('games'); }
     // the Fucci Gun and the Chopper, both in your hands at once (either one Mad Dog'd counts)
     this.checkT -= dt;
@@ -136,6 +139,9 @@ export class CareerTracker {
         break;
       case 'gameOver':
         C.flush();
+        if (this.onFinish && this.counted) {
+          try { this.onFinish({ map: sim.mapData && sim.mapData.id, coop: this.squad > 1, round: e.round || (sim.rounds && sim.rounds.round) || 0 }); } catch (err) { console.warn('career', err); }
+        }
         break;
     }
   }

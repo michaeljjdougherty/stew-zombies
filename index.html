@@ -110,6 +110,27 @@
   .ca-g { font: 700 14px var(--mono); color: #eee; }
   .cr-menu { flex-direction: row; gap: 26px; flex-wrap: wrap; }
   @media (max-width: 640px) { .cr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* --- the Career screen's Leaderboards tab --- */
+  .cr-tabs { margin: -4px 0 0; }
+  .cr-pane { display: grid; gap: 18px; }
+  .cr-pane[hidden] { display: none; }
+  .lb-cats, .lb-sub { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lb-sub[hidden] { display: none; }
+  .lb-cats button, .lb-sub button { all: unset; cursor: pointer; padding: 6px 12px; border: 1px solid var(--line); font: 700 12px var(--mono); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,.025); }
+  .lb-sub button { font-size: 11px; padding: 4px 10px; }
+  .lb-cats button:hover, .lb-cats button:focus-visible, .lb-sub button:hover, .lb-sub button:focus-visible { color: var(--ink); border-color: rgba(255,255,255,.4); outline: none; }
+  .lb-cats button[aria-pressed="true"], .lb-sub button[aria-pressed="true"] { color: #151515; background: #e9e9e9; border-color: #e9e9e9; }
+  .lb-sub .lb-gap { width: 14px; }
+  .lb-you { margin: 0; font: 700 14px var(--mono); color: var(--ink); letter-spacing: 1px; }
+  .lb-you b { color: var(--blood-hi); }
+  .lb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .lb-row { display: grid; grid-template-columns: 56px 1fr max-content; gap: 12px; align-items: center; padding: 7px 12px; border: 1px solid var(--line); background: rgba(255,255,255,.025); }
+  .lb-row.top1 .lb-rank { color: #e8b13a; } .lb-row.top2 .lb-rank { color: #c9d2db; } .lb-row.top3 .lb-rank { color: #c8834a; }
+  .lb-row.me { border-color: var(--blood-hi); background: rgba(255,255,255,.07); }
+  .lb-rank { font: 700 15px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .lb-name { font-size: 15px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-v { font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .lb-note { margin: 0; color: var(--muted); font-size: 13px; }
   /* --- "Achievement unlocked": a circle pops, then the bar slides out of it --- */
   #ach-toast { position: fixed; left: 50%; bottom: 10vh; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; pointer-events: none; filter: drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
   #ach-toast .at-icon { position: relative; z-index: 2; width: 62px; height: 62px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #4a4a4a, #161616 70%); border: 3px solid #f2f2f2; color: #f5f5f5; transform: scale(0); }
@@ -1522,9 +1543,22 @@
     <span class="eyebrow">Career</span>
     <h2 id="cr-name">Guest</h2>
     <p class="cr-g"><span class="cr-gicon">G</span><span id="cr-g"></span></p>
-    <dl class="cr-stats" id="cr-stats"></dl>
-    <h3 class="set-head">Achievements <span id="cr-count" class="cr-count"></span></h3>
-    <ul class="cr-achs" id="cr-achs"></ul>
+    <nav class="st-tabs cr-tabs" role="tablist" aria-label="Career">
+      <button type="button" role="tab" id="cr-tab-career" aria-selected="true">Career</button>
+      <button type="button" role="tab" id="cr-tab-lb" aria-selected="false">Leaderboards</button>
+    </nav>
+    <div id="cr-pane-career" class="cr-pane">
+      <dl class="cr-stats" id="cr-stats"></dl>
+      <h3 class="set-head">Achievements <span id="cr-count" class="cr-count"></span></h3>
+      <ul class="cr-achs" id="cr-achs"></ul>
+    </div>
+    <div id="cr-pane-lb" class="cr-pane" hidden>
+      <div class="lb-cats" id="lb-cats"></div>
+      <div class="lb-sub" id="lb-sub"></div>
+      <p class="lb-you" id="lb-you" aria-live="polite"></p>
+      <ol class="lb-list" id="lb-list"></ol>
+      <p class="lb-note" id="lb-note"></p>
+    </div>
     <nav class="menu cr-menu">
       <button id="btn-career-switch" type="button">Switch username</button>
       <button id="btn-career-back" type="button">Back</button>

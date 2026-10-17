@@ -8,6 +8,7 @@
 import { ACHIEVEMENTS, TOTAL_G } from '../career/achievements.js';
 import { cleanName } from '../career/career.js';
 import { pinOk } from '../career/auth.js';
+import { roundBoard } from '../career/leaderboards.js';
 import { CONFIG } from '../config.js';
 import { gumIconURL } from '../render/gumIcons.js';
 
@@ -210,6 +211,88 @@ export function renderCareer(career) {
     }
     return `<li class="ca${on ? ' on' : ''}"><span class="ca-icon">${TROPHY}</span><span class="ca-body"><b>${esc(a.title)}</b><span>${esc(a.desc)}</span>${prog}</span><span class="ca-g">${a.g}G</span></li>`;
   }).join('');
+}
+
+// --- The Career screen's Leaderboards tab (src/career/leaderboards.js) ------------
+// Pick a board: the highest round (a map, solo or co-op) or a career total.
+// The top 100, and where you are if you're further down.
+const LB_CATS = [['round', 'Highest round'], ['kills', 'Kills'], ['headshots', 'Headshots'], ['revives', 'Revives'], ['wallBuys', 'Wall buys'], ['games', 'Games']];
+const LB_MAPS = [['lastbell', 'Stew Leonard High'], ['crust', 'Call of the Crust']];
+const LB_WHY = {
+  guest: 'Playing as a guest: sign in to get on the leaderboards.',
+  dev: "This is a developer account, so it isn't ranked.",
+  local: 'The leaderboards need the online database, and this copy of the game has none.',
+};
+
+export class LeaderboardsUI {
+  constructor(boards) {
+    this.boards = boards;
+    this.tab = 'career';
+    this.cat = 'round'; this.map = 'lastbell'; this.coop = false;
+    this.ask = 0;
+    $('cr-tab-career').addEventListener('click', () => this.show('career'));
+    $('cr-tab-lb').addEventListener('click', () => this.show('lb'));
+    $('lb-cats').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-cat]');
+      if (b) { this.cat = b.dataset.cat; this.refresh(); }
+    });
+    $('lb-sub').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.map) this.map = b.dataset.map;
+      if (b.dataset.coop) this.coop = b.dataset.coop === '1';
+      this.refresh();
+    });
+  }
+
+  // The Career screen opened: the tab it was on (the boards fetched again)
+  open() { this.show(this.tab); }
+
+  show(tab) {
+    this.tab = tab;
+    $('cr-tab-career').setAttribute('aria-selected', String(tab === 'career'));
+    $('cr-tab-lb').setAttribute('aria-selected', String(tab === 'lb'));
+    $('cr-pane-career').hidden = tab !== 'career';
+    $('cr-pane-lb').hidden = tab !== 'lb';
+    if (tab === 'lb') this.refresh(true);
+  }
+
+  get boardId() { return this.cat === 'round' ? roundBoard(this.map, this.coop).id : this.cat; }
+
+  controls() {
+    $('lb-cats').innerHTML = LB_CATS.map(([id, label]) => `<button type="button" data-cat="${id}" aria-pressed="${id === this.cat}">${label}</button>`).join('');
+    const sub = $('lb-sub');
+    sub.hidden = this.cat !== 'round';
+    sub.innerHTML = this.cat !== 'round' ? '' : LB_MAPS.map(([id, label]) => `<button type="button" data-map="${id}" aria-pressed="${id === this.map}">${label}</button>`).join('')
+      + '<span class="lb-gap"></span>'
+      + [['0', 'Solo'], ['1', 'Co-op']].map(([v, label]) => `<button type="button" data-coop="${v}" aria-pressed="${(v === '1') === this.coop}">${label}</button>`).join('');
+  }
+
+  async refresh(fresh = false) {
+    this.controls();
+    const id = this.boardId, ask = ++this.ask, B = this.boards;
+    const why = B.whyNot;
+    $('lb-you').innerHTML = why ? esc(LB_WHY[why]) : '';
+    if (why === 'local') { $('lb-list').innerHTML = ''; $('lb-note').textContent = ''; return; }
+    $('lb-note').textContent = 'Loading…';
+    let r;
+    try { r = await B.board(id, { fresh }); } catch {
+      if (ask !== this.ask) return;
+      $('lb-list').innerHTML = '';
+      $('lb-note').textContent = "Can't reach the leaderboards right now. Try again in a bit.";
+      return;
+    }
+    if (ask !== this.ask) return;   // (picked another board since)
+    const round = this.cat === 'round';
+    const val = (v) => (round ? `Round ${fmt(v)}` : fmt(v));
+    $('lb-list').innerHTML = r.rows.map((x) => `<li class="lb-row${x.rank <= 3 ? ' top' + x.rank : ''}${x.me ? ' me' : ''}"><span class="lb-rank">#${x.rank}</span><span class="lb-name">${esc(x.name)}</span><span class="lb-v">${val(x.v)}</span></li>`).join('');
+    $('lb-note').textContent = r.rows.length ? '' : round ? 'Nobody has finished a game here yet. Be the first.' : 'Nobody is on this board yet.';
+    if (!why) {
+      $('lb-you').innerHTML = r.you
+        ? `You're <b>#${r.you.rank}</b> · ${val(r.you.v)}`
+        : round ? 'Finish a game here to get on this board.' : 'Finish a game to get on the leaderboards.';
+    }
+  }
 }
 
 // --- The welcome gift's pop-up (in the achievement toast) --------------------------

@@ -1404,6 +1404,13 @@ export const CONFIG = {
     firebaseApiKey: 'AIzaSyBWcSZYw4ggten1rslVhvi89zxEoBgZgvs',
     flushEvery: 15,          // seconds between saves during a game
     timeout: 6,              // give up on the database after this long (and save locally)
+    // The online leaderboards (src/career/leaderboards.js), on the Career screen
+    leaderboard: {
+      top: 100,              // names shown on each board (plus where you are, if you're further down)
+      refresh: 30,           // seconds a board is kept before it's fetched again
+      maxRound: 255,         // sanity caps: a round or a career total past these isn't sent or shown
+      maxTotal: 10000000,
+    },
   },
 
   // ---------------------------------------------------------------------------
