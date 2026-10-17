@@ -78,3 +78,21 @@ check(!db.collector.shop.gunWear || !db.collector.shop.gunWear.HK22, 'taking it 
 const PC = new Career({}, { fetchFn: null, storage: store() });
 await PC.signIn('PHAT CHOPS');
 check(GUN_SKINS.every((s) => PC.ownsGunSkin(s.id, s.only || 'SCAR-H')) && PC.wearGunSkin('M2 Flamethrower', 'dragonScale'), 'PHAT CHOPS has every gun skin');
+
+// --- online: your friends see the skin on the gun you're holding ---
+const { OnlineSession, PROTOCOL } = await import('../src/net/online.js');
+const OS = new OnlineSession({ name: 'Host', character: 'kearns', gunSkins: { 'SCAR-H': 'varsityScar', 'Desert Eagle': 'gold', MP41: 'pinkEagle', Nope: 'gold' } });
+OS.role = 'host'; OS.you = 'p1'; OS.ep = { send() {} };
+OS.members = [{ id: 'p1', peer: null, name: 'Host', character: 'kearns', skin: null, brian: false, gums: null }];
+OS.setGunSkins({ 'SCAR-H': 'varsityScar', 'Desert Eagle': 'gold', MP41: 'pinkEagle', Nope: 'gold' });
+check(JSON.stringify(OS.lobby().members[0].gunSkins) === JSON.stringify({ 'SCAR-H': 'varsityScar', 'Desert Eagle': 'gold' }), 'the host\'s gun skins are in the lobby (only real guns, skins that fit them)');
+OS.hostMessage('peer2', { t: 'hello', v: PROTOCOL, name: 'Friend', character: 'ryan', gunSkins: { 'AK-75u': 'carbon', 'SCAR-H': 'pinkEagle' } });
+const fr = OS.lobby().members.find((m) => m.id === 'p2');
+check(fr && fr.gunSkins && fr.gunSkins['AK-75u'] === 'carbon' && !fr.gunSkins['SCAR-H'], 'a friend\'s gun skins come with their hello, checked the same way');
+OS.hostMessage('peer2', { t: 'gunSkins', gunSkins: { 'SCAR-H': 'molten' } });
+check(OS.lobby().members.find((m) => m.id === 'p2').gunSkins['SCAR-H'] === 'molten', 'changing one in the lobby reaches the host');
+const { GameSim } = await import('../src/sim/sim.js');
+const { SCHOOL } = await import('../src/map/school.js');
+const GS = new GameSim({ map: SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: 1 });
+const gp = GS.addPlayer('p2', 'Friend', { character: 'ryan', gunSkins: { 'SCAR-H': 'molten' } });
+check(gp.gunSkins && gp.gunSkins['SCAR-H'] === 'molten', 'the game keeps each player\'s gun skins (for drawing their gun)');

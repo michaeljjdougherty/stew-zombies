@@ -313,7 +313,7 @@ const onlineUI = new OnlineUI(settings, {
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
-    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(),
+    name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(), gunSkins: career.gunSkinsWorn(),
     onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
@@ -386,7 +386,7 @@ function beginOnlineGame(st) {
   localId = st.you;
   // (the map the host picked: an older host never says, and that was always the school)
   const s = new GameSim({ map: ZOMBIE_MAPS[st.map] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: 'zombies', seed: st.seed });
-  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null });
+  for (const m of st.members) s.addPlayer(m.id, m.name, { character: m.character, gums: m.gums || null, skin: m.skin || null, gunSkins: m.gunSkins || null });
   stopOnlineGame();
   installSim(s);
   if (online.isHost) {
@@ -1091,7 +1091,7 @@ document.getElementById('btn-title-signin').addEventListener('click', () => {
   menus.show('signin'); signIn.open();
 });
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
-career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); if (menus.blade === 'arsenal') refreshArsenal(); };
+career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); if (menus.blade === 'arsenal') refreshArsenal(); if (online && !online.inGame) online.setGunSkins(career.gunSkinsWorn()); };
 const signIn = new SignInUI(career, { done: () => {} });
 function afterSignIn() {
   // your username is your name online too

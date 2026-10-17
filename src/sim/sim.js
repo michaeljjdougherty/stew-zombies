@@ -115,7 +115,8 @@ export class GameSim {
   // --- players --------------------------------------------------------------
   // gums: the GobbleGum pack they brought { pack: [5 ids], stock: { megaId: n } } (src/career/career.js)
   // skin: the Skin Shop outfit they wear (only how they look: src/career/skins.js)
-  addPlayer(id, name, { character = 'kearns', gums = null, skin = null } = {}) {
+  // gunSkins: { gun id: gun skin id } on their guns (only how they look: src/career/gunSkins.js)
+  addPlayer(id, name, { character = 'kearns', gums = null, skin = null, gunSkins = null } = {}) {
     const spawn = this.mapData.playerSpawns[this.players.length % this.mapData.playerSpawns.length];
     const p = createPlayer(this, id, name, spawn);
     // (Call of the Crust: Pit's at his forge, not out fighting; whoever picked him plays someone free)
@@ -127,6 +128,7 @@ export class GameSim {
     }
     p.character = character;   // who they're playing: what they say, what Erik calls them
     p.skin = typeof skin === 'string' ? skin : null;
+    p.gunSkins = gunSkins && typeof gunSkins === 'object' ? { ...gunSkins } : null;
     setPlayerGums(this, p, gums);
     if (this.mode === 'explore') p.points = this.cfg.explore.points;
     p.region = this.nav.regionAt(p.pos);

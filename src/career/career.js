@@ -598,6 +598,12 @@ export class Career {
   }
   // The skin a gun has on (null: its own finish)
   gunSkin(gun) { const id = this.profile && this.profile.shop.gunWear && this.profile.shop.gunWear[gun]; return id && this.ownsGunSkin(id, gun) ? id : null; }
+  // Every gun's skin you have on ({ gun id: skin id }): what your friends see online
+  gunSkinsWorn() {
+    const out = {};
+    for (const gun of Object.keys((this.profile && this.profile.shop.gunWear) || {})) { const id = this.gunSkin(gun); if (id) out[gun] = id; }
+    return out;
+  }
   // Buy a gun skin: { ok } or { ok: false, code: 'guest' | 'owned' | 'broke' | 'unlock' | 'unknown' }
   buyGunSkin(id) {
     if (!GUN_SKIN_BY_ID[id]) return { ok: false, code: 'unknown' };
