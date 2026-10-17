@@ -884,7 +884,10 @@
   .ar-gun:focus-visible { box-shadow: 0 0 0 2px var(--ink-r); }
   .ar-gun[aria-pressed="true"] { background: var(--ink-r); border-color: var(--ink-r); color: #f6ead0; }
   .ar-gun.skinned::after { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 2px 6px; border-radius: 50%; background: #e8a81a; vertical-align: middle; }
-  .ar-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(88px, 8.5vw, 116px), 1fr)); gap: 8px; max-height: calc(min(64vh, 560px) - 160px); overflow-y: auto; padding: 4px; scrollbar-width: thin; scrollbar-color: rgba(35,22,11,.4) transparent; }
+  .ar-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(88px, 8.5vw, 116px), 1fr)); grid-auto-rows: max-content; align-content: start; gap: 8px; max-height: calc(min(64vh, 560px) - 160px); overflow-y: auto; padding: 4px; scrollbar-width: thin; scrollbar-color: rgba(35,22,11,.4) transparent; }
+  /* (the tile's height from a spacer, not aspect-ratio: Safari let aspect-ratio tiles in this scrolling grid overlap) */
+  .ar-tile { aspect-ratio: auto; }
+  .ar-tile::after { content: ""; display: block; padding-top: 120%; }
   .ar-tile .st-info b { font-size: clamp(12px, 1.1vw, 15px); }
   .ar-tile[aria-pressed="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rc) 70%, #fff), 0 0 0 3px var(--ink-r); }
   .ar-tile.ar-focus { outline: 3px solid #ffe32b; outline-offset: 2px; }
