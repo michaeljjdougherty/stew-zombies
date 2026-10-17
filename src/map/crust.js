@@ -52,7 +52,7 @@ class Isle {
     this.t.openEdges = true;   // (floating in space: nothing stops you walking off the edge)
     this.zones = new Map();       // zone id -> { name, reverb, fixtures }
     this.areas = []; this.links = []; this.windows = []; this.wallBuys = []; this.props = [];
-    this.structs = []; this.joins = []; this.portalSpecs = []; this.freeDoors = []; this.rides = [];
+    this.structs = []; this.joins = []; this.portalSpecs = []; this.freeDoors = []; this.rides = []; this.navAvoid = [];
     this.decor = []; this.boxSpots = []; this.pads = []; this.later = [];
     this.dives = [];              // gaps left in the guard rails: ledges to dive off ({ x, z, r?, label? })
     this.railGaps = [];           // rects left without rails (a hole you're meant to drop through)
@@ -208,6 +208,9 @@ function hub() {
   I.room({ id: 'depot', kind: 'tin', rect: [17, -26, 26, -19], y: RIMH, height: 4.2, name: 'Supply Depot', zone: 'depot', fixtures: [{ x: 21.5, y: RIMH + 3.9, z: -22.5, lit: true, flicker: 0.3, kind: 'hanging' }] });
   I.links.push({ a: 'depot', out: 's', t: 0.5, type: 'door', id: 'door_hub_depot', name: 'Supply Depot' });
   I.links.push({ a: 'depot', out: 'w', t: 0.5, type: 'gap', width: 2 });
+  // a heap of rubble from its south-west corner to the quarry's edge: the way
+  // round the rim past the depot is through it (its door), not round the outside
+  t.paint(shape.path([[17.4, -19.4], [14.0, -15.6]], 1.8), { kind: K.ROCK, mat: 'rock', h: (x, z, old) => Math.max(old, RIMH) + 2.4, only: (k) => k !== K.SEA });
   // (no wall guns in the depot: the Anvil's are the two in the pit; the Peacekeeper's at the Research Base)
   I.boxSpots.push({ id: 'box_depot', room: 'depot', x: 25.4, z: -22.5, yaw: -Math.PI / 2, start: true });   // (it starts up in the depot, not down where you spawn)
   // in the pit: the Anvil (empty sockets), two guns on the rock, the box
@@ -217,11 +220,13 @@ function hub() {
   runes.forEach((k, i) => {
     const a = (i / runes.length) * Math.PI * 2 + 0.45, x = Math.cos(a) * 8.6, z = Math.sin(a) * 8.6;
     I.model({ a: 'stones', pick: [k], x, y: F, z, yaw: -a + Math.PI / 2, fit: { h: 2.6 }, look: { glow: '#5a4420' } }, { collide: [x, z, 0.6, 0.6, 2.6] });
+    I.navAvoid.push([x - 0.6, z - 0.6, x + 0.6, z + 0.6]);   // (the zombies' paths go round them: they used to snag on them)
   });
   const rh = R(9);
   for (let i = 0; i < 18; i++) {
     const a = rh() * Math.PI * 2, r = 32 + rh() * 8, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (Math.abs(Math.abs(x) - 28) < 8 && Math.abs(z) < 8 || Math.abs(Math.abs(z) - 28) < 8 && Math.abs(x) < 8) continue;
+    if (x > 13 && x < 31 && z > -31 && z < -14) continue;   // (not in or against the depot: one hid its perk and GobbleGum machines)
     I.model({ a: 'stones', pick: [['Big_2', 'Big_3', 'Big_4', 'BIG_1', 'Mid_1', 'Mid_2'][i % 6]], x, y: Math.max(F, t.heightAt(x, z)) - 0.6, z, yaw: rh() * 6, scale: 1.2 + rh() * 0.8, look: { tint: '#5a5660' } });
   }
   I.later.push(() => {
@@ -236,7 +241,6 @@ function hub() {
   I.prop('wreck', 9, 9.5, 13, 12.5, 1.4);
   I.prop('barrel', 10.6, -11.4, 11.3, -10.7, 0.95, { fire: true });
   I.prop('crate', -12.6, -9, -11.4, -7.8, 1.1);
-  I.prop('rock', 12, -3, 14, -1, 1.4);
   // the rim: the four decks, a few things lying about
   I.prop('crate', -27, 22, -25.8, 23.2, 1.1); I.prop('crate', -25.6, 22, -24.4, 23.2, 0.8);
   I.prop('barrel', 26.6, 20.6, 27.3, 21.3, 0.95, { fire: true });
@@ -325,6 +329,7 @@ function hub() {
     };
     I.prop('model', -7.0, 1.6, -5.6, 4.2, 0.95);      // (the bench: drawn by src/render/forgeView.js)
     I.prop('model', -8.15, 2.6, -7.55, 3.2, 1.8);     // (Pit)
+    I.prop('model', -8.15, 1.6, -5.6, 4.2, 0.95);     // (the bench and Pit as one block, big enough that the zombies' paths go round it: they used to get caught on him)
     I.prop('model', 4.7, 4.55, 6.1, 5.45, 1.7);       // (the War Hammer stand: drawn by forgeView too)
   }
   I.openFall = shape.ring(0, 0, 12, 23.5);   // (no invisible wall at the top of the quarry's walls)
@@ -1039,6 +1044,7 @@ for (const I of ISLES) {
     if (p.y != null || Math.min(p.x1 - p.x0, p.z1 - p.z0) < 2.5) continue;
     t.paint(shape.rect(p.x0 - 0.3, p.z0 - 0.3, p.x1 + 0.3, p.z1 + 0.3), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });
   }
+  for (const [x0, z0, x1, z1] of I.navAvoid || []) t.paint(shape.rect(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3), { kind: K.ROOM, spawn: false, only: (k) => k === K.GROUND });
   for (const f of I.later) f();
   // the models you can't walk through: their height grids (tools/crust/solids.mjs) as boxes
   const solidBoxes = [];
