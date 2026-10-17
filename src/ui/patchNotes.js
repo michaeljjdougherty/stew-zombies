@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-16c',
-  date: 'October 16, 2026',
+  version: '2026-10-17a',
+  date: 'October 17, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -19,6 +19,17 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'The Battle Pass: 20 free tiers in the Stew Store. Earn pass XP from every game, round and kill, and each tier unlocks its prize straight away: 10 new skins any character can wear (Warm Up, Night Shift, Ski Lodge, Lifeguard, Grill Master, Leopard Lounge, Hot Sauce, Neon Rave, Velvet Night, and Burger Bros at tier 20, a red uniform with the visor and name tag), 3 new emotes (The Dab, The Robot, Salute) and Stew Bucks on 7 tiers.',
+      'Gun skins: 23 of them. 12 fit every gun, after the classic Call of Duty camos (Woodland, Desert Tiger, Urban Digital, Arctic, Cherry Blossom, Damascus, Carbon Fiber, Bacon, Gold, Diamond, and the moving Dark Matter and Molten), and 8 are made for one gun, like the Pink Chrome Desert Eagle and the Dragon Scale Flamethrower. Buy them in the Stew Store\'s Gun skins tab, or earn Neon Grid, Zebra and Ketchup & Mustard at Battle Pass tiers 6, 12 and 18. The new Arsenal blade lists every gun: pick one and put a skin on it. Teammates see your gun skins online, and Pack-a-Punched guns keep their own camo.',
+      'The Stew Store page shows Featured today: four items that change every day. Tap one to go straight to it.',
+      'On the map screen you can pick who you\'re playing and which skin they wear right before you hit Play, and the online lobby always shows the skin choice.',
+      'Call of the Crust: zombies no longer get caught on Pit and his bench, or on the rune stones round the Anvil.',
+      'Call of the Crust: the spiky grey rock on the pit floor is gone, and so are the boulders that hid the perk and GobbleGum machines in the Supply Depot.',
+      'Call of the Crust: a rubble heap blocks the rim beside the Supply Depot, so the way past is through its door. Every door and debris pile on the Crust costs 750.',
+      'Call of the Crust: each War Hammer part hums on its island, louder the closer you get, and goes quiet once you pick it up.',
+      'Call of the Crust: the sky takes on each island\'s element (wind, lightning, fire, ice) once you\'re standing on it. The Anvil\'s sky is unchanged.',
+    ] },
+    { title: 'New crew, emotes and the Stew Store', items: [
       'New crew: James and Kyle are playable. Stand still for about 3 seconds and James turns around and twerks to a little bass beat, while Kyle crosses his arms and judges you. Kyle\'s stink lines and flies follow him everywhere. Friends see it all online.',
       'Brian is about Rocco\'s height now, a touch taller.',
       'Emotes: hold B (D-pad up) for the emote wheel. The camera pulls back so you can watch, and friends see it online. Finger Guns and Big Wave are free; Slow Clap, The Floss, The Judge and James\'s Jimmy Shimmy are bought once in the Stew Store.',
