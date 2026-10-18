@@ -566,8 +566,8 @@ export class SoundDirector {
         break;
       }
       case 'cheddarStrike':
-        A.play(S.thunder, { near: 1 }, { pos: { x: e.pos.x, y: 4, z: e.pos.z }, ref: 10, reverb: 0.6, gain: 1.1 });
-        A.play(S.dogGrowl, { f0: R(65, 90), dur: 0.8 }, { pos: { x: e.pos.x, y: 0.6, z: e.pos.z }, ref: 3, delay: 0.5 });
+        A.play(S.thunder, { near: 1 }, { pos: { x: e.pos.x, y: (e.pos.y || 0) + 4, z: e.pos.z }, ref: 10, reverb: 0.6, gain: 1.1 });
+        A.play(S.dogGrowl, { f0: R(65, 90), dur: 0.8 }, { pos: { x: e.pos.x, y: (e.pos.y || 0) + 0.6, z: e.pos.z }, ref: 3, delay: 0.5 });
         break;
       case 'sawHit': A.play(S.sawCut, {}, { pos: e.pos, ref: 3 }); break;
       case 'sawRicochet': A.play(S.sawRicochet, {}, { pos: e.pos, ref: 3, reverb: 0.4 }); break;
