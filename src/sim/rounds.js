@@ -6,6 +6,8 @@ import { zombieCountForRound, zombieHealthForRound } from '../config.js';
 import { spawnZombie, spawnRising, spawnCheddar, removeZombie } from './zombies.js';
 import { resetRoundDrops, spawnPowerup } from './powerups.js';
 import { dist2D } from '../core/math.js';
+import { groundHeight } from './physics.js';
+import { boxesNear } from './boxgrid.js';
 
 export function createRoundState(sim) {
   return {
@@ -29,8 +31,9 @@ export function cheddarHealth(sim, idx) {
   return idx <= h.length ? h[idx - 1] : h[h.length - 1] + 600 * (idx - h.length);
 }
 
-// Somewhere open, inside the map, a few metres from a player.
-function strikePoint(sim) {
+// Somewhere open, inside the map, a few metres from a player, standing on the
+// floor the player is on (the Crust's islands sit at all heights, over nothing).
+export function strikePoint(sim) {
   const ch = sim.cfg.cheddar;
   const players = sim.players.filter((p) => p.alive && !p.downed);
   const list = players.length ? players : sim.players.filter((p) => p.alive);
@@ -39,16 +42,41 @@ function strikePoint(sim) {
   for (let tries = 0; tries < 30; tries++) {
     const a = sim.rng.range(0, Math.PI * 2);
     const d = sim.rng.range(ch.spawnDist[0], ch.spawnDist[1]) * (tries > 20 ? 0.5 : 1);
-    const pos = { x: p.pos.x + Math.cos(a) * d, y: 0, z: p.pos.z + Math.sin(a) * d };
-    const r = sim.nav.regionAt(pos);
-    if (!r) continue;
-    const room = sim.world.roomById.get(sim.nav.roomOfRegion(r));
-    if (!room || !sim.openZones.has(room.zone)) continue;
-    const rad = ch.radius + 0.2;
-    if (sim.world.solids.some((b) => b.minY < 1 && b.maxY > 0.1 && pos.x > b.minX - rad && pos.x < b.maxX + rad && pos.z > b.minZ - rad && pos.z < b.maxZ + rad)) continue;
-    if (sim.nav.regionAt(pos) && Math.abs(pos.y - p.pos.y) < 2) return pos;
+    const pos = strikeSpot(sim, p, p.pos.x + Math.cos(a) * d, p.pos.z + Math.sin(a) * d);
+    if (pos) return pos;
   }
-  return { x: p.pos.x + 3, y: 0, z: p.pos.z };
+  // somewhere cramped (a lookout, a mast): closer in, round anyone standing
+  const a0 = sim.rng.range(0, Math.PI * 2);
+  for (const q of [p, ...list.filter((o) => o !== p)]) {
+    for (const d of [3.5, 2.5, 1.6]) {
+      for (let k = 0; k < 12; k++) {
+        const a = a0 + k / 12 * Math.PI * 2;
+        const pos = strikeSpot(sim, q, q.pos.x + Math.cos(a) * d, q.pos.z + Math.sin(a) * d);
+        if (pos) return pos;
+      }
+    }
+  }
+  return null;   // nowhere good just now: the next strike tries again
+}
+
+// The floor at (x, z) if a hound can stand there: on the player's level (no
+// higher than a step up, no drop or void under it), inside an open part of the
+// map, and clear of walls, crates and rock.
+function strikeSpot(sim, p, x, z) {
+  const ch = sim.cfg.cheddar;
+  const lists = [sim.world.solids, sim.world.terrain];
+  const y = groundHeight(x, z, 0.1, p.pos.y + 1.5, lists);
+  if (Math.abs(y - p.pos.y) >= 2) return null;
+  const pos = { x, y, z };
+  const r = sim.nav.regionAt(pos);
+  if (!r) return null;
+  const reg = sim.nav.byId.get(r);
+  if (reg && (y < reg.y0 - 0.6 || y > reg.y1 + 0.6)) return null;
+  const room = sim.world.roomById.get(sim.nav.roomOfRegion(r));
+  if (!room || !sim.openZones.has(room.zone)) return null;
+  const rad = ch.radius + 0.2;
+  if (lists.some((l) => boxesNear(l, x, z, rad).some((b) => b.minY < y + ch.height && b.maxY > y + 0.1 && x > b.minX - rad && x < b.maxX + rad && z > b.minZ - rad && z < b.maxZ + rad))) return null;
+  return pos;
 }
 
 function startRound(sim, n) {
