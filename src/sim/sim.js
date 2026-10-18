@@ -304,7 +304,8 @@ export class GameSim {
   }
 
   // Bullet trace. Returns ordered impacts: zombies (up to `penetration`), then the wall.
-  hitscan(o, d, range, penetration = 1) {
+  // Each zombie it goes through takes `keep` x the damage of the one before.
+  hitscan(o, d, range, penetration = 1, keep = 0.6) {
     let wall = this.raycastWorld(o, d, range);
     // the cauldron's valves stop a bullet like a wall does
     const targets = cauldronTargets(this);
@@ -338,7 +339,7 @@ export class GameSim {
     }
     zHits.sort((a, b) => a.t - b.t);
     const out = zHits.slice(0, penetration);
-    out.forEach((h, i) => { h.penetrationMult = Math.pow(0.6, i); });
+    out.forEach((h, i) => { h.penetrationMult = Math.pow(keep, i); });
     if (wall && zHits.length < penetration) {
       out.push({ kind: 'world', t: wall.t, point: wall.point, normal: wall.normal, surface: wall.box ? wall.box.kind : 'floor', targetId: wall.targetId });
     }
