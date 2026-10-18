@@ -598,6 +598,9 @@ function research() {
     I.add(deck(id, [x0, 25, x1, 40], CY, { zone: CAT, look: 'grate' }), { connect: 'nswe' });
     const f = I.add(flight(id + '_stairs', [x0, 20, x1, 25], G, CY, 's', { zone: CAT, look: 'steel' }), { footprint: G });
     I.portalSpecs.push({ flight: f, belowAt: [(x0 + x1) / 2, 19.4, G], aboveId: id });
+    // (the ground's nav stops short of the stairs' side: its last strip of cells
+    // used to poke under them, and anything coming down turned back up them)
+    I.navAvoid.push([x0, 20, x1, 25]);
   }
   I.add(deck('cat_s', [148, 40, 170, 42.4], CY, { zone: CAT, look: 'grate' }), { connect: 'nswe' });
   // the tesla coils (lightning arcs between them: src/render/crustTerrain.js 'storm')

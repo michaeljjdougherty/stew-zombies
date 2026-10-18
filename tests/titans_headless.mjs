@@ -272,6 +272,38 @@ check(CRUST.titans.length === 4 && ['ship', 'research', 'caves', 'trench'].every
   check(d1 < d0 - 8, `it doesn't stay stuck on the stairs (${d0.toFixed(0)} m -> ${d1.toFixed(0)} m${g.has('titanLeap') ? ', it leapt' : ''})`);
 }
 
+// --- the Research Base's catwalks: the Warden walks on, along, off and under
+// the long bridge to get to you (it used to stand stuck against it, too tall
+// to go under its deck, or at the foot of its stairs by the garage and the dome)
+{
+  const cases = [
+    // [warden x, y, z], [you x, y, z]
+    [[159, 4.2, 41.2], [159, 0.8, 31]],    // off the bridge, down the stairs, back under the deck
+    [[159, 4.2, 41.2], [140, 0.8, 36]],    // down the west stairs, past the garage
+    [[159, 4.2, 41.2], [175, 0.8, 30]],    // down the east stairs, past the dome
+    [[152, 4.2, 41.2], [168.8, 4.2, 32]],  // along the bridge and round onto the east deck
+    [[155, 0.8, 38], [159, 4.2, 41.2]],    // from under the bridge up onto it
+    [[159, 0.8, 27], [175, 0.8, 30]],      // out from under the decks
+    [[149.2, 4.2, 26], [159, 0.8, 36]],    // off a deck to under the bridge
+  ];
+  const stuck = [];
+  for (const [w, you] of cases) {
+    const g = game(6);
+    const { sim, me } = g;
+    const s = CRUST.titans.find((t) => t.id === 'research');
+    const T = sim.crustEgg.titans.research;
+    g.put(s.wake.x + 3.4, s.wake.z, null, Math.PI / 2); g.use();
+    g.secs(sim.cfg.crust.egg.wakeTime.research + 0.5);
+    T.next.laser = sim.time + 99; T.next.adds = sim.time + 99;
+    Object.assign(T.pos, { x: w[0], y: w[1], z: w[2] }); T.region = null; T.act = null;
+    g.put(you[0], you[2], you[1]);
+    let minD = Infinity;
+    for (let f = 0; f < 60 * 25 && minD > 6; f++) { g.step(); minD = Math.min(minD, Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z)); }
+    if (minD > 6 || g.has('titanLeap')) stuck.push(`(${w}) to (${you}): got within ${minD.toFixed(1)} m${g.has('titanLeap') ? ', leapt' : ''}, at (${T.pos.x.toFixed(1)}, ${T.pos.y.toFixed(1)}, ${T.pos.z.toFixed(1)})`);
+  }
+  check(!stuck.length, `the Warden walks on, off and under the Research Base's bridge to you, no leaping (${cases.length - stuck.length} of ${cases.length}${stuck.length ? ': ' + stuck.join('; ') : ''})`);
+}
+
 // --- walk away and it goes back to sleep
 {
   const g = game(51);
