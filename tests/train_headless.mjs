@@ -42,7 +42,8 @@ function soloShot(gun, n, health = 5000) {
   me.yaw = 0; me.pitch = -0.05;
   sim.step(dt);
   const ev = sim.drainEvents();
-  const hit = new Set(ev.filter((e) => e.type === 'zombieHit').map((e) => e.id));
+  // (the bullet's own hits: a Mad Dog'd gun's ammo type can catch others too)
+  const hit = new Set(ev.filter((e) => e.type === 'zombieHit' && e.kind === 'bullet').map((e) => e.id));
   return { sim, me, zs, ev, hit, earned: me.points - pts0 };
 }
 
