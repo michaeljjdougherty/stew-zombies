@@ -1,5 +1,5 @@
 // Call of the Crust's Easter egg, end to end: Pit at his forge (not playable),
-// the titans' cores, the four War Hammers (and tempering), the Anvil, and
+// the titans' cores, the four elemental hammers (upgraded off the Anvil), the Anvil, and
 // Big Evil Zach.
 // Run: node tests/crustquest_headless.mjs
 import { powerAllOn } from '../src/sim/crustPower.js';
@@ -87,15 +87,15 @@ const forgeAll = (g) => {
   g.step({}, 60 * 3);
   check(g.log.some((e) => e.type === 'forgeStrike'), '...hammer blows (the sparks)');
   g.step({}, 60 * CONFIG.crust.forge.forgeTime);
-  check(E(g).forge.hammers.lightning.forged && g.log.some((e) => e.type === 'hammerForged'), 'the Lightning Hammer is forged, into its socket');
+  check(E(g).forge.hammers.lightning.forged && g.log.some((e) => e.type === 'hammerForged'), 'the Thunder Hammer is forged, into its socket');
   g.socket('lightning');
   check(g.me.prompt && !/Press/.test(g.me.prompt.text) && /War Hammer/.test(g.me.prompt.sub || ''), `no War Hammer: "${g.me.prompt && g.me.prompt.text}" (${g.me.prompt && g.me.prompt.sub})`);
   giveWeapon(g.sim, g.me, 'War Hammer'); g.step({}, 40);
   g.socket('lightning');
-  check(g.me.prompt && /take the Lightning Hammer/.test(g.me.prompt.text), `with one: "${g.me.prompt && g.me.prompt.text}"`);
+  check(g.me.prompt && /take the Thunder Hammer/.test(g.me.prompt.text), `with one: "${g.me.prompt && g.me.prompt.text}"`);
   const n = g.me.loadout.slots.length;
   g.use();
-  check(g.me.loadout.slots.some((s) => s.id === 'Lightning Hammer') && !g.me.loadout.slots.some((s) => s.id === 'War Hammer') && g.me.loadout.slots.length === n && E(g).forge.hammers.lightning.by === 'p1', 'your War Hammer becomes the Lightning Hammer');
+  check(g.me.loadout.slots.some((s) => s.id === 'Lightning Hammer+' && s.upgraded) && !g.me.loadout.slots.some((s) => s.id === 'War Hammer' || s.id === 'Lightning Hammer') && g.me.loadout.slots.length === n && E(g).forge.hammers.lightning.by === 'p1', 'your War Hammer becomes the Thunder Hammer, upgraded straight away');
   g.use();
   check(g.me.loadout.slots.some((s) => s.id === 'War Hammer') && E(g).forge.hammers.lightning.by === null, 'put it back: plain iron again');
   // a second core while he works: on the pile
@@ -147,7 +147,7 @@ const forgeAll = (g) => {
   check(k2.state === 'lying' && k2.x === k2.home.x, `die carrying the ${pid}: it's back at its shrine`);
 }
 
-// --- each hammer's swing: plain iron as forged, its element once Pit's tempered it
+// --- each hammer's swing: the War Hammer's plain iron; each elemental one (only ever upgraded) its element
 {
   const g = game(5);
   {
@@ -162,17 +162,7 @@ const forgeAll = (g) => {
   }
   for (const el of ['fire', 'ice', 'wind', 'lightning']) {
     g.sim.zombies.length = 0; g.sim.projectiles.length = 0;
-    giveWeapon(g.sim, g.me, HAMMER_IDS[el]); g.step({}, 50);
-    g.at(0, 11, 0, 30);   // south of the dais, facing south
-    let near = addZ(g, 0, 12.6), mid = addZ(g, 1.5, 15), far = addZ(g, -3, 16.5);
-    let n0 = g.log.length;
-    swing(g);
-    let L = g.log.slice(n0);
-    check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === el && !e.upgraded), `${el}: the swing smashes the one in front of you`);
-    const goesOff = { fire: 'explosion', ice: 'hammerFreeze', wind: 'windBlast', lightning: 'hammerChain' }[el];
-    check(L.some((e) => e.type === goesOff) && !g.sim.projectiles.length, `  ...its element goes off (${goesOff}), but nothing's left behind until it's tempered`);
-    // tempered
-    g.sim.zombies.length = 0;
+    let near, mid, far, n0, L;
     giveWeapon(g.sim, g.me, HAMMER_IDS[el] + '+'); g.step({}, 50);
     g.at(0, 11, 0, 30);
     near = addZ(g, 0, 12.6); mid = addZ(g, 1.5, 15); far = addZ(g, -3, 16.5);
@@ -181,7 +171,8 @@ const forgeAll = (g) => {
     swing(g);
     L = g.log.slice(n0);
     const left = g.sim.projectiles.find((p) => p.type === { fire: 'hfire', ice: 'hice', wind: 'hwind', lightning: 'hbolt' }[el]);
-    if (el !== 'lightning') check(near.state === 'dead' && !!left, `${el}+: smashes, and leaves its ${left && left.type} behind`);
+    check(near.state === 'dead' && L.some((e) => e.type === 'hammerSlam' && e.element === el && e.upgraded), `${el}+: the swing smashes the one in front of you`);
+    if (el !== 'lightning') check(!!left, `  ...and leaves its ${left && left.type} behind`);
     if (el === 'fire') {
       check(L.some((e) => e.type === 'explosion' && e.etype === 'hammerFireUp'), '  fire: a burst of flame where it lands');
       const walker = addZ(g, left.pos.x + 6, left.pos.z); walker.speed = 0;
@@ -219,40 +210,29 @@ const forgeAll = (g) => {
     g.step({}, 60 * 8);
     check(!g.sim.projectiles.some((p) => p === left), '  ...then it\'s gone');
   }
-  const d = CONFIG.weapons['Fire Hammer'];
-  check(d.infinite && d.noAds && !CONFIG.box.weights['Fire Hammer'], 'no ammo, no sights, never in the box');
+  const d = CONFIG.weapons['Fire Hammer+'];
+  check(d.infinite && d.noAds && !CONFIG.box.weights['Fire Hammer+'] && !CONFIG.box.weights['Fire Hammer'], 'no ammo, no sights, never in the box');
 }
 
-// --- tempering, and a hammer you lose goes home
+// --- off the Anvil upgraded (nothing to temper), and a hammer you lose goes home
 {
   const g = game(6);
   forgeAll(g);
-  check(['wind', 'lightning', 'ice', 'fire'].every((el) => E(g).forge.hammers[el].forged), 'all four forged');
+  check(['wind', 'lightning', 'ice', 'fire'].every((el) => E(g).forge.hammers[el].forged && E(g).forge.hammers[el].tempered), 'all four forged, all upgraded');
+  check(g.log.filter((e) => e.type === 'hammerForged').map((e) => e.name).sort().join() === 'Glacier Hammer,Inferno Hammer,Tempest Hammer,Thunder Hammer', `...as the ${g.log.filter((e) => e.type === 'hammerForged').map((e) => e.name).join(', ')}`);
   check(g.log.some((e) => e.type === 'hammersAll'), '...Pit tells you to ring the Anvil');
   giveWeapon(g.sim, g.me, 'War Hammer'); g.step({}, 40);
   g.socket('fire'); g.use();
-  check(g.me.loadout.slots[g.me.loadout.current].id === 'Fire Hammer', 'take the Fire Hammer');
+  check(g.me.loadout.slots[g.me.loadout.current].id === 'Fire Hammer+', `take the ${CONFIG.weapons['Fire Hammer+'].name}`);
   g.me.points = 6000;
   g.bench();
-  check(g.me.prompt && /isn't ready/.test(g.me.prompt.text) && /craters/.test(g.me.prompt.sub || ''), `before its trial: "${g.me.prompt && g.me.prompt.text}" (${g.me.prompt && g.me.prompt.sub})`);
+  check(g.me.prompt && !/temper|Press/.test(g.me.prompt.text), `Pit's bench has nothing to temper: "${g.me.prompt && g.me.prompt.text}"`);
   g.use();
-  check(!E(g).forge.work, '...Pit won\'t take it yet');
-  // its trial (hammerTrials.js has its own test): the craters on the Trench Front
-  for (const k of E(g).trials.fire.craters.slice(0, CONFIG.crust.trials.fire.craters)) {
-    g.me.pos.x = k.x; g.me.pos.z = k.z; g.me.pos.y = k.y + 0.05; g.step({}, 3);
-  }
-  check(E(g).trials.fire.state === 'done', 'the Fire Hammer\'s been through the craters');
-  g.bench();
-  check(g.me.prompt && /temper the Fire Hammer/.test(g.me.prompt.text) && g.me.prompt.cost === null, `"${g.me.prompt && g.me.prompt.text}" (free)`);
-  g.use();
-  check(g.me.points === 6000 && E(g).forge.work && E(g).forge.work.kind === 'temper', 'Pit takes it to temper, for nothing');
-  g.step({}, 60 * (CONFIG.crust.forge.temperTime + 1));
-  check(g.me.loadout.slots.some((s) => s.id === 'Fire Hammer+'), `it comes back the ${CONFIG.weapons['Fire Hammer+'].name}`);
+  check(!E(g).forge.work && g.me.points === 6000, '...and takes nothing');
+  check(!E(g).trials && !CONFIG.crust.trials, 'no island trials');
   // lose it: two more guns on top (and no Milton Kick) push it out
-  g.me.loadout.current = g.me.loadout.slots.findIndex((s) => s.id === 'Fire Hammer+');
   giveWeapon(g.sim, g.me, 'MP41'); g.step({}, 3);
   check(!g.me.loadout.slots.some((s) => s.id === 'Fire Hammer+') && E(g).forge.hammers.fire.by === null, 'swap it out for a gun: it goes back to its socket');
-  check(E(g).forge.hammers.fire.tempered, '...tempered for the next one who takes it');
 }
 
 // --- ring the Anvil: Big Evil Zach
@@ -271,9 +251,9 @@ const forgeAll = (g) => {
   // bullets spark off
   giveWeapon(g.sim, g.me, 'M1912'); g.step({}, 40);
   g.me.health = g.me.maxHealth = 1e6;
-  const fight = (el, n) => {
-    g.giveH = HAMMER_IDS[el];
-    giveWeapon(g.sim, g.me, HAMMER_IDS[el]); g.step({}, 40);
+  const fight = (el, n, plus = '+') => {
+    g.giveH = HAMMER_IDS[el] + plus;
+    giveWeapon(g.sim, g.me, HAMMER_IDS[el] + plus); g.step({}, 40);
     for (let i = 0; i < n; i++) {
       // stand right in front of him
       const a = Math.atan2(g.me.pos.x - Z.pos.x, g.me.pos.z - Z.pos.z);
@@ -289,6 +269,8 @@ const forgeAll = (g) => {
   check(g.log.slice(n0).some((e) => e.type === 'zachSpark'), 'bullets spark off him');
   fight('fire', 1);
   check(g.log.some((e) => e.type === 'zachShrug') && Z.hits === 0, 'the wrong hammer: nothing');
+  fight(CONFIG.crust.finale.order[0], 1, '');
+  check(Z.hits === 0, 'the right element but not upgraded (it can\'t be had any more anyway): nothing');
   const order = CONFIG.crust.finale.order;
   for (let ph = 0; ph < 4; ph++) {
     fight(order[ph], Z.need);

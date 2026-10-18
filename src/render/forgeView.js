@@ -192,13 +192,12 @@ export class ForgeView {
       const H = this.onBench[el], on = !!work && work.element === el;
       H.group.visible = on;
       if (!on) continue;
-      const total = work.kind === 'forge' ? this.cfg.crust.forge.forgeTime : this.cfg.crust.forge.temperTime;
-      const k = Math.min(1, work.t / total);
-      // red-hot iron cooling: plain iron when it's forged, its element coming out when it's tempered
+      const k = Math.min(1, work.t / this.cfg.crust.forge.forgeTime);
+      // red-hot iron cooling, its element coming out as it does (it comes off the Anvil upgraded)
       H.setHeat(1 - sm(0.55, 1, k));
-      const up = work.kind !== 'forge' && k > 0.6;
+      const up = k > 0.6;
       if (!!H.tempered !== up) H.temper(up ? this.cfg.weapons[{ wind: 'Wind Hammer', lightning: 'Lightning Hammer', ice: 'Ice Hammer', fire: 'Fire Hammer' }[el] + '+'].view.camo : null);
-      H.group.scale.setScalar(work.kind === 'forge' ? 0.4 + 0.6 * sm(0, 0.6, k) : 1);
+      H.group.scale.setScalar(0.4 + 0.6 * sm(0, 0.6, k));
       if (H.halo) H.halo.material.opacity = 0.4 + 0.5 * k;
     }
     // the sockets
@@ -414,7 +413,7 @@ export class ForgeView {
         for (let i = 0; i < 14; i++) fx.spawnParticle(p, V((Math.random() - 0.5) * 3, 1 + Math.random() * 2.5, (Math.random() - 0.5) * 3), { life: 0.3 + Math.random() * 0.4, size: 0.012, color: i % 3 ? [4, 2.2, 0.6] : col, gravity: 9, drag: 0.8 });
         break;
       }
-      case 'hammerForged': case 'hammerTempered': {
+      case 'hammerForged': {
         const s = this.spec.sockets[e.element];
         if (s) { fx.energyBurst({ x: s.x, y: s.y + 1, z: s.z }, HAMMER_COLORS[e.element], 2.2); R.shake(0.3, s, 20); }
         break;

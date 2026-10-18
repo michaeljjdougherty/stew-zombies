@@ -214,7 +214,7 @@ function summon(sim, F, c) {
 
 // ---------------------------------------------------------------------------
 // A War Hammer swing (hammers.js): does it land on him, and is it the right one?
-export function zachHammerHit(sim, p, element, land, dir) {
+export function zachHammerHit(sim, p, element, land, dir, upgraded = false) {
   const E = sim.crustEgg, F = E && E.finale;
   if (!F || F.state !== 'fight') return false;
   const c = sim.cfg.crust.finale;
@@ -223,7 +223,8 @@ export function zachHammerHit(sim, p, element, land, dir) {
   if (Math.abs(p.pos.y - F.pos.y) > H * F.scale * 0.85) return false;   // (from the catwalks you can reach his head)
   if (d > reach || (d > 1 && (dx * dir.x + dz * dir.z) / d < 0.35)) return false;
   const want = c.order[F.phase];
-  if (element !== want) { sim.emit('zachShrug', { element, want, playerId: p.id, pos: { ...land } }); return false; }
+  // (only an upgraded one, the Tempest, Thunder, Glacier or Inferno Hammer)
+  if (element !== want || !upgraded) { sim.emit('zachShrug', { element, want, playerId: p.id, pos: { ...land } }); return false; }
   F.hits++;
   F.act = null;   // it staggers him out of whatever he was doing
   F.nextAt = sim.time + 1.2;

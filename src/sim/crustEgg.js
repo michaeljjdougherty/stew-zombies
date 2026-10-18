@@ -31,14 +31,15 @@ import { angleWrap, lookDir } from '../core/math.js';
 import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
 import { createCrustPower, updateCrustPower, powerObjective, crustPowerInteractables } from './crustPower.js';
 import { updateZach, zachTargets, zachObjective, finaleOn, ZACH_H } from './zachBoss.js';
-import { createTrials, updateTrials, coilsForTrial } from './hammerTrials.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // radius: what it moves as (a zombie's size, so it fits the paths you do; it's
-// drawn bigger). bulk: how far it shoves you out of the way.
+// drawn bigger). bulk: how far it shoves you out of the way. legs: how tall it
+// is to walk (the Warden strides under the Research Base's catwalks: at its full
+// height the bridge's deck was a wall it stood stuck against)
 const BODY = {
   ship: { radius: 0, bulk: 0, height: 0 },
-  research: { radius: 0.45, bulk: 2.2, height: 9, step: 0.55 },
+  research: { radius: 0.45, bulk: 2.2, height: 9, step: 0.55, legs: 2.2 },
   caves: { radius: 0.45, bulk: 1.7, height: 7.5, step: 0.55 },
   trench: { radius: 0.6, bulk: 2.0, height: 10, step: 2.6 },
 };
@@ -55,7 +56,7 @@ export function createCrustEgg(sim) {
       id: s.id, island: s.island, name: TITAN_NAMES[s.id], state: 'asleep', t: 0,
       // (its yaw is the way it faces: the model's own front is turned look.face from that)
       pos: { ...s.home }, vel: { x: 0, y: 0, z: 0 }, yaw: s.home.yaw - (sim.cfg.crust.egg.look[s.id].face || 0), home: { ...s.home },
-      radius: b.radius, bulk: b.bulk, height: b.height, stepHeight: b.step || 0.5, grounded: true,
+      radius: b.radius, bulk: b.bulk, height: b.height, legs: b.legs || b.height, stepHeight: b.step || 0.5, grounded: true,
       region: null, moveSpeed: 0, act: null, next: {}, done: 0, of: 0, stuckT: 0, away: 0,
     };
     if (s.coils) E.coils = s.coils.map((c, i) => ({ id: 'coil' + i, x: c.x, y: c.y, z: c.z, con: { ...c.con }, charge: 0, ready: false, coolUntil: 0, by: null }));
@@ -71,7 +72,6 @@ export function createCrustEgg(sim) {
   E.forge = createForge(sim);       // Pit's forge: the cores become the War Hammers (forge.js)
   E.power = createCrustPower(sim);  // the power: the Anvil's relays, the islands' switches (crustPower.js)
   E.finale = { state: 'off' };      // Big Evil Zach (zachBoss.js)
-  E.trials = createTrials(sim, E);  // the War Hammers' trials, for their "+" (hammerTrials.js)
   return E;
 }
 
@@ -266,7 +266,6 @@ export function updateCrustEgg(sim, dt) {
   updateHazards(sim, dt);
   updateCrustPower(sim);
   updateForge(sim, dt);
-  updateTrials(sim);
   updateZach(sim, dt);
 }
 
@@ -280,6 +279,7 @@ function stride(sim, T, goalPos, goalRegion, speed, dt, { nav = true, turn = 2.2
   const d = Math.hypot(dx, dz);
   if (d < 0.05) { T.moveSpeed = 0; T.vel.x = T.vel.z = 0; return true; }
   dx /= d; dz /= d;
+  const gx = dx, gz = dz;
   // steer round whatever's in the way (a crystal, a crate)
   if (d > 1 && blockedAhead(sim, T, dx, dz)) {
     T.avoid = T.avoid || 1;
@@ -293,9 +293,13 @@ function stride(sim, T, goalPos, goalRegion, speed, dt, { nav = true, turn = 2.2
   T.yaw = angleWrap(T.yaw + Math.max(-turn * dt, Math.min(turn * dt, diff)));
   const facing = Math.max(0, Math.cos(diff));
   let sp = speed * (0.25 + 0.75 * facing);
-  // (it won't follow you indoors: too big for the doors)
+  // (it won't follow you indoors: too big for the doors. It looks only where
+  // the path goes next, not past it or off to the side it's steering round: at
+  // the foot of the catwalk stairs, between the garage and the dome, the Warden
+  // used to see one or the other and stand stock still)
   if (!indoor) {
-    const ahead = { x: T.pos.x + dx * (T.bulk + 1.2), y: T.pos.y, z: T.pos.z + dz * (T.bulk + 1.2) };
+    const look = Math.min(T.bulk + 1.2, d + 0.6);
+    const ahead = { x: T.pos.x + gx * look, y: T.pos.y, z: T.pos.z + gz * look };
     const room = sim.roomAt(ahead, T.region);
     if (room && room.outdoor === false) sp = 0;
   }
@@ -304,7 +308,9 @@ function stride(sim, T, goalPos, goalRegion, speed, dt, { nav = true, turn = 2.2
   if (probe < T.pos.y - 3.2) sp = 0;
   T.vel.x = dx * sp; T.vel.z = dz * sp;
   const px = T.pos.x, pz = T.pos.z;
-  moveBody(T, dt, [sim.world.solids, sim.world.terrain], sim.cfg.player.gravity);
+  const body = T.legs < T.height ? { pos: T.pos, vel: T.vel, radius: T.radius, height: T.legs, grounded: T.grounded, stepHeight: T.stepHeight } : T;
+  moveBody(body, dt, [sim.world.solids, sim.world.terrain], sim.cfg.player.gravity);
+  T.grounded = body.grounded;
   const moved = Math.hypot(T.pos.x - px, T.pos.z - pz) / dt;
   T.moveSpeed = moved;
   const far = Math.hypot(goalPos.x - T.pos.x, goalPos.z - T.pos.z) > 4;
@@ -871,7 +877,7 @@ class CoilInteractable {
   coil(sim) { return sim.crustEgg.coils[this.i]; }
   get range() { return 1.8; }
   distanceTo(sim, p) { const k = this.coil(sim); this.pos = k.con; return Math.hypot(p.pos.x - k.con.x, p.pos.z - k.con.z); }
-  canUse(sim, p) { return p.alive && !p.downed && ((sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight') || coilsForTrial(sim)); }
+  canUse(sim, p) { return p.alive && !p.downed && sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight'; }
   prompt(sim) {
     const k = this.coil(sim);
     if (k.ready) return { text: 'The coil is charged: lead the Warden to it', cost: null };

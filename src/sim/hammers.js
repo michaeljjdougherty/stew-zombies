@@ -1,23 +1,23 @@
 // =============================================================================
 // The War Hammers (Call of the Crust). Pit forges one from each titan's core;
-// you take it from its socket on the Anvil. Forged, a hammer is plain iron: a
-// swing smashes everything just in front of you. Pit tempers it (its "+") and
-// its element comes out, Origins-staff style: a burst where its head lands,
-// and something left behind (src/sim/gadgets.js runs those):
+// you take it from its socket on the Anvil. It comes off the Anvil upgraded
+// (its "+": the Tempest, Thunder, Glacier and Inferno Hammers; there's no
+// plain elemental one any more): a swing smashes everything just in front of
+// you and its element comes out, Origins-staff style: a burst where its head
+// lands, and something left behind (src/sim/gadgets.js runs those):
 //   Fire       a burst of flame, and a pool of fire that burns down anything in it
 //   Ice        everything round you frozen solid, and a blizzard that freezes and shatters more
 //   Wind       a gale down the line you swung along, and a whirlwind where it lands
 //   Lightning  the Wunderwaffe: a bolt into the first one in line, then a ball of
 //              lightning jumping zombie to zombie, killing each (from its forging on)
 // They're also the only thing that gets through The Schnitz's hold on Big
-// Evil Zach (zachBoss.js); which hammer it is counts there, tempered or not.
+// Evil Zach (zachBoss.js), and only the upgraded ones, the right one for him.
 // Numbers: CONFIG.crust.hammers.
 // =============================================================================
 import { damageZombie } from './zombies.js';
 import { explode, spawnProjectile } from './projectiles.js';
 import { windBlast } from './wind.js';
 import { zachHammerHit } from './zachBoss.js';
-import { trialSlam } from './hammerTrials.js';
 import { DEG } from '../core/math.js';
 
 const alive = (z) => z.state !== 'dead' && !(z.state === 'rising' && z.pos.y < -0.8);
@@ -61,7 +61,6 @@ export function hammerSlam(sim, p, eye, dir, def, weapon, quick = false) {
   // an elemental hammer: its element goes off (at elementK of full strength);
   // tempered, at full strength, and it leaves something behind
   const k = up ? 1 : H.elementK;
-  let frozen = 0;
   const leave = (type, o = {}) => {
     if (!up) return null;
     const pr = spawnProjectile(sim, type, land, { x: fx, y: 0, z: fz }, p.id, { gravity: 0, weapon }); pr.resting = true; pr.dir = { x: fx, z: fz }; Object.assign(pr, o); return pr;
@@ -78,7 +77,6 @@ export function hammerSlam(sim, p, eye, dir, def, weapon, quick = false) {
     const ids = [];
     for (const { z } of near.slice(0, Math.round(E.maxFrozen * k))) { z.frozen = E.freeze * k; ids.push(z.id); }
     sim.emit('hammerFreeze', { playerId: p.id, pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, radius: E.radius * k, ids });
-    frozen = ids.length;
     leave('hice');
   } else if (el === 'wind') { windBlast(sim, p, eye, { x: fx, y: 0, z: fz }, { wind: { ...E, range: E.range * k, maxKills: Math.round(E.maxKills * k) } }, weapon); leave('hwind'); }
   else if (el === 'lightning') {
@@ -117,9 +115,7 @@ export function hammerSlam(sim, p, eye, dir, def, weapon, quick = false) {
   }
 
   // Big Evil Zach (the finale): the only thing that gets through
-  zachHammerHit(sim, p, el, land, { x: fx, z: fz });
-  // (an untempered one: does it count for its trial? hammerTrials.js)
-  if (!up) trialSlam(sim, p, el, land, { x: fx, z: fz }, { smashed: Math.min(hits.length, maxKills), frozen });
+  zachHammerHit(sim, p, el, land, { x: fx, z: fz }, up);
 }
 
 // The quick swing (right click): a sweep from left to right across you, the same

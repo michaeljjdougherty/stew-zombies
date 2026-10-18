@@ -180,7 +180,6 @@ function crustOnEvent(sim, e) {
     case 'titanWake': crewTalk(sim, 'wake_' + e.id, undefined, 1.5); break;
     case 'titanDown': crewTalk(sim, 'down_' + e.id, undefined, 3); break;
     case 'hammerForged': if (e.count === 1) crewTalk(sim, 'forged', undefined, 3); break;
-    case 'hammerTempered': if (!crewTalk(sim, 'tempered', undefined, 2.5)) react(sim, e.playerId, 'hammer'); break;
     case 'hammersAll': crewTalk(sim, 'allForged', undefined, 6); break;
     case 'zachDescend': crewTalk(sim, 'zach', undefined, 4); break;
     case 'zachKneel': if (e.phase === 0) crewTalk(sim, 'zachHalf', undefined, 3.5); break;

@@ -1889,24 +1889,10 @@ export const CONFIG = {
       socketRange: 2.1,      // m from a socket on the Anvil to take or put back its hammer
       forgeTime: 22,         // s Pit takes over each War Hammer
       strikeEvery: 0.85,     // s between his hammer blows while he works (the sparks)
-      temperTime: 9,         // s he takes over that
       introDelay: 9,         // s into the game before he says hello (after the Schnitz's welcome)
       idleEvery: 45,         // s at least between his "bring me a core" nudges
       nearPit: 30,           // m: further than this from him and you hear him on the walkie
       lineGap: 0.5,          // s between one of his lines and the next
-    },
-    // The War Hammers' trials (src/sim/hammerTrials.js): each element earns its "+"
-    // on its own island, then Pit tempers it for free.
-    trials: {
-      // buoys: out m off the north shore, height m up; a gale reaches them within the
-      // hammer's reach + its gale's range (+ slack m), angle degrees either side, reachUp m up or down
-      wind: { out: 6, height: 2.2, slack: 1.5, angle: 40, reachUp: 6 },
-      // charge every coil within time s of the first; then slam within near m of one
-      lightning: { time: 60, near: 5 },
-      // count zombies frozen or smashed in the Ice Caves; then slam within near m of the shrine
-      ice: { count: 20, near: 5 },
-      // craters to walk the Fire Hammer through (within margin m of the rim)
-      fire: { craters: 3, margin: 0.6 },
     },
     // the War Hammers (src/sim/hammers.js): every swing smashes what's in front of
     // you. The War Hammer is plain iron; a titan's core makes it elemental (its
