@@ -10,6 +10,7 @@ const imp = (p) => import(pathToFileURL(path.join(R, p)).href);
 const E = await imp('src/lore/erik.js');
 const C = await imp('src/lore/crew.js');
 const K = await imp('src/lore/crustCrew.js');
+const { cageCallLines } = await imp('tools/voice/cageCalls.mjs');
 // (intro.js needs three.js, so read its INTRO_LINES table as text)
 const introSrc = fs.readFileSync(path.join(R, 'src/render/intro.js'), 'utf8');
 const INTRO_LINES = eval(introSrc.match(/export const INTRO_LINES = (\[[\s\S]*?\n\]);/)[1]);
@@ -120,6 +121,10 @@ convo('5. Crew answering on the walkie', 'Someone falls off for good', K.CRUST_F
 K.CRUST_BANTER.forEach((cv, i) => convo('6. Crew banter between rounds', `Conversation ${i + 1}`, cv));
 for (const [isl, cvs] of Object.entries(K.CRUST_ISLAND_BANTER)) cvs.forEach((cv, i) => convo('6. Crew banter between rounds', `On ${ISLAND[isl]}, conversation ${i + 1}`, cv));
 K.CAGE_TALK.forEach((cv, i) => convo('7. The boys in the cage', `Near the cage, ${i + 1}`, cv));
+const CALL = { round: 'A round starts', power: 'The power comes on', part: 'Someone finds a hammer part', titan: 'A titan wakes up', down: 'Someone goes down', revived: 'Someone gets revived', ammo: 'Someone runs out of ammo', hammer: 'Someone gets a War Hammer', pit: 'Someone shoots Pit' };
+for (const l of cageCallLines(K.CAGE_CALLS, C.CREW, K.CRUST_CREW)) add('7. The boys in the cage', `Calling out: ${CALL[l.kind] || l.kind}`, l.who, l.text, l.about ? `about ${cap(l.about)}` : '');
+const SHOTC = { first: 'Shooting the cage', again: 'Shooting the cage again', lots: 'Shooting the cage a lot' };
+for (const [k, o] of Object.entries(K.CAGE_SHOT || {})) for (const [who, t] of Object.entries(o)) add('7. The boys in the cage', SHOTC[k] || 'Shooting the cage', who, t);
 list('8. The Cheddars (hellhounds)', 'The Cheddars arrive', 'schnitz', S.cheddar);
 convo('8. The Cheddars (hellhounds)', 'The Cheddars arrive', CT.cheddar);
 add('8. The Cheddars (hellhounds)', 'A Cheddar snarls at you', 'cheddar', CONFIG.cheddar.line, 'speech bubble (same as the school)');

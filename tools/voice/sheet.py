@@ -14,7 +14,7 @@ rows = json.load(open(LINES))
 script = {(r['filename'].split('_')[0], r['text']): r['filename']
           for r in csv.DictReader(open(f'{REPO}/tools/voice/script.csv', encoding='utf-8'))}
 NAME = {'erik': 'Erik', 'kearns': 'Kearns', 'ryan': 'Ryan', 'pit': 'Pit', 'rocco': 'Rocco', 'brian': 'Brian',
-        'schnitz': 'The Schnitz', 'zach': 'Zach', 'chops': 'Chops', 'regs': 'Regs', 'p': 'P', 'cheddar': 'The Cheddars'}
+        'schnitz': 'The Schnitz', 'zach': 'Zach', 'chops': 'Chops', 'regs': 'Regs', 'p': 'P', 'james': 'James', 'kyle': 'Kyle', 'cheddar': 'The Cheddars'}
 ORDER = list(NAME)
 for r in rows:
   r['clip'] = script.get((r['who'], r['text']))

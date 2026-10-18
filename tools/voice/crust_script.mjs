@@ -11,11 +11,12 @@ import { CONFIG } from '../../src/config.js';
 import * as CREW from '../../src/lore/crew.js';
 const { PIT_FORGE, PIT_POWER, ZACH_FINALE } = CREW;
 import * as L from '../../src/lore/crustCrew.js';
+import { cageCallLines } from './cageCalls.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPT = path.join(ROOT, 'tools/voice/script.csv');
 // the TTS voice each speaker was sent out with (new speakers get their own)
-const VOICE = { kearns: 'am_puck', ryan: 'am_fenrir', pit: 'am_michael', rocco: 'am_liam', brian: 'am_adam', schnitz: 'bm_george', zach: 'am_eric', chops: 'bm_daniel', regs: 'am_santa', p: 'bm_fable' };
+const VOICE = { kearns: 'am_puck', ryan: 'am_fenrir', pit: 'am_michael', rocco: 'am_liam', brian: 'am_adam', schnitz: 'bm_george', zach: 'am_eric', chops: 'bm_daniel', regs: 'am_santa', p: 'bm_fable', james: 'bm_lewis', kyle: 'am_echo' };
 
 const lines = [];   // [who, text] in the order they come up
 const add = (who, text) => { if (typeof text === 'string' && text.trim()) lines.push([who, text]); };
@@ -30,6 +31,8 @@ for (const f of ['intro', 'ending']) for (const l of CONFIG.crustFilms[f].lines)
 each(L.SCHNITZ_PA, 'schnitz');
 each(PIT_FORGE, 'pit'); each(PIT_POWER, 'pit'); each(CREW.PIT_SHOT, 'pit');
 each(L.CRUST_TALKS); each(L.CRUST_BANTER); each(L.CRUST_ISLAND_BANTER); each(L.CAGE_TALK);
+for (const l of cageCallLines(L.CAGE_CALLS, CREW.CREW, L.CRUST_CREW)) add(l.who, l.text);
+each(L.CAGE_SHOT);
 each(L.CRUST_REACT); each(L.CRUST_ISLAND_REACT); each(L.CRUST_RADIO); each(L.CRUST_FELL);
 for (const P of Object.values(L.CRUST_PLACES)) { for (const [who, t] of Object.entries(P)) if (who !== 'reply') add(who, t); if (P.reply) add(P.reply.who, P.reply.text); }
 // (the roasts are keyed by who they're aimed at, but the Schnitz says them all)
