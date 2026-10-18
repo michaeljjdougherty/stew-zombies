@@ -48,7 +48,7 @@ check(hp.gumPack.join() === annGums.pack.join() && hp.gumStock.idleEyes === 1, '
 const m = hostSim.gums.machines[0];
 const put = () => { me.pos.x = m.stand.x; me.pos.z = m.stand.z; me.pos.y = m.pos.y; me.vel.x = me.vel.y = me.vel.z = 0; me.yaw = Math.atan2(-(m.pos.x - me.pos.x), -(m.pos.z - me.pos.z)); };
 put(); step(0.5);
-check(me.prompt && /GobbleGum/.test(me.prompt.text) && me.prompt.cost === CONFIG.gobblegum.costs[0], `Ann sees the machine's prompt (${me.prompt && me.prompt.text})`);
+check(me.prompt && /GobbleGum/.test(me.prompt.text) && me.prompt.cost === (CONFIG.gobblegum.costs[0] || null), `Ann sees the machine's prompt (${me.prompt && me.prompt.text})`);
 put(); step(0.3, { use: true, usePressed: true });
 step(0.3);
 const cm = sim.gums.machines.find((q) => q.id === m.id);

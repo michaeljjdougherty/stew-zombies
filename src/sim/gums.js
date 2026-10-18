@@ -160,7 +160,8 @@ export class GumMachineInteractable {
     }
     if ((p.gumBuys || 0) >= G.perRound) return { text: 'No more GobbleGum this round', cost: null, sub: `${G.perRound} a round` };
     if (!gumsAvailable(sim, p).length) return { text: 'Your GobbleGum pack is empty', cost: null, sub: 'Your Megas have run out: build a new pack' };
-    return { text: 'Press [F] for a GobbleGum', cost: gumCost(sim, p), sub: 'One of the 5 in your pack, at random' };
+    const cost = gumCost(sim, p);
+    return { text: cost ? 'Press [F] for a GobbleGum' : 'Press [F] for a free GobbleGum', cost: cost || null, sub: cost ? 'One of the 5 in your pack, at random' : 'Your first one each round is free' };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
@@ -170,7 +171,7 @@ export class GumMachineInteractable {
     const pool = gumsAvailable(sim, p);
     if (!pool.length) { sim.emit('useDenied', { playerId: p.id }); return; }
     const cost = gumCost(sim, p);
-    if (!sim.pay(p, cost)) return;
+    if (cost && !sim.pay(p, cost)) return;
     p.gumBuys = (p.gumBuys || 0) + 1;
     const id = pool[Math.floor(R(sim).next() * pool.length)];
     // (a Mega's gone as it comes out)

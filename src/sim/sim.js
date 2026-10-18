@@ -37,6 +37,7 @@ import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets 
 import { crustPowered } from './crustPower.js';
 import { finaleOn } from './zachBoss.js';
 import { setFloor } from './physics.js';
+import { updateProneBonus } from './perks.js';
 import { createGums, GumMachineInteractable, updateGums, gumOnEvent, gumOnPoints, gumFree, setPlayerGums } from './gums.js';
 
 export class GameSim {
@@ -66,6 +67,7 @@ export class GameSim {
     this.openZones = new Set([this.world.roomById.get('court') ? 'court' : map.rooms[0].zone]);
     this.power = !!cfg.power.startsOn;
     this.perkBuys = {};      // perk id -> times bought (solo Second Helping runs out)
+    this.proneBonus = {};    // perk machine id -> who lay down in front of it first
     this.box = new BoxInteractable(this);
     this.saleBoxes = this.world.boxSpots.length > 1 ? this.world.boxSpots.map((s) => new SaleBox(this, s)) : [];
     this.traps = createTraps(this);
@@ -371,6 +373,7 @@ export class GameSim {
     }
     for (const it of this.interactables) if (it.update) it.update(this, dt);
     if (this.gums && !this.replica) updateGums(this, dt);
+    if (!this.replica) updateProneBonus(this);
     for (const p of this.players) if (p.downed) updateLastStand(this, p, dt);
     updateTraps(this, dt);
     updatePowerups(this, dt);

@@ -968,7 +968,7 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   // GobbleGum (src/sim/gums.js, the menu: src/ui/careerUI.js GumsUI). As in Black Ops 3:
   // you take a pack of 5 into a game; a GobbleGum machine gives you one of them
-  // at random (500 the first time in a round, then 1000, then 2000: 3 a round).
+  // at random (free the first time in a round, then 1000, then 2000: 3 a round).
   // Classics never run out. Megas are used up as they come out of the machine,
   // and come from Dr. Monty's Factory for Liquid Divinium, which you earn by
   // playing. Your pack, your Megas and your Divinium are your career's (your
@@ -981,7 +981,7 @@ export const CONFIG = {
   // ---------------------------------------------------------------------------
   gobblegum: {
     packSize: 5,
-    costs: [500, 1000, 2000],    // the 1st, 2nd and 3rd gum in a round
+    costs: [0, 1000, 2000],      // the 1st (free), 2nd and 3rd gum in a round
     perRound: 3,
     dispenseTime: 2.2,           // s the machine churns
     offerTime: 6,                // s the gum sits in the tray for you
@@ -1265,8 +1265,11 @@ export const CONFIG = {
   // Perk machines. `power: false` = works before the power is on.
   // ---------------------------------------------------------------------------
   perks: {
-    limit: 4,                // how many perks one player can hold
+    limit: 4,                // how many perks one player can buy (only GobbleGums get you past it)
     drinkTime: 2.1,          // can't shoot while drinking
+    // lie down (prone) within `range` m of a perk machine's front: the first player to do it gets
+    // `points`, once per machine a game
+    proneBonus: { points: 100, range: 1.6 },
     list: {
       secondHelping: {
         name: 'Second Helping', cost: 500, coopCost: 1500, color: '#3fa9f5', power: false, glyph: '+',
