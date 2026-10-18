@@ -2080,7 +2080,10 @@ export const CONFIG = {
     eyeHeight: 0.55,
     reviveHealthFrac: 1,     // health after being revived
     reviveInvuln: 3,         // seconds you can't be hurt after getting back up
-    tempPistol: 'M1912',     // what you get if you have no pistol
+    tempPistol: 'M1912',     // what you get if you have none of `guns`
+    // what you go down with, best first, like Black Ops (the Ray Gun tops its
+    // list): any Mad Dog'd one of these beats them all un-upgraded
+    guns: ['Fucci Gun Mk 2', 'Fucci Gun', 'CZ76 Dual', 'CZ76', 'Desert Eagle', 'Pyton', 'M1912'],
     tempPistolMags: 3,
   },
 

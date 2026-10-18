@@ -46,16 +46,20 @@ export function goDown(sim, p) {
   sim.emit('playerDown', { playerId: p.id, selfRevive: !!selfRevive });
 }
 
-// Swap to your best pistol (or a loaner) for the last stand.
+// Swap to your best last-stand gun (or a loaner pistol): a Fucci Gun first,
+// then the pistols, Mad Dog'd ones ahead (lastStand.guns).
 function giveLastStandPistol(sim, p) {
   const ls = sim.cfg.lastStand;
   const w = p.loadout;
   p.downed.saved = { slots: w.slots, current: w.current };
-  const pistols = w.slots.filter((s) => {
+  const rank = (s) => {
     const d = sim.cfg.weapons[s.id];
-    return d.class === 'pistol' && !d.projectile && !s.away;
-  });
-  pistols.sort((a, b) => (sim.cfg.weapons[b.id].upgraded ? 1 : 0) - (sim.cfg.weapons[a.id].upgraded ? 1 : 0));
+    let i = ls.guns.indexOf(d.baseId || s.id);
+    if (i < 0 && d.class === 'pistol' && !d.projectile) i = ls.guns.length - 1;   // (a pistol not on the list: last)
+    return i < 0 ? -1 : (d.upgraded ? 0 : ls.guns.length) + i;
+  };
+  const pistols = w.slots.filter((s) => !s.away && rank(s) >= 0);
+  pistols.sort((a, b) => rank(a) - rank(b));
   let slot = pistols[0];
   if (!slot) {
     slot = makeSlot(sim, ls.tempPistol);
