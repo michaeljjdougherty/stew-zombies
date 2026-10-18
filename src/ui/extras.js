@@ -54,7 +54,7 @@ export class Extras {
       <h3 class="x-map2">Map 2 · Call of the Crust</h3>
       <p class="note">Story by Michael Dougherty.</p>
       <p>Erik is beaten, but the season isn't over. A portal throws the crew somewhere past the edge of everything: five islands floating in space, and every one of them belongs to <b>The Schnitz</b>.</p>
-      <p>The hub is <b>the Anvil</b>, an ancient forge where <b>Pit</b> got to first. He's a blacksmith now. Over the void hangs the Schnitz's cage, with <b>Chops</b>, <b>Regs</b> and <b>P</b> inside it. And the Schnitz has taken <b>Zach</b>.</p>
+      <p>The hub is <b>the Anvil</b>, an ancient forge where <b>Pit</b> got to first. He's a blacksmith now. Over the Anvil hangs the Schnitz's cage, with <b>Chops</b>, <b>Regs</b>, <b>P</b>, <b>James</b> and <b>Kyle</b> inside it, shouting down at you. And the Schnitz has taken <b>Zach</b>.</p>
       <h4>The islands</h4>
       <p>Launchers on the Anvil's rim fling you to the other four: the <b>Ship Graveyard</b> (wrecks, a lighthouse, and the Captain asleep past the cliffs), the <b>Research Base</b> (everything sparks, and there's a big robot), the <b>Trench Front</b> (always on fire) and the <b>Ice Caves</b> (a cold golem up top).</p>
       <h4>The plan</h4>

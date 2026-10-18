@@ -9,8 +9,8 @@
 // (Call of the Crust: the crew on Pit's walkies, Pit, the boys in the cage,
 // and the Schnitz on the speakers).
 // =============================================================================
-import { REACT, REACT_CHANCE, RADIO, RADIO_CHANCE, TALKS, BANTER, BANTER_CHANCE, LAUNCH_CREW } from '../lore/crew.js';
-import { CRUST_CREW, CRUST_VOICES, CAGED, CRUST_REACT, CRUST_REACT_CHANCE, CRUST_RADIO, CRUST_FELL, CRUST_TALKS, CRUST_BANTER, CAGE_TALK, CRUST_ISLAND_REACT, CRUST_PLACES, CRUST_ISLAND_BANTER } from '../lore/crustCrew.js';
+import { CREW, REACT, REACT_CHANCE, RADIO, RADIO_CHANCE, TALKS, BANTER, BANTER_CHANCE, LAUNCH_CREW } from '../lore/crew.js';
+import { CRUST_CREW, CRUST_VOICES, CAGED, CRUST_REACT, CRUST_REACT_CHANCE, CRUST_RADIO, CRUST_FELL, CRUST_TALKS, CRUST_BANTER, CAGE_TALK, CAGE_CALLS, CRUST_ISLAND_REACT, CRUST_PLACES, CRUST_ISLAND_BANTER } from '../lore/crustCrew.js';
 import { paSay } from './pa.js';
 import { islandAt } from './crustPower.js';
 
@@ -32,7 +32,7 @@ function sharedIsland(sim) {
 
 export function createCrew(sim) {
   const set = sim && sim.mapData.announcer === 'schnitz' ? 'crust' : 'school';
-  return { set, lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {}, cageAt: null, cageUsed: new Set(), landed: new Set(), places: new Set(), placeAt: 0 };
+  return { set, lastReact: {}, kills: {}, said: new Set(), banterUsed: new Set(), talking: false, hurtAt: {}, cageAt: null, cageUsed: new Set(), callAt: 0, callKind: {}, landed: new Set(), places: new Set(), placeAt: 0 };
 }
 const S = (sim) => SETS[sim.crew.set];
 
@@ -59,6 +59,7 @@ export function crewTalk(sim, key, lines = S(sim).talks[key], delay = 0.8) {
     if (l.who !== announcer && !here.has(l.who) && !set.members.includes(l.who) && !set.extra.includes(l.who)) continue;
     const who = l.who;
     const shout = CAGED.includes(who);   // (the boys in the cage shout down: no walkies up there)
+    if (shout && here.has(who)) continue;   // (James or Kyle, being played: not in the cage, then)
     paSay(sim, who === announcer ? 'talkErik' : 'talk', { text: l.text, delay: delay + i * 0.002, force: true, who, radio: who !== announcer && !shout && !here.has(who), live: shout });
     i++;
   }
@@ -166,6 +167,11 @@ export function crewOnEvent(sim, e) {
 function crustOnEvent(sim, e) {
   const C = sim.crew;
   switch (e.type) {
+    case 'roundStart': if (e.round > 1 && !e.cheddar) cageCall(sim, 'round', { round: e.round, after: 2.5 }); break;
+    case 'playerDown': if (!e.final) cageCall(sim, 'down', { playerId: e.playerId }); break;
+    case 'playerRevived': cageCall(sim, 'revived', { playerId: e.playerId }); break;
+    case 'dryFire': cageCall(sim, 'ammo', { playerId: e.playerId }); break;
+    case 'pitShot': cageCall(sim, 'pit', { after: 3 }); break;
     case 'playerLaunch': if (!crewTalk(sim, 'launch', undefined, 2)) react(sim, e.playerId, 'launch'); break;
     case 'playerLaunchLand': {
       const isl = islandAt(sim, e.pos);
@@ -173,11 +179,11 @@ function crustOnEvent(sim, e) {
       break;
     }
     case 'relayPulled': crewTalk(sim, 'relay', undefined, 1.5); break;
-    case 'islandPower': if (e.island === 'hub') crewTalk(sim, 'power', undefined, 5); break;
-    case 'partPicked': crewTalk(sim, 'part', undefined, 3); break;
+    case 'islandPower': if (e.island !== 'hub' || !crewTalk(sim, 'power', undefined, 5)) cageCall(sim, 'power'); break;
+    case 'partPicked': if (!crewTalk(sim, 'part', undefined, 3)) cageCall(sim, 'part', { playerId: e.playerId }); break;
     case 'warHammerBuilt': crewTalk(sim, 'hammer', undefined, 6); break;
-    case 'warHammerTaken': case 'hammerTaken': react(sim, e.playerId, 'hammer'); break;
-    case 'titanWake': crewTalk(sim, 'wake_' + e.id, undefined, 1.5); break;
+    case 'warHammerTaken': case 'hammerTaken': react(sim, e.playerId, 'hammer'); cageCall(sim, 'hammer', { playerId: e.playerId, after: 2.5 }); break;
+    case 'titanWake': if (!crewTalk(sim, 'wake_' + e.id, undefined, 1.5)) cageCall(sim, 'titan'); break;
     case 'titanDown': crewTalk(sim, 'down_' + e.id, undefined, 3); break;
     case 'hammerForged': if (e.count === 1) crewTalk(sim, 'forged', undefined, 3); break;
     case 'hammerTempered': if (!crewTalk(sim, 'tempered', undefined, 2.5)) react(sim, e.playerId, 'hammer'); break;
@@ -199,20 +205,50 @@ function crustOnEvent(sim, e) {
   }
 }
 
+// Anyone on the Anvil, or near the cage (where they can hear it)?
+function nearCage(sim) {
+  const cage = sim.mapData.forge && sim.mapData.forge.cage, r = sim.cfg.crust.cageTalk.range;
+  return !!cage && sim.players.some((p) => p.alive && !p.launch && (islandAt(sim, p.pos) === 'hub' || Math.hypot(p.pos.x - cage.x, p.pos.z - cage.z) < r));
+}
+
+// The boys in the cage calling out what just happened below (CAGE_CALLS[kind]):
+// one of them, not too often, and never over a conversation. playerId: who it's
+// about ({name}); round: {round}; after: s to wait (behind whoever's talking).
+function cageCall(sim, kind, { playerId = null, round = 0, after = 0.6 } = {}) {
+  const C = sim.crew, pa = sim.pa, c = sim.cfg.crust.cageTalk;
+  if (!pa.enabled || sim.time < C.callAt || sim.time < (C.callKind[kind] ?? -1e9)) return false;
+  if (!nearCage(sim) || (sim.crustEgg && sim.crustEgg.finale && sim.crustEgg.finale.state !== 'off')) return false;
+  if ((pa.speaking && (pa.speaking.cat === 'talk' || pa.speaking.cat === 'talkErik')) || pa.queue.some((q) => q.cat === 'talk' || q.cat === 'talkErik') || pa.queue.length >= 3) return false;
+  const here = playing(sim), p = playerId != null ? sim.playerById(playerId) : null;
+  const name = p ? (CREW[p.character] ? CREW[p.character].name : p.character) : null;
+  const lines = (CAGE_CALLS[kind] || []).filter((l) => !here.has(l.who) && (!l.text.includes('{name}') || name) && !(p && p.character === l.who));
+  if (!lines.length || !pa.rng.chance(c.chance)) return false;
+  const l = pick(sim, lines);
+  const text = l.text.replace(/\{name\}/g, name).replace(/\{round\}/g, String(round));
+  if (!paSay(sim, 'react', { text, delay: after, force: true, who: l.who, live: true })) return false;
+  C.callAt = sim.time + c.callGap;
+  C.callKind[kind] = sim.time + c.kindGap;
+  C.cageAt = Math.max(C.cageAt ?? 0, sim.time + c.callGap);   // (no idle chat right on top of it)
+  return true;
+}
+
 // Each tick (from the PA): somewhere new, and the boys in the cage
 export function updateCrew(sim) {
   const C = sim.crew, pa = sim.pa;
   if (C.set !== 'crust') return;
   updatePlaces(sim, C, pa);
   if (!sim.mapData.forge || !sim.mapData.forge.cage) return;
-  const c = sim.cfg.crust.cageTalk, cage = sim.mapData.forge.cage;
+  const c = sim.cfg.crust.cageTalk;
   if (C.cageAt == null) C.cageAt = sim.time + c.first;
   if (sim.time < C.cageAt || pa.speaking || pa.queue.length) return;
   C.cageAt = sim.time + 1;   // (look again in a second)
-  if (!sim.players.some((p) => p.alive && !p.launch && Math.hypot(p.pos.x - cage.x, p.pos.z - cage.z) < c.range)) return;
+  if (!nearCage(sim)) return;
   if (sim.crustEgg && sim.crustEgg.finale && sim.crustEgg.finale.state !== 'off') return;   // (nobody chats through the finale)
   if (C.cageUsed.size >= CAGE_TALK.length) C.cageUsed.clear();
-  const left = CAGE_TALK.map((l, i) => i).filter((i) => !C.cageUsed.has(i));
+  // (one that someone in there can say: James or Kyle being played aren't up there)
+  const here = playing(sim), can = (i) => CAGE_TALK[i].some((l) => !CAGED.includes(l.who) || !here.has(l.who));
+  let left = CAGE_TALK.map((l, i) => i).filter((i) => !C.cageUsed.has(i) && can(i));
+  if (!left.length) { C.cageUsed.clear(); left = CAGE_TALK.map((l, i) => i).filter(can); }
   const i = left[Math.floor(pa.rng.next() * left.length)];
   C.cageUsed.add(i);
   crewTalk(sim, null, CAGE_TALK[i], 0.3);

@@ -7,6 +7,7 @@
 import { cauldronShot, isValve } from './cauldron.js';
 import { crustEggShot, knifeTitan } from './crustEgg.js';
 import { pitShot, pitHitAt } from './pitShot.js';
+import { cageShot, cageHitAt } from './cageShot.js';
 import { lookDir, coneDir, DEG, clamp, lerp, dist2D } from '../core/math.js';
 import { damageZombie } from './zombies.js';
 import { spawnProjectile, explode } from './projectiles.js';
@@ -261,7 +262,7 @@ function fire(sim, p, slot, def, side) {
     const pellets = def.pellets || 1;
     // Pellets that hit the same zombie are summed into one hit (one set of points).
     const perZombie = new Map();
-    let pitHit = false;
+    let pitHit = false, cageHit = false;
     for (let i = 0; i < pellets; i++) {
       const d = coneDir(dir, spread * DEG, sim.rng);
       const hits = sim.hitscan(eye, d, def.range, def.penetration || 1);
@@ -269,6 +270,11 @@ function fire(sim, p, slot, def, side) {
       if (!pitHit && sim.mapData.forge && sim.crustEgg && pitHitAt(sim, eye, d, def.range) >= 0) {
         pitHit = true;
         if (sim.replica) netAct(sim, { k: 'pit', origin: eye, dir: d }); else pitShot(sim, p, eye, d, def.range);
+      }
+      // (the boys in the Schnitz's cage, likewise)
+      if (!cageHit && sim.mapData.forge && sim.crustEgg && cageHitAt(sim, eye, d, def.range) >= 0) {
+        cageHit = true;
+        if (sim.replica) netAct(sim, { k: 'cage', origin: eye, dir: d }); else cageShot(sim, p, eye, d, def.range);
       }
       for (const h of hits) {
         impacts.push(h);

@@ -7,7 +7,7 @@ import { SCHNITZ_LINE, BRIAN_LINE, SCHNITZ_FAREWELL, FAREWELL_SECS } from '../re
 import { INTRO_CARDS } from '../render/intro.js';
 
 const MAP2_CARD = '<small>Stew Zombies</small><b>Map 2</b><span>The season isn\'t over</span>';
-export const NAMES = { kearns: 'Kearns', ryan: 'Ryan', pit: 'Pit', rocco: 'Rocco', brian: 'Brian', zach: 'Zach', chops: 'Chops', regs: 'Regs', p: 'P', erik: 'Erik', erikPA: 'Erik · PA', schnitz: 'The Schnitz' };
+export const NAMES = { kearns: 'Kearns', ryan: 'Ryan', pit: 'Pit', rocco: 'Rocco', brian: 'Brian', zach: 'Zach', chops: 'Chops', regs: 'Regs', p: 'P', james: 'James', kyle: 'Kyle', erik: 'Erik', erikPA: 'Erik · PA', schnitz: 'The Schnitz' };
 
 const $ = (id) => document.getElementById(id);
 

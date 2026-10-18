@@ -175,7 +175,7 @@ export const CHARACTERS = {
     idle: 'cheerful', gesture: 'clap',
   },
   p: {
-    name: 'P', blurb: 'Too cool for school. His forehead enters the room before he does.',
+    name: 'P', blurb: 'A big slob who only talks about food. Wishes he could DoorDash a meal anywhere. Even here.',
     height: 1.0, headScale: 1.08,
     body: { shoulders: 0.207, chest: 0.165, waist: 0.148, hips: 0.162, depth: 0.112, build: 0.25 }, limbs: 1.02, armsOut: 0.12,
     skin: 'olive',
