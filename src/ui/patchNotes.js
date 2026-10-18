@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-17a',
-  date: 'October 17, 2026',
+  version: '2026-10-18a',
+  date: 'October 18, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -19,6 +19,11 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'Leaderboards: the Career screen has a new Leaderboards tab. See where you rank against everyone for the highest round on Stew Leonard High and Call of the Crust (solo and co-op each have their own board), and for career kills, headshots, revives, wall buys and games played. It shows the top 100, plus your own rank if you\'re further down. Sign in to get on the boards (guests aren\'t ranked), and your best round goes up when a game ends.',
+      'The Arsenal\'s skin tiles no longer stack on top of each other.',
+      'In the Stew Store, a gun skin made for one gun is shown on that gun. The rest still show on the SCAR-H.',
+    ] },
+    { title: 'Battle Pass, gun skins and the Crust fixes', items: [
       'The Battle Pass: 20 free tiers in the Stew Store. Earn pass XP from every game, round and kill, and each tier unlocks its prize straight away: 10 new skins any character can wear (Warm Up, Night Shift, Ski Lodge, Lifeguard, Grill Master, Leopard Lounge, Hot Sauce, Neon Rave, Velvet Night, and Burger Bros at tier 20, a red uniform with the visor and name tag), 3 new emotes (The Dab, The Robot, Salute) and Stew Bucks on 7 tiers.',
       'Gun skins: 23 of them. 12 fit every gun, after the classic Call of Duty camos (Woodland, Desert Tiger, Urban Digital, Arctic, Cherry Blossom, Damascus, Carbon Fiber, Bacon, Gold, Diamond, and the moving Dark Matter and Molten), and 8 are made for one gun, like the Pink Chrome Desert Eagle and the Dragon Scale Flamethrower. Buy them in the Stew Store\'s Gun skins tab, or earn Neon Grid, Zebra and Ketchup & Mustard at Battle Pass tiers 6, 12 and 18. The new Arsenal blade lists every gun: pick one and put a skin on it. Teammates see your gun skins online, and Pack-a-Punched guns keep their own camo.',
       'The Stew Store page shows Featured today: four items that change every day. Tap one to go straight to it.',
