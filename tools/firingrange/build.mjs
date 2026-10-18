@@ -2,16 +2,16 @@
 // (Sketchfab, "Call of duty: mobile Firing Range map" by alljamimohammedrafi,
 // CC BY-NC-SA 4.0). The download has no textures, so every triangle is sorted
 // into a surface (dirt, road, grass, wood, tin roof, plaster, rock, palm...) by
-// its original material, which way it faces and how high it sits, and gets
-// new box-projected texture coordinates; src/render/firingRangeWorld.js paints
-// each surface Black Ops style. Duplicates, the sky and the loose pieces left
+// its original material, which way it faces and how high it sits, and
+// src/render/firingRangeWorld.js paints each surface Black Ops style (with
+// texture coordinates projected from the world, so none are stored). Duplicates, the sky and the loose pieces left
 // round the edge are dropped, and the rest is quantized.
 //   node tools/firingrange/build.mjs <source.glb>
 //   (needs @gltf-transform/core, /functions, /extensions and meshoptimizer resolvable)
 // Writes assets/firingrange/range.glb and src/map/firingRangeGround.js (the
 // ground's heights and where you can't walk, on a 0.5 m grid).
 import { NodeIO, Document } from '@gltf-transform/core';
-import { flatten, clearNodeTransform, weld, meshopt, simplifyPrimitive, prune, dedup } from '@gltf-transform/functions';
+import { flatten, clearNodeTransform, weld, meshopt, simplifyPrimitive, prune } from '@gltf-transform/functions';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptSimplifier, MeshoptEncoder } from 'meshoptimizer';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -136,15 +136,14 @@ for (const P of parts) {
 // --- surfaces ----------------------------------------------------------------------------
 function classify(mat, ny, cy, cx, cz) {
   if (mat in GROUND) return GROUND[mat];
-  if (ROCK.has(mat)) return 'rock';
+  // (dead flat or dead upright faces among the rocks are a bunker's walls and roof)
+  if (ROCK.has(mat)) return Math.abs(ny) < 0.12 || ny > 0.92 ? 'concrete' : 'rock';
   if (mat in PLANT) return PLANT[mat];
   const above = cy - groundAt(cx, cz);
   if (ny > 0.6) return above > 2.0 ? (mat === 16 ? 'concrete' : 'tin') : 'planks';
   if (ny < -0.6) return mat === 11 || mat === 16 ? 'concrete' : 'planks';
   return WALL[mat] || 'wood';
 }
-// texture coordinates: metres / this (box-projected on the face's main axis)
-const SCALE = { dirt: 4, road: 4, grass: 3, far: 8, water: 6, rock: 3, palm: 2, fern: 1.5, shrub: 1.5, planks: 2, wood: 2.4, tin: 2, plaster: 3, concrete: 3, metal: 1.5, olive: 2 };
 const buckets = new Map();
 for (const P of parts) {
   const pos = P.pos, nrm = P.nrm;
@@ -154,14 +153,9 @@ for (const P of parts) {
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const L = Math.hypot(nx, ny, nz) || 1; nx /= L; ny /= L; nz /= L;
     const cls = classify(P.mat, ny, (ay + by + cy) / 3, (ax + bx + cx) / 3, (az + bz + cz) / 3);
-    if (!buckets.has(cls)) buckets.set(cls, { pos: [], nrm: [], uv: [] });
-    const B = buckets.get(cls), s = 1 / SCALE[cls];
-    const axis = Math.abs(ny) >= Math.abs(nx) && Math.abs(ny) >= Math.abs(nz) ? 'y' : Math.abs(nx) >= Math.abs(nz) ? 'x' : 'z';
-    for (let k = 0; k < 3; k++) {
-      const x = pos[t + k * 3], y = pos[t + k * 3 + 1], z = pos[t + k * 3 + 2];
-      B.pos.push(x, y, z); B.nrm.push(nrm[t + k * 3], nrm[t + k * 3 + 1], nrm[t + k * 3 + 2]);
-      if (axis === 'y') B.uv.push(x * s, z * s); else if (axis === 'x') B.uv.push(z * s, -y * s); else B.uv.push(x * s, -y * s);
-    }
+    if (!buckets.has(cls)) buckets.set(cls, { pos: [], nrm: [] });
+    const B = buckets.get(cls);
+    for (let k = 0; k < 9; k++) { B.pos.push(pos[t + k]); B.nrm.push(nrm[t + k]); }
   }
 }
 
@@ -173,7 +167,6 @@ for (const [cls, B] of buckets) {
   const prim = out.createPrimitive()
     .setAttribute('POSITION', out.createAccessor().setType('VEC3').setArray(new Float32Array(B.pos)).setBuffer(buf))
     .setAttribute('NORMAL', out.createAccessor().setType('VEC3').setArray(new Float32Array(B.nrm)).setBuffer(buf))
-    .setAttribute('TEXCOORD_0', out.createAccessor().setType('VEC2').setArray(new Float32Array(B.uv)).setBuffer(buf))
     .setMaterial(out.createMaterial(cls));
   const mesh = out.createMesh(cls).addPrimitive(prim);
   scene.addChild(out.createNode(cls).setMesh(mesh));
@@ -187,8 +180,9 @@ for (const m of out.getRoot().listMeshes()) {
   const r = KEEP_RATIO[m.getName()] ?? 0.8;
   for (const p of m.listPrimitives()) { const before = p.getIndices().getCount() / 3; simplifyPrimitive(p, { simplifier: MeshoptSimplifier, ratio: r, error: 0.01, lockBorder: false }); console.log('  ' + m.getName().padEnd(9), before, '->', p.getIndices().getCount() / 3); }
 }
+// (no dedup: every surface's material is a blank one by its name, and dedup would merge them)
 // (EXT_meshopt_compression: src/render/firingRangeWorld.js gives the loader its decoder)
-await out.transform(prune(), dedup(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+await out.transform(prune(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
 mkdirSync(ROOT + 'assets/firingrange', { recursive: true });
 await io.write(ROOT + 'assets/firingrange/range.glb', out);
 let tris = 0;

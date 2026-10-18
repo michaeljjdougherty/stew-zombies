@@ -14,6 +14,7 @@ import { buildStoryProps, updateStoryProps } from './storyProps.js';
 import { campusBounds } from '../map/school.js';
 import { jukeboxModel } from './propModels.js';
 import { crustMaterials, buildCrust } from './crustWorld.js';
+import { buildFiringRange, updateFiringRange } from './firingRangeWorld.js';
 
 // Rough, sooty bricks for the cauldron's firebox.
 function cauldronBrickTexture() {
@@ -69,8 +70,8 @@ export class MapView {
     this.buildDoors();
     this.buildWallBuys();
     for (const c of this.group.children.slice(n0)) c.userData.noBake = true;
-    // the school's grounds, or (Call of the Crust) the snow world
-    if (this.map.snow) this.crust = buildCrust(this); else this.buildExterior();
+    // the school's grounds, (Call of the Crust) the snow world, or (Firing Range) the camp's model
+    if (this.map.snow) this.crust = buildCrust(this); else if (this.map.glbWorld) this.range = buildFiringRange(this); else this.buildExterior();
     // the story's set dressing (school only): Press Box, cows, signage, blood
     if (this.map.id === 'lastbell') this.story = buildStoryProps(this);
     this.tameGloss();
@@ -1573,6 +1574,7 @@ export class MapView {
     }
     if (eye) this.streamLights(eye);
     if (this.crust) this.crust.update(dt, eye, this.time);
+    if (this.range) updateFiringRange(this.range, eye);
     if (this.paLed) this.paLed.visible = Math.sin(this.time * 3) > -0.2;
 
     if (this.scoreTex && roundInfo && (roundInfo.round !== this.lastScore.round || roundInfo.kills !== this.lastScore.kills)) {

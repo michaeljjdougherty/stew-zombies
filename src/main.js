@@ -9,8 +9,9 @@ import { powerAllOn } from './sim/crustPower.js';
 import { CONFIG } from './config.js';
 import { SCHOOL } from './map/school.js';
 import { CRUST } from './map/crust.js';
-// zombies maps by id (the map screen's ids). The firing range is its own mode.
-const ZOMBIE_MAPS = { lastbell: SCHOOL, crust: CRUST };
+// zombies maps by id (the map screen's ids). (Firing Range mode, the weapons test, is its own map: range.js)
+import { FIRING_RANGE } from './map/firingrange.js';
+const ZOMBIE_MAPS = { lastbell: SCHOOL, crust: CRUST, firingrange: FIRING_RANGE };
 import { RANGE } from './map/range.js';
 import { spawnHorde, clearZombies, setRangeRound, rangeGive, rangeTogglePerk, rangeDrop, rangeCheddars, rangeStewBombs, rangeMaisyDogs, rangeLbds, rangeGear } from './sim/range.js';
 import { RangeUI } from './ui/range.js';
@@ -559,6 +560,8 @@ const mapSelect = new MapSelect({
     mapSelect.close();
     // Map 2: its own intro (the first time, or when asked for), then in
     if (id === 'crust') { if (withIntro) { startFilm('intro', 'play'); return; } restart('zombies', 'crust'); startPlaying(); return; }
+    // Map 3: no intro yet, straight in
+    if (id === 'firingrange') { restart('zombies', 'firingrange'); startPlaying(); return; }
     if (withIntro) { startIntro('play'); return; }
     if (sim.mode !== 'zombies' || sim.mapData.id !== 'lastbell') restart('zombies');
     startPlaying();

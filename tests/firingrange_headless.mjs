@@ -4,6 +4,7 @@
 import { CONFIG } from '../src/config.js';
 import { FIRING_RANGE as M } from '../src/map/firingrange.js';
 import { GameSim } from '../src/sim/sim.js';
+import { exploreJumpToRound } from '../src/sim/rounds.js';
 
 let fails = 0;
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails++; };
@@ -40,6 +41,16 @@ step(20);
 const closer = chasing.filter((q) => Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < 30);
 check(chasing.length > 0 && closer.length > 0, `${chasing.length} chasing, ${closer.length} within 30 m after 20 s`);
 check(sim.zombies.every((q) => q.state === 'dead' || (isFinite(q.pos.y) && q.pos.y > -2)), 'no zombie fell through the ground');
+
+// Explore mode (Play › Explore on the map screen): endless points, no dying,
+// zombies only when you switch them on
+const ex = new GameSim({ map: M, cfg: CONFIG, mode: 'explore', seed: 4 });
+const q = ex.addPlayer('p1', 'Stew');
+for (let i = 0; i < 600; i++) { ex.setInput('p1', { moveX: 0, moveY: 0, yaw: q.yaw, pitch: 0 }); ex.step(1 / 60); ex.drainEvents(); }
+check(ex.godMode && q.points >= CONFIG.explore.points && ex.zombies.filter((z) => z.state !== 'dead').length === 0, `explore: ${q.points} points, no zombies until asked`);
+exploreJumpToRound(ex, 10);
+for (let i = 0; i < 1800; i++) { ex.setInput('p1', { moveX: 0, moveY: 0, yaw: q.yaw, pitch: 0 }); ex.step(1 / 60); ex.drainEvents(); }
+check(ex.rounds.round === 10 && ex.zombies.some((z) => z.state !== 'dead') && q.alive, `explore: jumped to round ${ex.rounds.round}, ${ex.zombies.filter((z) => z.state !== 'dead').length} zombies up, still standing`);
 
 console.log(fails ? `${fails} FAILED` : 'all ok');
 if (fails) process.exit(1);
