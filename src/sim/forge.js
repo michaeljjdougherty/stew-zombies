@@ -8,14 +8,14 @@
 //      each). It's plain iron: the cores make it elemental.
 //   1. Beat an island's titan (crustEgg.js) and its War Hammer core drops
 //      where it fell. Walk over it to pick it up.
-//   2. Bring it back to Pit's bench and hand it over [F]. He forges its War
-//      Hammer (one at a time; the rest wait on the pile) and sets it in its
-//      socket on the Anvil: N wind, E lightning, S fire, W ice.
+//   2. Bring it back to Pit's bench and hand it over [F]. He forges its
+//      elemental hammer, upgraded straight from the War Hammer (the Tempest,
+//      Thunder, Glacier and Inferno Hammers: the "+" weapons; there's no plain
+//      elemental one any more). One at a time; the rest wait on the pile. He
+//      sets it in its socket on the Anvil: N wind, E lightning, S fire, W ice.
 //   3. Take a hammer from its socket [F] with your War Hammer in hand: yours
-//      takes on that element (one person per element; put it back and yours is
-//      plain again; lose it and it goes back to its socket). Do that element's
-//      trial on its island (hammerTrials.js), then hand Pit the hammer and he
-//      tempers it, free: its "+".
+//      becomes it (one person per element; put it back and yours is plain
+//      again; lose it and it goes back to its socket).
 //   4. All four forged: ring the Anvil [F] and Big Evil Zach comes down into
 //      the pit (zachBoss.js).
 //
@@ -31,7 +31,6 @@ import { startFinale } from './zachBoss.js';
 import { giveRelays, relaysCarriedBy, relaysFixed, hubPowered } from './crustPower.js';
 import { paSay } from './pa.js';
 import { RNG } from '../core/rng.js';
-import { trialDone, trialHint, trialObjective } from './hammerTrials.js';
 
 // which titan guards which element
 export const CORE_ELEMENT = { ship: 'wind', research: 'lightning', caves: 'ice', trench: 'fire' };
@@ -44,6 +43,7 @@ export function createForge(sim) {
   const spec = sim.mapData.forge;
   if (!spec) return null;
   const hammers = {};
+  // (tempered: it's the upgraded one, the "+". Every hammer Pit forges is)
   for (const el of HAMMER_ELEMENTS) hammers[el] = { forged: false, by: null, tempered: false };
   // the War Hammer's parts, where they lie
   const parts = {};
@@ -188,40 +188,23 @@ export function updateForge(sim, dt) {
 // how long Pit takes over a job
 function workTime(sim, W) {
   const c = sim.cfg.crust.forge;
-  return W.kind === 'forge' ? c.forgeTime : W.kind === 'power' ? sim.cfg.crust.power.fixTime : c.temperTime;
+  return W.kind === 'power' ? sim.cfg.crust.power.fixTime : c.forgeTime;
 }
 
 function finishWork(sim, F, W) {
   F.work = null;
   if (W.kind === 'power') { relaysFixed(sim); return; }
   const el = W.element;
-  if (W.kind === 'forge') {
-    sim.crustEgg.cores[W.id].state = 'forged';
-    F.hammers[el].forged = true;
-    const n = hammersForged(sim.crustEgg);
-    sim.emit('hammerForged', { element: el, name: HAMMER_IDS[el], count: n });
-    pitSay(sim, PIT_FORGE.forged[el]);
-    if (n === 4) { PIT_FORGE.allForged.forEach((t, i) => pitSay(sim, t, 0.6 + i * 0.1)); sim.emit('hammersAll', {}); }
-    return;
-  }
-  // tempered: the hammer you handed over comes back as its "+"
+  sim.crustEgg.cores[W.id].state = 'forged';
+  F.hammers[el].forged = true;
   F.hammers[el].tempered = true;
-  const p = sim.playerById(W.playerId);
-  let slot = null;
-  if (p) for (const l of [p.loadout.slots, p.downed && p.downed.saved ? p.downed.saved.slots : []]) slot = slot || l.find((s) => s === W.slot) || null;
-  if (slot) {
-    const upId = HAMMER_IDS[el] + '+';
-    const def = sim.cfg.weapons[upId];
-    slot.id = upId; slot.away = false; slot.upgraded = true; slot.clip = def.magSize; slot.reserve = 0;
-    if (p.loadout.slots.includes(slot)) {
-      p.loadout.current = p.loadout.slots.indexOf(slot);
-      p.loadout.drawTimer = def.drawTime;
-      sim.emit('weaponGiven', { playerId: p.id, weapon: upId });
-    }
-  }
-  sim.emit('hammerTempered', { element: el, playerId: W.playerId, name: sim.cfg.weapons[HAMMER_IDS[el] + '+'].name });
-  pitSay(sim, PIT_FORGE.tempered[el]);
+  const n = hammersForged(sim.crustEgg);
+  sim.emit('hammerForged', { element: el, name: upName(sim, el), count: n });
+  pitSay(sim, PIT_FORGE.forged[el]);
+  if (n === 4) { PIT_FORGE.allForged.forEach((t, i) => pitSay(sim, t, 0.6 + i * 0.1)); sim.emit('hammersAll', {}); }
 }
+// what Pit forges: the upgraded hammer of that element ("Thunder Hammer")
+const upName = (sim, el) => sim.cfg.weapons[HAMMER_IDS[el] + '+'].name;
 
 // ---------------------------------------------------------------------------
 // The HUD's line when no titan is awake: what the forge wants from you
@@ -235,14 +218,12 @@ export function forgeObjective(sim, pid) {
   if (!hammerBuilt(F) && partsTotal(F)) return `Find the War Hammer's parts · ${partsPlaced(F)} of ${partsTotal(F)} (one on each island)`;
   const me = pid && sim.playerById(pid);
   if (me && me.alive && !hasAnyHammer(sim, me)) return 'Take a War Hammer from the stand at the Anvil';
-  if (F.work) return F.work.kind === 'forge' ? `Pit is forging the ${HAMMER_IDS[F.work.element]}` : `Pit is tempering the ${HAMMER_IDS[F.work.element]}`;
+  if (F.work && F.work.kind === 'forge') return `Pit is forging the ${upName(sim, F.work.element)}`;
   const lying = Object.values(E.cores).find((k) => k.state === 'dropped');
   if (lying) return `Pick up the ${ELEMENT_NAMES[lying.element]} core`;
-  const trial = me && me.alive ? trialObjective(sim, me) : null;
-  if (trial) return trial;
   const n = hammersForged(E);
   if (n === 4 && !F.rung) return 'Ring the Anvil';
-  if (n > 0 && n < 4) return `War Hammers forged · ${n} of 4`;
+  if (n > 0 && n < 4) return `Elemental hammers forged · ${n} of 4`;
   return null;
 }
 
@@ -251,7 +232,7 @@ export function forgeObjective(sim, pid) {
 // ---------------------------------------------------------------------------
 function forgeOf(sim) { return sim.crustEgg && sim.crustEgg.forge; }
 
-// Pit's bench: hand him cores, or a hammer to temper
+// Pit's bench: hand him the relays and the cores
 class BenchInteractable {
   constructor(spec) {
     this.id = 'forge_bench'; this.kind = 'forge'; this.requireLook = false;
@@ -261,13 +242,8 @@ class BenchInteractable {
   get range() { return 2.6; }
   distanceTo(sim, p) { return Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z); }
   canUse(sim, p) { return up(p) && !p.drinking && !!forgeOf(sim); }
-  heldHammer(sim, p) {
-    const slot = p.loadout.slots[p.loadout.current];
-    const def = slot && sim.cfg.weapons[slot.id];
-    return def && def.hammer && def.hammer !== 'iron' && !def.upgraded && !slot.away ? def.hammer : null;
-  }
   prompt(sim, p) {
-    const E = sim.crustEgg, F = E.forge, c = sim.cfg.crust.forge;
+    const E = sim.crustEgg, F = E.forge;
     const relays = E.power ? relaysCarriedBy(E.power, p.id) : [];
     if (relays.length) return { text: `Press [F] to give Pit the ${sim.cfg.crust.power.relayName.toLowerCase()}${relays.length > 1 ? 's' : ''}`, cost: null };
     const mine = carriedBy(E, p.id);
@@ -275,19 +251,15 @@ class BenchInteractable {
     if (F.work) {
       const left = Math.max(1, Math.ceil(workTime(sim, F.work) - F.work.t));
       if (F.work.kind === 'power') return { text: `Pit is fixing the relays · ${left}s`, cost: null };
-      return { text: `Pit is ${F.work.kind === 'forge' ? 'forging' : 'tempering'} the ${HAMMER_IDS[F.work.element]} · ${left}s`, cost: null };
+      return { text: `Pit is forging the ${upName(sim, F.work.element)} · ${left}s`, cost: null };
     }
     if (!hubPowered(sim)) return { text: 'Pit needs the launchers\' burnt relays', cost: null, sub: 'One in the box beside each launcher, up on the rim' };
-    const el = this.heldHammer(sim, p);
-    // (it earns its temper on its own island first: hammerTrials.js)
-    if (el && !F.queue.length && !trialDone(sim, el)) return { text: `Pit: "The ${HAMMER_IDS[el]} isn't ready, man."`, cost: null, sub: trialHint(sim, el) };
-    if (el && !F.queue.length) return { text: `Press [F] to have Pit temper the ${HAMMER_IDS[el]}`, cost: null, sub: `It comes back as the ${sim.cfg.weapons[HAMMER_IDS[el] + '+'].name}` };
     if (hammersForged(E) === 4) return { text: F.rung ? 'Pit' : 'Pit: "Ring the Anvil, man."', cost: null };
     return { text: 'Pit needs the titans\' War Hammer cores', cost: null };
   }
   use(sim, p, cmd) {
     if (!cmd.usePressed) return;
-    const E = sim.crustEgg, F = E.forge, c = sim.cfg.crust.forge;
+    const E = sim.crustEgg, F = E.forge;
     if (giveRelays(sim, p)) return;
     const mine = carriedBy(E, p.id);
     if (mine.length) {
@@ -299,19 +271,7 @@ class BenchInteractable {
       }
       return;
     }
-    if (F.work || F.queue.length) { sim.emit('useDenied', { playerId: p.id }); return; }
-    const el = this.heldHammer(sim, p);
-    if (!el) return;
-    if (!trialDone(sim, el)) { sim.emit('useDenied', { playerId: p.id }); return; }
-    const w = p.loadout, slot = w.slots[w.current];
-    if (w.reloading) cancelReload(sim, p);
-    slot.away = true;
-    F.work = { kind: 'temper', element: el, playerId: p.id, slot, t: 0, strikes: 0 };
-    // switch to your other gun while Pit has the hammer
-    const other = w.slots.findIndex((s) => !s.away);
-    if (other >= 0) { w.current = other; w.drawTimer = sim.cfg.weapons[w.slots[other].id].drawTime; sim.emit('weaponSwitch', { playerId: p.id, weapon: w.slots[other].id }); }
-    sim.emit('temperStart', { element: el, playerId: p.id });
-    pitSay(sim, PIT_FORGE.temperStart);
+    sim.emit('useDenied', { playerId: p.id });
   }
 }
 
@@ -327,7 +287,7 @@ class SocketInteractable {
   canUse(sim, p) { const F = forgeOf(sim); return up(p) && !p.drinking && !!F && F.hammers[this.el].forged; }
   prompt(sim, p) {
     const h = sim.crustEgg.forge.hammers[this.el];
-    const name = sim.cfg.weapons[HAMMER_IDS[this.el] + (h.tempered ? '+' : '')].name;
+    const name = upName(sim, this.el);
     if (h.by === p.id) return holds(p, this.el) ? { text: `Press [F] to put the ${name} back`, cost: null, sub: 'Your War Hammer goes back to plain iron' } : { text: `You have the ${name}`, cost: null };
     if (h.by) { const o = sim.playerById(h.by); return { text: `${o ? o.name : 'Someone'} has the ${name}`, cost: null }; }
     if (plainSlot(sim, p) < 0) return { text: `The ${name}`, cost: null, sub: hasAnyHammer(sim, p) ? 'Put your other element back first' : 'Bring a War Hammer to take its element' };
@@ -350,11 +310,11 @@ class SocketInteractable {
     }
     const i = plainSlot(sim, p);
     if (h.by || i < 0) { sim.emit('useDenied', { playerId: p.id }); return; }
-    const id = HAMMER_IDS[this.el] + (h.tempered ? '+' : '');
+    const id = HAMMER_IDS[this.el] + '+';
     h.by = p.id;
     if (w.reloading) cancelReload(sim, p);
     const slot = w.slots[i];
-    slot.id = id; slot.upgraded = !!h.tempered; slot.clip = sim.cfg.weapons[id].magSize; slot.reserve = 0;
+    slot.id = id; slot.upgraded = true; slot.clip = sim.cfg.weapons[id].magSize; slot.reserve = 0;
     w.current = i; w.drawTimer = sim.cfg.weapons[id].drawTime;
     sim.emit('hammerTaken', { element: this.el, playerId: p.id });
     sim.emit('weaponGiven', { playerId: p.id, weapon: id });

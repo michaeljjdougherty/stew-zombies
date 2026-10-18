@@ -454,11 +454,6 @@ export const CRUST_TALKS = {
     { who: 'kearns', text: "You can't dibs a hammer, Rocco." },
     { who: 'rocco', text: "I just did." },
   ],
-  // the first one tempered
-  tempered: [
-    { who: 'ryan', text: "Pit made mine spicy. Look at this thing." },
-    { who: 'pit', text: "Careful, man. It bites back now." },
-  ],
   // all four forged
   allForged: [
     { who: 'ryan', text: "Four hammers. Four titans down." },

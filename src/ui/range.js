@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { zombieHealthForRound } from '../config.js';
 
 // The "Mad Dog'd" box gives a gun's upgraded twin, but never a War Hammer's:
-// only Pit tempers those (they're their own buttons). And the button a held
+// only Pit makes those (they're their own buttons). And the button a held
 // weapon lights up.
 const pick = (cfg, id, upgraded) => (upgraded && cfg.weapons[id + '+'] && !cfg.weapons[id].hammer ? id + '+' : id);
 const button = (cfg, id) => (cfg.weapons[id] && cfg.weapons[id].hammer ? id : id.replace(/\+$/, ''));
@@ -65,7 +65,7 @@ export class RangeUI {
   buildPanel() {
     const list = $('rp-weapons');
     list.textContent = '';
-    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => (!id.endsWith('+') || d.hammer) && !d.gumOnly);   // (a tempered War Hammer is its own button: Pit's, not the Mad Dog's)
+    const entries = Object.entries(this.cfg.weapons).filter(([id, d]) => (!id.endsWith('+') || d.hammer) && !(d.hammer && d.hammer !== 'iron' && !d.upgraded) && !d.gumOnly);   // (an elemental hammer is its own button, only ever upgraded: Pit's, not the Mad Dog's)
     for (const [title, test] of GROUPS) {
       const ids = entries.filter(([, d]) => test(d)).map(([id]) => id);
       if (!ids.length) continue;

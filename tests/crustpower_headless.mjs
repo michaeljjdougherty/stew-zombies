@@ -144,11 +144,12 @@ const hubPads = CRUST.launchers.filter((L) => CRUST.relays.some((r) => r.pad ===
   const g = game(5);
   for (const r of CRUST.relays) { g.box(r); g.use(); }
   const F2 = g.sim.crustEgg.forge;
-  F2.work = { kind: 'temper', element: 'fire', playerId: 'p1', slot: null, t: 0, strikes: 0 };
+  g.sim.crustEgg.cores.trench = { state: 'given', element: 'fire' };
+  F2.work = { kind: 'forge', id: 'trench', element: 'fire', t: 0, strikes: 0 };
   g.bench(); g.use();
-  check(!F2.work || F2.work.kind === 'temper', 'Pit\'s busy: the relays wait');
+  check(!F2.work || F2.work.kind === 'forge', 'Pit\'s busy: the relays wait');
   check(P(g).fixQueued, '...he\'ll get to them');
-  g.step({}, 60 * (CONFIG.crust.forge.temperTime + 1));
+  g.step({}, 60 * (CONFIG.crust.forge.forgeTime + 1));
   check(F2.work && F2.work.kind === 'power', 'then he starts on them');
   g.step({}, 60 * (PW.fixTime + 1));
   check(P(g).on.hub, '...and the power\'s on');

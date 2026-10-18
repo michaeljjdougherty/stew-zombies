@@ -83,8 +83,9 @@ export const CREW = {
 // ---------------------------------------------------------------------------
 // Call of the Crust: Pit at his forge by the Anvil (src/sim/forge.js). He got
 // there first (he left for a while, remember) and learned to smith. He forges
-// the four War Hammers from the titans' cores, tempers them for a price, and
-// talks you through it. Keyed by element where it matters.
+// the four elemental hammers from the titans' cores (upgraded straight off the
+// War Hammer: Tempest, Thunder, Glacier, Inferno) and talks you through it.
+// Keyed by element where it matters.
 // ---------------------------------------------------------------------------
 export const PIT_FORGE = {
   intro: [
@@ -112,20 +113,20 @@ export const PIT_FORGE = {
     trench: "The Fiend's out, man. That core's gonna be hot. Bring it anyway.",
   },
   given: {
-    wind: "The Captain's core. Smells like the ocean, man. Wind Hammer, coming up.",
-    lightning: "Ow. It bit me. It bit me, man. Lightning Hammer it is.",
-    ice: "Cold. Real cold. Gimme a minute. Ice Hammer.",
-    fire: "Hot hot hot. Okay. Fire Hammer. Stand back, man.",
+    wind: "The Captain's core. Smells like the ocean, man. Tempest Hammer, coming up.",
+    lightning: "Ow. It bit me. It bit me, man. Thunder Hammer it is.",
+    ice: "Cold. Real cold. Gimme a minute. Glacier Hammer.",
+    fire: "Hot hot hot. Okay. Inferno Hammer. Stand back, man.",
   },
   queued: "Put it on the pile, man. One hammer at a time.",
   forged: {
-    wind: "Wind Hammer. Done. It's on the Anvil, take it.",
-    lightning: "Lightning Hammer's done. Don't lick it. I licked it.",
-    ice: "Ice Hammer. Done. Cold to the touch. Cool to the touch. Both.",
-    fire: "Fire Hammer's done, man. Hot. Bars hot.",
+    wind: "Tempest Hammer. Done. Careful, it's breezy. It's on the Anvil, take it.",
+    lightning: "Thunder Hammer's done. It hums. Don't lick it. I licked it.",
+    ice: "Glacier Hammer. Done. Colder than my ex.",
+    fire: "Inferno Hammer's done, man. Hot. Bars hot.",
   },
   allForged: [
-    "That's four, man. Four War Hammers. The Anvil's full.",
+    "That's four, man. Tempest, Thunder, Glacier, Inferno. The Anvil's full.",
     "Ring the Anvil and he'll come. Zach, I mean. Big Zach.",
     "Hit him with the right hammer. He glows the colour he can't take.",
   ],
@@ -135,13 +136,6 @@ export const PIT_FORGE = {
     "(whinnies) ...sorry. Bring me a core.",
     "The launchers are up on the rim, man. Go get a titan.",
   ],
-  temperStart: "Ohhh, you want it spicy. Gimme a sec, man.",
-  tempered: {
-    wind: "Tempest Hammer. Careful, it's breezy.",
-    lightning: "Thunder Hammer. It hums now. I like the hum.",
-    ice: "Glacier Hammer. Colder than my ex.",
-    fire: "Inferno Hammer. Hot. Hotter than before. Okay, that's enough.",
-  },
   ring: "Here he comes, man. Here he comes.",
   freed: "Zach! Zach, buddy. Welcome back, man.",
 };

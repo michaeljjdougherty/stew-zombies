@@ -8,7 +8,6 @@
 import * as THREE from 'three';
 import * as TX from './textures.js';
 import { captainMouth } from '../sim/crustEgg.js';
-import { TrialsView } from './trialsView.js';
 
 const v3 = (p) => new THREE.Vector3(p.x, p.y, p.z);
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -31,7 +30,6 @@ export class TitanView {
     this.glowTex = TX.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
     this.buildClusters();
     this.buildCoils();
-    this.trials = new TrialsView(this.group, sim, cfg, map, effects, this.glowTex);   // (the War Hammers' trials)
   }
 
   setSim(sim) {
@@ -41,7 +39,6 @@ export class TitanView {
     for (const [id, hv] of this.hazards) this.dropHazard(id, hv);
     this.rings = []; this.fx = [];
     for (const v of Object.values(this.views)) this.restore(v);
-    this.trials.setSim(sim);
   }
 
   E() { return this.sim && this.sim.crustEgg; }
@@ -120,7 +117,6 @@ export class TitanView {
   update(dt, time, camera) {
     const E = this.E();
     if (!E) return;
-    this.trials.update(dt, time);
     const look = this.cfg.crust.egg.look;
     for (const T of Object.values(E.titans)) {
       const v = this.view(T.id);
@@ -511,7 +507,6 @@ export class TitanView {
   onEvent(e, R) {
     const E = this.E();
     if (!E) return;
-    this.trials.onEvent(e);
     const T = e.id && E.titans[e.id];
     switch (e.type) {
       case 'titanWake': {

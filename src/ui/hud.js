@@ -226,10 +226,10 @@ export class HUD {
         this.toast(`The ${e.name}`, `forged · ${e.count} of 4 · on the Anvil`, HAMMER_HUE[e.element], 4);
         break;
       case 'hammerTaken':
-        if (e.playerId === this.localId) this.toast(this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer`].name, 'your War Hammer takes its element', HAMMER_HUE[e.element], 3);
+        if (e.playerId === this.localId) this.toast(this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer+`].name, 'your War Hammer takes its element', HAMMER_HUE[e.element], 3);
         break;
       case 'hammerReturned':
-        if (e.playerId === this.localId) this.toast(`The ${HAMMER_NAME[e.element]} Hammer`, 'back on the Anvil · yours is plain iron again', HAMMER_HUE[e.element], 2.2);
+        if (e.playerId === this.localId) this.toast(`The ${this.cfg.weapons[`${HAMMER_NAME[e.element]} Hammer+`].name}`, 'back on the Anvil · yours is plain iron again', HAMMER_HUE[e.element], 2.2);
         break;
       // --- the power (Call of the Crust)
       case 'relayPulled':
@@ -259,11 +259,8 @@ export class HUD {
       case 'warHammerTaken':
         if (e.playerId === this.localId) this.toast('War Hammer', 'right click (LT): a quick swing · left click (RT): the charged slam · a titan\'s core makes it elemental', '#ffc860', 4);
         break;
-      case 'hammerTempered':
-        this.toast(e.name, 'tempered by Pit', HAMMER_HUE[e.element], 3.5);
-        break;
       case 'hammersAll':
-        this.toast('Four War Hammers', 'ring the Anvil', '#ffd23a', 4.5);
+        this.toast('Four elemental hammers', 'ring the Anvil', '#ffd23a', 4.5);
         break;
       case 'characterSwapped':
         if (e.playerId === this.localId) this.toast(`Pit's at his forge on this map`, `you're ${CREW[e.to] ? CREW[e.to].name : e.to}`, '#ffd23a', 4);

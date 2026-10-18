@@ -31,7 +31,6 @@ import { angleWrap, lookDir } from '../core/math.js';
 import { createForge, updateForge, forgeInteractables, dropCore, forgeObjective } from './forge.js';
 import { createCrustPower, updateCrustPower, powerObjective, crustPowerInteractables } from './crustPower.js';
 import { updateZach, zachTargets, zachObjective, finaleOn, ZACH_H } from './zachBoss.js';
-import { createTrials, updateTrials, coilsForTrial } from './hammerTrials.js';
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // radius: what it moves as (a zombie's size, so it fits the paths you do; it's
@@ -73,7 +72,6 @@ export function createCrustEgg(sim) {
   E.forge = createForge(sim);       // Pit's forge: the cores become the War Hammers (forge.js)
   E.power = createCrustPower(sim);  // the power: the Anvil's relays, the islands' switches (crustPower.js)
   E.finale = { state: 'off' };      // Big Evil Zach (zachBoss.js)
-  E.trials = createTrials(sim, E);  // the War Hammers' trials, for their "+" (hammerTrials.js)
   return E;
 }
 
@@ -268,7 +266,6 @@ export function updateCrustEgg(sim, dt) {
   updateHazards(sim, dt);
   updateCrustPower(sim);
   updateForge(sim, dt);
-  updateTrials(sim);
   updateZach(sim, dt);
 }
 
@@ -880,7 +877,7 @@ class CoilInteractable {
   coil(sim) { return sim.crustEgg.coils[this.i]; }
   get range() { return 1.8; }
   distanceTo(sim, p) { const k = this.coil(sim); this.pos = k.con; return Math.hypot(p.pos.x - k.con.x, p.pos.z - k.con.z); }
-  canUse(sim, p) { return p.alive && !p.downed && ((sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight') || coilsForTrial(sim)); }
+  canUse(sim, p) { return p.alive && !p.downed && sim.crustEgg.active === 'research' && sim.crustEgg.titans.research.state === 'fight'; }
   prompt(sim) {
     const k = this.coil(sim);
     if (k.ready) return { text: 'The coil is charged: lead the Warden to it', cost: null };
