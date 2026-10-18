@@ -398,9 +398,10 @@ function updateInteraction(sim, p, cmd, dt) {
   const cosLook = Math.cos(sim.cfg.interaction.lookAngle * Math.PI / 180);
   const tall = !!sim.mapData.terrainBoxes;   // (a map with floors above floors: not through the ceiling)
   for (const it of sim.interactables) {
-    if (tall && it.pos && it.pos.y != null && Math.abs(it.pos.y - p.pos.y) > 2.6) continue;
+    if (tall && it.pos && it.pos.y != null && Math.abs(it.pos.y - p.pos.y) > sim.cfg.interaction.floorGap) continue;
     const d = it.distanceTo(sim, p);
-    if (d > it.range || d >= bestD || !it.canUse(sim, p)) continue;
+    if (d > it.range || !it.canUse(sim, p)) continue;
+    if (best && (best.priority && !it.priority || d >= bestD && !!best.priority === !!it.priority)) continue;
     if (it.requireLook) {
       const dx = it.pos.x - p.pos.x, dz = it.pos.z - p.pos.z;
       const l = Math.hypot(dx, dz);

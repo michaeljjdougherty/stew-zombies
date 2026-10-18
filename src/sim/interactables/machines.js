@@ -254,7 +254,8 @@ export class ReviveInteractable {
     this.id = 'use_revive';
     this.kind = 'revive';
     this.requireLook = false;
-    this.pos = { x: 0, y: 0, z: 0 };
+    this.priority = true;   // (a downed teammate in reach beats anything else to buy or use)
+    this.pos = null;        // (no spot of its own: it's wherever they went down)
     this.target = null;
   }
   get range() { return 1.6; }
@@ -262,6 +263,7 @@ export class ReviveInteractable {
     let best = null, bd = Infinity;
     for (const o of sim.players) {
       if (o === p || !o.alive || !o.downed) continue;
+      if (Math.abs(o.pos.y - p.pos.y) > sim.cfg.interaction.floorGap) continue;   // (on the floor above or below: not through it)
       const d = flatDist(p, o.pos);
       if (d < bd) { bd = d; best = o; }
     }
