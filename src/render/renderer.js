@@ -666,8 +666,8 @@ export class GameRenderer {
     const targetExp = (g.exposureDark ?? g.exposure) + ((g.exposureLit ?? g.exposure) - (g.exposureDark ?? g.exposure)) * lit;
     this.exposure = this.exposure == null ? targetExp : this.exposure + (targetExp - this.exposure) * Math.min(1, dt * 1.5);
     this.renderer.toneMappingExposure = mode === 'title' ? g.exposure : this.exposure * (sim.mapData.brightness || 1);
-    this.box.update(dt, time);
-    for (const v of this.saleBoxes.values()) v.update(dt, time);
+    this.box.update(dt, time, this.camera.position);
+    for (const v of this.saleBoxes.values()) v.update(dt, time, this.camera.position);
     this.cauldron.update(dt, time, sim, this.camera.position);
     this.zombies.update(sim, dt, alpha, time);
     this.projectiles.update(sim, dt, alpha);

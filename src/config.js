@@ -1709,7 +1709,9 @@ export const CONFIG = {
     artilleryEvery: [3, 9],  // s between far-off shells landing
     partHum: { range: 40, gain: 0.55 },   // the War Hammer's parts hum where they lie (src/audio/partHum.js): heard from this many m off, loudest on top of it
     brightness: 1.35,        // exposure x on this map (it read too dark)
-    boxBeam: { height: 220, width: 3.2, opacity: 0.5 },   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
+    boxBeam: { height: 220, width: 3.2, opacity: 0.5,   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
+      fadeIn: 0.1,                                      // ...fading in from the lid over this much of its height (no glaring foot)
+      near: { from: 4, to: 18, min: 0.2 } },            // ...and fading as you walk up to it: this bright (min) at `from` m, full at `to` m
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
     // the guns over the Trench Front's open ground
     shelling: {
@@ -1735,7 +1737,8 @@ export const CONFIG = {
       leash: 20,             // s with nobody on its island before it goes back to sleep
       // stuck, or you're somewhere it can't walk to: it leaps (the Fiend burrows) to open ground near you
       // (checkEvery s: if it's got less than checkDist m in that time, it's stuck too)
-      leap: { stuck: 3.5, minDist: 3, maxDist: 30, height: 9, sink: 7, radius: 4.2, damage: 45, push: 8, checkEvery: 2.5, checkDist: 1.2 },
+      leap: { stuck: 3.5, minDist: 3, clear: 9, maxDist: 30,   // (clear: m from every player it must land)
+              height: 9, sink: 7, radius: 4.2, damage: 45, push: 8, checkEvery: 2.5, checkDist: 1.2 },
       // where bullets spark off them: [height up its body, radius] (m)
       // how each one's drawn (src/render/titanView.js): its eyes' glow (m up, m forward),
       // which way its model faces, its walk, how far it sinks to wake and kneel
@@ -1805,7 +1808,10 @@ export const CONFIG = {
       // The Molten Fiend (Trench Front): bullets do nothing; the field guns do
       trench: {
         hits: 5,                // field-gun shells to put it down
-        flight: 1.8,            // s from the gun to the bang
+        manHold: 0.6,           // s to hold [F] to get on a field gun (you sit in it and aim it)
+        shellSpeed: 80,         // m/s: a shell flies straight where you aim
+        offGun: 1.6,            // m you're put back off the gun after you fire
+        wakeRadius: 9,          // m: a shell this close to its crater wakes it
         hitRadius: 4.2,         // m: where the shell lands vs where it is
         reload: 8,              // s between shots from one gun
         range: 90,              // m the guns reach

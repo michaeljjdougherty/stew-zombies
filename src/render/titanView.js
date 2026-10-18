@@ -570,7 +570,7 @@ export class TitanView {
         for (let i = 0; i < 6; i++) this.effects.puff(v3(e.from), { color: 0x6a6258, size: 0.8, grow: 3, life: 1.8, alpha: 0.5, vel: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2) });
         const s = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2, 1) }));
         this.group.add(s);
-        const h = 10 + Math.hypot(e.to.x - e.from.x, e.to.z - e.from.z) * 0.25;
+        const h = e.direct ? 0.5 : 10 + Math.hypot(e.to.x - e.from.x, e.to.z - e.from.z) * 0.25;   // (fired straight from a manned gun: barely an arc)
         this.fx.push({ obj: s, t: 0, dur: e.dur, kind: 'arc', from: v3(e.from), to: v3(e.to), h, trail: [1.2, 1, 0.8] });
         // where it'll land
         this.ring(e.to, this.cfg.crust.egg.trench.hitRadius, '#ffd070', e.dur, { fill: false });

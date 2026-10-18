@@ -711,10 +711,12 @@ export function muzzleFlashTexture() {
   return toTexture(c, { repeat: false });
 }
 
-export function beamTexture() {
+// base: how far up from its bright end it takes to fade in (0: bright right at the end)
+export function beamTexture({ base = 0 } = {}) {
   const [c, g] = makeCanvas(64, 256);
   const grd = g.createLinearGradient(0, 0, 0, 256);
-  grd.addColorStop(0, 'rgba(255,255,255,0.9)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  if (base > 0) grd.addColorStop(0, 'rgba(255,255,255,0)');
+  grd.addColorStop(base, 'rgba(255,255,255,0.9)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grd; g.fillRect(0, 0, 64, 256);
   const side = g.createLinearGradient(0, 0, 64, 0);
   side.addColorStop(0, 'rgba(0,0,0,1)'); side.addColorStop(0.5, 'rgba(0,0,0,0)'); side.addColorStop(1, 'rgba(0,0,0,1)');

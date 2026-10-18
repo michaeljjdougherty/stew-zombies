@@ -200,6 +200,11 @@ function hub() {
   // scaffold catwalks across the pit between the terraces, north and south of the Anvil
   for (const [id, z] of [['cat_n', -9], ['cat_s', 9]]) {
     I.add(deck(id, [-14.4, z - 1.2, 14.4, z + 1.2], TER, { zone: CATS, look: 'stone', rails: 'ns' }), { connect: 'we' });
+    // its square stone piers (drawn by src/render/crustTerrain.js: one every ~6 m) are solid
+    for (let i = 1; i < 5; i++) {
+      const x = -14.4 + 28.8 * i / 5;
+      I.prop('model', x - 0.45, z - 0.45, x + 0.45, z + 0.45, TER - 0.35, { y: F });
+    }
   }
   // debris across the bottoms of the ramps
   I.freeDoors.push({ id: 'debris_hub_west', kind: 'debris', x: Math.cos(100 * Math.PI / 180) * 17.6, z: Math.sin(100 * Math.PI / 180) * 17.6, axis: 'z', width: 4.4, height: 3.2, zones: [PIT, RAMPS], label: 'THE RAMPS' });

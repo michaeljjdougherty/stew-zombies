@@ -11,6 +11,7 @@ import { updateLaunch } from './launchers.js';
 import { updateRide, checkSlides } from './rides.js';
 import { explode } from './projectiles.js';
 import { gumOn, gumPressed, gumSlide } from './gums.js';
+import { updateManning, manPrompt } from './crustEgg.js';
 
 // The shape of one tick of input. The client (or a network peer) fills this in.
 export function emptyCommand() {
@@ -91,6 +92,8 @@ export function updatePlayer(sim, p, cmd, dt) {
   p.pitch = clamp(cmd.pitch, -sim.cfg.camera.pitchLimit * Math.PI / 180, sim.cfg.camera.pitchLimit * Math.PI / 180);
   // flying between islands (a launcher): nothing else happens till you land
   if (p.launch) { updateLaunch(sim, p, dt); p.prompt = null; p.useTarget = null; return; }
+  // sitting in a field gun (Call of the Crust): aiming it is all you do
+  if (p.manning) { updateManning(sim, p, cmd); updateUseAndHealth(sim, p, cmd, dt); return; }
 
   if (!sim.replica) updateDrinking(sim, p, dt);   // (online: the host owns perks)
   const downed = !!p.downed;
@@ -385,6 +388,11 @@ function approach(v, tx, tz, maxDelta) {
 }
 
 function updateInteraction(sim, p, cmd, dt) {
+  if (p.manning) {
+    if (p.useTarget && p.useTarget.release) p.useTarget.release(sim, p);
+    p.useTarget = null; p.prompt = manPrompt(sim, p);
+    return;
+  }
   let best = null, bestD = Infinity;
   const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
   const cosLook = Math.cos(sim.cfg.interaction.lookAngle * Math.PI / 180);

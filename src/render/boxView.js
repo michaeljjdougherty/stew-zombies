@@ -131,6 +131,9 @@ export class BoxView {
     // (a map can make it a pillar of light you see from anywhere: Call of the Crust's boxBeam)
     const B = this.sim.mapData.boxBeam;
     this.bk = B ? B.opacity / 0.07 : 1;
+    this.beamK = this.bk;
+    // (the big beam fades in from the lid, instead of a hard bright ring at its foot)
+    if (B && !this.softBeam) { this.softBeam = true; this.beam.material.map = T.beamTexture({ base: B.fadeIn ?? 0.1 }); this.beam.material.needsUpdate = true; }
     const bh = B ? B.height : room.outdoor ? 14 : room.height - 0.7;   // (boxBeam: right up through the roof)
     this.beam.scale.set(B ? B.width : 1, bh, B ? B.width : 1);
     this.beam.position.y = 0.65 + bh / 2; // from the lid up to the ceiling (or the sky)
@@ -164,8 +167,16 @@ export class BoxView {
     }
   }
 
-  update(dt, time) {
+  // eye: the camera, for the big beam (boxBeam), which fades as you walk up to the box
+  update(dt, time, eye = null) {
     this.t += dt;
+    const B = this.sim.mapData.boxBeam;
+    let near = 1;
+    if (B && eye && B.near) {
+      const d = Math.hypot(eye.x - this.group.position.x, eye.z - this.group.position.z);
+      near = Math.min(1, Math.max(B.near.min, (d - B.near.from) / (B.near.to - B.near.from)));
+    }
+    this.beamK = (this.bk || 1) * near;
     // a sale box keeps up with the sim even if an event was missed (online)
     if (this.boxId) {
       const b = this.box;
@@ -209,7 +220,7 @@ export class BoxView {
     const pulse = 0.9 + Math.sin(time * 2.4) * 0.25 + (open ? 0.8 : 0);
     this.glowMat.emissiveIntensity = pulse;
     if (this.modelGlow) for (const m of this.modelGlow) m.emissiveIntensity = pulse;
-    this.beam.material.opacity = (0.06 + Math.sin(time * 1.3) * 0.015) * (this.bk || 1);
+    this.beam.material.opacity = (0.06 + Math.sin(time * 1.3) * 0.015) * (this.beamK || 1);
     this.light.level = 0.8 + (open ? 0.9 : 0) + Math.sin(time * 5) * 0.05;
   }
 
@@ -228,7 +239,7 @@ export class BoxView {
     this.group.scale.setScalar(Math.max(0.01, 1 - lift * 0.9));
     if (lift > 0.75) this.show(null);
     this.glowMat.emissiveIntensity = 2 + Math.sin(time * 25) * 1;
-    this.beam.material.opacity = Math.max(0, 0.07 * (this.bk || 1) * (1 - lift * 2));
+    this.beam.material.opacity = Math.max(0, 0.07 * (this.beamK || 1) * (1 - lift * 2));
     this.light.level = (1 - lift) * (1.2 + Math.sin(time * 20) * 0.4);
   }
 
@@ -241,7 +252,7 @@ export class BoxView {
     this.group.rotation.y = s.yaw + k * k * 10;
     this.group.scale.setScalar(Math.max(0.01, 1 - k * k));
     this.glowMat.emissiveIntensity = 2 + k * 4;
-    this.beam.material.opacity = 0.07 * (this.bk || 1) * (1 - k);
+    this.beam.material.opacity = 0.07 * (this.beamK || 1) * (1 - k);
     this.light.level = (1 - k) * 1.4;
     if (k >= 1) this.group.visible = false;
   }
@@ -260,7 +271,7 @@ export class BoxView {
       if (this.onLand) this.onLand(s);
     }
     this.glowMat.emissiveIntensity = 1.2;
-    this.beam.material.opacity = 0.07 * (this.bk || 1) * Math.min(1, this.t / T);
+    this.beam.material.opacity = 0.07 * (this.beamK || 1) * Math.min(1, this.t / T);
     this.light.level = 0.9;
   }
 }

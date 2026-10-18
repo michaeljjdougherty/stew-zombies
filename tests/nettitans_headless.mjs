@@ -140,5 +140,20 @@ function game(seed) {
   check(r1 > r0 + 0.4 && me.kicks > 0, `his stomp throws her (${(r1 - r0).toFixed(1)} m)`);
 }
 
+// --- the Molten Fiend's field guns, from a friend's seat: hold F, sit in it, fire, off
+{
+  const g = game(44);
+  const { hostSim, me, hp } = g;
+  const gun = hostSim.crustEgg.guns[1], T = hostSim.crustEgg.titans.trench, c = hostSim.cfg.crust.egg.trench;
+  g.at(gun.x - 2, gun.z - 2); g.step(0.5);
+  g.step(c.manHold + 0.4, { use: true }); g.step(0.3);
+  check(me.manning && hp.manning && gun.by === 'a' && Math.hypot(me.pos.x - gun.x, me.pos.z - gun.z) < 0.2, 'Ann holds F: she is sitting in the gun (on her screen and the host\'s)');
+  const e = g.sim.eyePosition(me), dx = T.home.x - e.x, dz = T.home.z - e.z, dy = c.groundY - e.y;
+  me.yaw = Math.atan2(-dx, -dz); me.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+  g.step(0.3, { fire: true }); g.step(1.5);
+  check(!me.manning && !hp.manning && gun.by === null && Math.hypot(me.pos.x - gun.x, me.pos.z - gun.z) > 1, 'she fires: off the gun');
+  check(T.state === 'waking' || T.state === 'fight', `her shell into the crater wakes the Fiend (${T.state})`);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
