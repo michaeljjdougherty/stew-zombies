@@ -653,6 +653,22 @@
   .ms-actions button[disabled] { background: #2a2722; color: #7b7466; cursor: default; }
   .ms-actions button.ms-sec { font: 700 12px var(--body); letter-spacing: 1.5px; padding: 9px 12px; background: none; border: 1px solid var(--line); color: var(--ink); }
   .ms-actions button.ms-sec:hover, .ms-actions button.ms-sec:focus-visible { border-color: var(--blood-hi); background: none; }
+  /* "Playing as": who you are, in their skin, turning on the platform (src/render/showcase.js drawInto) */
+  /* the model, and the skins to put on them under it */
+  .who-panel { position: absolute; left: 18px; top: 18px; z-index: 3; width: clamp(170px, 15vw, 230px); max-height: calc(100% - 36px); display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid rgba(232,200,120,.35); border-radius: 8px; background: rgba(10,9,7,.88); box-shadow: 0 10px 30px rgba(0,0,0,.55); cursor: default; }
+  .who-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .who-skins { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 2px; }
+  .who-panel small { font-size: 11px; color: var(--muted); } .who-panel small:empty { display: none; }
+  .who-panel .ms-chip { font-size: 13px; color: #f2ead8; }
+  .who-view { flex: none; margin: 0; pointer-events: none; border: 1px solid rgba(232,200,120,.45); border-radius: 6px; overflow: hidden; background: #0b0c0f; }
+  .who-view canvas { display: block; width: 100%; aspect-ratio: 2 / 3; }
+  .who-view figcaption { padding: 6px 6px 7px; font: 400 12px var(--display); letter-spacing: 1px; text-transform: uppercase; color: #f2ead8; text-align: center; background: rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .online { position: relative; }
+  .on-who { left: calc(100% + 32px); top: 110px; max-height: calc(100vh - 160px); width: clamp(190px, 16vw, 250px); }
+  .on-who #on-skinrow { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+  .on-who .on-skins { margin: 0; gap: 5px; } .on-who .on-skins .cs-card { min-width: 0; flex: 1 1 100%; padding: 5px 10px; } .on-who .on-skins .cs-card b { font-size: 15px; }
+  .on-who #on-skinrow { flex: 1 1 auto; }
+  @media (max-width: 1100px) { .on-who { position: static; width: auto; max-height: none; margin: 0 0 12px; } .on-who .who-view { width: 150px; } }
   .ms-view { position: relative; overflow: hidden; cursor: grab; touch-action: none; background: radial-gradient(ellipse at 30% 20%, #0d0a1c, #03020a 70%); }
   .ms-view.drag { cursor: grabbing; }
   #ms-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; }
@@ -1312,9 +1328,6 @@
     <div class="ms-who" id="ms-who">
       <span>Playing as</span>
       <div class="ms-chips" id="ms-who-chars" role="radiogroup" aria-label="Character"></div>
-      <span>Wearing</span>
-      <div class="ms-chips" id="ms-who-skins" role="radiogroup" aria-label="Skin"></div>
-      <small id="ms-who-hint"></small>
     </div>
     <div class="ms-list" id="ms-list"></div>
     <div class="ms-card" id="ms-card">
@@ -1346,6 +1359,12 @@
   <div class="ms-view" id="ms-view">
     <svg id="ms-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Star chart of the maps"></svg>
     <div class="ms-pins" id="ms-pins"></div>
+    <div class="who-panel" id="ms-who-panel">
+      <figure class="who-view" id="ms-who-view" aria-hidden="true"><canvas></canvas><figcaption></figcaption></figure>
+      <span class="who-label">Wearing</span>
+      <div class="ms-chips who-skins" id="ms-who-skins" role="radiogroup" aria-label="Skin"></div>
+      <small id="ms-who-hint"></small>
+    </div>
     <div class="ms-tools"><button type="button" id="ms-zin" aria-label="Zoom in" tabindex="-1">+</button><button type="button" id="ms-zout" aria-label="Zoom out" tabindex="-1">&minus;</button><button type="button" id="ms-home" aria-label="Back to the selected map" tabindex="-1">&#8982;</button></div>
     <div class="ms-coord" id="ms-coord"></div>
     <div class="ms-hint">Drag to move · scroll or pinch to zoom</div>
@@ -1645,8 +1664,11 @@
       </div>
       <span class="eyebrow">You're playing</span>
       <div class="cs-list on-chars" id="on-chars" role="listbox" aria-label="Characters"></div>
-      <div id="on-skinrow"><span class="eyebrow">In your skin</span>
-        <div class="cs-list on-chars on-skins" id="on-skins" role="listbox" aria-label="Skin"></div></div>
+      <div class="who-panel on-who">
+        <figure class="who-view" id="on-who-view" aria-hidden="true"><canvas></canvas><figcaption></figcaption></figure>
+        <div id="on-skinrow"><span class="who-label">In your skin</span>
+          <div class="cs-list on-chars on-skins who-skins" id="on-skins" role="listbox" aria-label="Skin"></div></div>
+      </div>
       <nav class="menu">
         <button id="btn-on-go" type="button">Start the game</button>
         <button id="btn-on-leave" type="button">Leave</button>
