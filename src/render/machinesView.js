@@ -428,7 +428,7 @@ export class MachinesView {
       const rise = W.hidden ? (sim.quest ? sim.quest.madDogRise : 1) : 1;
       md.g.visible = rise > 0;
       md.g.position.y = W.y - (1 - rise) * 2.95 + (rise > 0 && rise < 1 ? Math.sin(t * 40) * 0.01 : 0);
-      const powered = sim.power && rise >= 1;
+      const powered = sim.powerAt(W) && rise >= 1;   // (Call of the Crust: the Anvil's power)
       const state = sim.madDog ? sim.madDog.state : 'idle';
       const working = state === 'working';
       const eyeGlow = powered ? (working ? 3 + Math.sin(t * 20) * 1.5 : 2.2 + Math.sin(t * 2) * 0.4) : 0.12;
