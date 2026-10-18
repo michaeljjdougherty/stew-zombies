@@ -34,6 +34,7 @@ const one = GUN_SKINS.filter((s) => s.only);
 check(one.length >= 5 && one.every((s) => W[s.only] && !W[s.only].upgraded), `${one.length} are made for one gun, each a real one`);
 check(gunSkinFits('gold', 'M1912') && gunSkinFits('pinkEagle', 'Desert Eagle') && !gunSkinFits('pinkEagle', 'M1912'), 'one made for a gun fits only that gun; the rest fit any');
 check(W[SHOWCASE_GUN] && W[SHOWCASE_GUN].view.model === 'scarh', 'the store shows them on the SCAR-H');
+check(GUN_SKINS.filter((s) => s.only).every((s) => W[s.only] && W[s.only].view && W[s.only].view.model), 'a skin made for one gun has that gun to be shown on');
 
 // --- the Arsenal's guns ---
 const A = arsenalGuns(), ids = A.map((g) => g.id);

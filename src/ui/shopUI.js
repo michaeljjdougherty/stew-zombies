@@ -10,7 +10,7 @@
 // the wheel. The Bucks, skins and emotes are your career's (src/career/career.js).
 // Battle Pass (src/career/battlepass.js): its 20 tiers in order, how far you've
 // got, and what each one gives; its skins and emotes fit every character.
-// Guns (src/career/gunSkins.js): gun skins, every one shown on the SCAR-H; once
+// Guns (src/career/gunSkins.js): gun skins, shown on the SCAR-H (one made for a gun: on that gun); once
 // you own one, you put it on a gun in the Arsenal (src/ui/arsenal.js).
 // =============================================================================
 import { CONFIG } from '../config.js';
@@ -25,7 +25,8 @@ const BK = 'bucks:';   // (a Battle Pass tier of Stew Bucks, by its tier)
 const bucksOf = (sel) => (typeof sel === 'string' && sel.startsWith(BK) ? passTiers().find((t) => t.tier === Number(sel.slice(BK.length))) : null);
 const GN = 'gun:';   // (gun skins' ids in the grid)
 const gunOf = (sel) => (typeof sel === 'string' && sel.startsWith(GN) ? GUN_SKIN_BY_ID[sel.slice(GN.length)] : null);
-const showcaseModel = () => CONFIG.weapons[SHOWCASE_GUN].view.model;
+// the gun a skin's shown on: the one it's made for, or the SCAR-H
+const showcaseModel = (g) => CONFIG.weapons[(g && g.only && CONFIG.weapons[g.only] && g.only) || SHOWCASE_GUN].view.model;
 const passIdOf = (t) => (t.kind === 'emote' ? EM + t.id : t.kind === 'bucks' ? BK + t.tier : t.kind === 'gunSkin' ? GN + t.id : t.id);
 
 const $ = (id) => document.getElementById(id);
@@ -173,7 +174,7 @@ export class ShopUI {
   gunInfo(g) {
     const C = this.career, S = CONFIG.shop;
     this.detail(g);
-    let blurb = g.blurb + (g.only ? ` Made for the ${g.only} only (shown on the ${SHOWCASE_GUN}).` : ' Fits every gun.');
+    let blurb = g.blurb + (g.only ? ` Made for the ${g.only} only.` : ' Fits every gun.');
     if (C.ownsGunSkin(g.id)) this.button('Equip in the Arsenal', true);
     else if (g.unlock) { this.button(`Battle Pass tier ${g.unlock.tier}`, false); blurb += ` ${this.passHint(g.unlock.tier, 'use it on any gun').replace('Every character can', 'You can')}`; }
     else if (!C.signedIn) this.button('Sign in to buy', false);
@@ -184,7 +185,7 @@ export class ShopUI {
     }
     $('sh-blurb').textContent = blurb;
     this.earn();
-    if (this.h.previewGun) this.h.previewGun(showcaseModel(), g.id);
+    if (this.h.previewGun) this.h.previewGun(showcaseModel(g), g.id);
   }
 
   skinTile(s, worn) {
@@ -213,7 +214,7 @@ export class ShopUI {
     const e = emoteOf(id), pic = b.querySelector('.st-art');
     if (!art) { pic.classList.add('ready', 'st-bucks'); pic.innerHTML = '<i class="sh-coin" aria-hidden="true">$</i>'; return; }
     const gs = gunOf(id);
-    const spec = gs ? { gun: showcaseModel(), gunSkin: gs.id, color: R.color } : e ? { char: this.char, skin: this.career.wornSkin(this.char), act: e.act, color: R.color } : { char: this.char, skin: id || null, color: R.color };
+    const spec = gs ? { gun: showcaseModel(gs), gunSkin: gs.id, color: R.color } : e ? { char: this.char, skin: this.career.wornSkin(this.char), act: e.act, color: R.color } : { char: this.char, skin: id || null, color: R.color };
     if (this.h.thumb) this.h.thumb(spec, (url) => { pic.style.backgroundImage = `url(${url})`; pic.classList.add('ready'); });
   }
 
