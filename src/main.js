@@ -1080,6 +1080,7 @@ const loadout = new LoadoutPicker({
 // (the Stew Store blade: your Bucks, and Featured today)
 const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
 function refreshStoreBlade() { storeBlade.refresh(); }
+career.onBeta = (skin) => achToast.push({ head: 'You\'re a Beta Tester!', badge: 'Exclusive skin', title: skin.name });
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 // a Battle Pass tier: what it gave you
 career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : t.kind === 'gunSkin' ? 'New gun skin' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });

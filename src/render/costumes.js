@@ -213,6 +213,15 @@ const PIECES = {
     }
     add(H, new THREE.BoxGeometry(0.02, 0.004, 0.004), frame, 0, 0.022, 0.12);
   },
+  // a glowing HUD visor wrapped round the eyes (the Beta Tester)
+  hud(k, o) {
+    const H = k.face.group, col = o.color || '#2af0ff';
+    const glass = mat(col, 0.15, 0.2, { emissive: col, emissiveIntensity: 1.3, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+    const band = add(H, new THREE.CylinderGeometry(0.121, 0.121, 0.032, 32, 1, true, -1.05, 2.1), glass, 0, 0.014, -0.004);
+    band.castShadow = false;
+    const rim = mat('#0b0b10', 0.4, 0.6);
+    for (const y of [0.031, -0.003]) add(H, new THREE.CylinderGeometry(0.123, 0.123, 0.004, 32, 1, true, -1.08, 2.16), rim, 0, y, -0.004).material.side = THREE.DoubleSide;
+  },
   beanie(k, o) {
     const H = k.face.group;
     const t = canvasTex(64, 64, (g, w, h) => {

@@ -56,6 +56,7 @@ export class Career {
     this.playingAs = null;      // the character you're playing as (main.js sets it each game), for per-character kills
     this.onSkinUnlock = null;   // (skin, charId) => a skin kills unlocked
     this.onBucks = null;        // (n, why) => Stew Bucks came in ('achievement' or 'backpay'; play's are quiet)
+    this.onBeta = null;         // (skin) => the Beta Tester skin was just given
     this.onPassTier = null;     // (tier) => a Battle Pass tier reached (an entry of passTiers())
     this.flushing = false;
   }
@@ -170,7 +171,7 @@ export class Career {
     this.db.last = name;
     this.saveLocal();
     this.changed();
-    if (offline) { this.status = 'offline'; this.stockAllAccess(); this.payAchievements(); this.changed(); return { ok: true, offline: true }; }
+    if (offline) { this.status = 'offline'; this.stockAllAccess(); this.giveBeta(); this.payAchievements(); this.changed(); return { ok: true, offline: true }; }
     if (this.url) {
       try {
         const cloud = await this.request('GET', key);
@@ -218,6 +219,7 @@ export class Career {
         this.status = 'online';
         this.giveStarter();
         this.giveGift();
+        this.giveBeta();
         this.payAchievements();
         this.saveLocal();
         this.changed();
@@ -226,7 +228,7 @@ export class Career {
         this.status = 'offline';
         this.changed();
       }
-    } else { this.giveStarter(); this.giveGift(); this.payAchievements(); }
+    } else { this.giveStarter(); this.giveGift(); this.giveBeta(); this.payAchievements(); }
     return { ok: true };
   }
 
@@ -459,7 +461,20 @@ export class Career {
     if (s.unlock.kind === 'free') return true;
     if (s.unlock.kind === 'kills') return SHOP().opalAccounts.includes(this.key) || (!!charId && this.charKills(charId) >= s.unlock.need);
     if (s.unlock.kind === 'pass') return this.passTier >= s.unlock.tier;
+    if (s.unlock.kind === 'beta') return !!this.profile.shop.owned[id];
     return false;
+  }
+  // The Beta Tester skin (CONFIG.shop.beta), once, to anyone who signs in
+  // before it ends. Returns the skin given, or null.
+  giveBeta(now = Date.now()) {
+    const b = SHOP().beta, s = b && SKIN_BY_ID[b.skin];
+    if (!this.profile || !s || now > Date.parse(b.until) || this.profile.shop.owned[s.id]) return null;
+    this.profile.shop.owned[s.id] = true;
+    const ps = this.shopPending();
+    ps.owned = { ...(ps.owned || {}), [s.id]: true };
+    this.saveLocal(); this.changed();
+    if (this.onBeta) try { this.onBeta(s); } catch (e) { console.warn('career', e); }
+    return s;
   }
   // Kills while playing as a character (counted from when the shop arrived)
   charKills(charId) { return (this.profile && this.profile.shop.kills[charId]) || 0; }
