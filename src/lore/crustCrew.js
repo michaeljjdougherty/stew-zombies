@@ -4,8 +4,9 @@
 // Kearns, Ryan, Rocco and Brian came through the portal after Erik. Whoever
 // you play talks out loud; the others are out on the islands on Pit's
 // walkie-talkies. Pit's at his forge (his forge and power lines: PIT_FORGE and
-// PIT_POWER in crew.js). Chops, Regs and P hang in the Schnitz's cage out over
-// the void and shout down when you're near. The Schnitz has the speakers here
+// PIT_POWER in crew.js). Chops, Regs, P, James and Kyle hang in the Schnitz's
+// cage over the Anvil and shout down at you: now and then, when something
+// happens (CAGE_CALLS), and when you shoot the cage (CAGE_SHOT). The Schnitz has the speakers here
 // (where Erik had the PA at the school), and it wants one of you over the edge.
 //
 // Read by src/sim/crew.js (the crew) and src/sim/pa.js (the Schnitz).
@@ -16,9 +17,10 @@
 export const CRUST_CREW = ['kearns', 'ryan', 'rocco', 'brian'];
 // Who else can talk out here: Pit at his forge, the boys in the cage, Zach
 // (once he's back) and the Schnitz
-export const CRUST_VOICES = ['pit', 'chops', 'regs', 'p', 'zach', 'schnitz'];
-// Shouting down from the cage (heard out loud, not on a walkie)
-export const CAGED = ['chops', 'regs', 'p'];
+export const CRUST_VOICES = ['pit', 'chops', 'regs', 'p', 'james', 'kyle', 'zach', 'schnitz'];
+// Shouting down from the cage (heard out loud, not on a walkie). James and Kyle
+// can be played here too: whoever's being played isn't in the cage, so stays quiet.
+export const CAGED = ['chops', 'regs', 'p', 'james', 'kyle'];
 
 // ---------------------------------------------------------------------------
 // The Schnitz on the speakers: the same moments Erik had, in its own words.
@@ -97,7 +99,7 @@ export const SCHNITZ_PA = {
     caves: ["Cold enough? It gets colder.", "The Golem's listening."],
   },
   idle: [
-    "Do you hear that? Three boys swinging in the wind. Lovely sound.",
+    "Do you hear that? Five boys swinging in the wind. Lovely sound.",
     "Erik was a disappointment. You won't be. You'll be dinner.",
     "I took your Zach. I'll take the rest one by one.",
     "Every island here used to be somebody's home. Now they're mine.",
@@ -351,7 +353,9 @@ export const CRUST_TALKS = {
     { who: 'brian', text: "Brian. I can see the cage from here. They're okay. For now." },
     { who: 'chops', text: "WE CAN HEAR YOU! HELLO! WE'RE UP HERE!" },
     { who: 'regs', text: "Can somebody please get us down? I'm not a heights guy!" },
-    { who: 'p', text: "...Sup." },
+    { who: 'p', text: "Can somebody bring snacks? Any snacks? I'd eat a space rock if it had seasoning." },
+    { who: 'james', text: "No rush, boys. I'm comfortable. Been dancing to keep warm." },
+    { who: 'kyle', text: "He's been twerking. For hours. In a crate. I'm judging every second of it." },
     { who: 'ryan', text: "Hang tight, boys. We're coming." },
     { who: 'schnitz', text: "Take your time. They're not going anywhere." },
   ],
@@ -442,7 +446,7 @@ export const CRUST_TALKS = {
   ],
   down_caves: [
     { who: 'kearns', text: "We beat the ice. I'm still cold. But we beat it." },
-    { who: 'p', text: "...Nice." },
+    { who: 'p', text: "Nice! Somebody DoorDash me a celebration burrito! Do they deliver to cages?" },
   ],
   down_trench: [
     { who: 'brian', text: "Fiend's down." },
@@ -509,7 +513,7 @@ export const CRUST_BANTER = [
   [
     { who: 'regs', text: "Guys? Is it normal for the cage to creak like that?" },
     { who: 'chops', text: "It's fine, Regs. It's totally fine." },
-    { who: 'p', text: "...It's not fine." },
+    { who: 'p', text: "It's not fine. I think it's me. I had four sandwiches before the portal." },
     { who: 'regs', text: "P!" },
   ],
   [
@@ -527,7 +531,7 @@ export const CRUST_BANTER = [
     { who: 'chops', text: "There's no 2K in space, Rocco!" },
     { who: 'rocco', text: "There should be." },
     { who: 'regs', text: "I'd play." },
-    { who: 'p', text: "...No." },
+    { who: 'p', text: "Only if there's snacks." },
   ],
   [
     { who: 'pit', text: "I made a sword yesterday, man. Then I made it a hammer. Then I made it a sword again." },
@@ -538,7 +542,7 @@ export const CRUST_BANTER = [
     { who: 'chops', text: "When we get down, first thing, we're getting the best table on the patio." },
     { who: 'regs', text: "And mozzarella sticks!" },
     { who: 'chops', text: "And mozzarella sticks." },
-    { who: 'p', text: "...I'm in." },
+    { who: 'p', text: "And a large fries. Two large fries. And a shake. Actually, just bring me the whole menu." },
   ],
   [
     { who: 'kearns', text: "Does anybody else think Zach's gonna be really chill about all this?" },
@@ -568,9 +572,26 @@ export const CRUST_BANTER = [
     { who: 'schnitz', text: "When it's time, I'm choosing you." },
   ],
   [
-    { who: 'p', text: "...Hey." },
-    { who: 'chops', text: "P talked! Everybody, P talked!" },
-    { who: 'p', text: "...Never mind." },
+    { who: 'p', text: "If I had one bar of signal. One bar. I'd DoorDash a whole pizza to this cage." },
+    { who: 'chops', text: "P, they don't deliver to space." },
+    { who: 'p', text: "Then what's even the point of space?" },
+  ],
+  [
+    { who: 'james', text: "Chops. Watch this." },
+    { who: 'chops', text: "James, there is NO room to twerk in here!" },
+    { who: 'james', text: "There's always room." },
+    { who: 'kyle', text: "I've seen enough. Guilty." },
+  ],
+  [
+    { who: 'kyle', text: "Something in this cage smells." },
+    { who: 'regs', text: "Kyle, buddy... it's you." },
+    { who: 'kyle', text: "I know. I'm still judging whoever it is." },
+  ],
+  [
+    { who: 'rocco', text: "Hey P, what's the first thing you're doing when you get down?" },
+    { who: 'p', text: "Eating." },
+    { who: 'rocco', text: "And the second thing?" },
+    { who: 'p', text: "Eating something else." },
   ],
   [
     { who: 'ryan', text: "Brian. Real talk. How'd you get through that portal?" },
@@ -634,15 +655,112 @@ export const CRUST_ISLAND_BANTER = {
 export const CAGE_TALK = [
   [{ who: 'chops', text: "Hey! HEY! Down here! Up here! Wherever you are!" }],
   [{ who: 'regs', text: "Hi guys! Don't look down. I looked down. Big mistake." }],
-  [{ who: 'p', text: "...Sup." }],
+  [{ who: 'p', text: "Hey! If anybody finds a vending machine down there, I'll pay you back! Probably!" }],
+  [{ who: 'p', text: "I've been refreshing DoorDash for three hours. It just says 'no drivers in your galaxy.'" }],
+  [{ who: 'p', text: "Pit! Can you forge me a sandwich? A big one?" }, { who: 'pit', text: "I can't forge a sandwich, man. ...I could try." }],
+  [{ who: 'p', text: "I'm so hungry I can hear my stomach over the zombies." }, { who: 'kyle', text: "We can all hear it, P." }],
+  [{ who: 'james', text: "Don't mind me. Just up here being the best-looking guy in the cage." }, { who: 'kyle', text: "Debatable." }],
+  [{ who: 'james', text: "You can't see it from down there, but I'm twerking right now. Trust me." }],
+  [{ who: 'james', text: "Five guys, one cage, and I'm still the calmest one in it." }],
+  [{ who: 'kyle', text: "I've been watching you guys play. I've seen better. I've seen a lot better." }],
+  [{ who: 'kyle', text: "Whoever keeps missing: I'm writing it down." }],
+  [{ who: 'regs', text: "Kyle, have you showered since the school?" }, { who: 'kyle', text: "...Define showered." }],
+  [{ who: 'chops', text: "Hey Pit! Nice apron! Did you make it out of a horse?" }, { who: 'pit', text: "It's leather, man. Leave me alone." }],
+  [{ who: 'james', text: "Yo Pit, you whinnied in your sleep last night. We all heard it." }, { who: 'pit', text: "I don't do that." }, { who: 'kyle', text: "You did that." }],
+  [{ who: 'p', text: "Pit, is that forge hot enough for a grilled cheese? Asking for me." }],
   [{ who: 'chops', text: "Is that Rocco? Hi, Rocco!" }, { who: 'regs', text: "Hi, Rocco!" }],
   [{ who: 'regs', text: "Is anyone getting us down? No rush! Kind of a rush." }],
   [{ who: 'chops', text: "Somebody tell the Schnitz this cage is NOT up to code." }],
-  [{ who: 'chops', text: "P keeps getting his forehead stuck in the bars." }, { who: 'p', text: "...Once." }],
+  [{ who: 'chops', text: "P keeps trying to eat the bars." }, { who: 'p', text: "They're iron. Iron's a nutrient." }],
   [{ who: 'regs', text: "I made friends with a space bird. It left." }],
   [{ who: 'chops', text: "We can see everything from up here! A giant ship! A fire island! It's kind of beautiful!" }, { who: 'regs', text: "It's terrifying!" }],
   [{ who: 'chops', text: "Bring the hammers! Smash something! Smash the Schnitz!" }],
 ];
+
+// The boys in the cage calling out what's happening below (src/sim/crew.js
+// cageCall), one at a time, when you're on the Anvil. {name}: who it's about;
+// {round}: the round. A line from someone being played is skipped.
+export const CAGE_CALLS = {
+  round: [
+    { who: 'chops', text: "Here they come! Round {round}! Let's GO!" },
+    { who: 'regs', text: "Round {round}! You've got this, guys! Probably!" },
+    { who: 'james', text: "Round {round}. Stay calm. Be like me." },
+    { who: 'kyle', text: "Round {round}. I'm grading this one." },
+    { who: 'p', text: "Another round? Of what? Food? No? Then I'm not interested." },
+  ],
+  power: [
+    { who: 'chops', text: "LIGHTS! Somebody got the lights on! I can see you guys!" },
+    { who: 'p', text: "Power's on! Does that mean the microwave works? Is there a microwave?" },
+    { who: 'kyle', text: "Power's on. Took you long enough." },
+  ],
+  part: [
+    { who: 'regs', text: "{name} found a piece of the hammer! So proud of you, buddy!" },
+    { who: 'james', text: "Smooth pickup, {name}. Not as smooth as me, but smooth." },
+    { who: 'p', text: "{name} found something! Is it food? ...It's a hammer. Never mind." },
+  ],
+  titan: [
+    { who: 'chops', text: "Something BIG just woke up! I can see it from here!" },
+    { who: 'regs', text: "Oh no. Oh no no no. That's huge. Be careful, guys!" },
+    { who: 'kyle', text: "That's a titan. You're gonna lose. I'm just saying what we're all thinking." },
+    { who: 'p', text: "If you kill that thing, can we eat it? Asking for me." },
+  ],
+  down: [
+    { who: 'regs', text: "{name}'s down! Somebody help {name}!" },
+    { who: 'chops', text: "{name}! Get UP, man! GET UP!" },
+    { who: 'kyle', text: "{name} went down. Noted." },
+    { who: 'p', text: "{name}'s down! Does he have any snacks on him? Just checking." },
+    { who: 'james', text: "Get back up, {name}. Lying down's not a good look." },
+  ],
+  revived: [
+    { who: 'regs', text: "{name}'s back up! YAY!" },
+    { who: 'james', text: "There he is. Shake it off, {name}." },
+  ],
+  ammo: [
+    { who: 'chops', text: "{name}'s out of ammo! RELOAD! RELOAD!" },
+    { who: 'kyle', text: "I can hear you clicking from up here, {name}." },
+    { who: 'james', text: "Easy, {name}. Reload. Smooth, like me." },
+    { who: 'p', text: "{name}, you're out! Like me with snacks!" },
+  ],
+  hammer: [
+    { who: 'chops', text: "{name} has a WAR HAMMER! Smash 'em!" },
+    { who: 'james', text: "Big hammer, {name}. Respect." },
+    { who: 'p', text: "{name}, if that hammer can open a vending machine, you know where I am." },
+  ],
+  // (someone just shot Pit)
+  pit: [
+    { who: 'james', text: "HA! Shoot him again!" },
+    { who: 'kyle', text: "Shooting Pit. Honestly? I support it." },
+    { who: 'p', text: "Don't shoot Pit! He's the only one down there who can cook!" },
+    { who: 'chops', text: "Leave Pit alone! He's doing his best!" },
+  ],
+};
+
+// Shooting the cage (src/sim/cageShot.js): whoever's in there that you hit
+// says so. first: the first shot or two; again: you kept going; lots: you
+// really kept going. One each per tier, taking turns.
+export const CAGE_SHOT = {
+  first: {
+    chops: "WHOA! HEY! We're IN here!",
+    regs: "Ow! That pinged right off the bars! Not cool, guys!",
+    p: "Hey! You almost hit my snack! ...I don't have a snack. But if I did.",
+    james: "Easy. You'll mess up the hair.",
+    kyle: "You shot at the cage. I'm judging that. Harshly.",
+  },
+  again: {
+    chops: "Stop shooting the cage! The zombies are DOWN THERE!",
+    regs: "Please stop! I'm already scared of heights!",
+    p: "If you hit the chain, I'm landing on you. I'm heavy. You've been warned.",
+    james: "Still dancing. You can't stop this.",
+    kyle: "That's two. I'm keeping count.",
+  },
+  lots: {
+    chops: "Okay, WHO is it? Who keeps shooting us?",
+    regs: "I thought we were friends!",
+    p: "I'm gonna DoorDash a bullet to YOUR house.",
+    james: "You're just mad you can't move like me.",
+    kyle: "Guilty. All of you. Every single one of you is guilty.",
+  },
+};
 
 // Big Evil Zach (the Schnitz wearing him), now and then through the fight
 export const ZACH_TAUNTS = [

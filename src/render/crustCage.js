@@ -1,7 +1,7 @@
 // =============================================================================
 // The Schnitz's cage (Call of the Crust): an iron-barred crate hanging by a
-// chain out over the void past the Anvil's north rim, Chops, Regs and P
-// inside. The chain runs up into a slow green whirl in the sky (where the
+// chain over the Anvil's north-west terrace, Chops, Regs, P, James and Kyle inside
+// (CAGED in src/lore/crustCrew.js). The chain runs up into a slow green whirl in the sky (where the
 // Schnitz watches from). One of you has to go over the edge to get them out.
 // The forge view hangs it in the world; the cutscenes move it (lower it, swing
 // the door open, empty it).
@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import * as T from './textures.js';
 import { buildCharacter, rigidSkin, idleCharacter } from './characters.js';
 import { CONFIG } from '../config.js';
+import { CAGED } from '../lore/crustCrew.js';
 
 const C = () => CONFIG.crust.cage;
 
@@ -32,7 +33,7 @@ let whirlTex = null;
 
 export class CrustCage {
   // at: where the chain's top is ({x, y, z}); len: chain length down to the cage's roof
-  constructor(parent, at, { len = C().chain, map = null, occupants = ['chops', 'regs', 'p'] } = {}) {
+  constructor(parent, at, { len = C().chain, map = null, occupants = CAGED } = {}) {
     this.parent = parent;
     this.map = map;
     this.pivot = new THREE.Group();
@@ -84,7 +85,7 @@ export class CrustCage {
       const k = rigidSkin(buildCharacter(id, { detail: L.detail }));   // (one draw per material)
       k.root.scale.multiplyScalar(L.boyScale);
       k.root.position.set((i - (occupants.length - 1) / 2) * (W / occupants.length) * 0.9, 0.12, -0.15 + (i % 2) * 0.3);
-      k.root.rotation.y = (i - 1) * 0.25;
+      k.root.rotation.y = (i - (occupants.length - 1) / 2) * 0.18;
       this.cage.add(k.root);
       return { id, k };
     });

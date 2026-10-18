@@ -59,7 +59,8 @@ export const CREW = {
     voice: { f0: 120, grit: 0.2, rate: 1.05 },
     bio: 'Cheerful and friendly. The Schnitz had him for a while. Still genuinely happy to be there.',
   },
-  // (in the Schnitz's cage on Call of the Crust: they shout down, they don't play)
+  // (in the Schnitz's cage on Call of the Crust: they shout down, they don't play.
+  // James and Kyle are in there too)
   chops: {
     name: 'Chops',
     nick: ['Chops'],
@@ -76,7 +77,7 @@ export const CREW = {
     name: 'P',
     nick: ['P'],
     voice: { f0: 110, grit: 0.35, rate: 0.82 },
-    bio: 'Too cool for school. His forehead enters the room before he does.',
+    bio: 'A big slob who only talks about food. Wishes he could DoorDash a meal anywhere. Even here.',
   },
 };
 

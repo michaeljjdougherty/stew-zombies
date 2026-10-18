@@ -7,8 +7,8 @@
 //   arrive    a portal tears open over the Anvil's dais; Stew drop out of it
 //   getup     they pick themselves up: space, again
 //   pit       Pit's at a forge. Pit's a blacksmith now
-//   cage      out past the north rim, hanging over nothing: Chops, Regs and P
-//             in a cage on a chain
+//   cage      up over the Anvil, hanging on a chain: Chops, Regs, P, James and
+//             Kyle in a cage
 //   schnitz   up the chain to a green whirl, and the Schnitz's eyes open round
 //             it: Zach is its, the boys are its, and the cage opens for one
 //             price. Somebody goes over the edge
@@ -194,10 +194,10 @@ export const INTRO_SHOTS = {
       if (!C) return;
       const f = C.floorPos(V(0, 0, 0));
       Tr.far = 420;
-      Tr.light(1.2, '#d8ffe0', [2, 20, -24]);   // (from behind the camera, onto the cage's front)
-      // from the north launch deck, a long lens out over the void
-      const cz = lerp(-31.5, -33.5, k);
-      Tr.look(lerp(1.4, 0.4, k), camAt(Tr, 0.6, cz, 1.6), cz, f.x, f.y + 1.2, f.z, lerp(20, 15, k));
+      Tr.light(1.2, '#d8ffe0', [2, f.y + 4, f.z + 10]);   // (from our side, onto the cage's front)
+      // from the dais, a long lens up at it hanging over the Anvil
+      const cx = lerp(-2.2, -3.0, k), cz = lerp(6.0, 5.2, k);
+      Tr.look(cx, camAt(Tr, cx, cz, 1.6), cz, f.x, f.y + 1.2, f.z, lerp(17, 13, k));
     },
   },
 
@@ -218,7 +218,7 @@ export const INTRO_SHOTS = {
       for (const s of Tr.eyesG.userData.eyes) s.material.opacity = e;
       Tr.light(0.6, '#a0ffb0', [P.cage.x, P.cage.y - 6, P.cage.z + 12]);
       Tr.shake = Math.max(Tr.shake, 0.15);
-      Tr.look(0.4, camAt(Tr, 0.4, -33.5, 1.6), -33.5, look.x, look.y, look.z, lerp(26, 34, k));
+      Tr.look(-3, camAt(Tr, -3, 5.2, 1.6), 5.2, look.x, look.y, look.z, lerp(26, 34, k));
     },
   },
 
@@ -396,7 +396,8 @@ export const ENDING_SHOTS = {
       // the cage comes down out of the dark and sets down on the ledge
       const L = Tr.cfg.crust.cage, H = L.size[1];
       const down = sm(0.08, 0.55, k);
-      const top = V(P.cage.x, P.cage.y, P.cage.z), set = V(P.ledge.x, P.ledge.y + C.len + H + 0.3, P.ledge.z);
+      // (from out over the void, past the ledge: it's swung out there for the ending)
+      const top = V(P.ledge.x, 30, P.ledge.z - 12.5), set = V(P.ledge.x, P.ledge.y + C.len + H + 0.3, P.ledge.z);
       C.pivot.position.copy(lerpV(top, set, down));
       C.sway = 1 - down;
       C.doorOpen = sm(0.62, 0.72, k);
@@ -410,13 +411,13 @@ export const ENDING_SHOTS = {
       // the boys walk out
       const free = k > 0.7;
       for (const b of C.boys) b.k.root.visible = !free;
-      const boys = { chops: [-0.7, -1.8], regs: [0.1, -0.2], p: [0.9, 1.6] };
-      for (const [id, [x0, xe]] of Object.entries(boys)) {
-        if (!free) { Tr.hide(id); continue; }
-        const f = sm(0.7 + (id === 'regs' ? 0.04 : id === 'p' ? 0.08 : 0), 0.95, k);
+      const boys = { chops: [-1.4, -3.0], regs: [-0.7, -1.4], p: [0, 0.2], james: [0.7, 1.8], kyle: [1.4, 3.4] };
+      Object.entries(boys).forEach(([id, [x0, xe]], i) => {
+        if (!free) { Tr.hide(id); return; }
+        const f = sm(0.7 + i * 0.03, 0.95, k);
         walk(Tr, id, [x0, P.ledge.z], [xe, -40.6], f, { gesture: 'cheer' });
         if (f >= 1) Tr.face(id, 0, -38);
-      }
+      });
       Tr.light(0.9, '#c8ffd8', [6, 7, -38]);
       Tr.look(lerp(7.6, 6.6, k), camAt(Tr, 7.6, -37.6, 1.6), -37.6, 0, lerp(8, 1.6, down), lerp(-48, -42, down), 50);
     },
@@ -436,10 +437,10 @@ export const ENDING_SHOTS = {
       if (open > 0.5 && !Tr.flashed) { Tr.flashed = true; Tr.fx.energyBurst(Tr.portal.position.clone(), '#7dffa0', 3); if (Tr.onCue) Tr.onCue('portal'); }
       if (k < 0.02) Tr.flashed = false;
       // in they go, one by one
-      const order = ['brian', 'ryan', 'chops', 'regs', 'p', 'zach', 'pit', 'kearns'];
-      const from = { pit: [ROW.pit * 1.25, -39.2], kearns: [ROW.kearns * 1.25, -39.2], ryan: [ROW.ryan * 1.25, -39.2], brian: [ROW.brian * 1.25, -39.2], zach: [ROW.zach * 1.25, -39.2], chops: [-1.8, -40.6], regs: [-0.2, -40.6], p: [1.6, -40.6] };
+      const order = ['brian', 'ryan', 'chops', 'regs', 'p', 'james', 'kyle', 'zach', 'pit', 'kearns'];
+      const from = { pit: [ROW.pit * 1.25, -39.2], kearns: [ROW.kearns * 1.25, -39.2], ryan: [ROW.ryan * 1.25, -39.2], brian: [ROW.brian * 1.25, -39.2], zach: [ROW.zach * 1.25, -39.2], chops: [-3.0, -40.6], regs: [-1.4, -40.6], p: [0.2, -40.6], james: [1.8, -40.6], kyle: [3.4, -40.6] };
       order.forEach((id, i) => {
-        const t0 = 0.12 + i * 0.07, f = sm(t0, t0 + 0.16, k);
+        const t0 = 0.12 + i * 0.058, f = sm(t0, t0 + 0.16, k);
         if (f >= 1) { Tr.hide(id); return; }
         const [x, z] = from[id];
         walk(Tr, id, [x, z], [-6.0, -40.8], f, { gesture: id === 'kearns' && f > 0.4 ? 'point' : null });

@@ -1584,11 +1584,13 @@ export const CONFIG = {
         { at: 18.4, who: 'kearns', text: 'Pit?! How are you even here?', dur: 2 },
         { at: 20.8, who: 'pit', text: 'Got here first, man. This rock\'s the Anvil. Been here a while.', dur: 3 },
         { at: 23.9, who: 'pit', text: 'I\'m a blacksmith now.', dur: 1.4 },
-        { at: 25.6, who: 'chops', text: 'GUYS! UP HERE!', dur: 1.6 },
-        { at: 27.6, who: 'regs', text: 'Get us down, man! It\'s really high!', dur: 2.2 },
-        { at: 30.4, who: 'p', text: '...Sup.', dur: 1.2 },
+        { at: 25.3, who: 'chops', text: 'GUYS! UP HERE!', dur: 1.4 },
+        { at: 26.8, who: 'regs', text: 'Get us down, man! It\'s really high!', dur: 1.9 },
+        { at: 28.8, who: 'p', text: 'And bring food! Any food!', dur: 1.4 },
+        { at: 30.3, who: 'james', text: 'No rush. I\'m chillin\'.', dur: 1.3 },
+        { at: 31.7, who: 'kyle', text: 'Rush. It smells in here.', dur: 1.4 },
         { at: 33.6, who: 'schnitz', text: 'You beat my Erik. Now you\'re in my house. Five islands. All mine.', dur: 3.3 },
-        { at: 37, who: 'schnitz', text: 'Your Zach is mine. And these three... are mine.', dur: 3.2 },
+        { at: 37, who: 'schnitz', text: 'Your Zach is mine. And these five... are mine.', dur: 3.2 },
         { at: 40.6, who: 'schnitz', text: 'The cage opens for one price. One of you goes over the edge. For all of them.', dur: 3.4 },
         { at: 45, who: 'schnitz', text: 'Come and take him back.', dur: 2 },
         { at: 48.9, who: 'pit', text: 'North\'s the Ship Graveyard. Wrecks, a lighthouse... and the Captain, asleep past the cliffs.', dur: 3.9 },
@@ -1632,16 +1634,18 @@ export const CONFIG = {
         { at: 33.8, who: 'zach', text: 'I just got here and this is already the best day ever!', dur: 2.2 },
         { at: 36.2, who: 'schnitz', text: '...Ha. Good shit.', dur: 1.6 },
         { at: 38, who: 'schnitz', text: 'A deal\'s a deal, boys. Come and get \'em.', dur: 2.1 },
-        { at: 40.4, who: 'regs', text: 'We\'re coming down! WOOOO!', dur: 1.8 },
-        { at: 42.5, who: 'p', text: '...Sick.', dur: 1 },
-        { at: 44.2, who: 'chops', text: 'Was that Rocco?', dur: 1.5 },
-        { at: 45.8, who: 'kearns', text: 'Was who?', dur: 1 },
-        { at: 47.2, who: 'zach', text: 'I\'m so happy to be here. Where\'s here?', dur: 2.2 },
-        { at: 49.8, who: 'pit', text: 'Bye, Anvil. Bye, forge. I\'m gonna miss you, man.', dur: 2.6 },
-        { at: 52.8, who: 'ryan', text: 'Maisy... daddy\'s coming home. Probably.', dur: 2.3 },
+        { at: 40.3, who: 'regs', text: 'We\'re coming down! WOOOO!', dur: 1.6 },
+        { at: 42, who: 'james', text: 'Told you I\'d get out of here looking good.', dur: 1.6 },
+        { at: 43.7, who: 'p', text: 'First stop, food. Second stop, more food.', dur: 1.6 },
+        { at: 45.4, who: 'kyle', text: 'Kearns. That push? Ten out of ten. No notes.', dur: 1.7 },
+        { at: 47.2, who: 'chops', text: 'Was that Rocco?', dur: 1.3 },
+        { at: 48.6, who: 'kearns', text: 'Was who?', dur: 0.9 },
+        { at: 49.6, who: 'zach', text: 'I\'m so happy to be here. Where\'s here?', dur: 2.1 },
+        { at: 51.8, who: 'pit', text: 'Bye, forge. I\'m gonna miss you, man.', dur: 1.9 },
+        { at: 53.8, who: 'ryan', text: 'Maisy... daddy\'s coming home. Probably.', dur: 1.9 },
       ],
-      loadout: { kearns: null, ryan: null, rocco: null, brian: null, zach: null, pit: null, chops: null, regs: null, p: null },
-      crew: ['kearns', 'ryan', 'rocco', 'brian', 'zach', 'pit', 'chops', 'regs', 'p'],
+      loadout: { kearns: null, ryan: null, rocco: null, brian: null, zach: null, pit: null, chops: null, regs: null, p: null, james: null, kyle: null },
+      crew: ['kearns', 'ryan', 'rocco', 'brian', 'zach', 'pit', 'chops', 'regs', 'p', 'james', 'kyle'],
     },
   },
 
@@ -1827,18 +1831,19 @@ export const CONFIG = {
       },
     },
     // Pit's forge at the Anvil (src/sim/forge.js): the titans' cores become the War Hammers
-    // The Schnitz's cage (src/render/crustCage.js): Chops, Regs and P in an iron-barred
-    // crate hanging out over the void past the north rim, on a chain up into a green whirl
+    // The Schnitz's cage (src/render/crustCage.js): Chops, Regs, P, James and Kyle in
+    // an iron-barred crate hanging over the Anvil's north-west terrace (up and to the
+    // left from where you start), on a chain up into a green whirl
     cage: {
       chain: 18,             // m of chain from the whirl down to the cage's roof
-      size: [2.6, 2.3, 2.2], // m: wide, tall, deep
+      size: [3.8, 2.3, 2.2], // m: wide, tall, deep
       barGap: 0.24,          // m between its bars
       linkStep: 0.19,        // m per chain link
       maxLinks: 400,
       whirl: 9,              // m across, the whirl at the top
       whirlColor: '#5aff70',
       sway: 0.035, swayRate: 0.6,   // rad, and how fast it swings
-      detail: 0.7, boyScale: 0.92,  // the three inside
+      detail: 0.7, boyScale: 0.92,  // the five inside
       light: 9, lightRange: 10, lightColor: '#b0ffc0',
     },
     // The War Hammer's four parts (src/sim/forge.js): one hidden on each island, at
@@ -1860,12 +1865,20 @@ export const CONFIG = {
       pickupRange: 1.8,      // m: walk over a part to pick it up
       standRange: 2.4,       // m from the stand to put parts on it or take a hammer
     },
-    // The boys in the Schnitz's cage shout down when you're up near it (src/sim/crew.js)
+    // The boys in the Schnitz's cage shout down when you're on the Anvil (src/sim/crew.js):
+    // now and then (CAGE_TALK), and calling out what just happened (CAGE_CALLS): a round
+    // starting, the power, a hammer part, a titan waking, someone going down or running
+    // dry, someone shooting Pit. A callout at most every callGap s, each kind at most
+    // every kindGap s, and only `chance` of the time.
     cageTalk: {
-      range: 30,             // m (flat) from the cage
-      first: 40,             // s into the game before they start
-      every: [35, 60],       // s between shouts
+      range: 34,             // m (flat) from the cage: the whole Anvil
+      first: 40,             // s into the game before they start chatting
+      every: [35, 60],       // s between chats
+      callGap: 14, kindGap: 45, chance: 0.6,
     },
+    // Shooting the cage (src/sim/cageShot.js): whoever's in there has words. A line at
+    // most every `gap` s; after `forgive` s without a shot they're over it. Lines: CAGE_SHOT.
+    cageShot: { gap: 3, forgive: 90, againAfter: 2, lotsAfter: 6 },
     // Big Evil Zach (the Schnitz wearing him) taunts you through the fight
     zachTaunt: [16, 26],     // s between taunts
     // The power (src/sim/crustPower.js). Everything electric starts dead. The

@@ -14,6 +14,7 @@ import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
 import { crustEggShot, knifeTitan, cannonShot, cannonOff } from '../sim/crustEgg.js';
 import { pitShot } from '../sim/pitShot.js';
+import { cageShot } from '../sim/cageShot.js';
 import { useGum, gumSlide } from '../sim/gums.js';
 import { worldState, diff, inventorySig } from './state.js';
 
@@ -145,6 +146,7 @@ export class NetHost {
       case 'quest': if (isValve(a.id)) cauldronShot(sim, a.id, p); break;
       case 'titan': crustEggShot(sim, String(a.id), p); break;
       case 'pit': if (a.origin && a.dir) pitShot(sim, p, a.origin, a.dir); break;   // (shot Pit: he has words)
+      case 'cage': if (a.origin && a.dir) cageShot(sim, p, a.origin, a.dir); break;   // (shot the cage: the boys in it have words)
       case 'titanKnife': knifeTitan(sim, p); break;
       case 'cannon': cannonShot(sim, p, String(a.gun), a.origin, a.dir); break;   // (fired the field gun they're sitting in)
       case 'cannonOff': cannonOff(sim, p); break;
