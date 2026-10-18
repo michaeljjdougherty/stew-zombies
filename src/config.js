@@ -262,6 +262,17 @@ export const CONFIG = {
     boardRepairCapPerRound: 500,
   },
 
+  // A bullet goes on through a line of zombies (a train), like in COD: each one
+  // it hits pays its own 10 points, or its kill points if it drops. (Even
+  // COD's M1911 gets 30 a bullet off three lined-up zombies.) A gun's own
+  // `penetration` counts if it's higher; a Mad Dog'd gun gets its usual extra.
+  throughZombies: {
+    min: 3,                  // zombies one bullet can hit, at the least
+    pelletMin: 2,            // a shotgun pellet
+    // damage kept past each zombie it goes through (a gun can set `penKeep`)
+    keep: { pistol: 0.75, smg: 0.75, ar: 0.8, rifle: 0.85, lmg: 0.85, sniper: 0.95, shotgun: 0.6, launcher: 0.6 },
+  },
+
   // ---------------------------------------------------------------------------
   // Rounds
   // ---------------------------------------------------------------------------

@@ -21,6 +21,19 @@ const GUM = (sim, id) => sim.cfg.gobblegum.gums[id];
 // Online, a client's copy of the game doesn't hurt zombies itself: it tells the
 // host what it hit (src/net/host.js applies it).
 function netAct(sim, a) { sim.netOut.push(a); }
+
+// How many zombies in a line one bullet hits, and the damage it keeps past
+// each (config.throughZombies): every one it hits pays its own points.
+export function throughCount(sim, def) {
+  const T = sim.cfg.throughZombies;
+  if (!T) return def.penetration || 1;
+  const least = ((def.pellets || 1) > 1 ? T.pelletMin : T.min) + (def.upgraded ? sim.cfg.madDog.penetrationAdd : 0);
+  return Math.max(def.penetration || 1, least);
+}
+export function throughKeep(sim, def) {
+  const T = sim.cfg.throughZombies;
+  return def.penKeep ?? (T && T.keep[def.class]) ?? 0.6;
+}
 const hurt = (sim, z, dmg, info) => (sim.replica ? netAct(sim, { k: 'hit', zid: z.id, dmg, info }) : damageZombie(sim, z, dmg, info));
 const shoot = (sim, type, pos, vel, ownerId, opts) => (sim.replica ? netAct(sim, { k: 'proj', type, pos, vel, opts }) : spawnProjectile(sim, type, pos, vel, ownerId, opts));
 const blast = (sim, pos, kind, ownerId) => (sim.replica ? netAct(sim, { k: 'boom', pos, kind }) : explode(sim, pos, kind, ownerId));
@@ -264,7 +277,7 @@ function fire(sim, p, slot, def, side) {
     let pitHit = false;
     for (let i = 0; i < pellets; i++) {
       const d = coneDir(dir, spread * DEG, sim.rng);
-      const hits = sim.hitscan(eye, d, def.range, def.penetration || 1);
+      const hits = sim.hitscan(eye, d, def.range, throughCount(sim, def), throughKeep(sim, def));
       // (Pit at his forge: he's got something to say about that. One pellet's enough)
       if (!pitHit && sim.mapData.forge && sim.crustEgg && pitHitAt(sim, eye, d, def.range) >= 0) {
         pitHit = true;
