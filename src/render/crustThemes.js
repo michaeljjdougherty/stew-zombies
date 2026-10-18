@@ -19,7 +19,7 @@ export const ATMOS = {
   // key: the light from the brightest thing in this island's sky (a nebula, a
   // burning horizon, the storm), keyI its strength; skyTint: the sky's colour once
   // you're standing on the island (its element: wind, lightning, fire, ice; none on the Anvil)
-  hub: { fog: '#1a1618', density: 0.0045, sky: '#aaa0b0', ground: '#2c2220', amb: 1.0, key: '#ffc898', keyI: 1.25, mist: { color: '#6a4c3c', opacity: 0.42, glow: '#ff7a30' }, particles: 'embers' },
+  hub: { fog: '#1a1618', density: 0.003, sky: '#c4bccc', ground: '#4a3c36', amb: 1.5, key: '#ffd4ac', keyI: 1.75, mist: { color: '#6a4c3c', opacity: 0.25, glow: '#ff7a30' }, particles: 'embers', particleShare: 0.3 },   // (brighter, and a third of the embers: the start was too dark and busy)
   trench: { fog: '#2c140a', density: 0.0065, sky: '#d88858', ground: '#40180a', amb: 0.95, key: '#ffa070', keyI: 1.2, mist: { color: '#5c3424', opacity: 0.55, glow: '#ff4a10' }, particles: 'ash', skyTint: '#ffb088' },
   research: { fog: '#16142a', density: 0.0055, sky: '#9a8ee0', ground: '#24203a', amb: 0.95, key: '#c0c8ff', keyI: 1.2, mist: { color: '#5c4ca8', opacity: 0.45, glow: '#a070ff' }, particles: 'sparks', skyTint: '#c4b0ff' },
   ship: { fog: '#26303a', density: 0.0065, sky: '#b4c0cc', ground: '#3a342e', amb: 1.0, key: '#d8e4f4', keyI: 1.2, mist: { color: '#2f8a76', opacity: 0.45, glow: '#3fe0b0' }, particles: 'wind', skyTint: '#a8f0d8' },

@@ -1426,9 +1426,10 @@ function buildSnow(out, group, r) {
   const flakes = new THREE.Points(sg, new THREE.PointsMaterial({ map: T.softDotTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), color: new THREE.Color(0.95, 0.97, 1.0), size: 0.09, sizeAttenuation: true, transparent: true, opacity: 0.85, depthWrite: false }));
   flakes.frustumCulled = false;
   group.add(flakes);
-  out.snow = { flakes, pos, drift, box, count: N };
-  // Settings › Effects: fewer flakes on the lower levels
-  out.setDetail = (f) => { out.snow.count = Math.max(200, Math.round(N * f)); sg.setDrawRange(0, out.snow.count); };
+  out.snow = { flakes, pos, drift, box, count: N, share: 1 };
+  // how many show: Settings › Effects (fewer on the lower levels), times the island's share (ATMOS particleShare)
+  out.snow.range = () => sg.setDrawRange(0, Math.max(1, Math.round(out.snow.count * out.snow.share)));
+  out.setDetail = (f) => { out.snow.count = Math.max(200, Math.round(N * f)); out.snow.range(); };
 }
 
 function updateCrust(W, dt, eye, time) {
@@ -1569,6 +1570,8 @@ function updateAtmosphere(W, dt, eye, time) {
     (P.add ? g : m).color.setRGB(...P.color); (P.add ? g : m).size = P.size; (P.add ? g : m).opacity = P.opacity;
     W.snow.style = P;
   }
+  const share = tgt.particleShare ?? 1;
+  if (share !== W.snow.share) { W.snow.share = share; W.snow.range(); }
   // lightning over the storm asteroid
   if (id === 'research' && A.storm) {
     A.boltT -= dt;

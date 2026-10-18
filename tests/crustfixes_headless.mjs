@@ -4,6 +4,7 @@
 //   - the rim past the depot is blocked: the way through is its door
 //   - every door and debris pile costs 750
 //   - each War Hammer part lying on its island hums, louder as you get closer
+//   - the stone piers under the catwalks across the pit (by the spawn) are solid
 // Run: node tests/crustfixes_headless.mjs
 import { GameSim } from '../src/sim/sim.js';
 import { CRUST } from '../src/map/crust.js';
@@ -108,6 +109,26 @@ const dt = 1 / 60;
   k.state = 'carried';
   hum.update(sim, { x: k.x, y: k.y, z: k.z });
   check(!hum.hums.has(ids[0]) && h.nodes.every((n) => n.stopped), 'picked up: it stops');
+}
+
+// --- the catwalks' stone piers in the pit are solid (you used to walk through them)
+{
+  const piers = [];
+  for (const z of [-9, 9]) for (let i = 1; i < 5; i++) piers.push([-14.4 + 28.8 * i / 5, z]);
+  let through = 0;
+  for (const [x, z] of piers) {
+    const sim = new GameSim({ map: CRUST, seed: 2 });
+    const me = sim.addPlayer('p1', 'Tester', { character: 'kearns' });
+    sim.rounds.timer = 1e9; sim.godMode = true;
+    me.pos.x = x - 2.5; me.pos.z = z; me.pos.y = 0.02;
+    for (let f = 0; f < 60 * 3; f++) {
+      me.yaw = Math.atan2(-(x + 2.5 - me.pos.x), -(z - me.pos.z));
+      sim.setInput('p1', { ...emptyCommand(), yaw: me.yaw, moveY: 1 });
+      sim.step(dt); sim.drainEvents();
+      if (Math.abs(me.pos.x - x) < 0.4 && Math.abs(me.pos.z - z) < 0.4) { through++; break; }
+    }
+  }
+  check(through === 0, `the 8 stone piers under the pit's catwalks are solid (${through} walked through)`);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

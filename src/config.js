@@ -1709,7 +1709,9 @@ export const CONFIG = {
     artilleryEvery: [3, 9],  // s between far-off shells landing
     partHum: { range: 40, gain: 0.55 },   // the War Hammer's parts hum where they lie (src/audio/partHum.js): heard from this many m off, loudest on top of it
     brightness: 1.35,        // exposure x on this map (it read too dark)
-    boxBeam: { height: 220, width: 3.2, opacity: 0.5 },   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
+    boxBeam: { height: 220, width: 3.2, opacity: 0.5,   // the Mystery Box's beam out here: tall, wide, bright (see it from any island)
+      fadeIn: 0.1,                                      // ...fading in from the lid over this much of its height (no glaring foot)
+      near: { from: 4, to: 18, min: 0.2 } },            // ...and fading as you walk up to it: this bright (min) at `from` m, full at `to` m
     stackDrawDistance: 150,  // the distant stacks are drawn at most this far away (scaled to look right)
     // the guns over the Trench Front's open ground
     shelling: {
