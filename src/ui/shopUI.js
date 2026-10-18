@@ -24,6 +24,8 @@ const emoteOf = (sel) => (typeof sel === 'string' && sel.startsWith(EM) ? EMOTE_
 const BK = 'bucks:';   // (a Battle Pass tier of Stew Bucks, by its tier)
 const bucksOf = (sel) => (typeof sel === 'string' && sel.startsWith(BK) ? passTiers().find((t) => t.tier === Number(sel.slice(BK.length))) : null);
 const GN = 'gun:';   // (gun skins' ids in the grid)
+// the day the Beta Tester skin stops being given (CONFIG.shop.beta.until), in words
+const betaEnds = () => new Date(CONFIG.shop.beta.until).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' });
 const gunOf = (sel) => (typeof sel === 'string' && sel.startsWith(GN) ? GUN_SKIN_BY_ID[sel.slice(GN.length)] : null);
 // the gun a skin's shown on: the one it's made for, or the SCAR-H
 const showcaseModel = (g) => CONFIG.weapons[(g && g.only && CONFIG.weapons[g.only] && g.only) || SHOWCASE_GUN].view.model;
@@ -255,6 +257,7 @@ export class ShopUI {
       this.button(this.unlockTag(skin), false);
       if (skin.unlock.kind === 'kills') blurb += ` Unlock it for ${name} with ${skin.unlock.need} kills as ${name}: ${Math.min(C.charKills(this.char), skin.unlock.need)} so far.`;
       if (skin.unlock.kind === 'pass') blurb += ` ${this.passHint(skin.unlock.tier)}`;
+      if (skin.unlock.kind === 'beta') blurb += ` Given to everyone who signs in by ${betaEnds()}.`;
     } else {
       const price = rarityOf(skin).price, short = price - C.bucks;
       this.button(`Purchase · ${price.toLocaleString()}`, short <= 0);
@@ -321,7 +324,7 @@ export class ShopUI {
   }
 
   // how a skin that isn't for sale is unlocked
-  unlockTag(s) { return s.unlock.kind === 'kills' ? `${s.unlock.need} kills as ${this.charName()}` : s.unlock.kind === 'pass' ? `Pass tier ${s.unlock.tier}` : 'Free'; }
+  unlockTag(s) { return s.unlock.kind === 'kills' ? `${s.unlock.need} kills as ${this.charName()}` : s.unlock.kind === 'pass' ? `Pass tier ${s.unlock.tier}` : s.unlock.kind === 'beta' ? 'Beta testers' : 'Free'; }
 
   charName() { const c = this.h.characters().find((x) => x.id === this.char); return c ? c.name : 'them'; }
 

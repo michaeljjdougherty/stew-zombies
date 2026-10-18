@@ -54,7 +54,7 @@ import { ShopUI } from './ui/shopUI.js';
 import { StoreBlade } from './ui/storeBlade.js';
 import { LoadoutPicker } from './ui/loadoutPicker.js';
 import { Arsenal } from './ui/arsenal.js';
-import { applySkin, SKINS } from './career/skins.js';
+import { applySkin, SKINS, SKIN_BY_ID } from './career/skins.js';
 import { MapSelect, MAPS } from './ui/mapselect.js';
 import { CutsceneUI } from './ui/cutscene.js';
 import { TrailerUI } from './ui/trailerUI.js';
@@ -313,11 +313,24 @@ const onlineUI = new OnlineUI(settings, {
   back: () => { mode = 'title'; menus.show('title'); },
 });
 
+let lastLobby = null;   // (the lobby as it last came in: who you're playing, for the preview)
+// "Playing as" on the map screen and in the online lobby: who you are, in their
+// skin, turning on the platform (drawn just before the frame's own picture)
+function drawWho(figId, ch, skin, dt) {
+  const fig = document.getElementById(figId);
+  if (!fig || !ch || !CHARACTERS[ch] || !fig.offsetParent) return;
+  const S = renderer.getShowcase();
+  S.setEmote(null); S.show(ch, settings.shirt, skin || null); S.hide();
+  S.drawInto(fig.firstElementChild, dt);
+  const cap = CHARACTERS[ch].name + (skin && SKIN_BY_ID[skin] ? ' · ' + SKIN_BY_ID[skin].name : '');
+  if (fig.lastElementChild.textContent !== cap) fig.lastElementChild.textContent = cap;
+}
+
 function newSession(name) {
   if (online) leaveOnline();
   online = new OnlineSession({
     name, character: playableCharacter(), skin: career.wornSkin(playableCharacter()), brian: !!progress.questDone || career.allAccess, local: NET_LOCAL, gums: career.packForGame(), gunSkins: career.gunSkinsWorn(),
-    onLobby: (lobby) => { if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
+    onLobby: (lobby) => { lastLobby = lobby; if (online && !online.inGame) onlineUI.showLobby(lobby, online.isHost); },
     onStart: (st) => startOnlineGame(st),
     onGame: (from, m) => { if (m.t === 'introDone') { hostIntroDone(); return; } if (net.host) net.host.onMessage(from, m); else if (net.client) net.client.onMessage(m); else if (m.t === 's' && earlyState) earlyState.push(m); },
     onPeerLeft: (m) => teammateLeft(m),
@@ -1077,9 +1090,12 @@ const loadout = new LoadoutPicker({
   worn: (ch) => career.wornSkin(ch) || '',
   pickSkin: (ch, id) => { career.wearSkin(ch, id || null); setLook(playableCharacter()); },
 });
+// (the skins sit under the model, on top of the map: picking one mustn't drag or zoom the map)
+for (const ev of ['pointerdown', 'wheel']) document.getElementById('ms-who-panel').addEventListener(ev, (e) => e.stopPropagation());
 // (the Stew Store blade: your Bucks, and Featured today)
 const storeBlade = new StoreBlade(career, { characters: shopUI.h.characters, thumb: shopUI.h.thumb, open: openShop });
 function refreshStoreBlade() { storeBlade.refresh(); }
+career.onBeta = (skin) => achToast.push({ head: 'You\'re a Beta Tester!', badge: 'Exclusive skin', title: skin.name });
 career.onSkinUnlock = (skin, ch) => achToast.push({ head: 'Skin unlocked', badge: CHARACTERS[ch] ? CHARACTERS[ch].name : 'New skin', title: skin.name });
 // a Battle Pass tier: what it gave you
 career.onPassTier = (t) => achToast.push({ head: `Battle Pass · Tier ${t.tier}`, badge: t.kind === 'bucks' ? `+${t.n}` : t.kind === 'emote' ? 'New emote' : t.kind === 'gunSkin' ? 'New gun skin' : 'New skin', title: t.kind === 'bucks' ? `${t.n} ${CONFIG.shop.currency}` : t.item ? t.item.name : 'Tier up' });
@@ -1235,6 +1251,11 @@ function frame(now) {
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
   // (the Stew Store blade's pictures are drawn by the store's platform, one a frame, before the title's own frame)
   if (mode === 'title' && (menus.blade === 'store' || menus.blade === 'arsenal') && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
+  if (mode === 'title' && menus.current === 'mapselect') safely('who', () => drawWho('ms-who-view', playableCharacter(), career.wornSkin(playableCharacter()), fdt));
+  else if (mode === 'online' && lastLobby && online && !online.inGame) {
+    const me = lastLobby.members.find((m) => m.id === lastLobby.you);
+    if (me) safely('who', () => drawWho('on-who-view', me.character, me.skin, fdt));
+  }
   safely('render', () => renderer.render(worldDt, alpha, look, player, time, mode === 'title' || mode === 'online' ? 'title' : mode === 'charselect' || mode === 'shop' ? 'showcase' : mode === 'lineup' ? 'lineup' : mode === 'ending' || mode === 'intro' || mode === 'trailer' || mode === 'film' ? 'ending' : 'play'));
   safely('listener', () => audio.updateListener(renderer.camera));
   if (mode === 'play' || mode === 'dying' || mode === 'panel') safely('sound', () => sound.update(fdt, player));

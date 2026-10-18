@@ -1441,6 +1441,9 @@ export const CONFIG = {
     // that fits, every emote, the whole Battle Pass, every character, the song, and this many of every Mega
     allAccess: ['phat_chops'],
     allAccessMegas: 99,
+    // The Beta Tester skin (src/career/skins.js): every account that signs in
+    // before `until` gets it, once, to keep. Move `until` to run it longer.
+    beta: { skin: 'betaTester', until: '2026-10-25T23:59:59-07:00' },
     // The Battle Pass (src/career/battlepass.js): free for everyone signed in.
     // Pass XP comes from playing (real zombies games only); every tier's prize
     // (a skin or emote any character can use, or Stew Bucks) is yours when you reach it.

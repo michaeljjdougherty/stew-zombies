@@ -5,6 +5,8 @@
 //   opal:   the Pink Diamond Galaxy Opal Drippy Face Build Skin. Every surface
 //           turns to glowing, iridescent pink opal, with a swirl of galaxy
 //           sparkles round them. k.fxUpdate(dt) makes it shimmer.
+//   beta:   the Beta Tester. Neon circuits glow through the clothes and run
+//           upwards, and bits of data float up round them.
 // =============================================================================
 import * as THREE from 'three';
 import { SKIN } from './human.js';
@@ -17,6 +19,7 @@ function tex(c) { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRG
 export function applySkinFx(k, fx, o = {}) {
   if (fx === 'bikini') bikini(k);
   else if (fx === 'opal') opal(k, o.light !== false);
+  else if (fx === 'beta') beta(k, o.light !== false);
   return k;
 }
 
@@ -97,5 +100,62 @@ function opal(k, light = true) {
     const pulse = 0.45 + Math.sin(t * 2.2) * 0.12;
     for (const m of mats) { m.emissiveIntensity = pulse; m.iridescenceThicknessRange[1] = 700 + Math.sin(t * 0.9) * 180; }
     if (glow) glow.intensity = 1 + Math.sin(t * 2.2) * 0.4;
+  };
+}
+
+// --- Beta Tester ----------------------------------------------------------------------
+// the circuits: cyan traces with magenta nodes, on black (black doesn't glow)
+let circuits = null;
+function circuitTex() {
+  if (circuits) return circuits;
+  const W = 256, [c, g] = canvas(W, W);
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, W);
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < 14; i++) {
+    let x = Math.round(rnd() * 16) * 16, y = Math.round(rnd() * 16) * 16;
+    g.strokeStyle = i % 5 ? '#2af0ff' : '#ff2fd0'; g.lineWidth = i % 3 ? 2 : 3;
+    g.beginPath(); g.moveTo(x, y);
+    for (let j = 0; j < 4; j++) { if (j % 2) x += (rnd() < 0.5 ? -1 : 1) * 16 * (1 + Math.floor(rnd() * 4)); else y += 16 * (1 + Math.floor(rnd() * 5)); g.lineTo(x, y); }
+    g.stroke();
+    g.fillStyle = '#ff2fd0'; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill();
+  }
+  circuits = tex(c);
+  circuits.wrapS = circuits.wrapT = THREE.RepeatWrapping;
+  return circuits;
+}
+
+function beta(k, light = true) {
+  const t0 = circuitTex(), map = t0.clone();   // (its own copy: each wearer's runs on its own)
+  map.needsUpdate = true;
+  const mats = ['torso', 'pants', 'sleeve', 'layer'].map((key) => k.mats[key]).filter((m) => m && m.isMeshStandardMaterial);
+  for (const m of mats) { m.emissive = new THREE.Color('#ffffff'); m.emissiveMap = map; m.emissiveIntensity = 0.6; m.needsUpdate = true; }
+  // the data: little cyan and magenta bits rising round them
+  const n = 140, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), speed = new Float32Array(n);
+  const C = [new THREE.Color('#2af0ff'), new THREE.Color('#ff2fd0'), new THREE.Color('#ffffff')];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = 0.32 + Math.random() * 0.3;
+    pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = Math.random() * 2.1; pos[i * 3 + 2] = Math.sin(a) * r;
+    speed[i] = 0.25 + Math.random() * 0.45;
+    const cc = C[i % 7 ? i % 2 : 2]; col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const bits = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.02, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+  bits.raycast = () => {};
+  k.root.add(bits);
+  const glow = light ? new THREE.PointLight('#2af0ff', 0.9, 2, 2) : null;
+  if (glow) { glow.position.set(0, 1.25, 0.5); k.root.add(glow); }
+  let t = 0;
+  k.fxUpdate = (dt) => {
+    t += dt;
+    map.offset.y -= dt * 0.12;   // (the circuits run upwards)
+    const pulse = 0.6 + Math.sin(t * 3) * 0.2 + (Math.sin(t * 17) > 0.97 ? 0.5 : 0);   // (and flicker now and then)
+    for (const m of mats) m.emissiveIntensity = pulse;
+    for (let i = 0; i < n; i++) { const y = pos[i * 3 + 1] + speed[i] * dt; pos[i * 3 + 1] = y > 2.1 ? 0 : y; }
+    geo.attributes.position.needsUpdate = true;
+    bits.rotation.y += dt * 0.25;
+    if (glow) glow.intensity = 0.7 + Math.sin(t * 3) * 0.25;
   };
 }

@@ -170,12 +170,18 @@ export const SKINS = [
   // fx: a finish applied after the character's built (src/render/skinFx.js).
   // only: the one character it's for (nobody else can wear it).
   // pass: the Battle Pass tier that unlocks it (above).
+  // beta: given once to every account that signs in before CONFIG.shop.beta.until.
   { id: 'sexyFucci', name: 'Sexy Fucci', rarity: 'exclusive', unlock: { kind: 'free' }, fx: 'bikini', only: 'rocco',
     blurb: 'A Fucci bikini in black lacquer and gold, for Rocco and Rocco only. Free for playing Stew Zombies 2.0.',
     look: { top: { type: 'tank', color: '#111113' }, layer: null, pants: 'chinos', shoes: 'whiteSneaker' } },
   { id: 'opal', name: 'Pink Diamond Galaxy Opal Drippy Face Build Skin', rarity: 'exclusive', unlock: { kind: 'kills', need: 1000 }, fx: 'opal',
     blurb: 'Head to toe in glowing pink opal and diamond, with a galaxy swirling round them.',
     look: { top: { type: 'tee', color: '#ff7ad8' }, layer: null, pants: 'chinos', shoes: 'whiteSneaker', hairColor: [255, 170, 230], armSkin: [255, 160, 228] } },
+  { id: 'betaTester', name: 'Beta Tester', rarity: 'exclusive', unlock: { kind: 'beta' }, fx: 'beta',
+    blurb: 'Matte black techwear with neon circuits running through it, a HUD visor and BETA on the chest. For everyone who was here first.',
+    look: { top: { type: 'tee', color: '#0b0b10', text: { front: 'BETA', back: 'TESTER', color: '#2af0ff', edge: '#ff2fd0', size: 52 } },
+      layer: { type: 'zip', color: '#121218', stripes: [{ v: 0.5, h: 0.03, color: '#2af0ff' }] }, pants: { color: '#0b0b10', stripe: '#2af0ff' }, shoes: 'whiteSneaker', chain: null,
+      gear: [{ kind: 'hud', color: '#2af0ff' }, { kind: 'headset', color: '#0b0b10', glow: '#ff2fd0' }] } },
 ];
 
 // the team's numbers (Erik was number 8)

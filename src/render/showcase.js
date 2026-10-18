@@ -261,17 +261,8 @@ export class Showcase {
   turn(a) { this.spin += a * 3.2; this.spinVel = 0; this.heldT = 0.5; }
 
   render(dt, aspect) {
-    this.time += dt;
     if (this.thumbQueue.length) this.drawThumb();
-    if (this.heldT > 0) this.heldT -= dt;
-    else if (!this.dragging) {
-      this.spinVel += (0.35 - this.spinVel) * Math.min(1, dt * 1.5);
-      this.spin += this.spinVel * dt;
-    }
-    this.turntable.rotation.y = this.spin;
-    if (this.char) { idleCharacter(this.char, this.time); if (this.act) idleAct(this.char, this.act, this.time, 1); }
-    if (this.char && this.char.fxUpdate) this.char.fxUpdate(dt);
-    this.dust.rotation.y += dt * 0.02;
+    this.step(dt);
     // frame him to the right of the menu on wide screens, centred on narrow ones
     const cam = this.camera;
     cam.aspect = aspect;
@@ -282,7 +273,52 @@ export class Showcase {
     cam.position.set(sx, 1.15, wide ? 4.3 : 4.6);
     cam.lookAt(sx, 0.98, 0);
     cam.updateProjectionMatrix();
-    const r = this.renderer;
+    this.draw();
+  }
+
+  // The "Playing as" preview on the map screen and in the online lobby: him on
+  // the platform, drawn into a little 2D canvas on the page. (Drawn in the
+  // corner of the screen before the frame's own picture, and copied out.)
+  drawInto(cv, dt) {
+    const rect = cv.getBoundingClientRect();
+    if (!rect.width || !rect.height || !this.char) return;
+    const r = this.renderer, rp = r.getPixelRatio(), out = r.domElement;
+    const pr = Math.min(2, window.devicePixelRatio || 1);
+    const W = Math.min(Math.round(rect.width * pr), out.width), H = Math.min(Math.round(rect.height * pr), out.height);
+    if (cv.width !== W) cv.width = W;
+    if (cv.height !== H) cv.height = H;
+    this.setStyle(null);
+    this.step(dt);
+    const cam = this.camera;
+    cam.aspect = W / H; cam.fov = 30;
+    cam.position.set(0, 1.02, 3.8);
+    cam.lookAt(0, 0.95, 0);
+    cam.updateProjectionMatrix();
+    const size = r.getSize(new THREE.Vector2());
+    r.setViewport(0, 0, W / rp, H / rp); r.setScissor(0, 0, W / rp, H / rp); r.setScissorTest(true);
+    this.draw();
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, W, H);
+    g.drawImage(out, 0, out.height - H, W, H, 0, 0, W, H);
+    r.setScissorTest(false); r.setViewport(0, 0, size.x, size.y);
+  }
+
+  // turn him, and his idle (or emote)
+  step(dt) {
+    this.time += dt;
+    if (this.heldT > 0) this.heldT -= dt;
+    else if (!this.dragging) {
+      this.spinVel += (0.35 - this.spinVel) * Math.min(1, dt * 1.5);
+      this.spin += this.spinVel * dt;
+    }
+    this.turntable.rotation.y = this.spin;
+    if (this.char) { idleCharacter(this.char, this.time); if (this.act) idleAct(this.char, this.act, this.time, 1); }
+    if (this.char && this.char.fxUpdate) this.char.fxUpdate(dt);
+    this.dust.rotation.y += dt * 0.02;
+  }
+
+  draw() {
+    const r = this.renderer, cam = this.camera;
     const tm = r.toneMappingExposure;
     r.toneMappingExposure = 0.95;
     const sm = r.shadowMap.enabled;
