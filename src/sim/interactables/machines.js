@@ -102,7 +102,7 @@ export class MadDogInteractable {
     return true; // show "in use" / "take" prompts
   }
   prompt(sim, p) {
-    if (!sim.power) return { text: 'The Mad Dog Machine needs power', cost: null };
+    if (!sim.powerAt(this.md)) return { text: 'The Mad Dog Machine needs power', cost: null };
     if (this.state === 'working') return { text: p.id === this.ownerId ? 'The Mad Dog is chewing on it...' : 'The Mad Dog is busy', cost: null };
     if (this.state === 'ready') {
       if (p.id !== this.ownerId) return { text: 'That one belongs to someone else', cost: null };
@@ -111,8 +111,8 @@ export class MadDogInteractable {
     const slot = p.loadout.slots[p.loadout.current];
     if (!slot || slot.away) return { text: 'Hold a weapon to feed the Mad Dog', cost: null };
     const def = sim.cfg.weapons[slot.id];
-    // (a War Hammer's only upgrade is Pit tempering it, like the Origins staffs)
-    if (def.hammer) return { text: 'The Mad Dog won\'t eat a War Hammer. Only Pit can temper it', cost: null };
+    // (a War Hammer's only upgrade is Pit forging it at the Anvil, like the Origins staffs)
+    if (def.hammer) return { text: 'The Mad Dog won\'t eat a War Hammer. Only Pit can forge it', cost: null };
     // (an upgraded gun again: a new bite, its alternate ammo)
     if (def.upgraded) {
       if (slot.ephemeral || !def.baseId) return { text: `${def.name} is already upgraded`, cost: null };
@@ -123,7 +123,7 @@ export class MadDogInteractable {
     return { text: `Press [F] to feed ${def.name} to the Mad Dog`, cost: sim.cfg.madDog.cost };
   }
   use(sim, p, cmd) {
-    if (!cmd.usePressed || !sim.power) return;
+    if (!cmd.usePressed || !sim.powerAt(this.md)) return;
     if (this.state === 'ready' && p.id === this.ownerId) { this.take(sim, p); return; }
     if (this.state !== 'idle') return;
     const w = p.loadout;

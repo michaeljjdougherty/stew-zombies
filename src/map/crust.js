@@ -243,6 +243,14 @@ function hub() {
     I.revive = { x: qr.pos.x, y: F, z: qr.pos.z, normal: qr.normal };
   });
   I.boxSpots.push({ id: 'box_pit', room: PIT, x: -11, z: 7.5, yaw: Math.PI * 0.75 });
+  // the Mad Dog Machine: in the pit, backed onto its south wall between the Olympus and
+  // the wreck (room to walk round it), facing the Anvil (on once the Anvil's power is:
+  // src/sim/interactables/machines.js)
+  {
+    const x = 5.6, z = 12.6;
+    I.madDog = { room: PIT, x, z, y: F, yaw: Math.PI };
+    I.prop('model', x - 1.3, z - 1.3, x + 1.3, z + 1.3, 2.6);   // (big enough that the zombies' paths go round it)
+  }
   I.prop('wreck', 9, 9.5, 13, 12.5, 1.4);
   I.prop('barrel', 10.6, -11.4, 11.3, -10.7, 0.95, { fire: true });
   I.prop('crate', -12.6, -9, -11.4, -7.8, 1.1);
@@ -1317,6 +1325,7 @@ export const CRUST = {
   ambient: 0.8,        // the night sky's light on everything
   playerSpawns: HUB.playerSpawns.map((p) => ({ ...p, y: HUB.t.heightAt(p.x, p.z) })),
   forge: HUB.forge,              // Pit's forge at the Anvil, and where Big Evil Zach comes down
+  madDog: HUB.madDog,            // the Mad Dog Machine, in the pit
   notPlayable: ['pit'],          // (he's at his forge: src/sim/sim.js addPlayer)
   rooms: out.rooms,
   navRegions: out.navRegions,
