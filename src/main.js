@@ -47,7 +47,8 @@ import { PatchNotes } from './ui/patchNotes.js';
 import { Splash } from './ui/splash.js';
 import { Career } from './career/career.js';
 import { CareerTracker } from './career/tracker.js';
-import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast } from './ui/careerUI.js';
+import { SignInUI, AchievementToast, refreshProfileChip, renderCareer, GumsUI, giftToast, LeaderboardsUI } from './ui/careerUI.js';
+import { Leaderboards } from './career/leaderboards.js';
 import { FactoryUI } from './ui/factoryUI.js';
 import { ShopUI } from './ui/shopUI.js';
 import { StoreBlade } from './ui/storeBlade.js';
@@ -77,6 +78,8 @@ const TITLE_MAP = CONFIG.title.map;   // the map behind the title screen and the
 // --- careers: a username, its stats, achievements and GobbleGum (src/career/) ---
 const career = new Career(CONFIG.career);
 const careerTracker = new CareerTracker(career);
+const leaderboards = new Leaderboards(career);   // (online, on the Career screen's Leaderboards tab)
+careerTracker.onFinish = (g) => leaderboards.finishGame(g);
 let sim = makeSim('zombies', TITLE_MAP);
 let player = sim.playerById(localId);
 
@@ -252,7 +255,7 @@ const menus = new Menus(settings, {
   trailerQuality: () => settings.trailerQuality || (isTouch() ? CONFIG.trailer.touchPreset : 'high'),
   extrasBack: () => { if (jukebox.playing) { jukebox.stop(0.5); startTitleMusic(); } menus.show('title'); },
   characters: () => { mode = 'charselect'; menus.show('charselect'); charSelect.open(); },
-  career: () => { renderCareer(career); menus.show('career'); },
+  career: () => { renderCareer(career); lbUI.open(); menus.show('career'); },
   // (the GobbleGum blade shows your pack and your Divinium)
   bladeOpened: (id, flip) => { if (id === 'gums') refreshGumBlade(); if (id === 'store') refreshStoreBlade(); if (id === 'arsenal') refreshArsenal(); if (flip && audio.ready) audio.play(sample, { key: 'pageTurn', gain: 0.8 }, { gain: 1, reverb: 0.05 }); },
 });
@@ -1093,15 +1096,17 @@ document.getElementById('btn-title-signin').addEventListener('click', () => {
 careerTracker.onDivinium = () => hud.toast('Liquid Divinium', '+1 vial · spend it at Dr. Monty\'s Factory', '#5ad1e8', 2.6);
 career.onChange = () => { refreshProfileChip(career); if (menus.current === 'career') renderCareer(career); if (menus.blade === 'gums') refreshGumBlade(); if (menus.blade === 'store') refreshStoreBlade(); if (menus.blade === 'arsenal') refreshArsenal(); if (online && !online.inGame) online.setGunSkins(career.gunSkinsWorn()); };
 const signIn = new SignInUI(career, { done: () => {} });
+const lbUI = new LeaderboardsUI(leaderboards);
 function afterSignIn() {
   // your username is your name online too
   if (career.signedIn && settings.name !== career.profile.name) { settings.name = career.profile.name; saveSettings(settings); }
   refreshProfileChip(career);
   setLook(playableCharacter());   // (this username's skins)
+  leaderboards.push();   // (your totals on the boards, and any finished game still waiting to go up)
 }
 $id('btn-career-back').addEventListener('click', () => menus.show('title'));
 $id('btn-career-switch').addEventListener('click', () => {
-  signIn.h.done = () => { afterSignIn(); renderCareer(career); menus.show('career'); };
+  signIn.h.done = () => { afterSignIn(); renderCareer(career); lbUI.open(); menus.show('career'); };
   menus.show('signin'); signIn.open();
 });
 window.addEventListener('pagehide', () => career.flush());
