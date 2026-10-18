@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-18b',
+  version: '2026-10-18c',
   date: 'October 18, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -19,6 +19,12 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'Mad Dog Machine on Call of the Crust: it\'s in the Anvil\'s pit against the south wall, facing the Anvil. Once the power is on, it\'s 5000 to upgrade the gun in your hands, or 2500 to give an upgraded gun a new bite.',
+      'Rocco has his real voice: the first 60 recorded lines are in.',
+      'Revives work everywhere online again. On Call of the Crust you can pick up a teammate who went down up high, like the top of the Anvil or the Trench fort, and a perk machine, gum machine or box next to them no longer gets in the way.',
+      'Cheddar Rounds on Call of the Crust: the Cheddars come down with the lightning near you again, instead of under the islands where they fell into space.',
+    ] },
+    { title: 'Buddy Mode, Beta skin and the D-pad', items: [
       'Regs Best Buddy Mode: a new power-up, a blue heart with BFF on it. Grab it and for 20 seconds the zombies stop coming for you and fight each other instead. Every zombie they kill counts as your kill and gives you the points. Titans, Big Evil Zach and their own zombies don\'t join in, so watch out for those.',
       'Beta Tester skin: everyone who signs in through Sunday, October 25 gets it free to keep, on any character. Black techwear with glowing neon circuits, a HUD visor and BETA on the chest.',
       'See who you\'re playing: the map screen and the online lobby show your character turning on a little stage, in the skin they\'re wearing, with the skin picker right under them.',

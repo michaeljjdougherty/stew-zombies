@@ -2099,6 +2099,7 @@ export const CONFIG = {
   interaction: {
     range: 1.8,                // default reach for buyables
     lookAngle: 65,             // must be roughly facing it (degrees off-center)
+    floorGap: 2.6,             // more than this above or below you: on another floor, out of reach
   },
 
   // ---------------------------------------------------------------------------

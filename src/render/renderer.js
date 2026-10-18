@@ -306,7 +306,7 @@ export class GameRenderer {
           break;
         }
         case 'cheddarStrike':
-          this.effects.lightning(e.pos);
+          this.effects.lightning(e.pos, { y: e.pos.y || 0 });
           this.flash = Math.max(this.flash || 0, 0.35);
           if (this.sim.playerById(id)) this.rig.explosion({ pos: e.pos, radius: 3, shake: 0.5 }, this.sim.playerById(id).pos);
           break;
