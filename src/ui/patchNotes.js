@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-18a',
+  version: '2026-10-18b',
   date: 'October 18, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -19,6 +19,18 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'Regs Best Buddy Mode: a new power-up, a blue heart with BFF on it. Grab it and for 20 seconds the zombies stop coming for you and fight each other instead. Every zombie they kill counts as your kill and gives you the points. Titans, Big Evil Zach and their own zombies don\'t join in, so watch out for those.',
+      'Beta Tester skin: everyone who signs in through Sunday, October 25 gets it free to keep, on any character. Black techwear with glowing neon circuits, a HUD visor and BETA on the chest.',
+      'See who you\'re playing: the map screen and the online lobby show your character turning on a little stage, in the skin they\'re wearing, with the skin picker right under them.',
+      'Zombie trains: bullets go through a line of zombies like in COD, and every zombie a bullet hits gives you its own points. Even the starting pistol goes through three. Shotgun pellets go through two, and the bigger guns go through more. Each zombie further back takes a bit less damage.',
+      'Perks and GobbleGum: the first GobbleGum each round is free, then 1000 and 2000 points (still 3 a round). You can only buy 4 perks, like classic Zombies; only GobbleGums get you past that. Go prone in front of a perk machine and the first player to do it gets 100 points, once per machine each game.',
+      'The D-pad on the HUD: like Black Ops 1, a D-pad in the bottom right shows what\'s on each direction. Your LBDs and how many are left on the right, your GobbleGum on the bottom and emotes on top. On keyboard and mouse it shows the keys instead (X, H and B). LBDs moved from D-pad left to D-pad right on a controller.',
+      'Going down: like Black Ops, you keep a Fucci Gun or Fucci Gun Mk 2 if you have one. Otherwise you get your best pistol, with a Mad Dog\'d one first.',
+      'Call of the Crust: the War Hammers go straight to the upgraded ones. Give Pit a titan\'s core and he forges the Tempest, Thunder, Glacier or Inferno Hammer. The island trials are gone, and Big Evil Zach only takes hits from the upgraded hammers.',
+      'Call of the Crust: James and Kyle are in the Schnitz\'s cage now too, and it hangs over the Anvil where you can see it (look up and to the left from where you start). The boys shout down about new rounds, the power, hammer parts, titans and anyone going down. Shoot the cage and they\'ll have something to say about it. P has been rewritten: he only talks about food, and wishes he could DoorDash it.',
+      'Research Base: the Warden no longer gets stuck on or under the catwalk bridge in the tesla yard, and zombies no longer get stuck at the bottom of the catwalk stairs.',
+    ] },
+    { title: 'Leaderboards and Arsenal fixes', items: [
       'Leaderboards: the Career screen has a new Leaderboards tab. See where you rank against everyone for the highest round on Stew Leonard High and Call of the Crust (solo and co-op each have their own board), and for career kills, headshots, revives, wall buys and games played. It shows the top 100, plus your own rank if you\'re further down. Sign in to get on the boards (guests aren\'t ranked), and your best round goes up when a game ends.',
       'The Arsenal\'s skin tiles no longer stack on top of each other.',
       'In the Stew Store, a gun skin made for one gun is shown on that gun. The rest still show on the SCAR-H.',
