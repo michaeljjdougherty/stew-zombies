@@ -34,7 +34,7 @@ def clean(src, dst):
   # trim leading/trailing silence (keep a hair of air), normalise loudness, mono 24 kHz mp3
   trim = 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.04'
   af = f'{trim},areverse,{trim},areverse,loudnorm=I=-16:TP=-1.5:LRA=11'
-  subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-af', af, '-ac', '1', '-ar', '24000',
+  subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', src, '-af', af, '-ac', '1', '-ar', '24000',
                   '-c:a', 'libmp3lame', '-q:a', '4', dst], check=True)
 
 def duration(p):
@@ -78,7 +78,7 @@ for arg in args:
 # pack each speaker's clips into one sprite and rebuild the manifest
 import array, wave
 def pcm(p):
-  r = subprocess.run(['ffmpeg', '-v', 'error', '-i', p, '-f', 's16le', '-ac', '1', '-ar', str(RATE), '-'],
+  r = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-i', p, '-f', 's16le', '-ac', '1', '-ar', str(RATE), '-'],
                      capture_output=True, check=True)
   return r.stdout
 
@@ -98,7 +98,7 @@ for who in sorted(os.listdir(CLIPS)) if os.path.isdir(CLIPS) else []:
   tmp = os.path.join(tempfile.mkdtemp(), who + '.wav')
   with wave.open(tmp, 'wb') as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(RATE); w.writeframes(bytes(data))
-  subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', tmp, '-c:a', 'libmp3lame', '-q:a', '4',
+  subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', tmp, '-c:a', 'libmp3lame', '-q:a', '4',
                   os.path.join(OUT, who + '.mp3')], check=True)
 
 with open(MANIFEST, 'w', encoding='utf-8') as fh:
