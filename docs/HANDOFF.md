@@ -37,7 +37,7 @@ build step), by **Michael Dougherty** and **James Amarante** (GitHub
 
 - **Careers:** usernames with 4-digit PINs, stats, and Xbox-style achievements. The code is in `src/career/` and uses Firebase Realtime DB + Auth over REST, with no SDK. The DB is `stew-zombies-default-rtdb`, and its rules only let the career's own auth uid write. The web API key in `config.js` is public by design.
 - **GobbleGum:** all 64 Black Ops 3 gums.
-  - Players build a pack of 5. Machines stand next to the perk machines (500/1000/2000 points, 3 a round), and [H] / D-pad ↓ activates a gum. It works online.
+  - Players build a pack of 5. Machines stand next to the perk machines (free, then 1000, then 2000 points, 3 a round), and [H] / D-pad ↓ activates a gum. It works online.
   - Liquid Divinium is earned by playing and saved to the username.
   - **Dr. Monty's Factory** (`src/ui/factoryUI.js`) uses three vats and buttons 1–3. The deals are in `CONFIG.gobblegum.factory.vats`.
   - The machines use a real gumball-machine model, and every gum has a canvas-drawn BO3-style logo (`src/render/gumIcons.js`).

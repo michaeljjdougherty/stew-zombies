@@ -70,7 +70,7 @@ for (const map of [SCHOOL, CRUST]) {
   me.yaw = Math.atan2(-(m.pos.x - me.pos.x), -(m.pos.z - me.pos.z));
   step({}, 2);
   check(me.useTarget === it, 'standing at a machine, it\'s what you\'d use');
-  check(me.prompt && me.prompt.cost === GG.costs[0], `the first gum of a round costs ${GG.costs[0]}`);
+  check(me.prompt && me.prompt.cost === (GG.costs[0] || null) && (GG.costs[0] || /free/.test(me.prompt.text)), `the first gum of a round costs ${GG.costs[0] || 'nothing'} (${me.prompt && me.prompt.text})`);
   const buy = () => { const pts = me.points; step({ use: true, usePressed: true }); step({}, Math.ceil(GG.dispenseTime / dt) + 2); return pts - me.points; };
   const got = [];
   const paid = [buy()];

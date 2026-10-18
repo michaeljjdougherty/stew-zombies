@@ -71,3 +71,20 @@ export function weaponLimit(sim, p) {
   for (const id of p.perks) n += sim.cfg.perks.list[id].extraSlots || 0;
   return n;
 }
+
+// Lie down in front of a perk machine: the first player to do it gets a few
+// points, once per machine a game (the host decides, online).
+export function updateProneBonus(sim) {
+  const B = sim.cfg.perks.proneBonus;
+  if (!B || !B.points) return;
+  for (const m of sim.world.perkMachines) {
+    if (sim.proneBonus[m.id] != null) continue;
+    const p = sim.players.find((q) => q.alive && !q.downed && q.prone && q.prone.up == null
+      && Math.abs(q.pos.y - m.center.y) < 2
+      && Math.hypot(q.pos.x - m.front.x, q.pos.z - m.front.z) <= B.range);
+    if (!p) continue;
+    sim.proneBonus[m.id] = p.id;
+    sim.addPoints(p, B.points, 'prone');
+    sim.emit('proneBonus', { playerId: p.id, machine: m.id, perk: m.perk });
+  }
+}
