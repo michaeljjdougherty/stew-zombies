@@ -1327,6 +1327,10 @@ export const CONFIG = {
       pressureCooker: { name: 'Pressure Cooker', desc: 'every zombie on the map is gone', weight: 0.7, color: '#ff8a1a', points: 400 },
       shopClass: { name: 'Shop Class', desc: 'every barrier rebuilt', weight: 0.6, color: '#c8a46a', points: 200 },
       clearanceSale: { name: 'Clearance Sale', desc: 'the Mystery Box costs 10', weight: 0.5, color: '#ff4fd8', timed: true, boxCost: 10 },
+      // the zombies leave you alone and fight each other for `time` s; each swing
+      // takes `hitFrac` of the other's health, and their kills are the grabber's
+      // (titans, Zach and their own zombies keep coming: src/sim/brawl.js)
+      bestBuddy: { name: 'Regs Best Buddy Mode', desc: 'the zombies fight each other', weight: 0.6, color: '#3ad0ff', timed: true, time: 20, hitFrac: 0.4, retarget: 1.5 },
       // (GobbleGum only: never dropped by a zombie. personal: only the one who
       // chewed it can pick it up)
       extraCredit: { name: 'Extra Credit', desc: '1250 points, all yours', weight: 0, color: '#6affc8', gumOnly: true, personal: true, points: 1250 },

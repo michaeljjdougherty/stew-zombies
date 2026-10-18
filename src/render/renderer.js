@@ -333,7 +333,7 @@ export class GameRenderer {
           else this.effects.puff(new THREE.Vector3(e.pos.x, e.pos.y, e.pos.z), { color: 0x8a8478, size: 0.12, grow: 2, life: 0.6, alpha: 0.4 });
           break;
         case 'zombieHit':
-          if (e.kind === 'knife') this.effects.zombieHit(e.point, e.dir, 'torso');
+          if (e.kind === 'knife' || e.kind === 'brawl') this.effects.zombieHit(e.point, e.dir, 'torso');   // (and a zombie's punch, Regs Best Buddy Mode)
           break;
         case 'playerHit':
           if (e.playerId === id) this.damage = 1;

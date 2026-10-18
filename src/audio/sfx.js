@@ -1134,7 +1134,7 @@ export function powerupGrab(A, out, t, p = {}) {
   o.frequency.exponentialRampToValueAtTime(1560, t + 0.35);
   const g = A.gain(0); A.env(g, t, 0.01, 0.45, 0.25);
   o.connect(g); g.connect(out);
-  announcer(A, out, t + 0.35, type === 'pressureCooker' ? 4 : 3);
+  announcer(A, out, t + 0.35, type === 'pressureCooker' ? 4 : type === 'bestBuddy' ? 5 : 3);
   if (type === 'pressureCooker') {
     const n = A.noiseSource('brown', t + 0.05, 2.5);
     const lp = A.filter('lowpass', 900, 0.7); lp.frequency.exponentialRampToValueAtTime(90, t + 2.2);
@@ -1149,6 +1149,8 @@ export function powerupGrab(A, out, t, p = {}) {
     for (let i = 0; i < 6; i++) click(A, out, t + 0.05 + i * 0.05, 2200 + i * 200, 4, 0.03, 0.4);
   } else if (type === 'shopClass') {
     for (const d of [0.05, 0.2, 0.35]) click(A, out, t + d, 2600, 1.2, 0.03, 0.6, 1250);
+  } else if (type === 'bestBuddy') {
+    for (const d of [0.05, 0.22]) click(A, out, t + d, 500, 1.4, 0.1, 0.9, 90);   // (two punches)
   } else if (type === 'oneBite') {
     click(A, out, t + 0.05, 700, 1.5, 0.12, 1.0, 120);
     voice(A, out, t + 0.1, { f0: 70, dur: 0.6, formants: [[300, 4, 1], [800, 5, 0.6]], grit: 0.9, breath: 0.4, vib: 9, vibDepth: 0.08, peak: 0.5 });
