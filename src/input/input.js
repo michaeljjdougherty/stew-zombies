@@ -206,7 +206,7 @@ export class Input {
     if (st.down(BTN.RB)) P.keys.add('grenade'); else P.keys.delete('grenade');
     if (st.pressed(BTN.LB)) this.edges.add('tactical');
     if (st.down(BTN.LB)) P.keys.add('tactical'); else P.keys.delete('tactical');
-    if (st.pressed(BTN.LEFT)) this.edges.add('mine');
+    if (st.pressed(BTN.RIGHT)) this.edges.add('mine');   // (an LBD, like BO1's right D-pad)
     if (st.pressed(BTN.DOWN)) this.edges.add('gum');   // (your GobbleGum)
     if (st.down(BTN.UP)) P.keys.add('emote'); else P.keys.delete('emote');   // (hold: the emote wheel)
     if (this.emoteWheel.open) {
