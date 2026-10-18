@@ -4,7 +4,8 @@
 // =============================================================================
 import { gumIconURL } from '../render/gumIcons.js';
 import { TallyCounter } from './tally.js';
-import { glyphify, glyph } from '../input/glyphs.js';
+import { glyphify, glyph, getDevice } from '../input/glyphs.js';
+import { DPad } from './dpad.js';
 import { powerupIconURL } from '../render/powerupIcons.js';
 import { playerColor } from '../render/nameTag.js';
 import { NOTES, STEW_ITEMS } from '../lore/erik.js';
@@ -43,6 +44,7 @@ export class HUD {
     this.hits = [];          // damage direction arcs { from, t, el }
     this.lyricSource = null; // () => current song line
     this.onNoteRead = null;
+    this.dpad = $('right') ? new DPad(cfg, $('right')) : null;   // what's on each D-pad direction, bottom right
     this.el.quest = $('quest'); this.el.titan = $('titanbar'); this.el.subs = $('subs'); this.el.pa = $('pa'); this.el.note = $('notecard'); this.el.eggs = $('eggs'); this.el.dmgdir = $('dmgdir');
   }
 
@@ -618,6 +620,7 @@ export class HUD {
     this.set('clip', this.el.clip, def.flame ? (slot.overheat > 0 ? 'HOT' : Math.round((slot.heat || 0) * 100) + '°') : def.infinite ? '∞' : String(slot.clip));
     this.set('clipL', this.el.clipL, def.dual ? String(slot.clipL) : '');
     this.set('grenades', this.el.grenades, '<u></u>'.repeat(Math.max(0, p.lbds || 0)) + '<s></s>'.repeat(Math.max(0, p.maisyDogs || 0)) + '<b></b>'.repeat(Math.max(0, p.stewBombs || 0)) + '<i></i>'.repeat(Math.max(0, p.grenades)), 'innerHTML');
+    if (this.dpad) this.dpad.update(p, getDevice());
     const scoped = !!def.scope && w.adsAmount > 0.85 && p.alive;
     this.set('scope', this.el.scope, !scoped, 'hidden');
     this.set('scopeThermal', this.el.scope, scoped && def.thermal ? 'thermal' : '', 'className');

@@ -74,7 +74,9 @@ The game captures your mouse; press **Esc** to pause.
 Plug in (or pair) an Xbox or PlayStation controller and press any button. Every
 button prompt in the game switches to that controller (Xbox letters or
 PlayStation shapes), and back to keys as soon as you touch the keyboard or
-mouse. Settings → Button prompts can force Xbox or PlayStation icons.
+mouse. Settings → Button prompts can force Xbox or PlayStation icons. The
+D-pad in the bottom right corner shows what's on each direction (LBDs and how
+many are left, your GobbleGum, emotes), with the keys instead on keyboard.
 
 | Xbox | PlayStation | Action |
 | --- | --- | --- |
@@ -85,7 +87,9 @@ mouse. Settings → Button prompts can force Xbox or PlayStation icons.
 | X | □ | Buy / use (hold to rebuild or revive); reload when there's nothing to buy |
 | Y | △ | Switch weapons |
 | RB · LB | R1 · L1 | Frag grenade (hold to cook) · tactical |
+| D-pad → | D-pad → | Set down an LBD |
 | D-pad ↓ | D-pad ↓ | Use your GobbleGum |
+| D-pad ↑ (hold) | D-pad ↑ (hold) | Emote wheel |
 | Menu | Options | Pause |
 | View (hold) | Create (hold) | Zombies: scoreboard · Firing Range: weapons panel · Explore: the menu |
 
