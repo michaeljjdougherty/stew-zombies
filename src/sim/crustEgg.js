@@ -15,9 +15,9 @@
 //     drops on it, it kneels with its heart showing: knife the heart. It slams,
 //     it raises ice shards under you, its frost nova slows you.
 //   The Molten Fiend (Trench Front): bullets do nothing. Man the field guns in
-//     the pits (F fires at where you're looking); the shells take a moment to
-//     come down, so lead it. It lobs magma that leaves burning pools, and it
-//     erupts: get clear.
+//     the pits (hold F: you sit in the gun and aim it), fire one shell straight
+//     at it and you're off the gun while it reloads. It lobs magma that leaves
+//     burning pools, and it erupts: get clear.
 //
 // Fights pause the rounds (the titan brings its own). Everything here is plain
 // data, so an online host can send it like the rest of the world.
@@ -60,7 +60,7 @@ export function createCrustEgg(sim) {
     };
     if (s.coils) E.coils = s.coils.map((c, i) => ({ id: 'coil' + i, x: c.x, y: c.y, z: c.z, con: { ...c.con }, charge: 0, ready: false, coolUntil: 0, by: null }));
     if (s.clusters) E.clusters = s.clusters.map((c, i) => ({ id: 'cluster' + i, x: c.x, y: c.y, z: c.z, state: 'hang', t: 0, regrowAt: 0, ground: null }));
-    if (s.guns) E.guns = s.guns.map((g, i) => ({ id: 'gun' + i, x: g.x, y: g.y, z: g.z, readyAt: 0 }));
+    if (s.guns) E.guns = s.guns.map((g, i) => ({ id: 'gun' + i, x: g.x, y: g.y, z: g.z, readyAt: 0, by: null }));
     if (s.id === 'ship') {
       // where its crew can come down: open ground on the island, not too far from its mouth
       const isl = m.islands.find((i) => i.id === s.island);
@@ -225,6 +225,8 @@ export function updateCrustEgg(sim, dt) {
   if (!E) return;
   const c = sim.cfg.crust.egg;
   for (const p of sim.players) feelTitans(sim, p, dt);
+  // (a gun whose gunner's gone, or got off it some other way, is free again)
+  for (const g of E.guns) if (g.by) { const q = sim.playerById(g.by); if (!q || !q.manning || q.manning.gun !== g.id) g.by = null; }
   updateFlung(sim, dt);
   updateClusters(sim, dt);
   updateShells(sim);
@@ -337,12 +339,15 @@ function blockedAhead(sim, T, dx, dz) {
 function leapToward(sim, T, target, airTime) {
   const c = sim.cfg.crust.egg;
   let best = null, bd = Infinity;
+  // (never down on top of anyone: landing on you used to shove you through the ground and off the island)
+  const clear = Math.max(c.leap.minDist, c.leap.clear || 0);
+  const people = sim.players.filter((p) => p.alive && !p.launch);
   for (const g of sim.mapData.groundSpawns) {
     if (islandOf(sim, g) !== T.island) continue;
     const room = sim.roomAt(g);
     if (room && room.outdoor === false) continue;
     const d = Math.hypot(g.x - target.pos.x, g.z - target.pos.z);
-    if (d < c.leap.minDist) continue;
+    if (d < clear || people.some((p) => Math.hypot(g.x - p.pos.x, g.z - p.pos.z) < clear)) continue;
     if (d < bd) { bd = d; best = g; }
   }
   if (!best || bd > c.leap.maxDist) return false;
@@ -764,9 +769,10 @@ function updateShells(sim) {
     explode(sim, s.to, 'shell', s.by);
     const T = E.titans.trench;
     if (!T) continue;
-    if (T.state === 'asleep' && d2(s.to, T.home) < c.hitRadius * 1.5) { wakeTitan(sim, 'trench', sim.playerById(s.by)); continue; }
+    if (T.state === 'asleep' && d2(s.to, T.home) < c.wakeRadius) { wakeTitan(sim, 'trench', sim.playerById(s.by)); continue; }
     if (T.state !== 'fight' || (T.act && T.act.kind === 'leap')) continue;
-    if (d2(s.to, T.pos) < c.hitRadius && Math.abs(s.to.y - T.pos.y) < 6) {
+    // (anywhere from its feet to its head: a shell to the chest used to miss)
+    if (d2(s.to, T.pos) < c.hitRadius && s.to.y > T.pos.y - 3 && s.to.y < T.pos.y + T.height + 2) {
       T.done++;
       T.act = { kind: 'stagger', t: 0 };
       const p = sim.playerById(s.by);
@@ -838,7 +844,7 @@ export function crustEggObjective(sim, pid = null) {
   if (T.id === 'ship') return T.wave ? `Hold off the Captain's crew · wave ${T.wave} of ${T.of}` : 'The Drowned Captain is waking';
   if (T.id === 'research') return `Lead the Warden past a charged tesla coil · ${T.done} of ${T.of}`;
   if (T.id === 'caves') return T.act && T.act.kind === 'kneel' ? 'Knife its heart!' : `Drop the icicles on the Golem · heart ${T.done} of ${T.of}`;
-  return `Shell the Fiend from the field guns · ${T.done} of ${T.of}`;
+  return `Man a field gun (hold [F]) and shell the Fiend · ${T.done} of ${T.of}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -888,30 +894,115 @@ class FieldGunInteractable {
   gun(sim) { return sim.crustEgg.guns[this.i]; }
   get range() { return 3.2; }
   distanceTo(sim, p) { const g = this.gun(sim); this.pos = g; return Math.hypot(p.pos.x - g.x, p.pos.z - g.z); }
-  canUse(sim, p) {
-    const E = sim.crustEgg, T = E.titans.trench;
-    return p.alive && !p.downed && (E.active === 'trench' ? T.state === 'fight' : (!E.active && T.state === 'asleep'));
-  }
+  canUse(sim, p) { return p.alive && !p.downed && !p.manning && gunsLive(sim.crustEgg); }
   prompt(sim) {
-    const g = this.gun(sim), T = sim.crustEgg.titans.trench;
+    const g = this.gun(sim);
+    if (g.by) return { text: 'Someone is on this gun', cost: null };
     if (sim.time < g.readyAt) return { text: `Reloading (${Math.ceil(g.readyAt - sim.time)}s)`, cost: null };
-    return { text: T.state === 'asleep' ? 'Press [F] to shell the crater' : 'Press [F] to fire the field gun where you\'re looking', cost: null };
+    return { text: 'Hold [F] to man the field gun', cost: null, hold: true };
   }
-  use(sim, p, cmd) {
-    if (!cmd.usePressed) return;
-    const g = this.gun(sim), c = sim.cfg.crust.egg.trench, E = sim.crustEgg, T = E.titans.trench;
-    if (sim.time < g.readyAt) return;
-    let to;
-    if (T.state === 'asleep') to = { x: T.home.x, y: c.groundY, z: T.home.z };
-    else {
-      const eye = sim.eyePosition(p), dir = lookDir(p.yaw, p.pitch);
-      const hit = sim.raycastWorld(eye, dir, c.range);
-      // (aimed at the sky: it comes down at its full range)
-      to = hit ? hit.point : { x: eye.x + dir.x * c.range, y: c.groundY, z: eye.z + dir.z * c.range };
-    }
-    g.readyAt = sim.time + c.reload;
-    const from = { x: g.x, y: g.y, z: g.z };
-    E.shells.push({ from, to: { x: to.x, y: to.y, z: to.z }, at: sim.time + c.flight, by: p.id });
-    sim.emit('fieldGunFire', { gun: g.id, from, to: { x: to.x, y: to.y, z: to.z }, dur: c.flight, playerId: p.id });
+  use(sim, p, cmd, dt) {
+    const g = this.gun(sim), c = sim.cfg.crust.egg.trench;
+    if (g.by || sim.time < g.readyAt || !cmd.use) { p.reviving = null; this.held = 0; return; }
+    this.held = (this.heldBy === p.id ? this.held || 0 : 0) + dt; this.heldBy = p.id;
+    p.reviving = { frac: Math.min(1, this.held / c.manHold), label: 'Manning' };
+    if (this.held >= c.manHold) { this.held = 0; p.reviving = null; mountGun(sim, p, g); }
   }
+  release(sim, p) { p.reviving = null; this.held = 0; }
+}
+
+// --- manning a field gun --------------------------------------------------------
+// The guns can be manned while the Fiend's asleep in its crater (shell it to wake
+// it) or up and fighting.
+function gunsLive(E) {
+  const T = E && E.titans.trench;
+  return !!T && (E.active === 'trench' ? T.state === 'fight' : (!E.active && T.state === 'asleep'));
+}
+// You sit in the gun: you're held at its breech and look along its barrel.
+function mountGun(sim, p, g) {
+  g.by = p.id;
+  p.manning = { gun: g.id };
+  p.manRev = (p.manRev || 0) + 1;   // (online: tells a friend's browser to sit them in it)
+  p.sprinting = false; p.crouched = false; p.prone = null; p.dive = null; p.emote = null;
+  sim.emit('fieldGunMan', { gun: g.id, playerId: p.id });
+}
+// Off the gun: a step back from it.
+function dismountGun(sim, p, g) {
+  if (!p.manning) return;
+  p.manning = null;
+  if (g && g.by === p.id) g.by = null;
+  if (sim.replica) return;   // (online: the host lets the gun go; your own browser moves you)
+  p.manRev = (p.manRev || 0) + 1;
+  if (g) {
+    const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), back = sim.cfg.crust.egg.trench.offGun;
+    const x = g.x - fx * back, z = g.z - fz * back;
+    const y = groundHeight(x, z, 0.3, g.y + 2, [sim.world.solids, sim.world.terrain]);
+    p.pos.x = x; p.pos.z = z; p.pos.y = Number.isFinite(y) && y > g.y - 3 ? y : g.y;
+    p.tp = (p.tp || 0) + 1;   // (online: the host moved you)
+  }
+  sim.emit('fieldGunOff', { gun: g ? g.id : null, playerId: p.id });
+}
+export function manPrompt(sim, p) {
+  const g = sim.crustEgg && sim.crustEgg.guns.find((q) => q.id === (p.manning && p.manning.gun));
+  if (g && sim.time < g.readyAt) return { text: `Reloading (${Math.ceil(g.readyAt - sim.time)}s)`, cost: null };
+  return { text: 'Fire to shoot the field gun · Jump to get off', cost: null };
+}
+// Every step you're on a gun (instead of walking and shooting): held in your seat,
+// fire once and you're off; jump to get off without firing.
+export function updateManning(sim, p, cmd) {
+  const E = sim.crustEgg, g = E && E.guns.find((q) => q.id === p.manning.gun);
+  if (!g || !p.alive || p.downed || !gunsLive(E)) {
+    if (sim.replica) sim.netOut.push({ k: 'cannonOff' });
+    dismountGun(sim, p, g); return;
+  }
+  p.pos.x = g.x; p.pos.y = g.y; p.pos.z = g.z;
+  p.vel.x = p.vel.y = p.vel.z = 0; p.grounded = true; p.sprinting = false;
+  if (cmd.jumpPressed) {
+    if (sim.replica) sim.netOut.push({ k: 'cannonOff' });
+    dismountGun(sim, p, g); return;
+  }
+  if (cmd.firePressed && sim.time >= g.readyAt) {
+    const eye = sim.eyePosition(p), dir = lookDir(p.yaw, p.pitch);
+    if (sim.replica) sim.netOut.push({ k: 'cannon', gun: g.id, origin: eye, dir });
+    else fireFieldGun(sim, p, g, eye, dir);
+    dismountGun(sim, p, g);
+  }
+}
+// Online: a friend fired the gun they're sitting in (or got off it).
+export function cannonShot(sim, p, gunId, origin, dir) {
+  const E = sim.crustEgg, g = E && E.guns.find((q) => q.id === gunId);
+  if (!g || !p.manning || p.manning.gun !== gunId || !origin || !dir) return;
+  if (sim.time >= g.readyAt && gunsLive(E)) fireFieldGun(sim, p, g, origin, dir);
+  dismountGun(sim, p, g);
+}
+export function cannonOff(sim, p) {
+  const E = sim.crustEgg;
+  dismountGun(sim, p, E && p.manning && E.guns.find((q) => q.id === p.manning.gun));
+}
+// The shell flies straight where you aimed: at the Fiend if it's in your sights,
+// else the first thing in the way.
+function fireFieldGun(sim, p, g, eye, dir) {
+  const c = sim.cfg.crust.egg.trench, E = sim.crustEgg;
+  const o = { x: eye.x + dir.x * 1.5, y: eye.y + dir.y * 1.5, z: eye.z + dir.z * 1.5 };   // (out past the gun's own barrel)
+  let t = c.range;
+  for (const tg of crustEggTargets(sim)) {
+    if (tg.id !== 'titan') continue;
+    const k = raySphere(o, dir, tg.c, tg.r);
+    if (k != null && k < t) t = k;
+  }
+  const hit = sim.raycastWorld(o, dir, t);
+  if (hit && hit.t < t) t = hit.t;
+  const to = { x: o.x + dir.x * t, y: o.y + dir.y * t, z: o.z + dir.z * t };
+  g.readyAt = sim.time + c.reload;
+  const from = { x: g.x, y: g.y + 1.2, z: g.z }, dur = Math.max(0.12, t / c.shellSpeed);
+  E.shells.push({ from, to, at: sim.time + dur, by: p.id });
+  sim.emit('fieldGunFire', { gun: g.id, from, to, dur, direct: true, playerId: p.id });
+}
+function raySphere(o, d, c, r) {
+  const ox = o.x - c.x, oy = o.y - c.y, oz = o.z - c.z;
+  const b = ox * d.x + oy * d.y + oz * d.z, cc = ox * ox + oy * oy + oz * oz - r * r;
+  const disc = b * b - cc;
+  if (disc < 0) return null;
+  const t = -b - Math.sqrt(disc);
+  return t >= 0 ? t : (cc < 0 ? 0 : null);
 }

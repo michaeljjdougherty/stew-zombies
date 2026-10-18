@@ -180,40 +180,78 @@ check(CRUST.titans.length === 4 && ['ship', 'research', 'caves', 'trench'].every
   check(T.state === 'dying', 'three blows to the heart: it shatters');
 }
 
-// --- The Molten Fiend: the field guns
+// --- The Molten Fiend: the field guns (hold F to sit in one, fire once and you're off)
 {
   const g = game(41);
   const { sim, me } = g;
-  const T = sim.crustEgg.titans.trench;
+  const T = sim.crustEgg.titans.trench, c = sim.cfg.crust.egg.trench;
   const gun = sim.crustEgg.guns[1];
+  const man = () => { g.put(gun.x - 2, gun.z - 2); g.secs(c.manHold + 0.2, { use: true }); g.step({}, 2); };
+  const fire = () => { g.step({ fire: true, firePressed: true }); g.step({}, 2); };
   g.put(gun.x - 2, gun.z - 2);
-  check(me.prompt && /shell the crater/.test(me.prompt.text), `at a field gun: "${me.prompt && me.prompt.text}"`);
+  check(me.prompt && /Hold \[F\] to man the field gun/.test(me.prompt.text), `at a field gun: "${me.prompt && me.prompt.text}"`);
   g.use();
-  g.secs(sim.cfg.crust.egg.trench.flight + 0.3);
-  check(T.state === 'waking' && g.has('fieldGunFire'), 'a shell into the crater wakes it');
+  check(!me.manning, 'a tap of F does nothing: you hold it');
+  man();
+  check(me.manning && me.manning.gun === gun.id && gun.by === 'p1' && Math.hypot(me.pos.x - gun.x, me.pos.z - gun.z) < 0.1, 'held F: you are sitting in the gun');
+  check(me.prompt && /Fire/.test(me.prompt.text), `on the gun: "${me.prompt && me.prompt.text}"`);
+  g.step({ moveY: 1, sprint: true }, 60);
+  check(me.manning && Math.hypot(me.pos.x - gun.x, me.pos.z - gun.z) < 0.1, "you can't walk off with it");
+  g.step({ jump: true, jumpPressed: true }); g.step({}, 2);
+  check(!me.manning && gun.by === null, 'jump: off the gun without firing');
+  man();
+  g.aim({ x: T.home.x, y: c.groundY, z: T.home.z });
+  fire();
+  check(!me.manning && g.has('fieldGunFire', (e) => e.direct) && Math.hypot(me.pos.x - gun.x, me.pos.z - gun.z) > 1, 'one shot and you are booted off the gun');
+  g.secs(1.5);
+  check(T.state === 'waking', 'a shell into the crater wakes it');
   g.secs(sim.cfg.crust.egg.wakeTime.trench + 0.3);
   check(T.state === 'fight', 'the Fiend is up');
+  check(me.prompt && /Reloading/.test(me.prompt.text), `the gun reloads after a shot: "${me.prompt && me.prompt.text}"`);
   // bullets do nothing
   const e = sim.eyePosition(me);
   const dx = T.pos.x - e.x, dy = T.pos.y + 4 - e.y, dz = T.pos.z - e.z, l = Math.hypot(dx, dy, dz);
   const hits = sim.hitscan(e, { x: dx / l, y: dy / l, z: dz / l }, 80);
   check(hits.length && hits[0].kind === 'world' && T.done === 0, 'bullets do nothing to it');
   // it comes for you
+  T.next.erupt = T.next.lob = sim.time + 99;   // (just walking: no stopping to throw magma)
   const d0 = Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z);
   g.secs(6);
   const d1 = Math.hypot(T.pos.x - me.pos.x, T.pos.z - me.pos.z);
-  check(d1 < d0 - 5, `it wades across no man's land after you (${d0.toFixed(0)} m -> ${d1.toFixed(0)} m)`);
+  const leapIn = T.act && T.act.kind === 'leap' && Math.hypot(T.act.to.x - me.pos.x, T.act.to.z - me.pos.z) < d0;   // (blocked on the way: it burrows over to you)
+  check(d1 < d0 - 5 || leapIn, `it wades across no man's land after you (${d0.toFixed(0)} m -> ${d1.toFixed(0)} m${leapIn ? ', then burrows closer' : ''})`);
+  // aimed straight at its chest from the gun: a hit, five times
   for (let i = 0; i < T.of; i++) {
-    gun.readyAt = 0; T.act = null;
-    g.put(gun.x - 2, gun.z - 2);
-    g.aim({ x: T.pos.x, y: T.pos.y, z: T.pos.z });
-    T.vel.x = T.vel.z = 0;
+    gun.readyAt = 0; T.act = { kind: 'stagger', t: -99 }; T.vel.x = T.vel.z = 0;
     const was = { ...T.pos };
-    g.use();
+    man();
+    T.pos.x = was.x; T.pos.z = was.z;
+    g.aim({ x: T.pos.x, y: T.pos.y + 5.6, z: T.pos.z });
+    fire();
     T.pos.x = was.x; T.pos.z = was.z; T.act = { kind: 'stagger', t: -99 };
-    g.secs(sim.cfg.crust.egg.trench.flight + 0.2);
+    g.secs(1.2);
   }
   check(T.done === T.of && (T.state === 'dying' || T.state === 'dead'), `five shells put it down (${T.done})`);
+}
+
+// --- the Fiend never comes up out of the ground on top of you
+{
+  const g = game(43);
+  const { sim, me } = g;
+  const T = sim.crustEgg.titans.trench, L = sim.cfg.crust.egg.leap;
+  const gun = sim.crustEgg.guns[0];
+  sim.crustEgg.active = 'trench'; T.state = 'fight'; T.t = 0; T.of = 5; T.pos.y = sim.cfg.crust.egg.trench.groundY;
+  T.next = { lob: sim.time + 999, erupt: sim.time + 999 };
+  let worst = Infinity, leaps = 0;
+  for (let i = 0; i < 12; i++) {
+    const sp = sim.mapData.groundSpawns.filter((q) => Math.hypot(q.x - gun.x, q.z - gun.z) < 60)[i * 3 % 20];
+    if (!sp) continue;
+    g.put(sp.x, sp.z);
+    T.act = null; T.stuckT = L.stuck + 1;
+    g.step({}, 1);
+    if (T.act && T.act.kind === 'leap') { leaps++; worst = Math.min(worst, Math.hypot(T.act.to.x - me.pos.x, T.act.to.z - me.pos.z)); T.act = null; }
+  }
+  check(leaps > 0 && worst >= L.clear - 0.01, `when it burrows it comes up at least ${L.clear} m from you (${leaps} leaps, closest ${worst.toFixed(1)} m)`);
 }
 
 // --- the Warden at the foot of the east catwalk's stairs (one foot on, one off,

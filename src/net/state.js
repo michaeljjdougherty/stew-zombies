@@ -213,6 +213,11 @@ export function applyMirror(sim, M, localId) {
         const r = s.ride && sim.rides.find((q) => q.id === s.ride.id);
         if (r && !p.ride && !p.launch) { p.ride = { id: r.id, ride: r, s: 0, speed: sim.cfg.crust.ride.zipStart, t0: sim.time }; p.sprinting = false; p.grounded = false; }
       }
+      // the host sat you in a field gun (you held F at it), or got you off it
+      if ((s.manRev || 0) > (p.manRev || 0)) {
+        p.manRev = s.manRev;
+        p.manning = s.manning ? structuredCopy(s.manning) : null;
+      }
       // the host moved you (respawn)
       if ((s.tp || 0) > (p.tp || 0)) {
         p.tp = s.tp;

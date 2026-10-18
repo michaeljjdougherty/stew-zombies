@@ -12,7 +12,7 @@ import { hammerSlam } from '../sim/hammers.js';
 import { flameBurst } from '../sim/flame.js';
 import { spawnProjectile, explode } from '../sim/projectiles.js';
 import { cauldronShot, isValve } from '../sim/cauldron.js';
-import { crustEggShot, knifeTitan } from '../sim/crustEgg.js';
+import { crustEggShot, knifeTitan, cannonShot, cannonOff } from '../sim/crustEgg.js';
 import { pitShot } from '../sim/pitShot.js';
 import { useGum, gumSlide } from '../sim/gums.js';
 import { worldState, diff, inventorySig } from './state.js';
@@ -146,6 +146,8 @@ export class NetHost {
       case 'titan': crustEggShot(sim, String(a.id), p); break;
       case 'pit': if (a.origin && a.dir) pitShot(sim, p, a.origin, a.dir); break;   // (shot Pit: he has words)
       case 'titanKnife': knifeTitan(sim, p); break;
+      case 'cannon': cannonShot(sim, p, String(a.gun), a.origin, a.dir); break;   // (fired the field gun they're sitting in)
+      case 'cannonOff': cannonOff(sim, p); break;
       case 'flame': { const def = sim.cfg.weapons[a.weapon]; if (def && def.flame && p.loadout.slots.some((sl) => sl.id === a.weapon)) flameBurst(sim, p, a.origin, a.dir, def, a.weapon); break; }
       case 'gum': useGum(sim, p); break;            // ([H]: their GobbleGum)
       case 'gumSlide': gumSlide(sim, p); break;     // (a dive landed: Slaughter Slide)
