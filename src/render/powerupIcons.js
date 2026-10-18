@@ -75,6 +75,23 @@ export function drawPowerupIcon(g, type, S, color = '#fff') {
       g.restore();
       break;
     }
+    case 'bestBuddy': {
+      // a heart with BFF punched out of it (Regs Best Buddy Mode)
+      g.beginPath();
+      g.moveTo(0, 46);
+      g.bezierCurveTo(-30, 24, -54, 6, -54, -18);
+      g.bezierCurveTo(-54, -40, -36, -52, -20, -52);
+      g.bezierCurveTo(-8, -52, -2, -44, 0, -36);
+      g.bezierCurveTo(2, -44, 8, -52, 20, -52);
+      g.bezierCurveTo(36, -52, 54, -40, 54, -18);
+      g.bezierCurveTo(54, 6, 30, 24, 0, 46);
+      g.fill();
+      g.globalCompositeOperation = 'destination-out';
+      g.font = '900 36px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('BFF', 0, -10);
+      g.globalCompositeOperation = 'source-over';
+      break;
+    }
     case 'extraCredit': {
       // a coin with a plus
       g.beginPath(); g.arc(0, 0, 46, 0, 7); g.fill();

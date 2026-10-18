@@ -366,7 +366,7 @@ export class SoundDirector {
       case 'zombieHit': {
         const pos = e.point;
         if (e.kind === 'knife') break;
-        if (local && this.tickT <= 0 && this.cfg.hud.hitmarkers) { A.play(S.hitTick, { head: e.part === 'head' }, { gain: 0.7, reverb: 0 }); this.tickT = 0.045; }
+        if (local && e.kind !== 'brawl' && this.tickT <= 0 && this.cfg.hud.hitmarkers) { A.play(S.hitTick, { head: e.part === 'head' }, { gain: 0.7, reverb: 0 }); this.tickT = 0.045; }
         if (e.part === 'head') A.play(S.headshot, {}, { pos, gain: 1.1, ref: 4 });
         else A.play(S.fleshHit, {}, { pos, gain: 1, ref: 4 });
         break;

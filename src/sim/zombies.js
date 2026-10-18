@@ -9,6 +9,7 @@ import { zombieHealthForRound } from '../config.js';
 import { maybeDrop, powerupActive } from './powerups.js';
 import { activeLure } from './projectiles.js';
 import { recycleZombie, seenByAnyone } from './rounds.js';
+import { brawling, brawler, brawlFoe, brawlHit } from './brawl.js';
 
 let _hitboxCache = [];
 
@@ -329,16 +330,19 @@ export function updateZombies(sim, dt) {
       }
 
       case 'chase': {
+        // Regs Best Buddy Mode: after another zombie, not you
+        const brawl = brawling(sim) && brawler(z);
+        const foe = brawl ? brawlFoe(sim, z, dt) : null;
         // a Stew Bomb nearby beats any player
-        const lure = activeLure(sim, z.pos);
-        const target = lure ? null : nearestPlayer(sim, z.pos, z);
-        const goTo = lure ? { pos: lure.pos, region: lure.region } : target;
+        const lure = brawl ? null : activeLure(sim, z.pos);
+        const target = lure || brawl ? null : nearestPlayer(sim, z.pos, z);
+        const goTo = foe ? { pos: foe.pos, region: foe.region } : lure ? { pos: lure.pos, region: lure.region } : target;
         z.targetId = target ? target.id : null;
         z.lured = !!lure;
         z.region = sim.nav.regionAt(z.pos, z.region);
         // nobody it can reach (they've launched off to another island): before
         // long it's recycled, to come up again somewhere near the players
-        if (sim.mapData.islands && !lure) {
+        if (sim.mapData.islands && !lure && !brawl) {
           if (!target || !reachable(sim, z, target)) {
             z.strandedT = (z.strandedT || 0) + dt;
             if (z.strandedT > sim.cfg.crust.strandedTime) {
@@ -385,7 +389,7 @@ export function updateZombies(sim, dt) {
         // separation from other zombies
         let sx = 0, sz = 0;
         for (const o of sim.zombies) {
-          if (o === z || o.state !== 'chase') continue;
+          if (o === z || o === foe || o.state !== 'chase') continue;
           const ox = z.pos.x - o.pos.x, oz = z.pos.z - o.pos.z;
           const od = Math.hypot(ox, oz);
           if (od > 0.001 && od < c.separationRadius) {
@@ -398,13 +402,14 @@ export function updateZombies(sim, dt) {
         const dl = Math.hypot(dirX, dirZ) || 1;
         dirX /= dl; dirZ /= dl;
 
-        updateAttack(sim, z, dt, false, null, target);
+        updateAttack(sim, z, dt, false, null, target, brawl, foe);
         let speed = z.speed;
         if (sim.gums && anyGumOn(sim, 'undeadManWalking')) speed = Math.min(speed, sim.cfg.gobblegum.gums.undeadManWalking.speed);   // (a shamble)
         if (z.attack.phase !== 'none') speed *= 0.2;
         if (z.stun > 0) speed *= 0.35;
         // stop short when already in swing range
         if (target && dist2D(target.pos, z.pos) < c.attackRange * 0.75) speed *= 0.1;
+        if (foe && dist2D(foe.pos, z.pos) < c.attackRange * 0.75) speed *= 0.1;
         if (lure && dist2D(lure.pos, z.pos) < 1.4) speed *= 0.05; // crowd round the pot
 
         const k = 1 - Math.exp(-c.accel * dt);
@@ -450,12 +455,22 @@ function startClimb(sim, z, win) {
 }
 
 // Attack logic. `throughWindow` = zombie is at a window swiping at players inside.
-function updateAttack(sim, z, dt, throughWindow, win, target) {
+// `brawl` = Regs Best Buddy Mode: it only swings at `foe`, another zombie.
+function updateAttack(sim, z, dt, throughWindow, win, target, brawl = false, foe = null) {
   const c = zcfg(sim, z);
   const a = z.attack;
   if (a.phase === 'windup') {
     a.t -= dt;
-    if (a.t <= 0) {
+    if (a.t <= 0 && (brawl || a.foe != null)) {
+      const f = sim.zombieById(a.foe);
+      a.foe = null;
+      const d = f ? dist2D(f.pos, z.pos) : Infinity;
+      const hit = d < c.attackHitRange && Math.abs(f.pos.y - z.pos.y) < c.attackHeightTolerance;
+      sim.emit('zombieSwingEnd', { id: z.id, hit });
+      if (hit) brawlHit(sim, z, f);
+      a.phase = 'recover';
+      a.t = c.attackRecover;
+    } else if (a.t <= 0) {
       // does it connect?
       let victim = null;
       for (const p of sim.players) {
@@ -482,7 +497,10 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
   }
   // start a swing?
   let victim = null;
-  if (schnitzDark(sim)) { /* lost you in the dark */ } else if (throughWindow) {
+  if (brawl) {
+    if (foe && dist2D(foe.pos, z.pos) < c.attackRange && Math.abs(foe.pos.y - z.pos.y) < c.attackHeightTolerance && canReach(sim, z, foe)) victim = foe;
+  } else if (schnitzDark(sim)) { /* lost you in the dark */ } else if (throughWindow) {
+    if (brawling(sim)) return;   // (busy: Regs Best Buddy Mode)
     for (const p of sim.players) {
       if (!p.alive || p.downed || (sim.gums && gumIgnored(sim, p))) continue;
       if (dist2D(p.pos, win.center) < c.windowAttackRange + 0.4) { victim = p; break; }
@@ -493,6 +511,7 @@ function updateAttack(sim, z, dt, throughWindow, win, target) {
   }
   if (victim && z.stun <= 0) {
     a.phase = 'windup';
+    a.foe = brawl ? victim.id : null;
     a.t = c.attackWindup;
     sim.emit('zombieSwing', { id: z.id, pos: { ...z.pos } });
   }

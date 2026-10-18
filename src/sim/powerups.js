@@ -6,6 +6,7 @@
 //   Pressure Cooker  every zombie on the map dies, +400 each
 //   Shop Class       every barrier rebuilt, +200 each
 //   Clearance Sale   Mystery Box costs 10 (timed)
+//   Regs Best Buddy  zombies fight each other, not you (timed, src/sim/brawl.js)
 // =============================================================================
 import { refillAll, makeSlot } from './weapons.js';
 import { anyGumOn } from './gums.js';
@@ -74,12 +75,12 @@ export function maybeDrop(sim, z, info) {
   spawnPowerup(sim, pickType(sim), z.pos);
 }
 
-// How long timed ones last (Temporal Gift: longer)
-const duration = (sim) => sim.cfg.powerups.duration * (anyGumOn(sim, 'temporalGift') ? sim.cfg.gobblegum.gums.temporalGift.durationMult : 1);
+// How long timed ones last (their own `time`, or the usual; Temporal Gift: longer)
+const duration = (sim, d) => (d.time ?? sim.cfg.powerups.duration) * (anyGumOn(sim, 'temporalGift') ? sim.cfg.gobblegum.gums.temporalGift.durationMult : 1);
 
 function apply(sim, type, p) {
   const pc = sim.cfg.powerups, d = pc.list[type];
-  if (d.timed) sim.powerups.active[type] = duration(sim);
+  if (d.timed) sim.powerups.active[type] = duration(sim, d);
   switch (type) {
     case 'fullPantry':
       for (const q of sim.players) {
@@ -112,6 +113,9 @@ function apply(sim, type, p) {
       }
       for (const q of sim.players) if (q.alive) sim.addPoints(q, d.points, 'powerup');
       break;
+    case 'bestBuddy':
+      sim.powerups.buddyId = p.id;   // (whose kills they are)
+      break;
     case 'extraCredit':
       sim.addPoints(p, d.points, 'powerup');
       break;
@@ -119,7 +123,7 @@ function apply(sim, type, p) {
       giveDeathMachine(sim, p, d);
       break;
   }
-  sim.emit('powerupGrab', { ptype: type, playerId: p.id, duration: d.timed ? duration(sim) : type === 'deathMachine' ? d.time : 0 });
+  sim.emit('powerupGrab', { ptype: type, playerId: p.id, duration: d.timed ? duration(sim, d) : type === 'deathMachine' ? d.time : 0 });
 }
 
 // The Death Machine: in your hands (an extra slot) till its time's up.
