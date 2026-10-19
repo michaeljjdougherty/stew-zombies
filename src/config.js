@@ -2316,6 +2316,20 @@ export const CONFIG = {
     playerColors: ['#f2ead8', '#5aa9ff', '#ffd23f', '#6fdc6a'],
     pitTagColor: '#ff9a3c',  // Pit's name over his head at the forge (Call of the Crust)
   },
+
+  // ---------------------------------------------------------------------------
+  // Firing Range (Map 3): src/map/firingrange.js, src/render/firingRangeWorld.js
+  // ---------------------------------------------------------------------------
+  firingRange: {
+    fog: { color: '#6a5a48', density: 0.011 },   // dusty dusk haze over the camp
+    ambient: 1.7,             // the sky's light on everything
+    brightness: 1.35,         // exposure
+    farPlane: 260,
+    sun: { color: '#ffc58a', intensity: 2.8, from: [-60, 45, 35] },   // low evening sun from the west
+    sky: { top: '#3c4a5e', horizon: '#c98a55' },
+    groundSpawnSpacing: 9,    // one dirt spawn about every this many metres
+    lamps: { color: '#ffb46a', intensity: 30, distance: 16 },
+  },
 };
 
 // -----------------------------------------------------------------------------
