@@ -1,8 +1,8 @@
-// Firing Range (Map 3): the map builds, you can walk it, zombies come in over
-// the barricades and up out of the dirt, and every machine and wall gun is
+// Bikini Bottom (Map 3): the map builds, you can walk it, zombies come in over
+// the barricades and up out of the sand, and every machine and wall gun is
 // somewhere you can stand in front of.
 import { CONFIG } from '../src/config.js';
-import { FIRING_RANGE as M } from '../src/map/firingrange.js';
+import { BIKINI_BOTTOM as M } from '../src/map/bikinibottom.js';
 import { GameSim } from '../src/sim/sim.js';
 import { exploreJumpToRound } from '../src/sim/rounds.js';
 
@@ -22,7 +22,7 @@ check(sim.world.wallBuys.every((w) => reach({ x: w.pos.x + w.normal.x * 0.8, z: 
 check(sim.world.boxSpots.every((b) => reach(b)), `${sim.world.boxSpots.length} box spots reachable`);
 check(!!sim.world.powerSwitch && reach({ x: sim.world.powerSwitch.pos.x + sim.world.powerSwitch.normal.x * 0.8, z: sim.world.powerSwitch.pos.z + sim.world.powerSwitch.normal.z * 0.8 }), 'power switch reachable');
 check(reach(sim.world.madDog), 'Mad Dog Machine reachable');
-check(M.groundSpawns.length >= 10, `${M.groundSpawns.length} dirt spawns`);
+check(M.groundSpawns.length >= 10, `${M.groundSpawns.length} sand spawns`);
 
 // walk east for a few seconds: on the ground the whole way, never through a wall
 const step = (s, cmd = {}) => { for (let i = 0; i < Math.round(s * 60); i++) { sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: 0, ...cmd }); sim.step(1 / 60); sim.drainEvents(); } };

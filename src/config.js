@@ -2318,17 +2318,16 @@ export const CONFIG = {
   },
 
   // ---------------------------------------------------------------------------
-  // Firing Range (Map 3): src/map/firingrange.js, src/render/firingRangeWorld.js
+  // Bikini Bottom (Map 3): src/map/bikinibottom.js, src/render/bikiniBottomWorld.js
   // ---------------------------------------------------------------------------
-  firingRange: {
-    fog: { color: '#6a5a48', density: 0.011 },   // dusty dusk haze over the camp
-    ambient: 1.7,             // the sky's light on everything
-    brightness: 1.35,         // exposure
-    farPlane: 260,
-    sun: { color: '#ffc58a', intensity: 2.8, from: [-60, 45, 35] },   // low evening sun from the west
-    sky: { top: '#3c4a5e', horizon: '#c98a55' },
-    groundSpawnSpacing: 9,    // one dirt spawn about every this many metres
-    lamps: { color: '#ffb46a', intensity: 30, distance: 16 },
+  bikiniBottom: {
+    fog: { color: '#3f9fb0', density: 0.006 },   // the blue-green sea all round
+    ambient: 1.3,             // the light down through the water, on everything
+    brightness: 1.0,          // exposure
+    farPlane: 320,
+    sun: { color: '#fff4d8', intensity: 1.8, from: [30, 80, 20] },   // the sun high overhead, through the surface
+    skyRadius: 300,           // the flowery sky dome round you (inside the far plane)
+    groundSpawnSpacing: 10,   // one sand spawn about every this many metres
   },
 };
 
