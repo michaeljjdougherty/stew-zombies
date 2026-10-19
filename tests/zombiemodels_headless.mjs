@@ -8,7 +8,9 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
 const dir = new URL('../assets/zombies/', import.meta.url);
 const src = readFileSync(new URL('../src/render/zombieModels.js', import.meta.url), 'utf8');
 const cast = [...src.matchAll(/\{ id: '(\w+)', weight/g)].map((m) => m[1]);
-check(cast.length === 12, `12 characters in the cast (${cast.join(', ')})`);
+// (a map's own, Bikini Bottom's fish: cartoons, no glowing eyes, scaled to `tall` in the game)
+const tall = Object.fromEntries([...src.matchAll(/\{ id: '(\w+)', weight: [\d.]+, map: '\w+', tall: (\d+)/g)].map((m) => [m[1], +m[2]]));
+check(cast.length === 16 && Object.keys(tall).length === 4, `16 characters in the cast, 4 of them Bikini Bottom's (${cast.join(', ')})`);
 
 const anims = JSON.parse(readFileSync(new URL('anims.json', dir)));
 const names = anims.clips.map((c) => c.name);
@@ -29,8 +31,9 @@ for (const id of cast) {
   check(m.meshes.every((me) => me.index + me.indexCount * (me.index32 ? 4 : 2) <= bin.length && me.sw + me.vertexCount * 4 <= bin.length), `${id}: mesh data fits in ${id}.bin`);
   const tex = m.meshes.flatMap((me) => [me.material.map, me.material.normalMap, me.material.emissiveMap]).filter(Boolean);
   check(tex.every((t) => existsSync(new URL(t, dir))), `${id}: all ${new Set(tex).size} textures exist`);
-  check(m.meshes.some((me) => me.material.emissiveMap) && (m.eyesLocal || []).length === 2, `${id}: green glowing eyes (emissive map + 2 glow points)`);
-  check(Math.abs(m.hipsY - 100) < 1e-6 && m.height > 150 && m.height < 200, `${id}: normalized (hips 100, ${m.height} tall)`);
+  if (!tall[id]) check(m.meshes.some((me) => me.material.emissiveMap) && (m.eyesLocal || []).length === 2, `${id}: green glowing eyes (emissive map + 2 glow points)`);
+  const h = tall[id] || m.height;
+  check(Math.abs(m.hipsY - 100) < 1e-6 && h > 150 && h < 200, `${id}: normalized (hips 100, ${h} tall in the game)`);
   const tris = m.meshes.reduce((s, me) => s + me.indexCount / 3, 0);
   check(tris < 70000, `${id}: ${tris} triangles`);
 }

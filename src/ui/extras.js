@@ -150,6 +150,7 @@ export class Extras {
       <p>Inside SpongeBob's house: "Sbfbb-SpongeBob House" by <b>Sajin Mickey Firey fan 1342</b> from <b>Cheryl Hill</b> on Sketchfab (CC BY 4.0), the ground floor only.</p>
       <p>Inside the Krusty Krab: "The Krusty Krab From BFBBR" by <b>SMF Features</b>, developed from <b>Cheryl Hill</b>, on Sketchfab (CC BY 4.0), the building only, simplified for the game.</p>
       <p>Bikini Bottom's crew, all on Sketchfab (CC BY 4.0), posed and shrunk for the game: "Spongebob SquarePants" by <b>Jamessmartguy</b>, "Patrick" by <b>LostBoyz2078</b>, "Squidward (Spongebob)" by <b>Anthony Yanez</b> and "Sandy Bikini" by <b>Placidone</b>.</p>
+      <p>Bikini Bottom's zombies, on Sketchfab: "Spongebob Male Fish", "Spongebob Fish - Incidental 90" (CC BY 4.0) and "Spongebob Fish - Incidental 70" (CC BY-NC 4.0) by <b>hodart</b>, "Nerd 2 Spongebob" by <b>chikn nuggit and spongebob</b> (CC BY 4.0, rigged for the game), wearing the "Chum Bucket Bucket Helmet" by <b>WhataModel</b> (CC BY 4.0).</p>
       <p>The Cheddars: Skinless Hound by <b>Pigcraft</b> on Sketchfab (CC BY 4.0), recolored, thinned out and rigged for the game.</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>

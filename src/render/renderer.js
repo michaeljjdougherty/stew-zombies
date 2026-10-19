@@ -11,6 +11,7 @@ import { setSurfaceAnisotropy } from './surfaces.js';
 import { MapView } from './mapView.js';
 import { bakeUniforms, DYN_LIGHTS } from './bake.js';
 import { ZombieViews } from './zombieView.js';
+import { zombieModels } from './zombieModels.js';
 import { Effects, FX_LAYER } from './effects.js';
 import { Puddles } from './puddles.js';
 import { Viewmodel } from './viewmodel.js';
@@ -113,6 +114,7 @@ export class GameRenderer {
       };
       for (const v of w.saleBoxes.values()) v.onLand = w.box.onLand;
       w.zombies.islands = sim.mapData.islands || null;   // (Call of the Crust: each island's own dead)
+      w.zombies.mapId = sim.mapData.id; zombieModels.loadMap(sim.mapData.id);   // (Bikini Bottom: its own fish)
       w.cauldron = new CauldronView(scene, sim.mapData, effects);
       w.cauldron.attachLight(map);
       this.worlds.set(sim.mapData.id, w);
