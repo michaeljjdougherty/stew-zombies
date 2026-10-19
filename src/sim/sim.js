@@ -30,7 +30,7 @@ import { createCauldron, cauldronTargets } from './cauldron.js';
 import { createJukebox, updateJukebox, JukeboxInteractable } from './jukebox.js';
 import { createCrew } from './crew.js';
 import { createRides, ZiplineInteractable } from './rides.js';
-import { LaunchInteractable } from './launchers.js';
+import { LaunchInteractable, DoorTeleportInteractable } from './launchers.js';
 import { updateVoid } from './void.js';
 import { createShelling, updateShelling, CeasefireInteractable } from './shelling.js';
 import { createCrustEgg, updateCrustEgg, crustEggInteractables, crustEggTargets } from './crustEgg.js';
@@ -92,6 +92,7 @@ export class GameSim {
       ...(map.stewItems || []).map((s) => new StewItemInteractable(s)),
       ...questInteractables(this),
       ...(map.launchers || []).map((pad) => new LaunchInteractable(pad, map.launchers.find((q) => q.id === pad.to))),
+      ...(map.teleporters || []).map((d) => new DoorTeleportInteractable(d)),
     ];
     this.shelling = createShelling(this);   // the guns over the Trench Front
     if (map.ceasefire) this.interactables.push(new CeasefireInteractable(map.ceasefire));
@@ -128,6 +129,8 @@ export class GameSim {
       character = ['kearns', 'ryan', 'rocco', 'brian'].find((c) => !taken.has(c)) || 'kearns';
       this.emit('characterSwapped', { playerId: id, from: was, to: character });
     }
+    // (a map with its own crew, Bikini Bottom's: you're one of them, no skin)
+    if (this.mapData.cast) { const C = this.mapData.cast, taken = new Set(this.players.map((q) => q.character)); character = [C.by[character], ...C.order].find((c) => c && !taken.has(c)) || C.order[0]; skin = null; }
     p.character = character;   // who they're playing: what they say, what Erik calls them
     p.skin = typeof skin === 'string' ? skin : null;
     p.gunSkins = gunSkins && typeof gunSkins === 'object' ? { ...gunSkins } : null;

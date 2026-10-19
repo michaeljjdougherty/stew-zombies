@@ -7,10 +7,9 @@
 // the nav regions (rectangles of cells you can walk straight across) and the
 // portals between them. Pure JS (no three.js): the sim and the renderer read it.
 // =============================================================================
-import { GROUND, HEIGHTS, BLOCKED } from './bikiniBottomGround.js';
+import { GRIDS } from './bikiniBottomGround.js';
 import { autoPortals } from './layout.js';
 
-const { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL } = GROUND;
 const STEP = 0.24;     // the most the sand may rise from one cell to the next and still be walkable
                        // (about 25 degrees: the cliffs and rock ledges are too steep to climb)
 const WALL = 3.2;      // how high a wall box stands over the ground
@@ -21,25 +20,35 @@ function bytes(b64) {
   for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
   return u;
 }
-const hb = bytes(HEIGHTS), H = new Float32Array(NX * NZ);
-for (let c = 0; c < NX * NZ; c++) H[c] = ((hb[c * 2] | (hb[c * 2 + 1] << 8)) - 32768) / 100;
-const SOLID = bytes(BLOCKED);
-
-const cellOf = (x, z) => [Math.floor((x - GX0) / CELL), Math.floor((z - GZ0) / CELL)];
+// each grid (the town, then the insides far off the map), unpacked
+const ALL = GRIDS.map((g) => {
+  const hb = bytes(g.heights), H = new Float32Array(g.nx * g.nz);
+  for (let c = 0; c < g.nx * g.nz; c++) H[c] = ((hb[c * 2] | (hb[c * 2 + 1] << 8)) - 32768) / 100;
+  return { name: g.name, x0: g.x0, z0: g.z0, nx: g.nx, nz: g.nz, cell: g.cell, H, SOLID: bytes(g.blocked) };
+});
+const gridAt = (x, z) => ALL.find((g) => x >= g.x0 && z >= g.z0 && x < g.x0 + g.nx * g.cell && z < g.z0 + g.nz * g.cell);
+const cellIn = (g, x, z) => [Math.floor((x - g.x0) / g.cell), Math.floor((z - g.z0) / g.cell)];
+const { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL } = ALL[0];
+// the town's grid (the insides' are in INSIDES, by name)
 export const GRID = { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL };
+export const INSIDES = Object.fromEntries(ALL.slice(1).map((g) => [g.name, { x0: g.x0, z0: g.z0, nx: g.nx, nz: g.nz, cell: g.cell }]));
 
 // The ground's height under a point (the cell's).
 export function heightAt(x, z) {
-  const [i, k] = cellOf(x, z);
-  if (i < 0 || k < 0 || i >= NX || k >= NZ) return 0;
-  return H[k * NX + i];
+  const g = gridAt(x, z);
+  if (!g) return 0;
+  const [i, k] = cellIn(g, x, z);
+  return g.H[k * g.nx + i];
 }
 
-// Build the playable ground. play(x, z): inside the edge of play? start: a point
+// Build the playable ground. play(x, z): inside the edge of play (the town's)? start: a point
 // you can walk from (everything you can't walk to from it is fenced off).
+// starts: { house: {x, z}, ... } the same for each inside (one left out isn't built).
 // open: rects [x0, z0, x1, z1] cleared of walls (a doorway the model leaves too tight).
 // shut: rects walled up (a gap you shouldn't get through).
-export function buildGround({ play, start, open = [], shut = [] }) {
+function buildOn(g, play, start, open, shut, regions) {
+  const { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL, H, SOLID } = g;
+  const cellOf = (x, z) => cellIn(g, x, z);
   const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
   const cx = (i) => GX0 + (i + 0.5) * CELL, cz = (k) => GZ0 + (k + 0.5) * CELL;
   const solid = new Uint8Array(NX * NZ);
@@ -96,7 +105,6 @@ export function buildGround({ play, start, open = [], shut = [] }) {
 
   // --- nav: greedy rectangles of walkable cells (straight lines inside each are clear)
   const taken = new Uint8Array(NX * NZ);
-  const regions = [];
   for (let k = 0; k < NZ; k++) for (let i = 0; i < NX; i++) {
     const c = k * NX + i; if (!walk[c] || taken[c]) continue;
     const ok = (n) => walk[n] && !taken[n];
@@ -113,13 +121,27 @@ export function buildGround({ play, start, open = [], shut = [] }) {
     }
     let y0 = Infinity, y1 = -Infinity;
     for (let kk = k; kk <= k1; kk++) for (let j = i; j <= i1; j++) { taken[kk * NX + j] = 1; y0 = Math.min(y0, H[kk * NX + j]); y1 = Math.max(y1, H[kk * NX + j]); }
-    regions.push({ id: 'bb_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: 'town', level: 0, y0, y1 });
+    regions.push({ id: 'bb_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: g.name, level: 0, y0, y1 });
+  }
+  return { boxes, walk, solid };
+}
+
+export function buildGround({ play, start, starts = {}, open = [], shut = [] }) {
+  const regions = [], boxes = [], grids = {};
+  for (const g of ALL) {
+    const town = g === ALL[0], s = town ? start : starts[g.name];
+    if (!s) continue;
+    const b = buildOn(g, town ? play : () => true, s, open, shut, regions);
+    boxes.push(...b.boxes);
+    grids[g.name] = { ...b, x0: g.x0, z0: g.z0, nx: g.nx, nz: g.nz, cell: g.cell };
   }
   // (a region of a single cell's width is too tight to walk through: no portal)
   const portals = autoPortals(regions, 0.9);
   // portals across a step too high to walk: not a way through
   const P = portals.filter((p) => Math.abs(heightAt(p.x - (p.axis === 'x' ? 0.25 : 0), p.z - (p.axis === 'z' ? 0.25 : 0)) - heightAt(p.x + (p.axis === 'x' ? 0.25 : 0), p.z + (p.axis === 'z' ? 0.25 : 0))) <= STEP + 0.05);
-  const walkable = (x, z) => { const [i, k] = cellOf(x, z); return i >= 0 && k >= 0 && i < NX && k < NZ && !!walk[k * NX + i]; };
-  const solidAt = (x, z) => { const [i, k] = cellOf(x, z); return i >= 0 && k >= 0 && i < NX && k < NZ && !!solid[k * NX + i]; };
-  return { boxes, regions, portals: P, walkable, solidAt, walk, solid };
+  const look = (x, z, what) => { const g = gridAt(x, z), b = g && grids[g.name]; if (!b) return false; const [i, k] = cellIn(g, x, z); return !!b[what][k * g.nx + i]; };
+  const walkable = (x, z) => look(x, z, 'walk');
+  const solidAt = (x, z) => look(x, z, 'solid');
+  // (walk and solid: the town's cells; grids: each grid's, by name)
+  return { boxes, regions, portals: P, walkable, solidAt, walk: grids.town.walk, solid: grids.town.solid, grids };
 }

@@ -6,10 +6,19 @@
 // Also the barricades' plank surrounds (the frames and planks are mapView's).
 // =============================================================================
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as T from './textures.js';
-import { fetchGlb } from './gltfLite.js';
+import { fetchGlb, gltfLoader } from './gltfLite.js';
+
+// (the game's loader: textures straight from the file's bytes, which the
+// artifact page needs; plus the decoder for these compressed models)
+function loader() { const l = gltfLoader(); l.setMeshoptDecoder(MeshoptDecoder); return l; }
+// the model's own materials, lit the cheap way like the rest of the game
+function lambert(s) {
+  const l = new THREE.MeshLambertMaterial({ map: s.map, color: s.color, transparent: s.transparent, alphaTest: s.alphaTest, opacity: s.opacity, side: s.side, vertexColors: s.vertexColors, name: s.name });
+  if (l.map) l.map.colorSpace = THREE.SRGBColorSpace;
+  return l;
+}
 
 // Plank sheets and posts round each barricade, like the town's bamboo fences.
 function barricadeSurrounds(mv, mat) {
@@ -50,19 +59,20 @@ export function buildBikiniBottom(mv) {
   for (const g of barricadeSurrounds(mv, planks)) out.root.add(g);
 
   // the town (in the background: nothing waits on it)
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
   fetchGlb(map.glbWorld)
-    .then((buf) => loader.parseAsync(buf, ''))
+    .then((buf) => loader().parseAsync(buf, ''))
     .then((gltf) => {
       const sky = gltf.scene.getObjectByName('sky');
+      // (the insides, far off the map, lit from within: the light down through the water doesn't get in)
+      const indoors = new Set();
+      for (const id of ['house', 'krab']) gltf.scene.getObjectByName(id)?.traverse((o) => indoors.add(o));
       gltf.scene.traverse((o) => {
         if (!o.isMesh) return;
         // (lit the cheap way, like the rest of the game, keeping the model's own textures)
         const m = o.material, mats = Array.isArray(m) ? m : [m];
         const lam = mats.map((s) => {
-          const l = new THREE.MeshLambertMaterial({ map: s.map, color: s.color, transparent: s.transparent, alphaTest: s.alphaTest, opacity: s.opacity, side: s.side, vertexColors: s.vertexColors, name: s.name });
-          if (l.map) l.map.colorSpace = THREE.SRGBColorSpace;
+          const l = lambert(s);
+          if (indoors.has(o)) { l.emissive.set('#ffffff'); l.emissiveMap = l.map; l.emissiveIntensity = cfg.insideGlow; if (!l.map) l.emissive.copy(l.color); }
           return l;
         });
         o.material = Array.isArray(m) ? lam : lam[0];
@@ -97,4 +107,37 @@ export function buildBikiniBottom(mv) {
 // The sky follows the camera (it's the backdrop, not a place).
 export function updateBikiniBottom(bb, eye) {
   if (bb.sky && eye) bb.sky.position.copy(eye);
+}
+
+// --- Bikini Bottom's crew: SpongeBob, Patrick, Squidward, Sandy -----------------
+// (assets/bikinibottom/cast.glb, tools/bikinibottom/cast.mjs: one node each, stood
+// on y = 0 facing +z.) A character built on the human rig (src/render/characters.js)
+// keeps its joints, so everything that walks, crouches and aims a person still
+// works; the person's own parts are hidden and the model rides on the hips.
+let castJob = null;
+function castModels() {
+  if (!castJob) {
+    castJob = fetchGlb('assets/bikinibottom/cast.glb')
+      .then((buf) => loader().parseAsync(buf, ''))
+      .then((gltf) => {
+        gltf.scene.traverse((o) => { if (o.isMesh) { o.material = lambert(o.material); o.castShadow = true; } });
+        return gltf.scene;
+      })
+      .catch((err) => { console.warn('bikini bottom cast:', err.message || err); return null; });
+  }
+  return castJob;
+}
+export function castOn(k, who) {
+  k.root.traverse((o) => { if (o.isMesh) o.visible = false; });
+  const hips = k.hips, y = hips.position.y;
+  castModels().then((scene) => {
+    const src = scene && scene.getObjectByName(who);
+    if (!src) return;
+    const m = src.clone(true);
+    m.position.set(0, -y, 0);
+    m.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; o.userData.noBake = true; } });
+    hips.add(m);
+    k.model = m;
+  });
+  return k;
 }
