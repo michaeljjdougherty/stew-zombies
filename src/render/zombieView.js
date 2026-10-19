@@ -6,7 +6,8 @@ import * as THREE from 'three';
 const _drip = new THREE.Vector3();
 import * as T from './textures.js';
 import { zombieKit } from './zombieKit.js';
-import { zombieModels } from './zombieModels.js';
+import { zombieModels, ZOMBIE_TINTS } from './zombieModels.js';
+import { castPiece } from './bikiniBottomWorld.js';
 import { CONFIG } from '../config.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
@@ -116,9 +117,10 @@ export class ZombieViews {
   buildRigged(z) {
     const r = (k) => hash(z.seed + k * 7919);
     // (a titan's own: the Captain's skeletons, the Warden's lab dead)
-    const t = (z.cast && this.models.byId(z.cast)) || this.models.pick(r(1), this.islandAt(z.pos), r(11), this.cfg && this.cfg.crust ? this.cfg.crust.islandZombies : 0);
+    const t = (z.cast && this.models.byId(z.cast)) || this.models.pick(r(1), this.islandAt(z.pos), r(11), this.cfg && this.cfg.crust ? this.cfg.crust.islandZombies : 0, this.mapId);
     const inst = t.instance();
-    inst.model.scale.setScalar(0.01 * z.scale);
+    inst.model.scale.setScalar(0.01 * z.scale * t.fit);
+    if (t.map) this.dressFish(t, inst, r(12));
     for (const m of inst.meshes) m.boundingSphere = RIG_SPHERE;
     // eye glow, hung off the head bone
     const head = inst.bones.Head;
@@ -154,11 +156,31 @@ export class ZombieViews {
       crawler: false, type: z.type, seedR: r,
       skinMat: inst.meshes[0].material,
       offset: r(5),   // so they don't all move in step
-      hitT: 0,
+      hitT: 0, fit: t.fit,
       spirit: !!z.ritual, infused: !!z.infused, meshes: inst.meshes,
     };
     this.play(v, 'idle', 0);
     return v;
+  }
+
+  // A map's own zombies (Bikini Bottom's fish): one of a few colours, and a
+  // Chum Bucket helmet over the head on the ones that wear it.
+  dressFish(t, inst, r) {
+    const n = Math.floor(r * ZOMBIE_TINTS.length);
+    if (!t.tinted) t.tinted = [];
+    if (!t.tinted[n]) t.tinted[n] = t.parts.map((p) => { const m = p.material.clone(); m.color.multiply(new THREE.Color(ZOMBIE_TINTS[n])); return m; });
+    inst.meshes.forEach((m, i) => { m.material = t.tinted[n][i]; });
+    const box = t.bucket && t.headBox(), head = inst.bones.Head;
+    if (!box || !head) return;
+    castPiece('bucket').then((b) => {
+      if (!b) return;
+      // (1 tall and about 1.34 across: wide and tall enough to cover the head, down to the neck)
+      const sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      const s = Math.max(Math.max(sz.x, sz.z) * 0.85, sz.y * 0.95);
+      b.scale.setScalar(s);
+      b.position.set(c.x, box.min.y + sz.y * 0.05, c.z);
+      head.add(b);
+    });
   }
 
   // The Schnitz's infused zombies: twice the size, a sickly green cast and a
@@ -247,7 +269,7 @@ export class ZombieViews {
 
   animateRigged(v, z, dt, time) {
     const speed = z.moveSpeed;
-    const scale = z.scale || 1;
+    const scale = (z.scale || 1) * (v.fit || 1);
     // footsteps from distance covered (same rhythm as before)
     const stride = z.type === 'sprinter' ? 1.5 : z.type === 'runner' ? 1.25 : 0.75;
     v.phase += (speed / stride) * Math.PI * dt;

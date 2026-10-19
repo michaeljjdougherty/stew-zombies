@@ -127,6 +127,10 @@ function castModels() {
   }
   return castJob;
 }
+// a copy of one piece of the cast file (the zombies' Chum Bucket helmet), or null
+export function castPiece(name) {
+  return castModels().then((scene) => { const src = scene && scene.getObjectByName(name); return src ? src.clone(true) : null; });
+}
 export function castOn(k, who) {
   k.root.traverse((o) => { if (o.isMesh) o.visible = false; });
   const hips = k.hips, y = hips.position.y;

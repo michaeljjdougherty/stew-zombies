@@ -29,7 +29,16 @@ export const ZOMBIE_CAST = [
   { id: 'walkzombie', weight: 1, island: 'trench' },    // the Trench Front's fallen
   { id: 'ghoul', weight: 1, island: 'caves' },          // the Ice Caves' starved ghouls
   { id: 'skeleton', weight: 1, island: 'ship' },        // the Ship Graveyard's drowned crew
+  // Bikini Bottom: the town's fish, and only them (loaded only there; tools/bikinibottom/zombies.mjs).
+  // tall: how tall they stand (cm: their heads are most of them); bucket: a Chum Bucket helmet over the head
+  { id: 'bbmale', weight: 1, map: 'bikinibottom', tall: 185, bucket: true },
+  { id: 'bbnerd', weight: 1, map: 'bikinibottom', tall: 180, bucket: true },
+  { id: 'bbfish90', weight: 1, map: 'bikinibottom', tall: 190 },
+  { id: 'bbfish70', weight: 1, map: 'bikinibottom', tall: 180 },
 ];
+// the colours a map's own zombies come in (a multiply on their textures), so a
+// few models look like a crowd
+export const ZOMBIE_TINTS = ['#ffffff', '#9fd4ff', '#ffb3c9', '#b9f59e', '#ffd47a', '#cfa8ff', '#8ff0e0', '#ff9f7a'];
 
 // bones the hit reactions are allowed to move (so they don't slide the legs)
 const UPPER = /^(Spine|Spine1|Spine2|Neck|Head|LeftShoulder|RightShoulder|LeftArm|RightArm|LeftForeArm|RightForeArm|LeftHand|RightHand)$/;
@@ -101,6 +110,7 @@ class Template {
       g.computeBoundingSphere();
       const mm = m.material;
       const mat = new THREE.MeshStandardMaterial({
+        ...(mm.color ? { color: mm.color } : {}),   // (a texture that was one flat colour)
         map: textures[mm.map] || null,
         normalMap: textures[mm.normalMap] || null,
         roughness: 0.82, metalness: 0,
@@ -143,6 +153,24 @@ class Template {
     });
     const byName = Object.fromEntries(bones.map((b) => [b.name, b]));
     return { root, model, bones: byName, skeleton, meshes, template: this };
+  }
+
+  // The head's box in the Head bone's own space (hip-100 units): every vertex
+  // that mostly follows the head (for a helmet to fit over). Worked out once.
+  headBox() {
+    if (this._headBox !== undefined) return this._headBox;
+    const B = this.bones, h = this.headIndex, inHead = B.map((_, i) => { for (let j = i; j >= 0; j = B[j].parent) if (j === h) return true; return false; });
+    const box = new THREE.Box3(), v = new THREE.Vector3(), M = this.inverses[h];
+    for (const p of this.parts) {
+      const P = p.geometry.attributes.position, SI = p.geometry.attributes.skinIndex, SW = p.geometry.attributes.skinWeight;
+      for (let i = 0; i < P.count; i++) {
+        let best = 0, bw = -1;
+        for (let k = 0; k < 4; k++) { const w = SW.getComponent(i, k); if (w > bw) { bw = w; best = SI.getComponent(i, k); } }
+        if (inHead[best]) box.expandByPoint(v.fromBufferAttribute(P, i).applyMatrix4(M));
+      }
+    }
+    this._headBox = h >= 0 && !box.isEmpty() ? box : null;
+    return this._headBox;
   }
 
   // where the eyes are, relative to the Head bone (for the glow sprites)
@@ -191,14 +219,7 @@ export class ZombieModelLib {
       try {
         const [am, ab] = await fetchPair('anims');
         this.clips = buildClips(am, ab);
-        const loaded = await Promise.all(ZOMBIE_CAST.map(async (c) => {
-          try {
-            const t = await loadTemplate(c.id);
-            t.weight = c.weight;
-            t.island = c.island || null;
-            return t;
-          } catch (e) { console.warn('zombie model', c.id, e.message); return null; }
-        }));
+        const loaded = await Promise.all(ZOMBIE_CAST.filter((c) => !c.map).map((c) => this.loadOne(c)));
         this.templates = loaded.filter(Boolean);
         this.ready = this.templates.length > 0;
         if (!this.ready) this.failed = true;
@@ -209,6 +230,31 @@ export class ZombieModelLib {
       return this;
     })();
     return this.promise;
+  }
+
+  async loadOne(c) {
+    try {
+      const t = await loadTemplate(c.id);
+      t.weight = c.weight;
+      t.island = c.island || null;
+      t.map = c.map || null;
+      t.fit = c.tall ? c.tall / t.meta.height : 1;
+      t.bucket = !!c.bucket;
+      return t;
+    } catch (e) { console.warn('zombie model', c.id, e.message); return null; }
+  }
+
+  // A map's own zombies (Bikini Bottom's fish), loaded the first time you're there.
+  loadMap(mapId) {
+    if (!this.maps) this.maps = new Map();
+    if (!this.maps.has(mapId)) {
+      this.maps.set(mapId, this.load().then(async () => {
+        const own = (await Promise.all(ZOMBIE_CAST.filter((c) => c.map === mapId).map((c) => this.loadOne(c)))).filter(Boolean);
+        this.templates.push(...own);
+        if (own.length) { this.ready = true; this.failed = false; }
+      }));
+    }
+    return this.maps.get(mapId);
   }
 
   // A rigged character outside the cast (the Crust's bosses: the golem, the
@@ -236,9 +282,11 @@ export class ZombieModelLib {
   // its own dead, `share` of them are those; the rest are the usual cast.
   byId(id) { return this.templates.find((t) => t.id === id) || null; }
 
-  pick(r, island = null, r2 = 1, share = 0) {
+  // On a map with its own (Bikini Bottom), only those, once they're in.
+  pick(r, island = null, r2 = 1, share = 0, mapId = null) {
+    const mine = mapId ? this.templates.filter((t) => t.map === mapId) : [];
     const own = island ? this.templates.filter((t) => t.island === island) : [];
-    const pool = own.length && r2 < share ? own : this.templates.filter((t) => !t.island);
+    const pool = mine.length ? mine : own.length && r2 < share ? own : this.templates.filter((t) => !t.island && !t.map);
     const list = pool.length ? pool : this.templates;
     const total = list.reduce((s, t) => s + t.weight, 0);
     let x = r * total;
