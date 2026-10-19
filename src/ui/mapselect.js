@@ -7,7 +7,7 @@
 // =============================================================================
 import { SCHOOL } from '../map/school.js';
 
-const HAS_INTRO = new Set(['lastbell', 'crust']);   // (the maps with an intro cutscene: not the Firing Range yet)
+const HAS_INTRO = new Set(['lastbell', 'crust']);   // (the maps with an intro cutscene: not Bikini Bottom yet)
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -28,8 +28,8 @@ export const MAPS = [
     facts: ['Map 2 · early build', 'Story by Michael Dougherty', 'Developers only'],
   },
   {
-    id: 'firingrange', name: 'Firing Range', tag: 'Map 3 · new', ready: true, at: [-430, -560], r: 120,
-    blurb: 'The old training camp in the jungle. Plywood shacks, tin roofs, a muddy creek through the middle and the shooting lanes at the south end, with barricades all round the edge. No story yet: just you, the box, and the dead coming over the fences and up out of the dirt.',
+    id: 'bikinibottom', name: 'Bikini Bottom', tag: 'Map 3 · new', ready: true, at: [-430, -560], r: 120,
+    blurb: 'The town under the sea. SpongeBob\'s pineapple, Squidward\'s house and Patrick\'s rock at one end, the Krusty Krab and the Chum Bucket at the other, Sandy\'s treedome in the middle and the flowery sky overhead, with barricades all round the edge. No story yet: just you, the box, and the dead coming over the fences and up out of the sand.',
     facts: ['Map 3', '1–4 players', 'Classic zombies'],
   },
   {
@@ -96,14 +96,14 @@ function buildWorld(svg) {
     const L = lit(x, y);
     const g = el('g', { class: 'ms-planet' }, world);
     const id = 'ms-p-' + m.id;
-    const pal = m.id === 'crust' ? ['#ffffff', '#b8d2ea', '#2c4a6e'] : m.id === 'firingrange' ? ['#e4e8a8', '#5f7a34', '#1c2a10'] : m.id === 'ice' ? ['#f2fbff', '#a9d6ea', '#3c6a88'] : ['#ffb08a', '#c4502c', '#4a160c'];
+    const pal = m.id === 'crust' ? ['#ffffff', '#b8d2ea', '#2c4a6e'] : m.id === 'bikinibottom' ? ['#d8fbff', '#3fb4c8', '#0c3a5a'] : m.id === 'ice' ? ['#f2fbff', '#a9d6ea', '#3c6a88'] : ['#ffb08a', '#c4502c', '#4a160c'];
     grad(defs, id, [['0%', pal[0]], ['45%', pal[1]], ['100%', pal[2]]], { fx: L.fx, fy: L.fy, cx: L.fx, cy: L.fy, r: '75%' });
     const clip = el('clipPath', { id: id + '-c' }, defs); el('circle', { cx: x, cy: y, r }, clip);
     if (m.id === 'crust') {
       // rings behind
       el('ellipse', { cx: x, cy: y, rx: r * 2.0, ry: r * 0.42, class: 'ms-ring back', transform: `rotate(-14 ${x} ${y})` }, g);
     }
-    el('circle', { cx: x, cy: y, r: r * 1.12, fill: m.id === 'ice' ? 'rgba(200,240,255,.12)' : m.id === 'crust' ? 'rgba(200,230,255,.16)' : m.id === 'firingrange' ? 'rgba(200,230,140,.12)' : 'rgba(255,120,80,.1)' }, g);   // atmosphere
+    el('circle', { cx: x, cy: y, r: r * 1.12, fill: m.id === 'ice' ? 'rgba(200,240,255,.12)' : m.id === 'crust' ? 'rgba(200,230,255,.16)' : m.id === 'bikinibottom' ? 'rgba(150,230,255,.14)' : 'rgba(255,120,80,.1)' }, g);   // atmosphere
     el('circle', { cx: x, cy: y, r, fill: `url(#${id})` }, g);
     const surf = el('g', { 'clip-path': `url(#${id}-c)` }, g);
     const PR = rng(x + y);
@@ -113,10 +113,15 @@ function buildWorld(svg) {
       el('ellipse', { cx: x, cy: y - r * 0.86, rx: r * 0.7, ry: r * 0.24, fill: 'rgba(255,255,255,.7)' }, surf);
       el('ellipse', { cx: x, cy: y + r * 0.9, rx: r * 0.6, ry: r * 0.2, fill: 'rgba(255,255,255,.55)' }, surf);
       for (let k = 0; k < 4; k++) el('rect', { x: x - r * 0.3 + k * r * 0.08, y: y + r * 0.05 - r * 0.22, width: r * 0.025, height: r * 0.22, fill: k % 2 ? '#c4303a' : '#f4f4f0' }, surf);
-    } else if (m.id === 'firingrange') {
-      // a jungle world: camo blotches of canopy and red dirt, a creek winding across
-      for (let i = 0; i < 26; i++) { const a = PR() * 6.28, d = PR() * r; el('ellipse', { cx: x + Math.cos(a) * d, cy: y + Math.sin(a) * d, rx: 8 + PR() * r * 0.3, ry: 6 + PR() * r * 0.18, fill: PR() < 0.6 ? 'rgba(20,40,10,.4)' : 'rgba(120,70,40,.35)', transform: `rotate(${PR() * 180} ${x} ${y})` }, surf); }
-      el('path', { d: `M${x - r},${y - r * 0.2} q${r * 0.5},${r * 0.35} ${r},${0} t${r},${r * 0.1}`, fill: 'none', stroke: 'rgba(90,120,110,.6)', 'stroke-width': 5 }, surf);
+    } else if (m.id === 'bikinibottom') {
+      // a sea world: the sky flowers, a sandy seabed along the bottom, a pineapple
+      for (let i = 0; i < 14; i++) {
+        const fx = x + (PR() - 0.5) * r * 1.8, fy = y + (PR() - 0.7) * r * 1.2, s = 6 + PR() * r * 0.12;
+        for (let p = 0; p < 5; p++) { const a = p * 1.2566 + PR(); el('ellipse', { cx: fx + Math.cos(a) * s * 0.7, cy: fy + Math.sin(a) * s * 0.7, rx: s * 0.55, ry: s * 0.35, fill: ['rgba(255,255,255,.35)', 'rgba(250,170,220,.35)', 'rgba(170,240,160,.3)'][i % 3], transform: `rotate(${a * 57.3} ${fx + Math.cos(a) * s * 0.7} ${fy + Math.sin(a) * s * 0.7})` }, surf); }
+      }
+      el('ellipse', { cx: x, cy: y + r * 0.95, rx: r * 1.2, ry: r * 0.42, fill: 'rgba(240,220,160,.75)' }, surf);
+      el('ellipse', { cx: x + r * 0.25, cy: y + r * 0.42, rx: r * 0.09, ry: r * 0.13, fill: '#f0a020' }, surf);
+      el('path', { d: `M${x + r * 0.25},${y + r * 0.3} l${-r * 0.06},${-r * 0.12} M${x + r * 0.25},${y + r * 0.3} l${r * 0.06},${-r * 0.12} M${x + r * 0.25},${y + r * 0.3} l0,${-r * 0.14}`, stroke: '#3a8a2a', 'stroke-width': 3, fill: 'none' }, surf);
     } else if (m.id === 'ice') {
       for (let i = 0; i < 9; i++) { const a = PR() * 6.28, d = PR() * r; el('path', { d: `M${x + Math.cos(a) * d},${y + Math.sin(a) * d} l${(PR() - 0.5) * r},${(PR() - 0.5) * r * 0.6}`, class: 'ms-crack' }, surf); }
       el('ellipse', { cx: x, cy: y - r * 0.82, rx: r * 0.6, ry: r * 0.22, fill: 'rgba(255,255,255,.45)' }, surf);

@@ -1,17 +1,18 @@
 // =============================================================================
-// The Firing Range's ground (Map 3), from the grid tools/firingrange/build.mjs
-// measured off the model (src/map/firingRangeGround.js): the heights of the
-// dirt, roads and decks, and the cells a wall, fence or rock stands in.
+// Bikini Bottom's ground (Map 3), from the grid tools/bikinibottom/build.mjs
+// measured off the model (src/map/bikiniBottomGround.js): the heights of the
+// sand, the roads and the rock ledges, and the cells a house, fence or rock stands in.
 // From it come the collision boxes (the ground as steps of 0.5 m cells, walls
 // where something solid stands, an invisible fence round the edge of play),
 // the nav regions (rectangles of cells you can walk straight across) and the
 // portals between them. Pure JS (no three.js): the sim and the renderer read it.
 // =============================================================================
-import { GROUND, HEIGHTS, BLOCKED, KINDS } from './firingRangeGround.js';
+import { GROUND, HEIGHTS, BLOCKED } from './bikiniBottomGround.js';
 import { autoPortals } from './layout.js';
 
 const { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL } = GROUND;
-const STEP = 0.42;     // the most the ground may rise from one cell to the next and still be walkable
+const STEP = 0.24;     // the most the sand may rise from one cell to the next and still be walkable
+                       // (about 25 degrees: the cliffs and rock ledges are too steep to climb)
 const WALL = 3.2;      // how high a wall box stands over the ground
 const FENCE = 6;       // the invisible fence at the edge of play
 
@@ -22,7 +23,7 @@ function bytes(b64) {
 }
 const hb = bytes(HEIGHTS), H = new Float32Array(NX * NZ);
 for (let c = 0; c < NX * NZ; c++) H[c] = ((hb[c * 2] | (hb[c * 2 + 1] << 8)) - 32768) / 100;
-const SOLID = bytes(BLOCKED), KIND = bytes(KINDS);
+const SOLID = bytes(BLOCKED);
 
 const cellOf = (x, z) => [Math.floor((x - GX0) / CELL), Math.floor((z - GZ0) / CELL)];
 export const GRID = { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL };
@@ -32,14 +33,6 @@ export function heightAt(x, z) {
   const [i, k] = cellOf(x, z);
   if (i < 0 || k < 0 || i >= NX || k >= NZ) return 0;
   return H[k * NX + i];
-}
-
-// What the ground is under a point: 'dirt', 'road', 'grass', 'water' or null.
-const KIND_NAMES = [null, 'dirt', 'road', 'grass', 'water'];
-export function kindAt(x, z) {
-  const [i, k] = cellOf(x, z);
-  if (i < 0 || k < 0 || i >= NX || k >= NZ) return null;
-  return KIND_NAMES[KIND[k * NX + i]];
 }
 
 // Build the playable ground. play(x, z): inside the edge of play? start: a point
@@ -120,7 +113,7 @@ export function buildGround({ play, start, open = [], shut = [] }) {
     }
     let y0 = Infinity, y1 = -Infinity;
     for (let kk = k; kk <= k1; kk++) for (let j = i; j <= i1; j++) { taken[kk * NX + j] = 1; y0 = Math.min(y0, H[kk * NX + j]); y1 = Math.max(y1, H[kk * NX + j]); }
-    regions.push({ id: 'fr_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: 'range', level: 0, y0, y1 });
+    regions.push({ id: 'bb_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: 'town', level: 0, y0, y1 });
   }
   // (a region of a single cell's width is too tight to walk through: no portal)
   const portals = autoPortals(regions, 0.9);
