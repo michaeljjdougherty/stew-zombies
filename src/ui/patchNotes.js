@@ -5,7 +5,7 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-19b',
+  version: '2026-10-19c',
   date: 'October 19, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
@@ -20,6 +20,9 @@ export const PATCH = {
   sections: [
     { title: 'This update', items: [
       'New map: Bikini Bottom, the town under the sea from Battle for Bikini Bottom. Fight past SpongeBob\'s pineapple, Squidward\'s house, the Krusty Krab, the Chum Bucket and Sandy\'s treedome. It has boarded windows, wall guns, six perks, the Mystery Box, a Mad Dog Machine and power. Pick it on the map screen, or walk around it in Explore mode. It takes the place of the Firing Range.',
+      'Inside Bikini Bottom: press F at SpongeBob\'s front door or the Krusty Krab\'s to go inside, and F at the door inside to come back out. Zombies follow you in.',
+      'On Bikini Bottom you play as one of the town: Kearns is SpongeBob, Ryan is Patrick, Rocco is Squidward and Pit is Sandy.',
+      'Bikini Bottom\'s buildings and streets show their real colours now, instead of plain white.',
     ] },
     { title: 'Crust Mad Dog Machine, Rocco\'s voice and fixes', items: [
       'Mad Dog Machine on Call of the Crust: it\'s in the Anvil\'s pit against the south wall, facing the Anvil. Once the power is on, it\'s 5000 to upgrade the gun in your hands, or 2500 to give an upgraded gun a new bite.',
