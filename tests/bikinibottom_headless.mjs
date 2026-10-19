@@ -1,6 +1,7 @@
 // Bikini Bottom (Map 3): the map builds, you can walk it, zombies come in over
 // the barricades and up out of the sand, and every machine and wall gun is
-// somewhere you can stand in front of.
+// somewhere you can stand in front of. SpongeBob's front door and the Krusty
+// Krab's take you inside and back out, and zombies find you in there.
 import { CONFIG } from '../src/config.js';
 import { BIKINI_BOTTOM as M } from '../src/map/bikinibottom.js';
 import { GameSim } from '../src/sim/sim.js';
@@ -10,7 +11,10 @@ let fails = 0;
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails++; };
 
 const sim = new GameSim({ map: M, cfg: CONFIG, mode: 'zombies', seed: 3 });
-const p = sim.addPlayer('p1', 'Stew');
+const p = sim.addPlayer('p1', 'Stew', { character: 'ryan', skin: 'jersey' });
+const two = new GameSim({ map: M, cfg: CONFIG, mode: 'zombies', seed: 3 });
+const q1 = two.addPlayer('p1', 'Stew', { character: 'ryan', skin: 'jersey' }), p2 = two.addPlayer('p2', 'Friend', { character: 'ryan' });
+check(q1.character === 'patrick' && p2.character === 'spongebob' && !q1.skin && p.character === 'patrick', `you play one of the town: Ryan turns up as ${q1.character}, a second Ryan as ${p2.character}`);
 check(M.terrainBoxes.length > 1000 && M.navRegions.length > 100, `ground: ${M.terrainBoxes.length} boxes, ${M.navRegions.length} regions, ${M.portals.length} portals`);
 check(Math.abs(p.pos.y - M.heightAt(p.pos.x, p.pos.z)) < 0.3, `spawn on the ground (y ${p.pos.y.toFixed(2)})`);
 const reg = sim.nav.regionAt(p.pos);
@@ -41,6 +45,27 @@ step(20);
 const closer = chasing.filter((q) => Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < 30);
 check(chasing.length > 0 && closer.length > 0, `${chasing.length} chasing, ${closer.length} within 30 m after 20 s`);
 check(sim.zombies.every((q) => q.state === 'dead' || (isFinite(q.pos.y) && q.pos.y > -2)), 'no zombie fell through the ground');
+
+// the front doors: in, walk about, back out; zombies come for you inside too
+const use = () => { step(0.1); sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: 0, use: true, usePressed: true }); sim.step(1 / 60); sim.drainEvents(); step(0.1); };
+const roomAt = (pt) => { const id = sim.nav.regionAt(pt); return sim.nav.regions.find((r) => r.id === id)?.room; };
+const at = (pt) => { p.pos.x = pt.x; p.pos.z = pt.z; p.pos.y = M.heightAt(pt.x, pt.z); p.vel.x = p.vel.y = p.vel.z = 0; p.region = sim.nav.regionAt(p.pos); };
+for (const room of ['house', 'krab']) {
+  const door = M.teleporters.find((t) => t.id === 'door_' + room), back = M.teleporters.find((t) => t.id === 'door_' + room + '_out');
+  check(!!door && !!back && reach(door), `${room}: the front door's on open ground in town`);
+  at(door); use();
+  check(roomAt(p.pos) === room && Math.abs(p.pos.y - M.heightAt(p.pos.x, p.pos.z)) < 0.3, `${room}: F at the door takes you inside (${p.pos.x.toFixed(1)}, ${p.pos.z.toFixed(1)})`);
+  const ix = p.pos.x, iz = p.pos.z;
+  step(1.5, { moveY: 1, yaw: 0 });
+  check(Math.hypot(p.pos.x - ix, p.pos.z - iz) > 1 && roomAt(p.pos) === room, `${room}: you can walk about inside`);
+  check(M.groundSpawns.filter((s) => s.room === room).length >= 3, `${room}: ${M.groundSpawns.filter((s) => s.room === room).length} spawns inside`);
+  // stay in a while: the zombies outside give up on the town and turn up in here
+  step(25);
+  const near = sim.zombies.filter((q) => q.state !== 'dead' && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < 25);
+  check(near.length > 0, `${room}: ${near.length} zombies came in after you`);
+  at(back); use();
+  check(roomAt(p.pos) === 'town' && Math.hypot(p.pos.x - door.x, p.pos.z - door.z) < 4, `${room}: the door inside takes you back out by the front door`);
+}
 
 // Explore mode (Play › Explore on the map screen): endless points, no dying,
 // zombies only when you switch them on

@@ -73,6 +73,11 @@ export const CREW = {
     voice: { f0: 88, grit: 0.18, rate: 0.92 },
     bio: "A big, lovable teddy bear. Everyone's best buddy. Not a heights guy.",
   },
+  // (Bikini Bottom's crew: you play one of them there)
+  spongebob: { name: 'SpongeBob', nick: ['SpongeBob'], voice: { f0: 190, grit: 0.15, rate: 1.15 }, bio: 'Fry cook at the Krusty Krab. Lives in a pineapple under the sea.' },
+  patrick: { name: 'Patrick', nick: ['Patrick'], voice: { f0: 92, grit: 0.25, rate: 0.8 }, bio: 'Lives under a rock. Is mayonnaise an instrument?' },
+  squidward: { name: 'Squidward', nick: ['Squidward'], voice: { f0: 105, grit: 0.4, rate: 0.85 }, bio: 'Cashier. Clarinet virtuoso. Would rather be anywhere else.' },
+  sandy: { name: 'Sandy', nick: ['Sandy'], voice: { f0: 175, grit: 0.2, rate: 1.05 }, bio: 'Karate-chopping squirrel scientist from Texas.' },
   p: {
     name: 'P',
     nick: ['P'],

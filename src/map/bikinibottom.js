@@ -20,8 +20,12 @@
 //    |  Bucket  roundabout  (spawn)  treedome  pineapple   |
 //    +---------------------------------------------------+
 //                  purple rocks       the drop-off
+//
+// Two front doors open: SpongeBob's pineapple and the Krusty Krab. Press F at
+// one and you're inside (the insides are in the same model, far off past the
+// edge of the world where nobody sees them; src/sim/launchers.js moves you).
 // =============================================================================
-import { buildGround, heightAt, GRID } from './bikiniBottomKit.js';
+import { buildGround, heightAt, GRID, INSIDES } from './bikiniBottomKit.js';
 import { insidePoly } from './layout.js';
 import { CONFIG } from '../config.js';
 
@@ -31,8 +35,13 @@ const BB = CONFIG.bikiniBottom;
 // The edge of play: the sand loop inside the town's fence.
 const EDGE = [[-80.5, -4.9], [-70.8, -15.7], [-61.7, -20.8], [-53.7, -24.8], [-31, -25.2], [-6, -27.7], [8.9, -28.2], [16.9, -26.5], [41.9, -20.8], [47.6, -18.6], [65.8, -12.9], [84, -4.9], [90.9, 4.2], [90.9, 17.9], [86.3, 27], [72.7, 31.6], [61.3, 29.3], [43.1, 24.7], [29.4, 14.5], [26, 24.7], [2.1, 29.3], [-13.9, 29.9], [-25.3, 24.7], [-48, 30.4], [-61.7, 28.1], [-74.2, 19], [-78.8, 8.8]];
 const START = { x: -4, z: 7 };
+// The insides: where you come in (facing in, -z) and the door out behind you.
+const INSIDE = {
+  house: { name: 'SpongeBob\'s house', label: 'SpongeBob\'s house', in: { x: 600, z: -2.5 }, out: { x: 600, z: -0.75 }, floor: 'sand', door: { x: 79, z: 12.2 } },
+  krab: { name: 'The Krusty Krab', label: 'the Krusty Krab', in: { x: 600, z: -404.5 }, out: { x: 600, z: -403 }, floor: 'wood', door: { x: -40, z: -11.8 } },
+};
 
-const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START });
+const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START, starts: Object.fromEntries(Object.entries(INSIDE).map(([k, v]) => [k, v.in])) });
 const { NX, NZ } = { NX: GRID.nx, NZ: GRID.nz };
 const cellX = (i) => GRID.x0 + (i + 0.5) * GRID.cell, cellZ = (k) => GRID.z0 + (k + 0.5) * GRID.cell;
 
@@ -182,6 +191,34 @@ for (let z = GRID.z0 + 6; z < GRID.z0 + NZ * GRID.cell - 4; z += BB.groundSpawnS
   }
 }
 
+// --- the front doors: stand at one, press F, and you're inside (or back out) -------------
+// (in town the pad's on the first open ground out from the door, facing out, +z)
+const teleporters = [], insideRooms = [];
+for (const [id, I] of Object.entries(INSIDE)) {
+  let z = I.door.z;
+  while (!walkable(I.door.x, z) && z < I.door.z + 6) z += 0.25;
+  const pad = { x: I.door.x, z: z + 0.5, y: heightAt(I.door.x, z + 0.5) };
+  const outside = { x: I.door.x, z: z + 2.5, y: heightAt(I.door.x, z + 2.5), yaw: Math.PI };
+  const inside = { ...I.in, y: heightAt(I.in.x, I.in.z), yaw: 0 };
+  teleporters.push(
+    { id: 'door_' + id, x: pad.x, y: pad.y, z: pad.z, to: inside, label: `Press [F] to go into ${I.label}` },
+    { id: 'door_' + id + '_out', x: I.out.x, y: heightAt(I.out.x, I.out.z), z: I.out.z, to: outside, label: 'Press [F] to go back outside' },
+  );
+  const g = INSIDES[id];
+  insideRooms.push({ id, zone: 'town', name: I.name, virtual: true, rect: [g.x0, g.z0, g.x0 + g.nx * g.cell, g.z0 + g.nz * g.cell], height: 5, floor: I.floor, style: 'invisible', ceiling: 'none', reverb: 0.5, walls: {} });
+  // zombies get in too: they climb up out of the floor (on open floor, away from the door)
+  const sp = BB.insideSpawnSpacing;
+  for (let z0 = g.z0 + 1; z0 < g.z0 + g.nz * g.cell; z0 += sp) for (let x0 = g.x0 + 1; x0 < g.x0 + g.nx * g.cell; x0 += sp) {
+    let best = null;
+    for (let k = 0; k < sp / g.cell; k++) for (let i = 0; i < sp / g.cell; i++) {
+      const x = x0 + (i + 0.5) * g.cell, z = z0 + (k + 0.5) * g.cell;
+      if (best || Math.hypot(x - I.in.x, z - I.in.z) < 3) continue;
+      if ([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].every(([a, b]) => walkable(x + a * g.cell, z + b * g.cell))) best = { x, z };
+    }
+    if (best) groundSpawns.push({ x: best.x, y: heightAt(best.x, best.z), z: best.z, room: id, zone: 'town', bare: true });   // (bare: no dug-up dirt on the floor)
+  }
+}
+
 export const BIKINI_BOTTOM = {
   id: 'bikinibottom',
   name: 'Bikini Bottom',
@@ -200,6 +237,7 @@ export const BIKINI_BOTTOM = {
     { id: 'town', zone: 'town', name: 'Bikini Bottom', virtual: true, outdoor: true, rect: [GRID.x0, GRID.z0, GRID.x0 + NX * GRID.cell, GRID.z0 + NZ * GRID.cell], height: 12, floor: 'sand', style: 'invisible', ceiling: 'none', reverb: 0.3, walls: {} },
     ...windowRooms,
     powerRoom,
+    ...insideRooms,
   ],
   navRegions: G.regions,
   portals: G.portals,
@@ -208,6 +246,9 @@ export const BIKINI_BOTTOM = {
   gaps: [],
   props: [],
   groundSpawns,
+  teleporters,               // the front doors in and out (src/sim/launchers.js)
+  // who you play here: whoever you picked turns up as one of the town (the first free one if they're taken)
+  cast: { by: { kearns: 'spongebob', ryan: 'patrick', rocco: 'squidward', pit: 'sandy' }, order: ['spongebob', 'patrick', 'squidward', 'sandy'] },
   wallBuys,
   boxSpots,
   perkMachines,

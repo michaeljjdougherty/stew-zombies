@@ -147,6 +147,9 @@ export class Extras {
       <p>Props from <b>Sketchfab</b>, by their creators: Low-poly Juggernog machine (repainted for every perk), Minecraft Pack-a-Punch machine (repainted as the Mad Dog Machine), Jukebox, Golden Trophy, Mystery Box and Poison Glass Bottle (the perk drinks). Reduced in size for the game.</p>
       <p>First-person hands: 3D Rigged Hand by <b>Emma L. D. Lieker</b>, re-rigged for the game's grips.</p>
       <p>Bikini Bottom: "Bikini Bottom Map 3D Model" by <b>spongebob.evolution</b> on Sketchfab (CC BY 4.0), scaled up and compressed for the game.</p>
+      <p>Inside SpongeBob's house: "Sbfbb-SpongeBob House" by <b>Sajin Mickey Firey fan 1342</b> from <b>Cheryl Hill</b> on Sketchfab (CC BY 4.0), the ground floor only.</p>
+      <p>Inside the Krusty Krab: "The Krusty Krab From BFBBR" by <b>SMF Features</b>, developed from <b>Cheryl Hill</b>, on Sketchfab (CC BY 4.0), the building only, simplified for the game.</p>
+      <p>Bikini Bottom's crew, all on Sketchfab (CC BY 4.0), posed and shrunk for the game: "Spongebob SquarePants" by <b>Jamessmartguy</b>, "Patrick" by <b>LostBoyz2078</b>, "Squidward (Spongebob)" by <b>Anthony Yanez</b> and "Sandy Bikini" by <b>Placidone</b>.</p>
       <p>The Cheddars: Skinless Hound by <b>Pigcraft</b> on Sketchfab (CC BY 4.0), recolored, thinned out and rigged for the game.</p>
       <p>Gunshots and gun handling sounds: <b>The Free Firearm Sound Library</b> by Still North Media (Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney), released to the public domain (CC0).</p>
       <p>Voices are placeholders (synthesized babble with subtitles) until real recordings are dropped in.</p>

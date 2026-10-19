@@ -11,6 +11,7 @@ import { buildHead, torsoSections, loft, neckGeometry, limb, shoeGeometry, SKIN,
 import { buildHand } from './hands.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { dressGear } from './costumes.js';
+import { castOn } from './bikiniBottomWorld.js';
 export { idleCharacter, idleKearns, setGesture, idleAct } from './characterAnim.js';
 
 export const SHIRT_COLORS = {
@@ -187,6 +188,24 @@ export const CHARACTERS = {
     chain: { metal: 'gold', drop: 0.06 },
     bracelet: { side: 'right', colors: ['#1a1a1c', '#c9ccd0'], chunky: true },
     idle: 'peace',
+  },
+  // Bikini Bottom's crew (src/map/bikinibottom.js casts whoever you picked as
+  // one of them): downloaded models, stood on the human rig (src/render/bikiniBottomWorld.js)
+  spongebob: {
+    name: 'SpongeBob', cast: 'spongebob', blurb: 'Fry cook at the Krusty Krab. Ready! Lives in a pineapple under the sea.',
+    height: 1.0, skin: 'light', armSkin: [236, 220, 70], top: { type: 'tee', color: '#f2f2ee' }, idle: 'cheerful',
+  },
+  patrick: {
+    name: 'Patrick', cast: 'patrick', blurb: 'Lives under a rock. Is mayonnaise an instrument?',
+    height: 1.0, skin: 'light', armSkin: [240, 140, 140], top: { type: 'tee', color: '#9bc23c' }, idle: 'big',
+  },
+  squidward: {
+    name: 'Squidward', cast: 'squidward', blurb: 'Cashier. Clarinet virtuoso. Would rather be anywhere else.',
+    height: 1.0, skin: 'light', armSkin: [150, 196, 186], top: { type: 'tee', color: '#a8782a' }, idle: 'relaxed',
+  },
+  sandy: {
+    name: 'Sandy', cast: 'sandy', blurb: 'Karate-chopping squirrel scientist from Texas. Lives in the treedome.',
+    height: 1.0, skin: 'light', armSkin: [196, 146, 100], top: { type: 'tee', color: '#7a2fd0' }, idle: 'cheerful',
   },
   erik: {
     name: 'Erik Madsen', villain: true, blurb: 'Number 8. Cut from the team before the championship. Sold his soul to The Schnitz.',
@@ -842,6 +861,7 @@ export function buildCharacter(id = 'kearns', { shirt = 'sage', detail = 1, jers
   root.scale.setScalar(def.height || 1);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   const k = { id, def, root, body, hips, torso, neck, head: headJoint, face: H, armL, armR, legL, legR, mats, phase: Math.random() * 10, secs, neckY };
+  if (def.cast) return castOn(k, def.cast);   // (the rig stays to move; the model's what you see)
   if (def.stink) k.stink = stinkCloud(root);
   if (def.gear) dressGear(k, def.gear);   // (a skin's hats, helmets, tails: src/render/costumes.js)
   return k;

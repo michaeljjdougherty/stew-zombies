@@ -2328,6 +2328,9 @@ export const CONFIG = {
     sun: { color: '#fff4d8', intensity: 1.8, from: [30, 80, 20] },   // the sun high overhead, through the surface
     skyRadius: 300,           // the flowery sky dome round you (inside the far plane)
     groundSpawnSpacing: 10,   // one sand spawn about every this many metres
+    insideSpawnSpacing: 4,    // inside SpongeBob's house and the Krusty Krab: one spawn about every this many metres
+    insideGlow: 0.45,         // how much the insides light themselves (no daylight gets in)
+    doorRange: 1.6,           // how close to a front door you have to be to go in or out (m)
   },
 };
 
