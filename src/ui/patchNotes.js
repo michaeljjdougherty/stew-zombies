@@ -5,8 +5,8 @@
 // =============================================================================
 
 export const PATCH = {
-  version: '2026-10-18c',
-  date: 'October 18, 2026',
+  version: '2026-10-19a',
+  date: 'October 19, 2026',
   thanks: {
     photo: 'assets/ui/thanks.jpg',
     alt: 'Michael and James in the office, holding a jar of peanut butter and a box of Quaker oatmeal',
@@ -19,6 +19,9 @@ export const PATCH = {
   },
   sections: [
     { title: 'This update', items: [
+      'New map: Firing Range. It\'s the Black Ops range: plank shacks, tin roofs, sandbags and red dirt under a dusk sky. It has boarded windows, wall guns, six perks, the Mystery Box, a Mad Dog Machine and power. Pick it on the map screen, or walk around it in Explore mode.',
+    ] },
+    { title: 'Crust Mad Dog Machine, Rocco\'s voice and fixes', items: [
       'Mad Dog Machine on Call of the Crust: it\'s in the Anvil\'s pit against the south wall, facing the Anvil. Once the power is on, it\'s 5000 to upgrade the gun in your hands, or 2500 to give an upgraded gun a new bite.',
       'Rocco has his real voice: the first 60 recorded lines are in.',
       'Revives work everywhere online again. On Call of the Crust you can pick up a teammate who went down up high, like the top of the Anvil or the Trench fort, and a perk machine, gum machine or box next to them no longer gets in the way.',
