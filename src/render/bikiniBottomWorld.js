@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as T from './textures.js';
 import { fetchGlb, gltfLoader } from './gltfLite.js';
+import { GATE } from '../map/bikiniBottomGround.js';
 
 // (the game's loader: textures straight from the file's bytes, which the
 // artifact page needs; plus the decoder for these compressed models)
@@ -57,30 +58,17 @@ export function buildBikiniBottom(mv) {
 
   const planks = new THREE.MeshLambertMaterial({ color: '#d8b888', map: T.plankTexture(0) });
   for (const g of barricadeSurrounds(mv, planks)) out.root.add(g);
+  for (const g of taxiSigns(mv)) out.root.add(g);
 
   // the town (in the background: nothing waits on it)
   fetchGlb(map.glbWorld)
     .then((buf) => loader().parseAsync(buf, ''))
     .then((gltf) => {
       const sky = gltf.scene.getObjectByName('sky');
-      // (the insides, far off the map, lit from within: the light down through the water doesn't get in)
-      const indoors = new Set();
-      for (const id of ['house', 'krab']) gltf.scene.getObjectByName(id)?.traverse((o) => indoors.add(o));
-      gltf.scene.traverse((o) => {
-        if (!o.isMesh) return;
-        // (lit the cheap way, like the rest of the game, keeping the model's own textures)
-        const m = o.material, mats = Array.isArray(m) ? m : [m];
-        const lam = mats.map((s) => {
-          const l = lambert(s);
-          if (indoors.has(o)) { l.emissive.set('#ffffff'); l.emissiveMap = l.map; l.emissiveIntensity = cfg.insideGlow; if (!l.map) l.emissive.copy(l.color); }
-          return l;
-        });
-        o.material = Array.isArray(m) ? lam : lam[0];
-        // (the pieces stand still: their matrices are set once; the compressed
-        // model's positions are scaled back to metres by them)
-        o.updateMatrix();
-        o.matrixAutoUpdate = false;
-      });
+      dress(gltf.scene, ['house', 'krab', 'squid'], cfg);
+      out.gate = tollGate(gltf.scene);
+      const piece = gltf.scene.getObjectByName('fencePiece');
+      if (piece) { gltf.scene.remove(piece); for (const f of edgeFence(mv, piece)) out.root.add(f); }
       if (sky) {
         // the sky: a backdrop round the camera, not a place (no fog, behind everything)
         gltf.scene.remove(sky);
@@ -101,12 +89,132 @@ export function buildBikiniBottom(mv) {
       out.ready = true;
     })
     .catch((err) => console.warn('bikini bottom model:', err.message || err));
+  // Downtown and Goo Lagoon, out past the town where the taxis go (in the background too)
+  for (const f of map.glbAreas || []) {
+    fetchGlb(f)
+      .then((buf) => loader().parseAsync(buf, ''))
+      .then((gltf) => { dress(gltf.scene, [], cfg); gltf.scene.updateMatrixWorld(true); out.root.add(gltf.scene); })
+      .catch((err) => console.warn('bikini bottom area:', err.message || err));
+  }
   return out;
 }
 
-// The sky follows the camera (it's the backdrop, not a place).
+// A model's pieces lit the cheap way, like the rest of the game, keeping their own
+// textures; the insides named (far off the map) lit from within, since the light
+// down through the water doesn't get in.
+function dress(scene, insides, cfg) {
+  const indoors = new Set();
+  for (const id of insides) scene.getObjectByName(id)?.traverse((o) => indoors.add(o));
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    // (Squidward's comes without normals, made to be drawn unlit: lit, it'd come out black)
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    const m = o.material, mats = Array.isArray(m) ? m : [m];
+    const lam = mats.map((s) => {
+      const l = lambert(s);
+      if (indoors.has(o)) { l.emissive.set('#ffffff'); l.emissiveMap = l.map; l.emissiveIntensity = cfg.insideGlow; if (!l.map) l.emissive.copy(l.color); }
+      return l;
+    });
+    o.material = Array.isArray(m) ? lam : lam[0];
+    // (the pieces stand still: their matrices are set once; the compressed
+    // model's positions are scaled back to metres by them)
+    o.updateMatrix();
+    o.matrixAutoUpdate = false;
+  });
+}
+
+// A yellow TAXI sign on a post by each taxi stop, saying where it goes (both faces,
+// turned toward where you come from: the middle of town, or where the taxi dropped you).
+function taxiSigns(mv) {
+  const tps = mv.map.teleporters || [], out = [];
+  const post = new THREE.MeshLambertMaterial({ color: '#8a8f96' });
+  for (const t of tps) {
+    if (!t.hold) continue;
+    const there = tps.find((q) => q.id + '_back' === t.id);   // (the stop in town that brings you here)
+    const look = there ? there.to : { x: 5, z: 0 };
+    const where = t.id.endsWith('_back') ? 'Bikini Bottom' : t.label.replace(/^.* to /, '');
+    const [c, g] = T.makeCanvas(256, 128);
+    g.fillStyle = '#f2c230'; g.fillRect(0, 0, 256, 128);
+    g.strokeStyle = '#222'; g.lineWidth = 8; g.strokeRect(4, 4, 248, 120);
+    g.fillStyle = '#222'; g.textAlign = 'center'; g.font = 'bold 54px sans-serif'; g.fillText('TAXI', 128, 62);
+    g.font = 'bold 26px sans-serif'; g.fillText(where, 128, 104);
+    const board = new THREE.MeshLambertMaterial({ map: T.toTexture(c, { repeat: false }) });
+    const grp = new THREE.Group();
+    grp.position.set(t.x, t.y || 0, t.z);
+    grp.rotation.y = Math.atan2(look.x - t.x, look.z - t.z);
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), post);
+    p.position.set(0.9, 0.9, 0); grp.add(p);
+    for (const turn of [0, Math.PI]) {
+      const b = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.55), board);
+      b.position.set(0.9, 2.05, turn ? -0.02 : 0.02); b.rotation.y = turn; grp.add(b);
+    }
+    grp.userData.noBake = true;
+    out.push(grp);
+  }
+  return out;
+}
+
+// The toll gate's arm on a hinge at the post's end (it swings up once the gate's bought).
+function tollGate(scene) {
+  const arm = scene.getObjectByName('gate');
+  if (!arm) return null;
+  const pivot = new THREE.Group();
+  pivot.position.set(...GATE.hinge);
+  arm.parent.add(pivot);
+  pivot.add(arm);
+  arm.position.set(-GATE.hinge[0], -GATE.hinge[1], -GATE.hinge[2]);
+  arm.updateMatrix();
+  // (which way it reaches from the hinge: it turns about the level axis across it, tip up)
+  const i = GATE.axis === 'x' ? 0 : 1, mid = (GATE.rect[i] + GATE.rect[i + 2]) / 2;
+  const dir = Math.sign(mid - GATE.hinge[GATE.axis === 'x' ? 0 : 2]) || 1;
+  return { pivot, turn: (a) => { if (GATE.axis === 'x') pivot.rotation.z = dir * a; else pivot.rotation.x = -dir * a; }, t0: 0 };
+}
+
+// The town's bamboo fence, copied all round the edge of play (just outside it), except
+// where a barricade stands. The piece (tools/bikinibottom/build.mjs) runs along x from its
+// middle, feet on y = 0.
+function edgeFence(mv, piece) {
+  const map = mv.map, E = map.edge || [], cfg = mv.cfg.bikiniBottom;
+  piece.updateMatrixWorld(true);
+  const parts = [];
+  piece.traverse((o) => { if (o.isMesh) parts.push(o); });
+  const b = new THREE.Box3().setFromObject(piece), L = b.max.x - b.min.x;
+  // (the polygon's winding: which side of each edge is outside)
+  let area = 0;
+  for (let i = 0; i < E.length; i++) { const [x0, z0] = E[i], [x1, z1] = E[(i + 1) % E.length]; area += x0 * z1 - x1 * z0; }
+  const out = area > 0 ? -1 : 1;
+  const mats = [], m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < E.length; i++) {
+    const [x0, z0] = E[i], [x1, z1] = E[(i + 1) % E.length];
+    const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / L)), dx = (x1 - x0) / len, dz = (z1 - z0) / len;
+    const nx = -dz * out, nz = dx * out;
+    q.setFromAxisAngle(up, Math.atan2(-dz, dx));
+    for (let k = 0; k < n; k++) {
+      const f = (k + 0.5) / n, x = x0 + (x1 - x0) * f + nx * cfg.fenceOut, z = z0 + (z1 - z0) * f + nz * cfg.fenceOut;
+      if (mv.sim.windows.some((w) => Math.hypot(w.center.x - x, w.center.z - z) < cfg.fenceGap)) continue;
+      mats.push(m.clone().compose(new THREE.Vector3(x, map.heightAt(x, z), z), q, new THREE.Vector3(len / n / L, 1, 1)));
+    }
+  }
+  return parts.map((o) => {
+    const im = new THREE.InstancedMesh(o.geometry, o.material, mats.length);
+    mats.forEach((a, j) => im.setMatrixAt(j, a.clone().multiply(o.matrixWorld)));
+    im.instanceMatrix.needsUpdate = true;
+    im.computeBoundingSphere();
+    im.userData.noBake = true;
+    return im;
+  });
+}
+
+// The sky follows the camera (it's the backdrop, not a place); the toll gate lifts once it's bought.
 export function updateBikiniBottom(bb, eye) {
   if (bb.sky && eye) bb.sky.position.copy(eye);
+  const g = bb.gate;
+  if (g && bb.mv.sim.doorOpen('toll_gate')) {
+    const now = performance.now() / 1000;
+    if (!g.t0) g.t0 = now;
+    const t = Math.min(1, (now - g.t0) / bb.mv.cfg.bikiniBottom.gateLift.time);
+    g.turn((t * t * (3 - 2 * t)) * bb.mv.cfg.bikiniBottom.gateLift.angle);
+  } else if (g && g.t0) { g.t0 = 0; g.turn(0); }
 }
 
 // --- Bikini Bottom's crew: SpongeBob, Patrick, Squidward, Sandy -----------------

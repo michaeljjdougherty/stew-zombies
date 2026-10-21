@@ -26,6 +26,7 @@
 // edge of the world where nobody sees them; src/sim/launchers.js moves you).
 // =============================================================================
 import { buildGround, heightAt, GRID, INSIDES } from './bikiniBottomKit.js';
+import { GATE } from './bikiniBottomGround.js';
 import { insidePoly } from './layout.js';
 import { CONFIG } from '../config.js';
 
@@ -38,10 +39,22 @@ const START = { x: -4, z: 7 };
 // The insides: where you come in (facing in, -z) and the door out behind you.
 const INSIDE = {
   house: { name: 'SpongeBob\'s house', label: 'SpongeBob\'s house', in: { x: 600, z: -2.5 }, out: { x: 600, z: -0.75 }, floor: 'sand', door: { x: 79, z: 12.2 } },
-  krab: { name: 'The Krusty Krab', label: 'the Krusty Krab', in: { x: 600, z: -404.5 }, out: { x: 600, z: -403 }, floor: 'wood', door: { x: -40, z: -11.8 } },
+  krab: { name: 'The Krusty Krab', label: 'the Krusty Krab', in: { x: 600, z: -405.5 }, out: { x: 600, z: -404 }, floor: 'wood', door: { x: -40, z: -11.8 } },
+  squid: { name: 'Squidward\'s house', label: 'Squidward\'s house', in: { x: 600, z: -802.5 }, out: { x: 600, z: -800.5 }, floor: 'wood', door: { x: 66.8, z: 3 } },
+};
+// Where the taxis go (out past the town too, their own ground): hold F at the taxi
+// stop in town and you're dropped at `at`, facing yaw, with a stop there to take you back.
+// stop: the taxi sign in town.
+const AREAS = {
+  downtown: { name: 'Downtown Bikini Bottom', label: 'Downtown', at: { x: 1200, z: 0 }, yaw: 0, stop: { x: 87.5, z: 26 } },
+  goolagoon: { name: 'Goo Lagoon', label: 'Goo Lagoon', at: { x: 1232, z: -818 }, yaw: 0, stop: { x: 47, z: -17 } },
 };
 
-const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START, starts: Object.fromEntries(Object.entries(INSIDE).map(([k, v]) => [k, v.in])) });
+// The toll gate by Patrick's rock: a door you buy, across the gap in the bamboo fence
+// (the arm's length and a bit, post to booth); the east end of town is behind it.
+const GC = { x: (GATE.rect[0] + GATE.rect[2]) / 2, z: (GATE.rect[1] + GATE.rect[3]) / 2, len: GATE.rect[3] - GATE.rect[1] + 0.9 };
+const TOLL = { id: 'toll_gate', rect: [GATE.rect[0], GC.z - GC.len / 2, GATE.rect[2], GC.z + GC.len / 2] };
+const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START, starts: Object.fromEntries([...Object.entries(INSIDE).map(([k, v]) => [k, v.in]), ...Object.entries(AREAS).map(([k, v]) => [k, v.at])]), doors: [TOLL] });
 const { NX, NZ } = { NX: GRID.nx, NZ: GRID.nz };
 const cellX = (i) => GRID.x0 + (i + 0.5) * GRID.cell, cellZ = (k) => GRID.z0 + (k + 0.5) * GRID.cell;
 
@@ -104,7 +117,6 @@ const BARRICADES = [
   { id: 'win_west', side: 'w', x: -78, z: 4 },
   { id: 'win_krab', side: 'n', x: -50, z: -24 },
   { id: 'win_cliffs', side: 'n', x: 2, z: -27 },
-  { id: 'win_rock', side: 'n', x: 44, z: -19 },
   { id: 'win_east', side: 'e', x: 90, z: 10 },
   { id: 'win_pineapple', side: 's', x: 74, z: 30 },
   { id: 'win_dropoff', side: 's', x: -6, z: 29 },
@@ -219,13 +231,51 @@ for (const [id, I] of Object.entries(INSIDE)) {
   }
 }
 
+// --- the taxis: hold F at the stop in town and it drops you Downtown or at Goo Lagoon -------
+// The nearest flat open ground to (x, z) in an area, r metres clear all round.
+function areaSpot(x, z, r) {
+  const c = INSIDES.downtown.cell, flat = (px, pz, y) => walkable(px, pz) && Math.abs(heightAt(px, pz) - y) < 0.3;
+  for (let d = 0; d < 40; d += c) for (let a = 0; a < Math.PI * 2; a += c / Math.max(d, c)) {
+    const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, y = heightAt(px, pz);
+    let ok = true;
+    for (let dz = -r; dz <= r && ok; dz += c) for (let dx = -r; dx <= r && ok; dx += c) ok = flat(px + dx, pz + dz, y);
+    if (ok) return { x: px, z: pz, y };
+  }
+  throw new Error('bikini bottom: no open ground near ' + x + ',' + z);
+}
+const areaRooms = [];
+for (const [id, A] of Object.entries(AREAS)) {
+  const stop = spot(A.stop.x, A.stop.z, 1.2, false);
+  // (the stop back: a few steps behind where you're dropped, so you don't land on it)
+  const fx = -Math.sin(A.yaw), fz = -Math.cos(A.yaw), drop = areaSpot(A.at.x + fx * 1.5, A.at.z + fz * 1.5, 3);
+  const at = { ...drop, yaw: A.yaw }, back = { x: drop.x - fx * 2.5, z: drop.z - fz * 2.5 };
+  teleporters.push(
+    { id: 'taxi_' + id, x: stop.x, y: stop.y, z: stop.z, to: at, hold: BB.taxiHold, label: `Hold [F] to take the taxi to ${A.label}` },
+    { id: 'taxi_' + id + '_back', x: back.x, y: heightAt(back.x, back.z), z: back.z, to: { x: stop.x, y: stop.y, z: stop.z, yaw: Math.PI }, hold: BB.taxiHold, label: 'Hold [F] to take the taxi back to town' },
+  );
+  const g = INSIDES[id];
+  areaRooms.push({ id, zone: 'town', name: A.name, virtual: true, outdoor: true, rect: [g.x0, g.z0, g.x0 + g.nx * g.cell, g.z0 + g.nz * g.cell], height: 12, floor: 'sand', style: 'invisible', ceiling: 'none', reverb: 0.3, walls: {} });
+  // zombies climb up out of the sand here too
+  const sp = BB.groundSpawnSpacing;
+  for (let z0 = g.z0 + 1; z0 < g.z0 + g.nz * g.cell; z0 += sp) for (let x0 = g.x0 + 1; x0 < g.x0 + g.nx * g.cell; x0 += sp) {
+    let best = null;
+    for (let k = 0; k < sp / g.cell && !best; k++) for (let i = 0; i < sp / g.cell && !best; i++) {
+      const x = x0 + (i + 0.5) * g.cell, z = z0 + (k + 0.5) * g.cell;
+      if (Math.hypot(x - at.x, z - at.z) < 8) continue;
+      if ([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]].every(([a, b]) => walkable(x + a * g.cell, z + b * g.cell))) best = { x, z };
+    }
+    if (best) groundSpawns.push({ x: best.x, y: heightAt(best.x, best.z), z: best.z, room: id, zone: 'town' });
+  }
+}
+
 export const BIKINI_BOTTOM = {
   id: 'bikinibottom',
   name: 'Bikini Bottom',
   wallThickness: T,
   customRender: true,        // no rooms or walls drawn: the model is the world
   glbWorld: 'assets/bikinibottom/town.glb',   // (src/render/bikiniBottomWorld.js)
-  openField: true,           // no doors: zombies come for you wherever you can be reached
+  glbAreas: ['assets/bikinibottom/downtown.glb', 'assets/bikinibottom/goolagoon.glb'],   // where the taxis go
+  openField: true,           // one zone: zombies come for you wherever you can be reached
   terrainBoxes: G.boxes,     // the ground, the walls and the edge of play (src/map/bikiniBottomKit.js)
   heightAt,
   fog: BB.fog,
@@ -233,20 +283,23 @@ export const BIKINI_BOTTOM = {
   brightness: BB.brightness,
   farPlane: BB.farPlane,
   playerSpawns,
+  edge: EDGE,                // the edge of play (the bamboo fence round it: src/render/bikiniBottomWorld.js)
   rooms: [
     { id: 'town', zone: 'town', name: 'Bikini Bottom', virtual: true, outdoor: true, rect: [GRID.x0, GRID.z0, GRID.x0 + NX * GRID.cell, GRID.z0 + NZ * GRID.cell], height: 12, floor: 'sand', style: 'invisible', ceiling: 'none', reverb: 0.3, walls: {} },
     ...windowRooms,
     powerRoom,
     ...insideRooms,
+    ...areaRooms,
   ],
   navRegions: G.regions,
   portals: G.portals,
   windows,
-  doors: [],
+  doors: [{ id: TOLL.id, kind: 'gate', free: true, x: GC.x, z: GC.z, y: heightAt(GC.x, GC.z), axis: GATE.axis, width: GC.len, height: 2.2, zones: ['town', 'town'], label: 'TOLL GATE' }],
+  reachWindows: true,        // (a barricade behind the shut gate lets nobody in: rounds.js)
   gaps: [],
   props: [],
   groundSpawns,
-  teleporters,               // the front doors in and out (src/sim/launchers.js)
+  teleporters,               // the front doors in and out, and the taxis (src/sim/launchers.js)
   // who you play here: whoever you picked turns up as one of the town (the first free one if they're taken)
   cast: { by: { kearns: 'spongebob', ryan: 'patrick', rocco: 'squidward', pit: 'sandy' }, order: ['spongebob', 'patrick', 'squidward', 'sandy'] },
   wallBuys,

@@ -28,9 +28,9 @@ export const MAPS = [
     facts: ['Map 2 · early build', 'Story by Michael Dougherty', 'Developers only'],
   },
   {
-    id: 'bikinibottom', name: 'Bikini Bottom', tag: 'Map 3 · new', ready: true, at: [-430, -560], r: 120,
+    id: 'bikinibottom', name: 'Bikini Bottom', tag: 'Map 3 · in development', ready: true, locked: true, at: [-430, -560], r: 120,
     blurb: 'The town under the sea. SpongeBob\'s pineapple, Squidward\'s house and Patrick\'s rock at one end, the Krusty Krab and the Chum Bucket at the other, Sandy\'s treedome in the middle and the flowery sky overhead, with barricades all round the edge. No story yet: just you, the box, and the dead coming over the fences and up out of the sand.',
-    facts: ['Map 3', '1–4 players', 'Classic zombies'],
+    facts: ['Map 3 · early build', '1–4 players', 'Developers only'],
   },
   {
     id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,
@@ -286,8 +286,7 @@ export class MapSelect {
       const p = document.createElement('button');
       p.type = 'button'; p.className = 'ms-pin' + (m.ready ? ' ready' : ' soon'); p.dataset.map = m.id;
       p.setAttribute('aria-label', m.ready ? m.name : `${m.name} (coming soon)`);
-      p.innerHTML = m.id === 'lastbell' ? '<i></i><em>Map 1</em>'
-        : m.ready ? '<i></i><em>Map 2 🔒</em>'
+      p.innerHTML = m.ready ? `<i></i><em>Map ${MAPS.filter((q) => q.ready).indexOf(m) + 1}${m.locked ? ' 🔒' : ''}</em>`
         : '<i><b>?</b></i><em>Coming soon</em>';
       p.addEventListener('click', (e) => { e.stopPropagation(); this.select(m.id); });
       p.tabIndex = -1;   // the list is the keyboard / controller way in
@@ -317,6 +316,7 @@ export class MapSelect {
     $('ms-coderow').hidden = !m.locked;
     $('ms-code').value = ''; $('ms-codemsg').textContent = '';
     if (fly) this.flyTo(m);
+    if (this.h.selected) this.h.selected(id);
   }
 
   flyTo(m, home = false) {

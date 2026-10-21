@@ -125,7 +125,13 @@ function pickSpawn(sim) {
   if (sim.mapData.terrainBoxes && cands.length) {
     const regs = sim.players.filter((p) => p.alive && !p.launch).map((p) => p.region || sim.nav.regionAt(p.pos));
     const ok = cands.filter((c) => {
-      if (!c.ground) return true;
+      // (a barricade too, where the map asks: Bikini Bottom's, behind its toll gate)
+      if (!c.ground && !sim.mapData.reachWindows) return true;
+      if (!c.ground) {
+        const w = c.win;
+        if (w.navRegion === undefined) w.navRegion = sim.nav.regionAt(w.interior);
+        return w.navRegion == null || regs.some((r) => sim.nav.canReach(w.navRegion, r));
+      }
       const g = c.ground;
       if (g.region === undefined) g.region = sim.nav.regionAt(g);
       return regs.some((r) => sim.nav.canReach(g.region, r));

@@ -105,7 +105,7 @@ export function updateLaunch(sim, p, dt) {
 // Front doors (Bikini Bottom): stand at SpongeBob's door or the Krusty Krab's,
 // press F, and you're inside (the insides are far off the map, out of sight);
 // the door inside takes you back out. map.teleporters: { id, x, y, z, label,
-// to: { x, y, z, yaw } }.
+// to: { x, y, z, yaw }, hold }: hold, a taxi: hold F that long (seconds) and it takes you.
 // =============================================================================
 export class DoorTeleportInteractable {
   constructor(door) {
@@ -119,9 +119,17 @@ export class DoorTeleportInteractable {
   distanceTo(sim, p) { this.cfgRange = sim.cfg.bikiniBottom.doorRange; return flat(p.pos, this.pos); }
   canUse(sim, p) { return p.alive && !p.downed && !p.launch && !p.drinking; }
   cost() { return 0; }
-  prompt() { return { text: this.door.label, cost: null }; }
-  use(sim, p, cmd) {
-    if (!cmd.usePressed) return;
+  prompt() { return { text: this.door.label, cost: null, ...(this.door.hold ? { hold: true } : {}) }; }
+  use(sim, p, cmd, dt) {
+    if (this.door.hold) {
+      // (held from a fresh press: still holding F as you arrive doesn't send you straight back)
+      if (!cmd.use || (!cmd.usePressed && p.taxi?.id !== this.door.id)) { this.release(sim, p); return; }
+      if (cmd.usePressed || !p.taxi) p.taxi = { id: this.door.id, t: 0 };
+      p.taxi.t += dt;
+      p.reviving = { frac: Math.min(1, p.taxi.t / this.door.hold), label: 'Taxi' };
+      if (p.taxi.t < this.door.hold) return;
+      this.release(sim, p);
+    } else if (!cmd.usePressed) return;
     if (p.loadout && p.loadout.reloading) sim.cancelReload(p);
     const to = this.door.to;
     p.pos.x = to.x; p.pos.y = to.y || 0; p.pos.z = to.z;
@@ -133,4 +141,5 @@ export class DoorTeleportInteractable {
     // (your own view turns to face the way in; a friend's turns with the move online)
     if (!p.remote) sim.netTeleport = { yaw: to.yaw };
   }
+  release(sim, p) { if (p.taxi) { p.taxi = null; p.reviving = null; } }
 }

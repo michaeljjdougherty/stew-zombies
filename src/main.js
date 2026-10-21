@@ -213,6 +213,14 @@ function playableCharacter() {
   const id = settings.character;
   return charOpen(id) ? id : 'kearns';
 }
+// On a map with its own cast (Bikini Bottom: SpongeBob, Patrick, Squidward, Sandy), who you
+// picked there; else the one the crew member you play turns up as.
+function castCharacter(mapId) {
+  const C = ZOMBIE_MAPS[mapId] && ZOMBIE_MAPS[mapId].cast;
+  if (!C) return null;
+  const id = (settings.castPick || {})[mapId];
+  return C.order.includes(id) ? id : C.by[playableCharacter()] || C.order[0];
+}
 
 // How you look: the character, wearing their skin from the Skin Shop (your
 // arms in first person; the character screens show it on the platform)
@@ -224,7 +232,7 @@ function setLook(id) {
 
 function makeSim(gameMode, mapId = 'lastbell') {
   const s = new GameSim({ map: gameMode === 'range' ? RANGE : ZOMBIE_MAPS[mapId] || SCHOOL, cfg: CONFIG, teamName: 'Stew', mode: gameMode });
-  s.addPlayer(localId, 'Stew', { character: playableCharacter(), gums: career.packForGame(), skin: career.wornSkin(playableCharacter()) });
+  s.addPlayer(localId, 'Stew', { character: castCharacter(mapId) || playableCharacter(), gums: career.packForGame(), skin: career.wornSkin(playableCharacter()) });
   return s;
 }
 
@@ -568,7 +576,7 @@ const mapSelect = new MapSelect({
   },
   explore: (id) => { mapSelect.close(); restart('explore', id); startPlaying(); },
   watchIntro: (id) => { mapSelect.close(); if (id === 'crust') startFilm('intro', 'maps'); else startIntro('maps'); },
-  back: () => { mapSelect.close(); menus.show('title'); },
+  back: () => { mapSelect.close(); setLook(playableCharacter()); menus.show('title'); },
   introSeen: (id) => (id === 'crust' ? !!progress.crustIntroSeen : !!progress.introSeen),
   hints: () => settings.questHints || 'walkthrough',
   setHints: (v) => { settings.questHints = v === 'hardcore' ? 'hardcore' : 'walkthrough'; saveSettings(settings); },
@@ -1085,14 +1093,21 @@ document.getElementById('btn-shop-pass').addEventListener('click', () => openSho
 // "Playing as" on the map screen: who you are and what they're wearing (the same
 // choices as Characters and the Stew Store)
 const ownedSkins = (ch) => [{ id: '', name: 'Own clothes' }, ...SKINS.filter((s) => career.ownsSkin(s.id, ch)).map((s) => ({ id: s.id, name: s.name }))];
+// (on a map with its own cast, its four instead of the crew, and no skins)
+const pickedCast = () => castCharacter(mapSelect.sel);
 const loadout = new LoadoutPicker({
-  characters: shopUI.h.characters,
-  current: () => playableCharacter(),
-  pickChar: (id) => { settings.character = id; saveSettings(settings); setLook(playableCharacter()); hud.localName = CHARACTERS[playableCharacter()].name; },
-  skins: ownedSkins,
+  characters: () => (pickedCast() ? ZOMBIE_MAPS[mapSelect.sel].cast.order.map((id) => ({ id, name: CHARACTERS[id].name })) : shopUI.h.characters()),
+  current: () => pickedCast() || playableCharacter(),
+  pickChar: (id) => {
+    if (pickedCast()) { settings.castPick = { ...settings.castPick, [mapSelect.sel]: id }; saveSettings(settings); setLook(id); return; }
+    settings.character = id; saveSettings(settings); setLook(playableCharacter()); hud.localName = CHARACTERS[playableCharacter()].name;
+  },
+  skins: (ch) => (CHARACTERS[ch] && CHARACTERS[ch].cast ? [] : ownedSkins(ch)),
   worn: (ch) => career.wornSkin(ch) || '',
   pickSkin: (ch, id) => { career.wearSkin(ch, id || null); setLook(playableCharacter()); },
 });
+// (picking a map with its own cast: the picker and the model show them)
+mapSelect.h.selected = () => { loadout.render(); setLook(loadout.h.current()); };
 // (the skins sit under the model, on top of the map: picking one mustn't drag or zoom the map)
 for (const ev of ['pointerdown', 'wheel']) document.getElementById('ms-who-panel').addEventListener(ev, (e) => e.stopPropagation());
 // (the Stew Store blade: your Bucks, and Featured today)
@@ -1254,7 +1269,7 @@ function frame(now) {
   const worldDt = (mode === 'paused' || mode === 'over') && !onlineLive ? 0 : fdt;
   // (the Stew Store blade's pictures are drawn by the store's platform, one a frame, before the title's own frame)
   if (mode === 'title' && (menus.blade === 'store' || menus.blade === 'arsenal') && renderer.showcase && renderer.showcase.thumbQueue.length) safely('thumbs', () => renderer.showcase.drawThumb());
-  if (mode === 'title' && menus.current === 'mapselect') safely('who', () => drawWho('ms-who-view', playableCharacter(), career.wornSkin(playableCharacter()), fdt));
+  if (mode === 'title' && menus.current === 'mapselect') safely('who', () => { const ch = loadout.h.current(); drawWho('ms-who-view', ch, CHARACTERS[ch].cast ? null : career.wornSkin(ch), fdt); });
   else if (mode === 'online' && lastLobby && online && !online.inGame) {
     const me = lastLobby.members.find((m) => m.id === lastLobby.you);
     if (me) safely('who', () => drawWho('on-who-view', me.character, me.skin, fdt));
