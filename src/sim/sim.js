@@ -130,7 +130,7 @@ export class GameSim {
       this.emit('characterSwapped', { playerId: id, from: was, to: character });
     }
     // (a map with its own crew, Bikini Bottom's: you're one of them, no skin)
-    if (this.mapData.cast) { const C = this.mapData.cast, taken = new Set(this.players.map((q) => q.character)); character = [C.by[character], ...C.order].find((c) => c && !taken.has(c)) || C.order[0]; skin = null; }
+    if (this.mapData.cast) { const C = this.mapData.cast, taken = new Set(this.players.map((q) => q.character)); character = [C.order.includes(character) ? character : C.by[character], ...C.order].find((c) => c && !taken.has(c)) || C.order[0]; skin = null; }
     p.character = character;   // who they're playing: what they say, what Erik calls them
     p.skin = typeof skin === 'string' ? skin : null;
     p.gunSkins = gunSkins && typeof gunSkins === 'object' ? { ...gunSkins } : null;

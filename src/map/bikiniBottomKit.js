@@ -46,7 +46,9 @@ export function heightAt(x, z) {
 // starts: { house: {x, z}, ... } the same for each inside (one left out isn't built).
 // open: rects [x0, z0, x1, z1] cleared of walls (a doorway the model leaves too tight).
 // shut: rects walled up (a gap you shouldn't get through).
-function buildOn(g, play, start, open, shut, regions) {
+// doors: [{ id, rect }] gaps a door you buy stands in: open ground of their own in the nav,
+// whose ways in are shut till it's bought.
+function buildOn(g, play, start, open, shut, regions, doors) {
   const { x0: GX0, z0: GZ0, nx: NX, nz: NZ, cell: CELL, H, SOLID } = g;
   const cellOf = (x, z) => cellIn(g, x, z);
   const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
@@ -107,7 +109,8 @@ function buildOn(g, play, start, open, shut, regions) {
   const taken = new Uint8Array(NX * NZ);
   for (let k = 0; k < NZ; k++) for (let i = 0; i < NX; i++) {
     const c = k * NX + i; if (!walk[c] || taken[c]) continue;
-    const ok = (n) => walk[n] && !taken[n];
+    const dOf = (n) => doors.find((d) => inR(d.rect, cx(n % NX), cz(Math.floor(n / NX)))) || null, door = dOf(c);
+    const ok = (n) => walk[n] && !taken[n] && dOf(n) === door;
     let i1 = i;
     // (no ledge inside a region: each cell within a step of the ones beside it)
     const near = (a, b) => Math.abs(H[a] - H[b]) <= STEP;
@@ -121,17 +124,17 @@ function buildOn(g, play, start, open, shut, regions) {
     }
     let y0 = Infinity, y1 = -Infinity;
     for (let kk = k; kk <= k1; kk++) for (let j = i; j <= i1; j++) { taken[kk * NX + j] = 1; y0 = Math.min(y0, H[kk * NX + j]); y1 = Math.max(y1, H[kk * NX + j]); }
-    regions.push({ id: 'bb_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: g.name, level: 0, y0, y1 });
+    regions.push({ id: 'bb_' + regions.length, rect: [GX0 + i * CELL, GZ0 + k * CELL, GX0 + (i1 + 1) * CELL, GZ0 + (k1 + 1) * CELL], room: g.name, level: 0, y0, y1, ...(door ? { door: door.id } : {}) });
   }
   return { boxes, walk, solid };
 }
 
-export function buildGround({ play, start, starts = {}, open = [], shut = [] }) {
+export function buildGround({ play, start, starts = {}, open = [], shut = [], doors = [] }) {
   const regions = [], boxes = [], grids = {};
   for (const g of ALL) {
     const town = g === ALL[0], s = town ? start : starts[g.name];
     if (!s) continue;
-    const b = buildOn(g, town ? play : () => true, s, open, shut, regions);
+    const b = buildOn(g, town ? play : () => true, s, open, shut, regions, doors);
     boxes.push(...b.boxes);
     grids[g.name] = { ...b, x0: g.x0, z0: g.z0, nx: g.nx, nz: g.nz, cell: g.cell };
   }
@@ -139,6 +142,9 @@ export function buildGround({ play, start, starts = {}, open = [], shut = [] }) 
   const portals = autoPortals(regions, 0.9);
   // portals across a step too high to walk: not a way through
   const P = portals.filter((p) => Math.abs(heightAt(p.x - (p.axis === 'x' ? 0.25 : 0), p.z - (p.axis === 'z' ? 0.25 : 0)) - heightAt(p.x + (p.axis === 'x' ? 0.25 : 0), p.z + (p.axis === 'z' ? 0.25 : 0))) <= STEP + 0.05);
+  // (the ways into a door's ground are shut till it's open)
+  const byId = new Map(regions.map((r) => [r.id, r]));
+  for (const p of P) { const d = byId.get(p.a).door || byId.get(p.b).door; if (d) p.door = d; }
   const look = (x, z, what) => { const g = gridAt(x, z), b = g && grids[g.name]; if (!b) return false; const [i, k] = cellIn(g, x, z); return !!b[what][k * g.nx + i]; };
   const walkable = (x, z) => look(x, z, 'walk');
   const solidAt = (x, z) => look(x, z, 'solid');

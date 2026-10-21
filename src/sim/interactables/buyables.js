@@ -50,6 +50,7 @@ export class DoorInteractable {
     const c = this.cost(sim);
     return this.kind === 'debris'
       ? { text: `Press [F] to clear debris`, cost: c }
+      : this.kind === 'gate' ? { text: `Press [F] to raise the gate`, cost: c }
       : { text: `Press [F] to open door`, cost: c };
   }
   use(sim, p, cmd) {

@@ -286,8 +286,7 @@ export class MapSelect {
       const p = document.createElement('button');
       p.type = 'button'; p.className = 'ms-pin' + (m.ready ? ' ready' : ' soon'); p.dataset.map = m.id;
       p.setAttribute('aria-label', m.ready ? m.name : `${m.name} (coming soon)`);
-      p.innerHTML = m.id === 'lastbell' ? '<i></i><em>Map 1</em>'
-        : m.ready ? '<i></i><em>Map 2 🔒</em>'
+      p.innerHTML = m.ready ? `<i></i><em>Map ${MAPS.filter((q) => q.ready).indexOf(m) + 1}${m.locked ? ' 🔒' : ''}</em>`
         : '<i><b>?</b></i><em>Coming soon</em>';
       p.addEventListener('click', (e) => { e.stopPropagation(); this.select(m.id); });
       p.tabIndex = -1;   // the list is the keyboard / controller way in
@@ -317,6 +316,7 @@ export class MapSelect {
     $('ms-coderow').hidden = !m.locked;
     $('ms-code').value = ''; $('ms-codemsg').textContent = '';
     if (fly) this.flyTo(m);
+    if (this.h.selected) this.h.selected(id);
   }
 
   flyTo(m, home = false) {

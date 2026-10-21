@@ -2331,6 +2331,9 @@ export const CONFIG = {
     insideSpawnSpacing: 4,    // inside SpongeBob's house and the Krusty Krab: one spawn about every this many metres
     insideGlow: 0.45,         // how much the insides light themselves (no daylight gets in)
     doorRange: 1.6,           // how close to a front door you have to be to go in or out (m)
+    fenceOut: 0.7,            // how far out past the edge of play the bamboo fence stands (m)
+    fenceGap: 3,              // no fence within this of a barricade (m)
+    gateLift: { time: 1.2, angle: 1.35 },   // the toll gate's arm swinging up once it's bought (s, radians)
   },
 };
 

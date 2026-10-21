@@ -15,11 +15,25 @@ const p = sim.addPlayer('p1', 'Stew', { character: 'ryan', skin: 'jersey' });
 const two = new GameSim({ map: M, cfg: CONFIG, mode: 'zombies', seed: 3 });
 const q1 = two.addPlayer('p1', 'Stew', { character: 'ryan', skin: 'jersey' }), p2 = two.addPlayer('p2', 'Friend', { character: 'ryan' });
 check(q1.character === 'patrick' && p2.character === 'spongebob' && !q1.skin && p.character === 'patrick', `you play one of the town: Ryan turns up as ${q1.character}, a second Ryan as ${p2.character}`);
+const p3 = two.addPlayer('p3', 'Pal', { character: 'sandy' });
+check(p3.character === 'sandy', `picked one of the town on the map screen: you're ${p3.character}`);
 check(M.terrainBoxes.length > 1000 && M.navRegions.length > 100, `ground: ${M.terrainBoxes.length} boxes, ${M.navRegions.length} regions, ${M.portals.length} portals`);
 check(Math.abs(p.pos.y - M.heightAt(p.pos.x, p.pos.z)) < 0.3, `spawn on the ground (y ${p.pos.y.toFixed(2)})`);
 const reg = sim.nav.regionAt(p.pos);
 check(!!reg, 'spawn is on the nav');
 const reach = (pt) => sim.nav.canReach(sim.nav.regionAt({ ...pt, y: pt.y ?? M.heightAt(pt.x, pt.z) }), reg);
+
+// the toll gate by Patrick's rock: shut, the east end of town is out of reach; buy it and it lifts
+const gate = sim.world.doors.find((d) => d.id === 'toll_gate');
+const east = [sim.world.madDog, { x: 79, z: 14 }, sim.windows.find((w) => w.id === 'win_east').interior];
+check(!!gate && east.every((pt) => !reach(pt)), 'the toll gate is shut: the east end of town (and its barricade) is behind it');
+check(!!gate && sim.raycastWorld({ x: gate.center.x - 2, y: gate.center.y + 1, z: gate.center.z }, { x: 1, y: 0, z: 0 }, 4) !== null, 'the shut gate stops you');
+const home = { ...p.pos };
+p.pos.x = gate.center.x - 1.3; p.pos.z = gate.center.z; p.pos.y = M.heightAt(p.pos.x, p.pos.z); p.region = sim.nav.regionAt(p.pos); p.points = 5000;
+for (let i = 0; i < 8; i++) { sim.setInput('p1', { moveX: 0, moveY: 0, yaw: -Math.PI / 2, pitch: 0, use: i === 4, usePressed: i === 4 }); sim.step(1 / 60); sim.drainEvents(); }
+check(sim.doorOpen('toll_gate') && p.points < 5000, `F at the toll gate raises it (${5000 - p.points} points)`);
+check(east.every((pt) => reach(pt)), 'the gate up, the east end of town is open');
+Object.assign(p.pos, home); p.region = sim.nav.regionAt(p.pos);
 check(sim.windows.length === M.windows.length && sim.windows.every((w) => reach(w.interior)), `${sim.windows.length} barricades, all lead in to the spawn`);
 check(sim.world.perkMachines.every((m) => reach(m.front)), `${sim.world.perkMachines.length} perk machines reachable`);
 check(sim.world.wallBuys.every((w) => reach({ x: w.pos.x + w.normal.x * 0.8, z: w.pos.z + w.normal.z * 0.8 })), `${sim.world.wallBuys.length} wall guns reachable`);

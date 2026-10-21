@@ -26,6 +26,7 @@
 // edge of the world where nobody sees them; src/sim/launchers.js moves you).
 // =============================================================================
 import { buildGround, heightAt, GRID, INSIDES } from './bikiniBottomKit.js';
+import { GATE } from './bikiniBottomGround.js';
 import { insidePoly } from './layout.js';
 import { CONFIG } from '../config.js';
 
@@ -38,10 +39,14 @@ const START = { x: -4, z: 7 };
 // The insides: where you come in (facing in, -z) and the door out behind you.
 const INSIDE = {
   house: { name: 'SpongeBob\'s house', label: 'SpongeBob\'s house', in: { x: 600, z: -2.5 }, out: { x: 600, z: -0.75 }, floor: 'sand', door: { x: 79, z: 12.2 } },
-  krab: { name: 'The Krusty Krab', label: 'the Krusty Krab', in: { x: 600, z: -404.5 }, out: { x: 600, z: -403 }, floor: 'wood', door: { x: -40, z: -11.8 } },
+  krab: { name: 'The Krusty Krab', label: 'the Krusty Krab', in: { x: 600, z: -405.5 }, out: { x: 600, z: -404 }, floor: 'wood', door: { x: -40, z: -11.8 } },
 };
 
-const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START, starts: Object.fromEntries(Object.entries(INSIDE).map(([k, v]) => [k, v.in])) });
+// The toll gate by Patrick's rock: a door you buy, across the gap in the bamboo fence
+// (the arm's length and a bit, post to booth); the east end of town is behind it.
+const GC = { x: (GATE.rect[0] + GATE.rect[2]) / 2, z: (GATE.rect[1] + GATE.rect[3]) / 2, len: GATE.rect[3] - GATE.rect[1] + 0.9 };
+const TOLL = { id: 'toll_gate', rect: [GATE.rect[0], GC.z - GC.len / 2, GATE.rect[2], GC.z + GC.len / 2] };
+const G = buildGround({ play: (x, z) => insidePoly(EDGE, x, z), start: START, starts: Object.fromEntries(Object.entries(INSIDE).map(([k, v]) => [k, v.in])), doors: [TOLL] });
 const { NX, NZ } = { NX: GRID.nx, NZ: GRID.nz };
 const cellX = (i) => GRID.x0 + (i + 0.5) * GRID.cell, cellZ = (k) => GRID.z0 + (k + 0.5) * GRID.cell;
 
@@ -225,7 +230,7 @@ export const BIKINI_BOTTOM = {
   wallThickness: T,
   customRender: true,        // no rooms or walls drawn: the model is the world
   glbWorld: 'assets/bikinibottom/town.glb',   // (src/render/bikiniBottomWorld.js)
-  openField: true,           // no doors: zombies come for you wherever you can be reached
+  openField: true,           // one zone: zombies come for you wherever you can be reached
   terrainBoxes: G.boxes,     // the ground, the walls and the edge of play (src/map/bikiniBottomKit.js)
   heightAt,
   fog: BB.fog,
@@ -233,6 +238,7 @@ export const BIKINI_BOTTOM = {
   brightness: BB.brightness,
   farPlane: BB.farPlane,
   playerSpawns,
+  edge: EDGE,                // the edge of play (the bamboo fence round it: src/render/bikiniBottomWorld.js)
   rooms: [
     { id: 'town', zone: 'town', name: 'Bikini Bottom', virtual: true, outdoor: true, rect: [GRID.x0, GRID.z0, GRID.x0 + NX * GRID.cell, GRID.z0 + NZ * GRID.cell], height: 12, floor: 'sand', style: 'invisible', ceiling: 'none', reverb: 0.3, walls: {} },
     ...windowRooms,
@@ -242,7 +248,8 @@ export const BIKINI_BOTTOM = {
   navRegions: G.regions,
   portals: G.portals,
   windows,
-  doors: [],
+  doors: [{ id: TOLL.id, kind: 'gate', free: true, x: GC.x, z: GC.z, y: heightAt(GC.x, GC.z), axis: GATE.axis, width: GC.len, height: 2.2, zones: ['town', 'town'], label: 'TOLL GATE' }],
+  reachWindows: true,        // (a barricade behind the shut gate lets nobody in: rounds.js)
   gaps: [],
   props: [],
   groundSpawns,

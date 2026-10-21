@@ -36,13 +36,29 @@ const CELL = 0.5;
 //   ground: you walk on it. solid: you can't walk through it. Everything else
 //   (shadow decals, water, flowers) is only drawn.
 const GROUND = ['terrain/ground', 'terrain/road', 'terrain/platforms'];
-//   (the hub's low bamboo fences and the toll gates' arms you can walk past:
-//   in the game they split the town up, here it's all one place)
-const LOOSE = [/^terrain\/liquid/, /^details\/house_sb_flowers/, /^details\/hub_fences/, /toll_gate/];
+//   (the toll gates' arms you can walk past; the hub's bamboo fences are solid,
+//   so the east end of town is behind the first gate, a door you buy)
+const LOOSE = [/^terrain\/liquid/, /toll_gate/];
 const SKY = 'skybox/';
 // (dropped: the baked shadow patches under the buildings and the tufts of sea
 // grass, whose see-through parts the download lost, so they came out solid black)
-const DROP = /^shadows\/|^details\/nature_details/;
+// and the cut-outs round the pineapple's foot, which lost theirs too)
+const DROP = /^shadows\/|^details\/nature_details|^details\/house_sb_flowers/;
+// Pieces whose textures the download lost (they came out white): a colour each,
+// or (a name) the material of the piece that has the texture they should have.
+const PAINT = [
+  [/krustycrabwin(_|2_)/, 'krustycrabwin11'],
+  [/porthole_big/, '#3f62a8'], [/^buildings\/airlock/, '#c99a3c'], [/gumdrop_green/, '#6bb85a'],
+  [/beach_chair/, '#d8604a'], [/wood_purple/, '#7a4f96'], [/wood_pounded_pillar|wood_bridge/, '#8f6c45'],
+  [/treedome_blanket/, '#c84848'], [/Tv_shadshoals/, '#4a4f58'], [/electrical_pole/, '#6b5640'],
+  [/fountain_statue/, '#d6ae3a'], [/fountain_water/, '#5ab4d6'], [/cannon_fd/, '#3c3c40'],
+  [/ballarena_platform/, '#a8b4bc'], [/dumpster_lid/, '#3f6e44'], [/light_street_rev/, '#4f545c'],
+  [/sand_gl/, '#d8c8a0'], [/rope/, '#e2d4b0'], [/sign_|level_signs/, '#c9a066'],
+];
+// The first toll gate (east, by Patrick's rock): its arm swings up when the gate's bought.
+const GATE_ARM = /toll_gate_arm0/, GATE_POST = /toll_gate0/;
+// The piece of bamboo fence copied round the edge of play.
+const FENCE = /hub_2_fence1_/;
 
 const doc = await io.read(SRC);
 const root = doc.getRoot();
@@ -51,6 +67,17 @@ const roleOfPath = (path) => (path.startsWith(SKY) ? 'sky' : GROUND.some((g) => 
 // (by node: a mesh several nodes share is copied when its node's transform is baked in)
 const ROLE = new Map();
 for (const n of root.listNodes()) if (n.getMesh()) { if (DROP.test(pathOf(n))) n.setMesh(null); else ROLE.set(n, roleOfPath(pathOf(n))); }
+const srgb = (h) => [1, 3, 5].map((i) => ((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))(parseInt(h.slice(i, i + 2), 16) / 255));
+for (const n of root.listNodes()) {
+  const m = n.getMesh(); if (!m) continue;
+  const rule = PAINT.find(([re]) => re.test(pathOf(n))); if (!rule) continue;
+  for (const p of m.listPrimitives()) {
+    if (rule[1][0] === '#') p.setMaterial(p.getMaterial().clone().setBaseColorTexture(null).setBaseColorFactor([...srgb(rule[1]), 1]));
+    else { const like = root.listNodes().find((q) => q.getMesh() && pathOf(q).includes(rule[1])); if (like) p.setMaterial(like.getMesh().listPrimitives()[0].getMaterial()); }
+  }
+}
+const named = (re) => root.listNodes().find((n) => n.getMesh() && re.test(pathOf(n)));
+const gateArm = named(GATE_ARM), gatePost = named(GATE_POST), fenceSrc = named(FENCE);
 const roleOf = (n) => ROLE.get(n) || 'solid';
 
 await doc.transform(flatten());
@@ -162,8 +189,10 @@ blockOn(tris.solid, GX0, GZ0, NX, NZ, H, BLOCK);
 // bead curtains between rooms).
 const INSIDES = [
   { name: 'house', src: HOUSE_SRC, scale: 0.42, door: [-6.8, 18.2], floor: 0, place: [600, 0],
-    keep: (x, y, z) => y < 12.5, pass: /^Doors$/ },
-  { name: 'krab', src: KRAB_SRC, scale: 13, door: [0.73, -0.83], floor: 0, place: [600, -400],
+    keep: (x, y, z) => y < 12.5, pass: /^Doors$/,
+    // (the doors between the rooms come out: it's all open inside; by where they stand, placed)
+    remove: (mat, x, y, z) => mat === 'Doors' && [[602, -12.5], [598, -8], [609, -8.5]].some(([dx, dz]) => Math.hypot(x - dx, z - dz) < 1.4) },
+  { name: 'krab', src: KRAB_SRC, scale: 19.5, door: [0.73, -0.83], floor: 0, place: [600, -400],
     keep: (x, y, z) => x > 0.05 && x < 1.42 && z > -2.05 && z < -0.78, drop: /^Object_(2|23)$/,
     simplify: 0.15, textures: 512 },
 ];
@@ -209,6 +238,10 @@ async function inside(I) {
   }
   const S = I.scale;
   for (const n of r.listNodes()) if (n.getMesh()) { n.setTranslation([I.place[0] - I.door[0] * S, -I.floor * S, I.place[1] - I.door[1] * S]).setScale([S, S, S]); clearNodeTransform(n); }
+  if (I.remove) for (const n of r.listNodes()) for (const p of n.getMesh()?.listPrimitives() || []) {
+    const mat = p.getMaterial()?.getName() || '';
+    if (!cut(p, (x, y, z) => !I.remove(mat, x, y, z))) { n.getMesh().removePrimitive(p); p.dispose(); }
+  }
   await d.transform(prune(), weld());
   if (I.simplify) await d.transform(simplify({ simplifier: MeshoptSimplifier, ratio: I.simplify, error: 0.01 }));
   if (I.textures) await d.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [I.textures, I.textures], quality: 80 }));
@@ -227,9 +260,38 @@ async function inside(I) {
 // --- the new model: one node for the town, one for the sky, one for each inside ----------
 // (join merges the pieces under each, so they stay apart)
 const scene = root.listScenes()[0];
-const holders = { town: doc.createNode('town'), sky: doc.createNode('sky') };
-for (const n of root.listNodes()) if (n.getMesh()) { scene.removeChild(n); holders[roleOf(n) === 'sky' ? 'sky' : 'town'].addChild(n); }
-scene.addChild(holders.town).addChild(holders.sky);
+// the gate's arm on its own (the game swings it up), where it hinges: the end by the post
+const ab = getBounds(gateArm), pb = getBounds(gatePost);
+const armAxis = ab.max[0] - ab.min[0] > ab.max[2] - ab.min[2] ? 'x' : 'z', ai = armAxis === 'x' ? 0 : 2;
+const postAt = (pb.min[ai] + pb.max[ai]) / 2;
+const hinge = [(ab.min[0] + ab.max[0]) / 2, (ab.min[1] + ab.max[1]) / 2, (ab.min[2] + ab.max[2]) / 2];
+hinge[ai] = Math.abs(ab.min[ai] - postAt) < Math.abs(ab.max[ai] - postAt) ? ab.min[ai] : ab.max[ai];
+const GATE = { axis: armAxis, rect: [ab.min[0], ab.min[2], ab.max[0], ab.max[2]], y: [ab.min[1], ab.max[1]], hinge };
+// one piece of the bamboo fence, stood at the origin on y = 0, running along x
+function fencePiece() {
+  const src = fenceSrc.getMesh(), mesh = doc.createMesh('fence');
+  let sx = 0, sz = 0, n = 0, y0 = Infinity;
+  const pts = [];
+  for (const p of src.listPrimitives()) { const a = p.getAttribute('POSITION'); for (let i = 0; i < a.getCount(); i++) { const v = a.getElement(i, []); pts.push(v); sx += v[0]; sz += v[2]; n++; y0 = Math.min(y0, v[1]); } }
+  const cx = sx / n, cz = sz / n;
+  let xx = 0, zz = 0, xz = 0;
+  for (const v of pts) { const dx = v[0] - cx, dz = v[2] - cz; xx += dx * dx; zz += dz * dz; xz += dx * dz; }
+  const ang = 0.5 * Math.atan2(2 * xz, xx - zz), c = Math.cos(-ang), s = Math.sin(-ang);
+  const turn = (x, z) => [x * c - z * s, x * s + z * c];
+  for (const p of src.listPrimitives()) {
+    const q = p.clone();
+    for (const sem of q.listSemantics()) q.setAttribute(sem, q.getAttribute(sem).clone());
+    const P = q.getAttribute('POSITION'), N = q.getAttribute('NORMAL');
+    for (let i = 0; i < P.getCount(); i++) { const v = P.getElement(i, []); const [x, z] = turn(v[0] - cx, v[2] - cz); P.setElement(i, [x, v[1] - y0, z]); }
+    if (N) for (let i = 0; i < N.getCount(); i++) { const v = N.getElement(i, []); const [x, z] = turn(v[0], v[2]); N.setElement(i, [x, v[1], z]); }
+    mesh.addPrimitive(q);
+  }
+  return doc.createNode('fence').setMesh(mesh);
+}
+const holders = { town: doc.createNode('town'), sky: doc.createNode('sky'), gate: doc.createNode('gate') };
+holders.fence = doc.createNode('fencePiece').addChild(fencePiece());
+for (const n of root.listNodes()) if (n.getMesh() && n.getName() !== 'fence') { scene.removeChild(n); holders[n === gateArm ? 'gate' : roleOf(n) === 'sky' ? 'sky' : 'town'].addChild(n); }
+for (const h of Object.values(holders)) scene.addChild(h);
 const grids = [{ name: 'town', x0: GX0, z0: GZ0, nx: NX, nz: NZ, H, B: BLOCK }];
 doc.createExtension(EXTTextureWebP);
 for (const I of INSIDES) {
@@ -261,5 +323,7 @@ writeFileSync(ROOT + 'src/map/bikiniBottomGround.js',
     const hb = Buffer.alloc(g.nx * g.nz * 2);
     for (let c = 0; c < g.nx * g.nz; c++) hb.writeUInt16LE(Math.max(0, Math.min(65535, Math.round(g.H[c] * 100) + 32768)), c * 2);
     return `  { name: '${g.name}', x0: ${g.x0}, z0: ${g.z0}, nx: ${g.nx}, nz: ${g.nz}, cell: ${CELL},\n    heights: '${hb.toString('base64')}',\n    blocked: '${Buffer.from(g.B).toString('base64')}' },\n`;
-  }).join('') + '];\n');
+  }).join('') + '];\n' +
+  '// The first toll gate\'s arm (a door you buy): its rect [x0, z0, x1, z1], heights, the axis it\n// runs along and the hinge it swings up about.\n' +
+  'export const GATE = ' + JSON.stringify({ ...GATE, rect: GATE.rect.map((v) => +v.toFixed(2)), y: GATE.y.map((v) => +v.toFixed(2)), hinge: GATE.hinge.map((v) => +v.toFixed(2)) }) + ';\n');
 console.log('grid', NX, 'x', NZ, 'origin', GX0, GZ0);
