@@ -1,7 +1,8 @@
 // Bikini Bottom (Map 3): the map builds, you can walk it, zombies come in over
 // the barricades and up out of the sand, and every machine and wall gun is
 // somewhere you can stand in front of. SpongeBob's front door and the Krusty
-// Krab's take you inside and back out, and zombies find you in there.
+// Krab's and Squidward's take you inside and back out, and zombies find you in
+// there. Hold F at a taxi stop and it takes you Downtown or to Goo Lagoon.
 import { CONFIG } from '../src/config.js';
 import { BIKINI_BOTTOM as M } from '../src/map/bikinibottom.js';
 import { GameSim } from '../src/sim/sim.js';
@@ -64,7 +65,7 @@ check(sim.zombies.every((q) => q.state === 'dead' || (isFinite(q.pos.y) && q.pos
 const use = () => { step(0.1); sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: 0, use: true, usePressed: true }); sim.step(1 / 60); sim.drainEvents(); step(0.1); };
 const roomAt = (pt) => { const id = sim.nav.regionAt(pt); return sim.nav.regions.find((r) => r.id === id)?.room; };
 const at = (pt) => { p.pos.x = pt.x; p.pos.z = pt.z; p.pos.y = M.heightAt(pt.x, pt.z); p.vel.x = p.vel.y = p.vel.z = 0; p.region = sim.nav.regionAt(p.pos); };
-for (const room of ['house', 'krab']) {
+for (const room of ['house', 'krab', 'squid']) {
   const door = M.teleporters.find((t) => t.id === 'door_' + room), back = M.teleporters.find((t) => t.id === 'door_' + room + '_out');
   check(!!door && !!back && reach(door), `${room}: the front door's on open ground in town`);
   at(door); use();
@@ -79,6 +80,30 @@ for (const room of ['house', 'krab']) {
   check(near.length > 0, `${room}: ${near.length} zombies came in after you`);
   at(back); use();
   check(roomAt(p.pos) === 'town' && Math.hypot(p.pos.x - door.x, p.pos.z - door.z) < 4, `${room}: the door inside takes you back out by the front door`);
+}
+
+// the taxis: hold F at the stop and you're Downtown or at Goo Lagoon; a tap does nothing
+check(!sim.windows.some((w) => w.id === 'win_rock'), 'no barricade in front of Goo Lagoon');
+const hold = (s) => { for (let i = 0; i < Math.round(s * 60); i++) { sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: 0, use: true, usePressed: i === 0 }); sim.step(1 / 60); sim.drainEvents(); } sim.setInput('p1', { moveX: 0, moveY: 0, yaw: p.yaw, pitch: 0 }); sim.step(1 / 60); };
+for (const area of ['downtown', 'goolagoon']) {
+  const stop = M.teleporters.find((t) => t.id === 'taxi_' + area), back = M.teleporters.find((t) => t.id === 'taxi_' + area + '_back');
+  check(!!stop && !!back && reach(stop), `${area}: the taxi stop's on open ground in town`);
+  at(stop); use();
+  check(roomAt(p.pos) === 'town', `${area}: a tap at the stop doesn't take you`);
+  hold(CONFIG.bikiniBottom.taxiHold + 0.2);
+  check(roomAt(p.pos) === area && Math.abs(p.pos.y - M.heightAt(p.pos.x, p.pos.z)) < 0.3, `${area}: hold F and the taxi drops you there (${p.pos.x.toFixed(1)}, ${p.pos.z.toFixed(1)})`);
+  hold(CONFIG.bikiniBottom.taxiHold + 0.2);
+  check(roomAt(p.pos) === area, `${area}: still holding F as you get there doesn't send you back`);
+  const ix = p.pos.x, iz = p.pos.z;
+  step(2, { moveY: 1, yaw: 0 });
+  const r = M.rooms.find((q) => q.id === area).rect;
+  check(Math.hypot(p.pos.x - ix, p.pos.z - iz) > 2 && p.pos.x > r[0] && p.pos.x < r[2] && p.pos.z > r[1] && p.pos.z < r[3], `${area}: you can walk about`);
+  check(M.groundSpawns.filter((s) => s.room === area).length >= 10, `${area}: ${M.groundSpawns.filter((s) => s.room === area).length} sand spawns`);
+  step(25);
+  const near = sim.zombies.filter((q) => q.state !== 'dead' && Math.hypot(q.pos.x - p.pos.x, q.pos.z - p.pos.z) < 40);
+  check(near.length > 0, `${area}: ${near.length} zombies came after you`);
+  at(back); hold(CONFIG.bikiniBottom.taxiHold + 0.2);
+  check(roomAt(p.pos) === 'town' && Math.hypot(p.pos.x - stop.x, p.pos.z - stop.z) < 1, `${area}: the taxi back drops you at the stop in town`);
 }
 
 // Explore mode (Play › Explore on the map screen): endless points, no dying,

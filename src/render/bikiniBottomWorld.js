@@ -58,30 +58,14 @@ export function buildBikiniBottom(mv) {
 
   const planks = new THREE.MeshLambertMaterial({ color: '#d8b888', map: T.plankTexture(0) });
   for (const g of barricadeSurrounds(mv, planks)) out.root.add(g);
+  for (const g of taxiSigns(mv)) out.root.add(g);
 
   // the town (in the background: nothing waits on it)
   fetchGlb(map.glbWorld)
     .then((buf) => loader().parseAsync(buf, ''))
     .then((gltf) => {
       const sky = gltf.scene.getObjectByName('sky');
-      // (the insides, far off the map, lit from within: the light down through the water doesn't get in)
-      const indoors = new Set();
-      for (const id of ['house', 'krab']) gltf.scene.getObjectByName(id)?.traverse((o) => indoors.add(o));
-      gltf.scene.traverse((o) => {
-        if (!o.isMesh) return;
-        // (lit the cheap way, like the rest of the game, keeping the model's own textures)
-        const m = o.material, mats = Array.isArray(m) ? m : [m];
-        const lam = mats.map((s) => {
-          const l = lambert(s);
-          if (indoors.has(o)) { l.emissive.set('#ffffff'); l.emissiveMap = l.map; l.emissiveIntensity = cfg.insideGlow; if (!l.map) l.emissive.copy(l.color); }
-          return l;
-        });
-        o.material = Array.isArray(m) ? lam : lam[0];
-        // (the pieces stand still: their matrices are set once; the compressed
-        // model's positions are scaled back to metres by them)
-        o.updateMatrix();
-        o.matrixAutoUpdate = false;
-      });
+      dress(gltf.scene, ['house', 'krab', 'squid'], cfg);
       out.gate = tollGate(gltf.scene);
       const piece = gltf.scene.getObjectByName('fencePiece');
       if (piece) { gltf.scene.remove(piece); for (const f of edgeFence(mv, piece)) out.root.add(f); }
@@ -105,6 +89,68 @@ export function buildBikiniBottom(mv) {
       out.ready = true;
     })
     .catch((err) => console.warn('bikini bottom model:', err.message || err));
+  // Downtown and Goo Lagoon, out past the town where the taxis go (in the background too)
+  for (const f of map.glbAreas || []) {
+    fetchGlb(f)
+      .then((buf) => loader().parseAsync(buf, ''))
+      .then((gltf) => { dress(gltf.scene, [], cfg); gltf.scene.updateMatrixWorld(true); out.root.add(gltf.scene); })
+      .catch((err) => console.warn('bikini bottom area:', err.message || err));
+  }
+  return out;
+}
+
+// A model's pieces lit the cheap way, like the rest of the game, keeping their own
+// textures; the insides named (far off the map) lit from within, since the light
+// down through the water doesn't get in.
+function dress(scene, insides, cfg) {
+  const indoors = new Set();
+  for (const id of insides) scene.getObjectByName(id)?.traverse((o) => indoors.add(o));
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    // (Squidward's comes without normals, made to be drawn unlit: lit, it'd come out black)
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    const m = o.material, mats = Array.isArray(m) ? m : [m];
+    const lam = mats.map((s) => {
+      const l = lambert(s);
+      if (indoors.has(o)) { l.emissive.set('#ffffff'); l.emissiveMap = l.map; l.emissiveIntensity = cfg.insideGlow; if (!l.map) l.emissive.copy(l.color); }
+      return l;
+    });
+    o.material = Array.isArray(m) ? lam : lam[0];
+    // (the pieces stand still: their matrices are set once; the compressed
+    // model's positions are scaled back to metres by them)
+    o.updateMatrix();
+    o.matrixAutoUpdate = false;
+  });
+}
+
+// A yellow TAXI sign on a post by each taxi stop, saying where it goes (both faces,
+// turned toward where you come from: the middle of town, or where the taxi dropped you).
+function taxiSigns(mv) {
+  const tps = mv.map.teleporters || [], out = [];
+  const post = new THREE.MeshLambertMaterial({ color: '#8a8f96' });
+  for (const t of tps) {
+    if (!t.hold) continue;
+    const there = tps.find((q) => q.id + '_back' === t.id);   // (the stop in town that brings you here)
+    const look = there ? there.to : { x: 5, z: 0 };
+    const where = t.id.endsWith('_back') ? 'Bikini Bottom' : t.label.replace(/^.* to /, '');
+    const [c, g] = T.makeCanvas(256, 128);
+    g.fillStyle = '#f2c230'; g.fillRect(0, 0, 256, 128);
+    g.strokeStyle = '#222'; g.lineWidth = 8; g.strokeRect(4, 4, 248, 120);
+    g.fillStyle = '#222'; g.textAlign = 'center'; g.font = 'bold 54px sans-serif'; g.fillText('TAXI', 128, 62);
+    g.font = 'bold 26px sans-serif'; g.fillText(where, 128, 104);
+    const board = new THREE.MeshLambertMaterial({ map: T.toTexture(c, { repeat: false }) });
+    const grp = new THREE.Group();
+    grp.position.set(t.x, t.y || 0, t.z);
+    grp.rotation.y = Math.atan2(look.x - t.x, look.z - t.z);
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), post);
+    p.position.set(0.9, 0.9, 0); grp.add(p);
+    for (const turn of [0, Math.PI]) {
+      const b = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.55), board);
+      b.position.set(0.9, 2.05, turn ? -0.02 : 0.02); b.rotation.y = turn; grp.add(b);
+    }
+    grp.userData.noBake = true;
+    out.push(grp);
+  }
   return out;
 }
 
