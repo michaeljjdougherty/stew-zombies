@@ -28,9 +28,9 @@ export const MAPS = [
     facts: ['Map 2 · early build', 'Story by Michael Dougherty', 'Developers only'],
   },
   {
-    id: 'bikinibottom', name: 'Bikini Bottom', tag: 'Map 3 · new', ready: true, at: [-430, -560], r: 120,
+    id: 'bikinibottom', name: 'Bikini Bottom', tag: 'Map 3 · in development', ready: true, locked: true, at: [-430, -560], r: 120,
     blurb: 'The town under the sea. SpongeBob\'s pineapple, Squidward\'s house and Patrick\'s rock at one end, the Krusty Krab and the Chum Bucket at the other, Sandy\'s treedome in the middle and the flowery sky overhead, with barricades all round the edge. No story yet: just you, the box, and the dead coming over the fences and up out of the sand.',
-    facts: ['Map 3', '1–4 players', 'Classic zombies'],
+    facts: ['Map 3 · early build', '1–4 players', 'Developers only'],
   },
   {
     id: 'ice', name: 'Classified', tag: 'Coming soon', ready: false, at: [-640, 330], r: 115,
